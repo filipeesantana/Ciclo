@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v5.2.1
+   CICLO — v5.3.0
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -8,20 +8,21 @@
      DOMAIN MODELS · PRIORITY ENGINE · DEADLINE ENGINE
      PLAN ENGINE · REVIEW ENGINE · RECOMMENDATION ENGINE
      ANALYTICS ENGINE · TIMER SERVICE · BACKUP · UI STATE · RENDERING
-     EVENT HANDLERS · INITIALIZATION
+     HELP ENGINE (busca, rotas, glossário) · EVENT HANDLERS · INITIALIZATION
    ========================================================================= */
 'use strict';
 
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '5.2.1';
+const APP_VERSION = '5.3.0';
 const APP_SCHEMA_VERSION = 5;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
                                        // ganham tipo, status, data de início, orientações e
-                                       // anotações. A v5.2.1 é estabilização: nenhum campo
-                                       // persistente novo, por isso o formato continua em 5.
+                                       // anotações. A v5.2.1 e a v5.3 são estabilização e
+                                       // conteúdo: nenhum campo persistente novo, por isso
+                                       // o formato continua em 5.
 
 /* Identificadores técnicos LEGADOS. O produto passou a se chamar "Ciclo" na v5.1,
    mas estes nomes ficam como estão: renomeá-los faria o navegador procurar um
@@ -2839,7 +2840,6 @@ const ui = {
   weekOffset: 0,              // navegação de semanas no relatório semanal
   planExpanded: false,        // v5: true quando o usuário pediu os controles detalhados
   reviewQueue: null,          // v4: itens restantes da sessão de revisão montada
-  helpDoor: 'start',          // v5: 'start' | 'use' | 'learn' | 'faq'
   prevView: null,             // v5.1: tela anterior (contexto do relato de problema)
   openDeadlineId: null,       // v5.2: prazo aberto no painel lateral
   analyticsScope: { type:'all', areaId:null, disciplineId:null, topicId:null },   // v5.2: o que analisar
@@ -3335,6 +3335,7 @@ function setView(view){
   });
   const mt = $('#mobile-title'); if(mt) mt.textContent = VIEW_TITLES[view];
   Tooltip.hide();
+  GlossaryPopover.close();       // nenhuma explicação flutuando sobre outra tela
   window.scrollTo({ top:0, behavior: state.settings.reduceMotion ? 'auto' : 'smooth' });
   render();
 }
@@ -5419,7 +5420,7 @@ function deadlinesCard(){
       h('span', { text:'Use prazos para acompanhar datas importantes como provas, trabalhos, projetos, tarefas e entregas. Quanto mais perto e mais prioritário, mais ele pesa nas sugestões.' }),
       h('div', { class:'empty-actions' },
         h('button', { class:'btn primary', type:'button', onclick:() => openDeadlineModal(null) }, icon('i-plus'), 'Adicionar prazo'),
-        h('button', { class:'btn ghost', type:'button', text:'Como funcionam os prazos?', onclick:() => openHelpArticleDrawer('prazos') }))));
+        h('button', { class:'btn ghost', type:'button', text:'Como funcionam os prazos?', onclick:() => openHelpArticle('prazos') }))));
     return c;
   }
   if(open.length){
@@ -7730,7 +7731,11 @@ async function init(){
   }, 1000);
 }
 /* =========================================================================
-   HELP ENGINE — busca local, sem rede, tolerante a acentos.
+   HELP ENGINE (v5.3) — índice único, busca local e tolerante a acentos.
+
+   Um único índice cobre artigos, perguntas do FAQ e termos do glossário.
+   Ele é construído UMA VEZ, na carga: digitar não renormaliza conteúdo
+   nenhum, só compara strings já normalizadas.
    ========================================================================= */
 function normalizeText(s){
   return String(s == null ? '' : s)
@@ -7740,57 +7745,141 @@ function normalizeText(s){
     .trim();
 }
 
-function articleText(a){
-  const parts = [a.title, a.summary, a.keywords];
-  (a.content || []).forEach(b => {
-    if(b.p) parts.push(b.p);
-    if(b.h) parts.push(b.h);
-    if(b.ul) parts.push(b.ul.join(' '));
-  });
-  return parts.join(' ');
+/** Remove as marcações [[termo]] deixando o texto que o leitor vê. */
+function plainText(s){
+  return String(s == null ? '' : s).replace(/\[\[([a-zA-Z]+)(?:\|([^\]]+))?\]\]/g,
+    (_, key, label) => label || (HELP_GLOSSARY[key] ? HELP_GLOSSARY[key].term : key));
 }
 
-/** Índice de busca da ajuda, construído uma vez. */
-const HELP_INDEX = HELP_ARTICLES.map(a => ({
-  article: a,
-  nTitle: normalizeText(a.title),
-  nKeywords: normalizeText(a.keywords + ' ' + a.summary),
-  nBody: normalizeText(articleText(a))
-}));
-const FAQ_INDEX = HELP_FAQ.map((f, i) => ({ faq:f, i, n: normalizeText(f.q + ' ' + f.a) }));
-const GUIDE_INDEX = STUDY_GUIDES.map(g => ({ g, n: normalizeText(
-  [g.title, g.summary, g.oneLine, g.keywords, g.what, g.why, g.example, g.inApp, (g.how || []).join(' ')].join(' ')) }));
-const INTERACTIVE_INDEX = INTERACTIVE_GUIDES.map(g => ({ g, n: normalizeText(
-  [g.title, g.oneLine, g.what, (g.examples || []).join(' ')].join(' ')) }));
-const GLOSSARY_INDEX = HELP_GLOSSARY.map(g => ({ g, n: normalizeText(g.t + ' ' + g.d) }));
+/** Índices auxiliares — montados uma vez. */
+const HELP_SECTION_BY_ID = new Map(HELP_SECTIONS.map(s => [s.id, s]));
+const HELP_GROUP_BY_KEY = (() => {
+  const m = new Map();
+  HELP_SECTIONS.forEach(s => s.groups.forEach(g => m.set(s.id + '/' + g.id, g)));
+  return m;
+})();
+const HELP_ARTICLE_BY_ID = new Map(HELP_ARTICLES.map(a => [a.id, a]));
+const HELP_FAQ_BY_ID = new Map(HELP_FAQ.map(f => [f.id, f]));
+const GLOSSARY_KEYS = Object.keys(HELP_GLOSSARY)
+  .sort((a, b) => HELP_GLOSSARY[a].term.localeCompare(HELP_GLOSSARY[b].term, 'pt-BR'));
 
-function getArticle(id){ return HELP_ARTICLES.find(a => a.id === id) || null; }
-function categoryLabel(id){ const c = HELP_CATEGORIES.find(x => x.id === id); return c ? c.label : ''; }
+/** "Entender domínio", mas "Entender Área de Estudo": nome próprio não desce. */
+function glossaryCallLabel(key){
+  const g = HELP_GLOSSARY[key];
+  if(!g) return '';
+  return 'Entender ' + (g.proper ? g.term : g.term.toLowerCase());
+}
 
-/** Busca por termos: cada termo precisa aparecer em algum campo. Pontua título > keywords > corpo. */
+function getArticle(id){ return HELP_ARTICLE_BY_ID.get(id) || null; }
+function helpSection(id){ return HELP_SECTION_BY_ID.get(id) || null; }
+function helpGroup(sectionId, groupId){ return HELP_GROUP_BY_KEY.get(sectionId + '/' + groupId) || null; }
+function articlesOf(sectionId, groupId){
+  return HELP_ARTICLES.filter(a => a.section === sectionId && (!groupId || a.group === groupId));
+}
+/** "Usar o Ciclo › Revisando" — o caminho curto que aparece nos resultados. */
+function articlePath(a){
+  if(!a) return '';
+  const s = helpSection(a.section), g = helpGroup(a.section, a.group);
+  return [s ? s.label : null, g ? g.label : null].filter(Boolean).join(' › ');
+}
+
+/** Texto completo de um artigo, para o índice de busca. */
+function articleSearchText(a){
+  const parts = [a.title, a.oneLine, a.summary, a.keywords];
+  const walk = (blocks) => (blocks || []).forEach(b => {
+    if(b.p) parts.push(b.p);
+    if(b.h) parts.push(b.h);
+    if(b.note) parts.push(b.note);
+    if(b.ul) parts.push(b.ul.join(' '));
+    if(b.ol) parts.push(b.ol.join(' '));
+    if(b.steps) parts.push(b.steps.join(' '));
+    if(b.details){ parts.push(b.details.title); walk(b.details.content); }
+  });
+  walk(a.content);
+  return plainText(parts.filter(Boolean).join(' '));
+}
+
+/**
+ * ÍNDICE DE BUSCA — gerado das fontes de conteúdo, nunca mantido à mão.
+ * Cada entrada já guarda título, palavras-chave e corpo normalizados.
+ */
+const HELP_SEARCH_INDEX = (() => {
+  const out = [];
+
+  HELP_ARTICLES.forEach(a => out.push({
+    kind:'article', id:a.id, title:a.title, path:articlePath(a), snippet:a.summary,
+    nTitle: normalizeText(a.title),
+    nKeywords: normalizeText([a.keywords, a.summary, a.oneLine].join(' ')),
+    nBody: normalizeText(articleSearchText(a))
+  }));
+
+  GLOSSARY_KEYS.forEach(key => {
+    const g = HELP_GLOSSARY[key];
+    out.push({
+      kind:'term', id:key, title:g.term, path:'Glossário', snippet:g.short,
+      nTitle: normalizeText(g.term),
+      nKeywords: normalizeText([g.alias || '', g.term].join(' ')),
+      nBody: normalizeText(g.term + ' ' + g.short + ' ' + (g.alias || ''))
+    });
+  });
+
+  HELP_FAQ.forEach(f => {
+    const grp = HELP_FAQ_GROUPS.find(x => x.id === f.g);
+    out.push({
+      kind:'faq', id:f.id, title:f.q, path:'Perguntas comuns' + (grp ? ' › ' + grp.label : ''), snippet:f.a,
+      nTitle: normalizeText(f.q),
+      nKeywords: normalizeText(f.q),
+      nBody: normalizeText(f.q + ' ' + f.a)
+    });
+  });
+
+  return out;
+})();
+
+/**
+ * Busca por termos. Cada termo precisa aparecer em algum campo da entrada.
+ * Pontuação: título exato > termo do glossário > palavras-chave > título
+ * parcial > conteúdo. Sem fuzzy: o resultado é previsível e instantâneo.
+ */
 function searchHelp(query){
   const q = normalizeText(query);
-  if(q.length < 2) return { articles:[], faq:[], glossary:[], guides:[], interactive:[] };
+  if(q.length < 2) return [];
   const terms = q.split(' ').filter(Boolean);
 
-  const articles = HELP_INDEX.map(e => {
-    let score = 0;
+  const scored = [];
+  for(const e of HELP_SEARCH_INDEX){
+    let score = 0, ok = true;
     for(const t of terms){
-      if(e.nTitle.includes(t)) score += 10;
-      else if(e.nKeywords.includes(t)) score += 5;
-      else if(e.nBody.includes(t)) score += 2;
-      else return null;                      // termo ausente: descarta
+      if(e.nTitle.includes(t)) score += 30;
+      else if(e.nKeywords.includes(t)) score += 14;
+      else if(e.nBody.includes(t)) score += 4;
+      else { ok = false; break; }
     }
-    if(e.nTitle === q) score += 20;
-    if(e.nTitle.startsWith(q)) score += 8;
-    return { article:e.article, score };
-  }).filter(Boolean).sort((a,b) => b.score - a.score || a.article.title.localeCompare(b.article.title,'pt-BR'));
+    if(!ok) continue;
 
-  const faq = FAQ_INDEX.filter(e => terms.every(t => e.n.includes(t))).map(e => e.faq);
-  const glossary = GLOSSARY_INDEX.filter(e => terms.every(t => e.n.includes(t))).map(e => e.g);
-  const guides = GUIDE_INDEX.filter(e => terms.every(t => e.n.includes(t))).map(e => e.g);
-  const interactive = INTERACTIVE_INDEX.filter(e => terms.every(t => e.n.includes(t))).map(e => e.g);
-  return { articles: articles.map(x => x.article), faq, glossary, guides, interactive };
+    if(e.nTitle === q) score += 120;                 // título exato
+    else if(e.nTitle.startsWith(q)) score += 30;
+    else if(e.nTitle.includes(q)) score += 12;
+
+    if(e.kind === 'term'){
+      score += 8;
+      if(e.nTitle === q) score += 50;                // "dominio" → o termo Domínio na frente
+    } else if(e.kind === 'article'){
+      score += 10;                                   // o artigo explica; a pergunta só responde
+    }
+    scored.push({ e, score });
+  }
+
+  /* Desempate: mais pontos, depois o título mais curto (costuma ser o mais
+     geral: "O que é uma revisão?" antes de "Métodos de revisão: como revisar"). */
+  scored.sort((a, b) => b.score - a.score ||
+                        a.e.title.length - b.e.title.length ||
+                        a.e.title.localeCompare(b.e.title, 'pt-BR'));
+
+  /* Sem versões concorrentes do mesmo conteúdo: quando a pergunta do FAQ tem
+     o mesmo título de um artigo que também apareceu, fica só o artigo. */
+  const titles = new Set(scored.filter(x => x.e.kind === 'article').map(x => x.e.nTitle));
+  return scored.filter(x => !(x.e.kind === 'faq' && titles.has(x.e.nTitle))).map(x => x.e);
 }
 
 /* =========================================================================
@@ -7871,14 +7960,30 @@ function tipBody(title, rows, footer){
   return box;
 }
 
+/**
+ * Resolve uma chave de ajuda contextual para { title, tip, article }.
+ * Quando a entrada aponta para um termo do glossário, o texto vem de lá:
+ * assim a mesma palavra nunca tem duas definições diferentes no produto.
+ */
+function contextHelpInfo(key){
+  const info = CONTEXT_HELP[key];
+  if(!info) return null;
+  if(info.term){
+    const g = HELP_GLOSSARY[info.term];
+    if(!g) return null;
+    return { title: info.title || g.term, tip: info.tip || g.short, article: info.article || g.article, term: info.term };
+  }
+  return { title: info.title, tip: info.tip, article: info.article, term: null };
+}
+
 /** Botão "?" de ajuda contextual: tooltip no hover/foco, artigo no clique. */
 function helpDot(key){
-  const info = CONTEXT_HELP[key];
+  const info = contextHelpInfo(key);
   if(!info || state.settings.helpMode === 'off') return null;
   const btn = h('button', {
     class:'helpdot', type:'button', text:'?',
     'aria-label': 'O que é ' + info.title + '?',
-    onclick:(e) => { e.stopPropagation(); openHelpArticleDrawer(info.article); }
+    onclick:(e) => { e.stopPropagation(); openHelpArticle(info.article); }
   });
   Tooltip.attach(btn, () => tipBody(info.title, [], info.tip));
   return btn;
@@ -7887,6 +7992,132 @@ function helpDot(key){
 /** Rótulo com "?" ao lado. */
 function labelWithHelp(text, key, tag){
   return h(tag || 'span', null, text, helpDot(key));
+}
+
+/* =========================================================================
+   GLOSSÁRIO CONTEXTUAL (v5.3)
+
+   Um termo marcado no texto explica a si mesmo sem tirar a pessoa da página:
+   no computador basta o mouse ou o foco do teclado; no celular, um toque abre
+   o mesmo conteúdo como popover. O aprofundamento é opcional e nomeado
+   ("Entender domínio"), nunca um "saiba mais" solto.
+
+   Regra de uso: marque um termo só quando a dúvida atrapalharia a decisão
+   naquele ponto — e, no máximo, uma vez por artigo.
+   ========================================================================= */
+const GlossaryPopover = {
+  el: null, anchor: null,
+
+  get root(){
+    if(!this.el){
+      this.el = h('div', { class:'gloss-pop', role:'dialog', 'aria-modal':'false', hidden:true });
+      document.body.appendChild(this.el);
+      document.addEventListener('mousedown', (e) => {
+        if(!this.anchor) return;
+        if(this.el.contains(e.target) || this.anchor.contains(e.target)) return;
+        this.close();
+      });
+      window.addEventListener('resize', () => this.close(), { passive:true });
+      /* Rolar acompanha o termo em vez de fechar: fechar sozinho parecia um bug
+         (e o próprio focus() do botão já rola a página). Só sai de cena quando
+         o termo deixa a janela. */
+      window.addEventListener('scroll', () => {
+        if(!this.anchor) return;
+        const r = this.anchor.getBoundingClientRect();
+        if(r.bottom < 0 || r.top > window.innerHeight) this.close();
+        else this.position(this.anchor);
+      }, { passive:true });
+    }
+    return this.el;
+  },
+
+  open(anchor, key){
+    const g = HELP_GLOSSARY[key];
+    if(!g) return;
+    if(this.anchor === anchor){ this.close(); return; }     // segundo toque fecha
+    const root = this.root;
+    mount(root,
+      h('p', { class:'gp-term', text:g.term }),
+      h('p', { class:'gp-short', text:g.short }),
+      g.article ? h('button', { class:'linkbtn', type:'button',
+        text: glossaryCallLabel(key),
+        onclick:() => { this.close(); openHelpArticle(g.article); } }) : null,
+      h('button', { class:'gp-close icon-btn', type:'button', 'aria-label':'Fechar explicação',
+        onclick:() => this.close() }, icon('i-close')));
+    root.hidden = false;
+    this.anchor = anchor;
+    anchor.setAttribute('aria-expanded', 'true');
+    this.position(anchor);
+    const first = root.querySelector('button');
+    if(first) setTimeout(() => { if(!root.hidden) { try { first.focus({ preventScroll:true }); } catch(_){ first.focus(); } } }, 30);
+  },
+
+  position(anchor){
+    const root = this.root;
+    const r = anchor.getBoundingClientRect();
+    const box = root.getBoundingClientRect();
+    const pad = 10;
+    let top = r.bottom + 8;
+    if(top + box.height > window.innerHeight - pad) top = Math.max(pad, r.top - box.height - 8);
+    let left = clamp(r.left, pad, Math.max(pad, window.innerWidth - box.width - pad));
+    root.style.top = Math.round(top) + 'px';
+    root.style.left = Math.round(left) + 'px';
+  },
+
+  close(){
+    if(!this.el || this.el.hidden) return;
+    this.el.hidden = true;
+    clear(this.el);
+    const a = this.anchor;
+    this.anchor = null;
+    if(a){
+      a.setAttribute('aria-expanded', 'false');
+      if(document.contains(a)){ try { a.focus({ preventScroll:true }); } catch(_){ a.focus(); } }
+    }
+  },
+
+  get isOpen(){ return !!(this.el && !this.el.hidden); }
+};
+
+/** Detecta ponteiro grosso (celular/tablet): lá o hover não existe. */
+function isCoarsePointer(){
+  return !!(window.matchMedia && window.matchMedia('(hover:none),(pointer:coarse)').matches);
+}
+
+/**
+ * Termo do glossário dentro de um texto corrido.
+ * Hover e foco mostram o tooltip; clique/toque abre o popover com o
+ * aprofundamento opcional. Nunca depende só do mouse.
+ */
+function glossaryTerm(key, label){
+  const g = HELP_GLOSSARY[key];
+  if(!g) return document.createTextNode(label || key);
+  const btn = h('button', {
+    class:'gterm', type:'button',
+    'aria-expanded':'false',
+    'aria-label': (label || g.term) + ' — ver explicação',
+    onclick:(e) => { e.stopPropagation(); Tooltip.hide(); GlossaryPopover.open(btn, key); }
+  }, h('span', { text: label || g.term }), h('span', { class:'gterm-mark', 'aria-hidden':'true', text:'?' }));
+  if(!isCoarsePointer()) Tooltip.attach(btn, () => tipBody(g.term, [], g.short), { delay:220 });
+  return btn;
+}
+
+/**
+ * Converte um texto com marcações [[termo]] ou [[termo|rótulo]] em nós DOM.
+ * Nada de innerHTML: cada pedaço vira texto ou um botão de glossário.
+ */
+function richText(text){
+  const frag = document.createDocumentFragment();
+  const src = str(text);
+  const re = /\[\[([a-zA-Z]+)(?:\|([^\]]+))?\]\]/g;
+  let last = 0, m;
+  while((m = re.exec(src))){
+    if(m.index > last) frag.appendChild(document.createTextNode(src.slice(last, m.index)));
+    frag.appendChild(glossaryTerm(m[1], m[2] || null));
+    last = m.index + m[0].length;
+  }
+  if(last < src.length) frag.appendChild(document.createTextNode(src.slice(last)));
+  return frag;
 }
 
 /* =========================================================================
@@ -7927,6 +8158,7 @@ const Drawer = {
     clear(document.getElementById('drawer-content'));
     root.removeEventListener('mousedown', this._onBackdrop);
     Tooltip.hide();
+    GlossaryPopover.close();
     if(this._onCloseCb){ const cb = this._onCloseCb; this._onCloseCb = null; cb(); }
     Overlay.close(this._layer);                  // devolve o foco a quem abriu
     this._layer = null;
@@ -7980,14 +8212,23 @@ const Palette = {
       push('Tópicos', t.name, d.name, 'i-disc', () => { if(isDesktopUI()) openTopicDrawer(t.id); else openTopicModal(d.id, t, { returnTo:false }); }, 'topico estudar ' + d.name);
     });
 
+    /* v5.3 — a busca de comandos lê o MESMO índice da Ajuda: artigos,
+       perguntas comuns e termos do glossário, sem lista paralela. */
     HELP_ARTICLES.forEach(a => {
-      push('Ajuda', a.title, categoryLabel(a.cat), 'i-help', () => openHelpArticleDrawer(a.id), a.keywords + ' ' + a.summary);
+      const group = a.section === 'aprender' ? 'Aprender a estudar' : 'Ajuda';
+      push(group, a.title, articlePath(a), 'i-help', () => openHelpArticle(a.id),
+           a.keywords + ' ' + a.summary + ' ' + a.oneLine);
     });
-    STUDY_GUIDES.forEach(g => {
-      push('Aprender a estudar', g.title, null, 'i-help', () => openStudyGuideDrawer(g.id), g.keywords + ' ' + g.summary);
+    GLOSSARY_KEYS.forEach(k => {
+      const g = HELP_GLOSSARY[k];
+      push('Glossário', g.term, g.short, 'i-help',
+           () => { if(g.article) openHelpArticle(g.article); else { helpUi.route = { kind:'glossary', id:k }; setView('help'); } },
+           (g.alias || '') + ' glossario termo significado');
     });
-    INTERACTIVE_GUIDES.forEach(g => {
-      push('Entender rapidamente', g.title, null, 'i-help', () => openInteractiveGuide(g.id), g.oneLine + ' ' + g.what);
+    HELP_FAQ.forEach(f => {
+      push('Perguntas comuns', f.q, null, 'i-help',
+           () => { helpUi.stack = [{ kind:'home' }]; helpUi.route = { kind:'faq', id:f.id }; helpClearSearch(); setView('help'); },
+           f.a);
     });
     push('Ações', 'Começar a estudar agora', 'escolha o que estudar e o tempo', 'i-play', () => openQuickStart(), 'sessao rapida iniciar');
     push('Ações', 'Montar sessão de revisão', 'escolha quanto tempo você tem', 'i-review', () => openSessionBuilder(), 'revisar fila tempo');
@@ -8194,259 +8435,293 @@ const DesktopFx = {
 };
 
 /* =========================================================================
-   RENDER — CENTRAL DE AJUDA
-   ========================================================================= */
-const helpUi = { query:'', category:null, exampleId:'faculdade', openFaq:null };
+   CENTRAL DE AJUDA (v5.3)
 
-function articleNode(a){
-  const box = h('div', { class:'help-article prose' });
-  (a.content || []).forEach(b => {
-    if(b.h) box.appendChild(h('h4', { text:b.h }));
-    if(b.p) box.appendChild(h('p', { text:b.p }));
-    if(b.ul) box.appendChild(h('ul', null, b.ul.map(li => h('li', { text:li }))));
+   Princípio: a Ajuda precisa ajudar. Tem dúvida → encontra → entende →
+   sabe o que fazer depois → volta a estudar.
+
+   Uma só rota por vez, com pilha de volta. Não existe navegação circular:
+   toda tela sabe de onde veio e para onde leva.
+
+     home      pesquisa + dois caminhos + perguntas comuns + glossário
+     section   um caminho, com seus grupos de tarefas
+     article   um artigo, com trilha, exemplo, próximo passo e relacionados
+     faq       perguntas por assunto
+     glossary  todos os termos, em ordem alfabética
+   ========================================================================= */
+const helpUi = {
+  route: { kind:'home' },
+  stack: [],                 // rotas anteriores — o "voltar" nunca chuta
+  query: '',                 // texto digitado na busca
+  results: [],               // resultado atual (estado, não DOM)
+  resultIndex: -1,           // resultado selecionado pelo teclado
+  showAllResults: false,
+  glossaryQuery: '',
+  openFaq: null
+};
+
+const HELP_RESULTS_PREVIEW = 8;   // quantos resultados antes de "ver todos"
+
+/* ---------- rotas ---------- */
+function helpRouteEquals(a, b){
+  return !!a && !!b && a.kind === b.kind && a.id === b.id && a.group === b.group;
+}
+
+/** Navega para uma rota guardando a atual na pilha. */
+function helpGo(route, opts){
+  const o = opts || {};
+  if(!helpRouteEquals(helpUi.route, route)){
+    if(o.replace) helpUi.stack.pop();
+    helpUi.stack.push(helpUi.route);
+    if(helpUi.stack.length > 20) helpUi.stack.shift();
+  }
+  helpUi.route = route;
+  helpClearSearch();
+  renderHelp();
+  helpScrollTop();
+}
+
+/** Volta um nível. Sem pilha, sobe para a Home — nunca para um lugar aleatório. */
+function helpBack(){
+  helpUi.route = helpUi.stack.length ? helpUi.stack.pop() : { kind:'home' };
+  helpClearSearch();
+  renderHelp();
+  helpScrollTop();
+}
+
+function helpClearSearch(){
+  helpUi.query = '';
+  helpUi.results = [];
+  helpUi.resultIndex = -1;
+  helpUi.showAllResults = false;
+}
+
+function helpScrollTop(){
+  window.scrollTo({ top:0, behavior: state.settings.reduceMotion ? 'auto' : 'smooth' });
+}
+
+/** Abre um artigo dentro da Central (com trilha) ou em painel, fora dela. */
+function openHelpArticle(id, opts){
+  const a = getArticle(id);
+  if(!a) return;
+  const o = opts || {};
+  if(ui.view === 'help' && !o.forceDrawer){
+    if(Drawer.isOpen) Drawer.close();
+    helpGo({ kind:'article', id:a.id });
+    return;
+  }
+  Drawer.open(a.title, articleBody(a, { inDrawer:true }));
+}
+/** Guias de "Aprender a estudar" e demonstrações viraram artigos comuns. */
+function openStudyGuideDrawer(id){ openHelpArticle(id); }
+function openInteractiveGuide(id){ openHelpArticle(LEGACY_GUIDE_TO_ARTICLE[id] || id); }
+
+/* =========================================================================
+   AÇÕES DE "PRÓXIMO PASSO"
+   Cada botão diz o destino e leva de fato até lá. Nenhum "saiba mais".
+   ========================================================================= */
+const HELP_ACTIONS = {
+  addDiscipline:   () => openDisciplineModal(null),
+  addTopic:        () => { const d = activeDisciplines()[0]; if(d) openTopicModal(d.id, null); else openDisciplineModal(null); },
+  addArea:         () => openAreaModal(null),
+  addDeadline:     () => openDeadlineModal(null),
+  quickStart:      () => openQuickStart(),
+  plan:            () => setView('plan'),
+  openReviews:     () => setView('reviews'),
+  openDisciplines: () => setView('disciplines'),
+  openAnalytics:   () => setView('analytics'),
+  openHistory:     () => setView('history'),
+  openToday:       () => setView('today'),
+  openData:        () => setView('data'),
+  openSettings:    () => setView('settings'),
+  backupNow:       () => exportBackupWithFeedback(),
+  reviewDemo:      () => openHelpArticle('o-que-e-revisao'),
+  /* Abre o contexto certo em vez de uma tela genérica: com uma única
+     disciplina, vai direto para a edição dela; com várias, deixa escolher. */
+  editPriority:    () => pickDisciplineForPriority()
+};
+
+function runHelpAction(action){
+  const fn = HELP_ACTIONS[action];
+  if(!fn){ setView('today'); return; }
+  if(Drawer.isOpen) Drawer.close();
+  setTimeout(fn, Drawer.isOpen ? 180 : 0);
+}
+
+function pickDisciplineForPriority(){
+  const list = activeDisciplines().slice().sort(sortByName);
+  if(!list.length){ openDisciplineModal(null); return; }
+  if(list.length === 1){ openDisciplineModal(list[0]); return; }
+  openModal(close => ({
+    title:'Qual prioridade você quer ajustar?',
+    content: h('div', { class:'ob-list' },
+      h('p', { class:'hint', style:'margin-bottom:10px', text:'Escolha uma disciplina para abrir a edição. A prioridade do tópico fica dentro dela.' }),
+      list.slice(0, 12).map(d => h('button', { class:'btn ghost block', type:'button',
+        onclick:() => { close(); openDisciplineModal(d); } },
+        h('span', { text:d.name }), priorityChip(d.priority, { compact:true })))),
+    actions:[ h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }) ]
+  }), { size:'narrow' });
+}
+
+/* =========================================================================
+   COMPONENTES DE ARTIGO
+   ========================================================================= */
+
+/** Parágrafo com termos de glossário. */
+function proseP(text, cls){
+  return h('p', { class: cls || null }, richText(text));
+}
+
+/** Modelo visual Área → Disciplina → Tópico (HTML/CSS, sem imagem). */
+function guideTree(tree){
+  if(!tree) return null;
+  const box = h('div', { class:'tree' });
+  if(tree.area) box.append(h('div', { class:'tree-area' }, h('span', { class:'tree-tag', text:AREA_TERM }), tree.area));
+  box.append(h('div', { class:'tree-disc' },
+    h('span', { class:'tree-tag', text:'Disciplina' }),
+    h('span', { text:tree.discipline }),
+    isNum(tree.priority) ? priorityChip(tree.priority, { compact:true }) : null));
+  (tree.topics || []).forEach(t => {
+    const name = (t && typeof t === 'object') ? t.name : t;
+    const prio = (t && typeof t === 'object') ? t.priority : null;
+    box.append(h('div', { class:'tree-topic' },
+      h('span', { class:'tree-tag', text:'Tópico' }),
+      h('span', { text:name }),
+      isNum(prio) ? priorityChip(prio, { compact:true }) : null));
   });
   return box;
 }
 
-function openHelpArticleDrawer(id){
-  const a = getArticle(id);
-  if(!a) return;
-  const related = HELP_ARTICLES.filter(x => x.cat === a.cat && x.id !== a.id).slice(0, 3);
-  const body = h('div',
-    h('p', { class:'hi-cat', text: categoryLabel(a.cat).toUpperCase() }),
-    articleNode(a),
-    related.length ? h('div', { style:'margin-top:18px' },
+/** Aprofundamento recolhido: o artigo começa simples e cresce sob demanda. */
+function detailsBlock(d){
+  const body = h('div', { class:'hd-body', hidden:true }, renderHelpBlocks(d.content));
+  const btn = h('button', { class:'hd-toggle', type:'button', 'aria-expanded':'false' },
+    h('span', { text: d.title || 'Entenda em mais detalhes' }), icon('i-chev', 'chev'));
+  btn.addEventListener('click', () => {
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    body.hidden = open;
+  });
+  return h('div', { class:'help-details' }, btn, body);
+}
+
+/** Demonstrações: 100% em memória, nunca tocam no IndexedDB. */
+function demoBlock(kind){
+  if(kind === 'review'){
+    // o passo "ver como funciona" do checklist conta como visto
+    setMeta('reviewDemoSeen', true).catch(err => console.error(err));
+    return reviewDemoNode();
+  }
+  if(kind === 'plan')      return planDemoNode();
+  if(kind === 'structure') return structureDemoNode();
+  if(kind === 'priority')  return priorityDemoNode();
+  return null;
+}
+
+function renderHelpBlocks(blocks){
+  const out = [];
+  (blocks || []).forEach(b => {
+    if(b.h)     out.push(h('h4', { text:b.h }));
+    if(b.p)     out.push(proseP(b.p));
+    if(b.ul)    out.push(h('ul', null, b.ul.map(x => h('li', null, richText(x)))));
+    if(b.ol)    out.push(h('ol', { class:'help-ol' }, b.ol.map(x => h('li', null, richText(x)))));
+    if(b.steps) out.push(h('ol', { class:'help-steps' }, b.steps.map(x => h('li', null, h('span', { class:'hs-text' }, richText(x))))));
+    if(b.note)  out.push(h('p', { class:'help-note' }, icon('i-info', 'nav-icon'), h('span', null, richText(b.note))));
+    if(b.tree)  out.push(guideTree(b.tree));
+    if(b.demo)  out.push(demoBlock(b.demo));
+    if(b.details) out.push(detailsBlock(b.details));
+  });
+  return out.filter(Boolean);
+}
+
+/** Trilha clicável: sempre diz onde você está e como sair. */
+function helpBreadcrumb(a){
+  const s = helpSection(a.section), g = helpGroup(a.section, a.group);
+  const crumb = (label, onClick, cls) => onClick
+    ? h('button', { class:'crumb' + (cls ? ' ' + cls : ''), type:'button', text:label, onclick:onClick })
+    : h('span', { class:'crumb is-current', text:label, 'aria-current':'page' });
+  const sep = (cls) => h('span', { class:'crumb-sep' + (cls ? ' ' + cls : ''), 'aria-hidden':'true', text:'›' });
+  /* No celular a trilha inteira ocuparia duas linhas: lá ficam só a seção e o
+     grupo — o "voltar" acima já resolve o nível anterior e o título vem logo
+     abaixo. As classes existem para isso, não por decoração. */
+  return h('nav', { class:'help-crumbs', 'aria-label':'Você está em' },
+    crumb('Ajuda', () => helpGo({ kind:'home' }), 'crumb-root'), sep('sep-root'),
+    s ? [crumb(s.label, () => helpGo({ kind:'section', id:s.id })), sep()] : null,
+    g ? [crumb(g.label, () => helpGo({ kind:'section', id:s.id, group:g.id })), sep('sep-current')] : null,
+    crumb(a.title, null));
+}
+
+/** Corpo completo de um artigo — o MESMO na Central e no painel lateral. */
+function articleBody(a, ctx){
+  const c = ctx || {};
+  const box = h('div', { class:'help-article prose' });
+
+  if(c.inDrawer) box.append(h('p', { class:'hi-cat', text: articlePath(a).toUpperCase() }));
+  if(a.oneLine){
+    box.append(h('p', { class:'one-line' },
+      h('span', { class:'ol-tag', text:'EM UMA FRASE' }), richText(a.oneLine)));
+  }
+  renderHelpBlocks(a.content).forEach(n => box.append(n));
+
+  if(a.cta){
+    box.append(h('div', { class:'help-cta' },
+      h('p', { class:'card-title', text:'Próximo passo' }),
+      h('button', { class:'btn primary sm', type:'button', text:a.cta.label,
+        onclick:() => runHelpAction(a.cta.action) })));
+  }
+
+  const related = (a.related || []).map(getArticle).filter(Boolean).slice(0, 3);
+  if(related.length){
+    box.append(h('div', { class:'help-related' },
       h('p', { class:'card-title', text:'Relacionados' }),
-      related.map(r => h('button', { class:'help-item', type:'button', onclick:() => openHelpArticleDrawer(r.id) },
-        h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:r.title }), h('div', { class:'hi-sum', text:r.summary }))))
-    ) : null,
-    h('div', { style:'margin-top:18px' },
-      h('button', { class:'btn ghost sm', type:'button', text:'Abrir Central de Ajuda',
-        onclick:() => { Drawer.close(); helpUi.query = ''; helpUi.category = a.cat; setView('help'); } }))
-  );
-  Drawer.open(a.title, body);
+      related.map(r => h('button', { class:'help-item', type:'button',
+        onclick:() => openHelpArticle(r.id, { forceDrawer: !!c.inDrawer }) },
+        h('span', { class:'hi-main' },
+          h('div', { class:'hi-title', text:r.title }),
+          h('div', { class:'hi-sum', text:r.summary })),
+        icon('i-arrow', 'nav-icon')))));
+  }
+
+  if(c.inDrawer){
+    box.append(h('div', { class:'drawer-note' },
+      h('button', { class:'btn ghost sm', type:'button', text:'Ver este artigo na Central de Ajuda',
+        onclick:() => { Drawer.close(); helpUi.stack = []; helpUi.route = { kind:'article', id:a.id }; helpClearSearch(); setView('help'); } })));
+  }
+  return box;
 }
 
-function renderHelp(){
-  const root = $('#help-body');
-  const parts = [];
-
-  /* busca */
-  const input = h('input', { type:'search', id:'help-q', value: helpUi.query,
-    placeholder:'Buscar na ajuda… (ex.: backup, revisão, aderência)', 'aria-label':'Buscar na ajuda' });
-  input.addEventListener('input', () => {
-    helpUi.query = input.value;
-    renderHelpResults();
-    const el = $('#help-q');
-    if(el && document.activeElement !== el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
-  });
-  parts.push(h('div', { class:'card' },
-    h('div', { class:'help-search' }, icon('i-search'), input),
-    h('p', { class:'hint', text:'A busca é local: funciona offline, sem acento e procura em títulos, palavras-chave e conteúdo.' })));
-
-  // v5 — quatro portas: começar, usar, aprender e dúvidas
-  const doors = [
-    ['start', 'Como começar',      'Os primeiros passos, com exemplos e ações prontas.'],
-    ['use',   'Usar o Ciclo',     'Planejar, registrar, revisar, analisar e fazer backup.'],
-    ['learn', 'Aprender a estudar','O que é revisão, por que reler engana, recuperação ativa e mais.'],
-    ['faq',   'Dúvidas frequentes','Respostas curtas para as perguntas mais comuns.']
-  ];
-  parts.push(h('div', { class:'doors doors-4' }, doors.map(([id, title, sub]) =>
-    h('button', { class:'door' + (ui.helpDoor === id ? ' active' : ''), type:'button',
-      onclick:() => { ui.helpDoor = id; helpUi.category = null; renderHelpResults(); } },
-      h('span', { class:'door-title', text:title }),
-      h('span', { class:'door-sub', text:sub })))));
-
-  parts.push(h('div', { id:'help-results' }));
-  mount(root, parts);
-  renderHelpResults();
+/* =========================================================================
+   LISTAS E CARTÕES REUTILIZADOS
+   ========================================================================= */
+function helpItemButton(a, opts){
+  const o = opts || {};
+  return h('button', { class:'help-item', type:'button', onclick:() => openHelpArticle(a.id) },
+    h('span', { class:'hi-main' },
+      o.showPath ? h('div', { class:'hi-cat', text: articlePath(a).toUpperCase() }) : null,
+      h('div', { class:'hi-title', text:a.title }),
+      h('div', { class:'hi-sum', text:a.summary })),
+    icon('i-arrow', 'nav-icon'));
 }
 
-function renderHelpResults(){
-  const box = $('#help-results');
-  if(!box) return;
-  clear(box);
-  const q = helpUi.query.trim();
-
-  /* ---- resultados de busca ---- */
-  if(q.length >= 2){
-    const res = searchHelp(q);
-    const total = res.articles.length + res.faq.length + res.glossary.length +
-                  (res.guides ? res.guides.length : 0) + (res.interactive ? res.interactive.length : 0);
-    const c = h('div', { class:'card' },
-      h('div', { class:'card-head' },
-        h('p', { class:'card-title', style:'margin:0', text: total ? `${total} resultado(s) para "${q}"` : `Nada encontrado para "${q}"` }),
-        h('button', { class:'linkbtn', type:'button', text:'limpar busca', onclick:() => { helpUi.query = ''; renderHelp(); } })));
-    if(!total){
-      c.appendChild(h('p', { class:'hint', text:'Tente outra palavra — por exemplo: backup, revisão, prioridade, aderência, celular, cronômetro.' }));
-    } else {
-      if(res.interactive && res.interactive.length){
-        c.appendChild(h('p', { class:'card-title', text:'Entender rapidamente' }));
-        res.interactive.forEach(g => c.appendChild(h('button', { class:'help-item', type:'button', onclick:() => openInteractiveGuide(g.id) },
-          h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:g.title }), h('div', { class:'hi-sum', text:g.oneLine })))));
-      }
-      res.articles.forEach(a => c.appendChild(helpItemButton(a)));
-      if(res.guides && res.guides.length){
-        c.appendChild(h('p', { class:'card-title', style:'margin-top:14px', text:'Aprender a estudar' }));
-        res.guides.forEach(g => c.appendChild(h('button', { class:'help-item', type:'button', onclick:() => openStudyGuideDrawer(g.id) },
-          h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:g.title }), h('div', { class:'hi-sum', text:g.summary })))));
-      }
-      if(res.faq.length){
-        c.appendChild(h('p', { class:'card-title', style:'margin-top:14px', text:'Dúvidas frequentes' }));
-        res.faq.forEach(f => c.appendChild(faqNode(f, true)));
-      }
-      if(res.glossary.length){
-        c.appendChild(h('p', { class:'card-title', style:'margin-top:14px', text:'Glossário' }));
-        c.appendChild(h('div', { class:'glossary' }, res.glossary.map(g =>
-          h('dl', { class:'gloss-item' }, h('dt', { text:g.t }), h('dd', { text:g.d })))));
-      }
-    }
-    box.appendChild(c);
-    return;
-  }
-
-  /* ---- categoria aberta ---- */
-  if(helpUi.category){
-    const cat = HELP_CATEGORIES.find(c => c.id === helpUi.category);
-    const arts = HELP_ARTICLES.filter(a => a.cat === helpUi.category);
-    const c = h('div', { class:'card' },
-      h('div', { class:'card-head' },
-        h('p', { class:'card-title', style:'margin:0', text: cat ? cat.label.toUpperCase() : '' }),
-        h('button', { class:'linkbtn', type:'button', text:'todas as categorias', onclick:() => { helpUi.category = null; renderHelpResults(); } })));
-    arts.forEach(a => c.appendChild(helpItemButton(a)));
-    box.appendChild(c);
-    return;
-  }
-
-  /* ---- porta "Como começar" ---- */
-  if(ui.helpDoor === 'start'){
-    const prog = startProgress();
-    box.appendChild(h('div', { class:'card interactive' },
-      h('p', { class:'card-title', text:'Em cinco passos' }),
-      h('p', { class:'hint prose', style:'margin-bottom:12px', text:'Você não precisa seguir esta ordem. Cada passo pode ser feito quando fizer sentido para você.' }),
-      (() => {
-        const list = h('ol', { class:'steps-num' });
-        prog.steps.forEach(st => list.append(h('li', { class: st.done ? 'done' : '' },
-          h('div', { class:'sn-main' },
-            h('div', { class:'sn-title', text:st.title }),
-            h('div', { class:'sn-text', text:st.text }),
-            h('div', { class:'sn-ex', text:st.example })),
-          st.done
-            ? h('span', { class:'ck-ok', text:'feito' })
-            : h('button', { class:'btn ghost sm', type:'button', text:st.actionLabel,
-                onclick:() => { const fn = START_ACTIONS[st.action]; if(fn) fn(); } }))));
-        return list;
-      })()));
-
-    const ig = h('div', { class:'card' }, h('p', { class:'card-title', text:'Entender os conceitos' }),
-      h('p', { class:'hint', style:'margin-bottom:10px', text:'Explicações curtas, com exemplo e a ação pronta para executar.' }));
-    INTERACTIVE_GUIDES.forEach(g => ig.appendChild(
-      h('button', { class:'help-item', type:'button', onclick:() => openInteractiveGuide(g.id) },
-        h('span', { class:'hi-main' },
-          h('div', { class:'hi-title', text:g.title }),
-          h('div', { class:'hi-sum', text:g.oneLine })),
-        icon('i-arrow', 'nav-icon'))));
-    box.appendChild(ig);
-    box.appendChild(contactCard());
-    return;
-  }
-
-  /* ---- porta "Dúvidas frequentes" ---- */
-  if(ui.helpDoor === 'faq'){
-    const c = h('div', { class:'card' }, h('p', { class:'card-title', text:'Dúvidas frequentes' }));
-    HELP_FAQ.forEach(f => c.appendChild(faqNode(f, false)));
-    box.appendChild(c);
-    box.appendChild(h('div', { class:'card' },
-      h('p', { class:'card-title', text:'Glossário' }),
-      h('p', { class:'hint', style:'margin-bottom:10px', text:'Os termos usados na interface, explicados em uma linha.' }),
-      h('div', { class:'glossary' }, HELP_GLOSSARY.map(g =>
-        h('dl', { class:'gloss-item' }, h('dt', { text:g.t }), h('dd', { text:g.d }))))));
-    box.appendChild(contactCard());
-    return;
-  }
-
-  /* ---- porta "Aprender a estudar" ---- */
-  if(ui.helpDoor === 'learn'){
-    box.appendChild(h('div', { class:'card interactive' },
-      h('p', { class:'card-title', text:'Aprender a estudar' }),
-      h('p', { class:'hint prose', style:'margin-bottom:12px', text:'Uma base curta e prática. Cada texto responde: o que é, por que é útil, como fazer, um exemplo e como isso aparece no Ciclo.' }),
-      h('div', { class:'row auto' },
-        h('button', { class:'btn primary sm', type:'button', text:'Começar pelo básico', onclick:() => openStudyGuideDrawer('o-que-e-estudar') }),
-        h('button', { class:'btn ghost sm', type:'button', text:'Por que não basta reler?', onclick:() => openStudyGuideDrawer('reconhecer-x-lembrar') }))));
-
-    const gc = h('div', { class:'card' }, h('p', { class:'card-title', text:'Conceitos' }));
-    STUDY_GUIDES.forEach(g => gc.appendChild(
-      h('button', { class:'help-item', type:'button', onclick:() => openStudyGuideDrawer(g.id) },
-        h('span', { class:'hi-main' },
-          h('div', { class:'hi-title', text:g.title }),
-          h('div', { class:'hi-sum', text:g.oneLine || g.summary })),
-        icon('i-arrow', 'nav-icon'))));
-    box.appendChild(gc);
-
-    const mc = h('div', { class:'card' }, h('p', { class:'card-title', text:'Métodos de revisão, em uma linha' }));
-    CONCRETE_METHODS.forEach(mv => {
-      const g = REVIEW_METHOD_GUIDES[mv];
-      mc.appendChild(h('div', { class:'method-line' },
-        h('strong', { text:g.label }), h('span', { text:g.short }),
-        h('span', { class:'ml-good', text:g.good })));
-    });
-    box.appendChild(mc);
-    box.appendChild(contactCard());
-    return;
-  }
-
-  /* ---- início: primeiros passos + categorias + exemplos + faq + glossário + contato ---- */
-  const start = getArticle('primeiros-passos');
-  box.appendChild(h('div', { class:'card interactive' },
-    h('p', { class:'card-title', text:'Comece por aqui' }),
-    h('p', { class:'hi-title', style:'font-size:16px;margin-bottom:4px', text: start.title }),
-    h('p', { class:'hint', style:'margin-bottom:12px', text: start.summary }),
-    h('div', { class:'row auto' },
-      h('button', { class:'btn primary sm', type:'button', text:'Ler primeiros passos', onclick:() => openHelpArticleDrawer('primeiros-passos') }),
-      h('button', { class:'btn ghost sm', type:'button', text:'Como montar um bom planejamento', onclick:() => openHelpArticleDrawer('primeiro-plano') }))));
-
-  const checklist = startHereChecklistCard();
-  if(checklist) box.appendChild(checklist);
-
-  const cats = h('div', { class:'help-cats' });
-  HELP_CATEGORIES.forEach(cat => {
-    const arts = HELP_ARTICLES.filter(a => a.cat === cat.id);
-    cats.appendChild(h('button', { class:'help-cat', type:'button', onclick:() => { helpUi.category = cat.id; renderHelpResults(); window.scrollTo({ top:0, behavior: state.settings.reduceMotion ? 'auto':'smooth' }); } },
-      h('h4', { text: cat.label.toUpperCase() }),
-      h('ul', null, arts.slice(0,4).map(a => h('li', { text: a.title }))),
-      arts.length > 4 ? h('div', { class:'more', text:`+ ${arts.length - 4} artigo(s)` }) : null));
+/** Pergunta do FAQ: resposta curta e, quando existe, o artigo completo. */
+function faqNode(f, openByDefault){
+  const item = h('div', { class:'faq-item' });
+  const answer = h('div', { class:'faq-a', hidden: !openByDefault },
+    h('p', { text:f.a }),
+    f.article && getArticle(f.article)
+      ? h('button', { class:'linkbtn', type:'button', text:'Ver explicação completa: ' + getArticle(f.article).title,
+          onclick:() => openHelpArticle(f.article) })
+      : null);
+  const q = h('button', { class:'faq-q', type:'button', 'aria-expanded': openByDefault ? 'true' : 'false' },
+    h('span', { text:f.q }), icon('i-chev', 'chev'));
+  q.addEventListener('click', () => {
+    const open = q.getAttribute('aria-expanded') === 'true';
+    q.setAttribute('aria-expanded', open ? 'false' : 'true');
+    answer.hidden = open;
+    helpUi.openFaq = open ? null : f.id;
   });
-  box.appendChild(h('div', { class:'card' }, h('p', { class:'card-title', text:'Categorias' }), cats));
-
-  /* exemplos */
-  const ex = HELP_EXAMPLES.find(e => e.id === helpUi.exampleId) || HELP_EXAMPLES[0];
-  const exBox = h('div', { class:'card' },
-    h('p', { class:'card-title', text:'Exemplos de organização' }),
-    h('p', { class:'hint', style:'margin-bottom:12px', text:'A plataforma não é de uma área específica. Veja como a mesma estrutura se adapta:' }),
-    h('div', { class:'chips', style:'margin-bottom:12px' }, HELP_EXAMPLES.map(e =>
-      h('button', { class:'chip', type:'button', 'aria-pressed': e.id === ex.id ? 'true':'false', text:e.label,
-        onclick:() => { helpUi.exampleId = e.id; renderHelpResults(); } }))),
-    h('div', { class:'example-out' },
-      h('div', { class:'ex-line' }, h('span', { class:'ex-label', text:'ÁREA  ' }), ex.area),
-      h('div', { class:'ex-line' }, h('span', { class:'ex-label', text:'DISCIPLINA  ' }), ex.discipline),
-      h('div', { class:'ex-line' }, h('span', { class:'ex-label', text:'TÓPICOS' }),
-        h('div', { class:'ex-topics' }, ex.topics.map(t => h('span', { class:'pill', text:t })))),
-      h('p', { class:'hint', style:'margin-top:10px', text: ex.note })));
-  box.appendChild(exBox);
-
-  /* faq */
-  const faqCard = h('div', { class:'card' }, h('p', { class:'card-title', text:'Dúvidas frequentes' }));
-  HELP_FAQ.forEach(f => faqCard.appendChild(faqNode(f, false)));
-  box.appendChild(faqCard);
-
-  /* glossário */
-  box.appendChild(h('div', { class:'card' },
-    h('p', { class:'card-title', text:'Glossário' }),
-    h('div', { class:'glossary' }, HELP_GLOSSARY.map(g =>
-      h('dl', { class:'gloss-item' }, h('dt', { text:g.t }), h('dd', { text:g.d }))))));
-
-  /* contato */
-  box.appendChild(contactCard());
+  item.append(q, answer);
+  return item;
 }
 
 /**
@@ -8457,34 +8732,417 @@ function contactCard(){
   return h('div', { class:'card contact-card' },
     h('div', { class:'cc-main' },
       h('p', { class:'card-title', text:'Contato' }),
-      h('p', { class:'hint', text:'Dúvidas, sugestões ou problemas.' }),
+      h('p', { class:'hint', text:'Não encontrou o que procurava? Fale comigo.' }),
       h('p', { class:'cc-mail' }, icon('i-mail', 'nav-icon'), h('span', { class:'num', text: CONTACT_EMAIL }))),
     h('div', { class:'cc-actions' },
-      h('button', { class:'btn primary sm', type:'button', onclick:() => openContactDrawer() }, icon('i-mail'), 'Entrar em contato'),
+      h('button', { class:'btn ghost sm', type:'button', onclick:() => openContactDrawer() }, icon('i-mail'), 'Entrar em contato'),
       h('button', { class:'btn ghost sm', type:'button', onclick:() => openReportProblemDrawer() }, icon('i-flag'), 'Relatar problema')));
 }
 
-function helpItemButton(a){
-  return h('button', { class:'help-item', type:'button', onclick:() => openHelpArticleDrawer(a.id) },
-    h('span', { class:'hi-main' },
-      h('div', { class:'hi-cat', text: categoryLabel(a.cat).toUpperCase() }),
-      h('div', { class:'hi-title', text:a.title }),
-      h('div', { class:'hi-sum', text:a.summary })),
-    icon('i-arrow', 'nav-icon'));
+/* =========================================================================
+   BUSCA — o caminho mais curto para uma resposta.
+   O estado da seleção é explícito (helpUi.resultIndex); o DOM apenas reflete.
+   ========================================================================= */
+let helpInputEl = null;
+
+function helpSearchCard(compact){
+  const input = h('input', {
+    type:'search', id:'help-q', value: helpUi.query, autocomplete:'off', spellcheck:'false',
+    placeholder: (window.innerWidth < 620 ? 'Pesquise uma dúvida…' : 'Pesquise uma dúvida, função ou conceito…'),
+    'aria-label':'Pesquisar na Ajuda',
+    role:'combobox', 'aria-expanded': helpUi.query.trim() ? 'true' : 'false',
+    'aria-controls':'help-results-list', 'aria-autocomplete':'list'
+  });
+  helpInputEl = input;
+
+  input.addEventListener('input', () => {
+    helpUi.query = input.value;
+    helpUi.resultIndex = -1;
+    helpUi.showAllResults = false;
+    helpUi.results = searchHelp(helpUi.query);
+    renderHelpPanel();
+  });
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'ArrowDown'){ e.preventDefault(); helpMoveResult(1); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); helpMoveResult(-1); }
+    else if(e.key === 'Enter'){
+      const list = helpVisibleResults();
+      if(!list.length) return;
+      e.preventDefault();
+      helpOpenResult(list[Math.max(0, helpUi.resultIndex)]);
+    } else if(e.key === 'Escape'){
+      if(helpUi.query){
+        e.preventDefault();
+        e.stopPropagation();
+        input.value = '';
+        helpClearSearch();
+        renderHelpPanel();
+      }
+    }
+  });
+
+  const clearBtn = h('button', { class:'help-search-clear icon-btn', type:'button', 'aria-label':'Limpar busca',
+    hidden: !helpUi.query,
+    onclick:() => { input.value = ''; helpClearSearch(); renderHelpPanel(); input.focus(); } }, icon('i-close'));
+  input.addEventListener('input', () => { clearBtn.hidden = !input.value; });
+
+  return h('div', { class:'card help-searchcard' + (compact ? ' compact' : '') },
+    h('div', { class:'help-search' }, icon('i-search'), input, clearBtn),
+    compact ? null : h('p', { class:'help-search-ex' },
+      h('span', { class:'hse-label', text:'Exemplos:' }),
+      HELP_SEARCH_EXAMPLES.map(x =>
+        h('button', { class:'linkbtn', type:'button', text:'“' + x + '”',
+          onclick:() => helpRunSearch(x) }))));
 }
 
-function faqNode(f, openByDefault){
-  const item = h('div', { class:'faq-item' });
-  const answer = h('div', { class:'faq-a', text:f.a, hidden: !openByDefault });
-  const q = h('button', { class:'faq-q', type:'button', 'aria-expanded': openByDefault ? 'true':'false' },
-    h('span', { text:f.q }), icon('i-chev', 'chev'));
-  q.addEventListener('click', () => {
-    const open = q.getAttribute('aria-expanded') === 'true';
-    q.setAttribute('aria-expanded', open ? 'false' : 'true');
-    answer.hidden = open;
+/** Executa uma busca a partir de um atalho (sugestão, exemplo). */
+function helpRunSearch(text){
+  helpUi.query = text;
+  helpUi.resultIndex = -1;
+  helpUi.showAllResults = false;
+  helpUi.results = searchHelp(text);
+  if(helpInputEl) helpInputEl.value = text;
+  renderHelpPanel();
+  if(helpInputEl) helpInputEl.focus();
+}
+
+function helpVisibleResults(){
+  return helpUi.showAllResults ? helpUi.results : helpUi.results.slice(0, HELP_RESULTS_PREVIEW);
+}
+
+function helpMoveResult(delta){
+  const list = helpVisibleResults();
+  if(!list.length) return;
+  const i = helpUi.resultIndex;
+  helpUi.resultIndex = (i < 0)
+    ? (delta > 0 ? 0 : list.length - 1)
+    : (i + delta + list.length) % list.length;
+  helpSyncResultSelection();
+}
+
+function helpSyncResultSelection(){
+  const nodes = $$('#help-results-list .help-result');
+  nodes.forEach((el, i) => {
+    const on = i === helpUi.resultIndex;
+    el.setAttribute('aria-selected', on ? 'true' : 'false');
+    el.classList.toggle('is-selected', on);
   });
-  item.append(q, answer);
-  return item;
+  const sel = nodes[helpUi.resultIndex];
+  if(helpInputEl) helpInputEl.setAttribute('aria-activedescendant', sel ? sel.id : '');
+  if(sel && sel.scrollIntoView) sel.scrollIntoView({ block:'nearest' });
+}
+
+function helpOpenResult(entry){
+  if(!entry) return;
+  if(entry.kind === 'article'){ helpGo({ kind:'article', id:entry.id }); return; }
+  if(entry.kind === 'term'){ helpGo({ kind:'glossary', id:entry.id }); return; }
+  if(entry.kind === 'faq'){ helpGo({ kind:'faq', id:entry.id }); return; }
+}
+
+function helpResultsPanel(){
+  const q = helpUi.query.trim();
+  const box = h('div', { class:'help-results' });
+
+  if(q.length < 2){
+    box.append(h('div', { class:'card' },
+      h('p', { class:'card-title', text:'Continue digitando' }),
+      h('p', { class:'hint', text:'A busca começa com duas letras. Enquanto isso, estas são as dúvidas mais comuns:' }),
+      helpSuggestionList()));
+    return box;
+  }
+
+  const all = helpUi.results;
+  const list = helpVisibleResults();
+
+  const head = h('div', { class:'help-results-head' },
+    h('p', { class:'help-results-title', text:'Resultados para “' + q + '”' }),
+    h('p', { class:'hint', text: all.length
+      ? (all.length === 1 ? '1 resultado' : all.length + ' resultados')
+      : 'nenhum resultado' }));
+
+  if(!all.length){
+    box.append(h('div', { class:'card' }, head,
+      h('p', { class:'prose', style:'margin-top:8px', text:'Não encontramos “' + q + '”. Tente pesquisar com menos palavras ou pelo nome da função.' }),
+      h('p', { class:'card-title', style:'margin-top:16px', text:'Sugestões' }),
+      helpSuggestionList(),
+      h('div', { class:'row auto', style:'margin-top:14px' },
+        h('button', { class:'btn ghost sm', type:'button', text:'Voltar para toda a Ajuda',
+          onclick:() => { helpClearSearch(); if(helpInputEl) helpInputEl.value = ''; helpGo({ kind:'home' }); } }))));
+    return box;
+  }
+
+  const ul = h('ul', { class:'help-results-list', id:'help-results-list', role:'listbox',
+                       'aria-label':'Resultados da busca' });
+  list.forEach((e, i) => {
+    const id = 'help-result-' + i;
+    const btn = h('button', {
+      class:'help-result' + (i === helpUi.resultIndex ? ' is-selected' : ''),
+      id, type:'button', role:'option', 'aria-selected': i === helpUi.resultIndex ? 'true' : 'false',
+      onclick:() => helpOpenResult(e)
+    },
+      h('span', { class:'hr-main' },
+        h('span', { class:'hr-path', text: e.path }),
+        h('span', { class:'hr-title', text:e.title }),
+        h('span', { class:'hr-snippet', text:e.snippet })));
+    btn.addEventListener('mousemove', () => {
+      if(helpUi.resultIndex !== i){ helpUi.resultIndex = i; helpSyncResultSelection(); }
+    });
+    ul.append(h('li', { role:'presentation' }, btn));
+  });
+
+  const card = h('div', { class:'card' }, head, ul);
+  if(all.length > list.length){
+    card.append(h('button', { class:'btn ghost sm', type:'button', style:'margin-top:12px',
+      text:'Ver todos os ' + all.length + ' resultados',
+      onclick:() => { helpUi.showAllResults = true; renderHelpPanel(); if(helpInputEl) helpInputEl.focus(); } }));
+  }
+  card.append(h('p', { class:'hint help-keys' }, 'Use ', h('kbd', { text:'↓' }), h('kbd', { text:'↑' }),
+    ' para navegar, ', h('kbd', { text:'Enter' }), ' para abrir e ', h('kbd', { text:'Esc' }), ' para limpar.'));
+  box.append(card);
+  return box;
+}
+
+function helpSuggestionList(){
+  return h('div', { class:'help-suggest' }, HELP_SEARCH_SUGGESTIONS.map(s =>
+    h('button', { class:'help-suggest-item', type:'button', onclick:() => helpRunSearch(s) },
+      icon('i-search', 'nav-icon'), h('span', { text:s }))));
+}
+
+/* =========================================================================
+   RENDER — a tela da Ajuda
+   ========================================================================= */
+function renderHelp(){
+  const root = $('#help-body');
+  const compact = helpUi.route.kind === 'article';
+  mount(root, helpSearchCard(compact), h('div', { id:'help-panel' }));
+  renderHelpPanel();
+}
+
+function renderHelpPanel(){
+  const box = $('#help-panel');
+  if(!box) return;
+  // o popover aponta para um termo que está prestes a sair do DOM
+  GlossaryPopover.close();
+  clear(box);
+  const searching = !!helpUi.query.trim();
+  const card = $('.help-searchcard');
+  if(card) card.classList.toggle('is-searching', searching);
+  if(helpInputEl) helpInputEl.setAttribute('aria-expanded', searching ? 'true' : 'false');
+
+  if(searching){ box.append(helpResultsPanel()); return; }
+
+  switch(helpUi.route.kind){
+    case 'section':  helpSectionPanel(box); break;
+    case 'article':  helpArticlePanel(box); break;
+    case 'faq':      helpFaqPanel(box); break;
+    case 'glossary': helpGlossaryPanel(box); break;
+    default:         helpHomePanel(box);
+  }
+}
+
+/* ---------- HOME ---------- */
+function helpHomePanel(box){
+  /* novo no Ciclo: uma entrada rápida, não um quinto card concorrente */
+  const first = getArticle('primeiros-passos');
+  box.append(h('div', { class:'card help-first' },
+    h('div', { class:'hf-main' },
+      h('p', { class:'card-title', text:'Novo no Ciclo?' }),
+      h('p', { class:'hf-line', text:'Comece com o essencial em poucos minutos.' })),
+    h('button', { class:'btn primary sm', type:'button', text:'Primeiros passos',
+      onclick:() => helpGo({ kind:'article', id:first.id }) })));
+
+  /* os dois caminhos */
+  box.append(h('div', { class:'help-section-head' }, h('h3', { text:'O que você precisa?' })));
+  box.append(h('div', { class:'help-paths' }, HELP_SECTIONS.map(s =>
+    h('button', { class:'help-path', type:'button', onclick:() => helpGo({ kind:'section', id:s.id }) },
+      h('span', { class:'hp-icon' }, icon(s.icon, 'nav-icon')),
+      h('span', { class:'hp-title', text:s.label }),
+      h('span', { class:'hp-sub', text:s.short }),
+      h('span', { class:'hp-go' }, h('span', { text:'Explorar' }), icon('i-arrow', 'nav-icon'))))));
+
+  /* perguntas comuns — complemento, não uma porta grande */
+  const faqs = HELP_HOME_FAQ.map(id => HELP_FAQ_BY_ID.get(id)).filter(Boolean);
+  const faqCard = h('div', { class:'card' },
+    h('div', { class:'card-head' },
+      h('p', { class:'card-title', style:'margin:0', text:'Perguntas comuns' }),
+      h('button', { class:'linkbtn', type:'button', text:'Ver todas',
+        onclick:() => helpGo({ kind:'faq' }) })));
+  faqs.forEach(f => faqCard.append(faqNode(f, false)));
+  box.append(faqCard);
+
+  /* glossário — também complemento */
+  box.append(h('div', { class:'card help-gloss-cta' },
+    h('div', { class:'hf-main' },
+      h('p', { class:'card-title', text:'Não entendeu um termo?' }),
+      h('p', { class:'hf-line', text:'Domínio, aderência, plano base, cobertura… todos explicados em uma linha.' })),
+    h('button', { class:'btn ghost sm', type:'button', text:'Abrir glossário',
+      onclick:() => helpGo({ kind:'glossary' }) })));
+
+  box.append(contactCard());
+}
+
+/* ---------- UM CAMINHO ---------- */
+function helpSectionPanel(box){
+  const s = helpSection(helpUi.route.id);
+  if(!s){ helpGo({ kind:'home' }); return; }
+  const onlyGroup = helpUi.route.group || null;
+
+  box.append(helpBackBar('Ajuda'));
+
+  /* alternar entre os dois caminhos, com estado ativo claro */
+  box.append(h('div', { class:'help-switch', role:'tablist', 'aria-label':'Caminhos da Ajuda' },
+    HELP_SECTIONS.map(x => h('button', {
+      class:'help-switch-btn' + (x.id === s.id ? ' is-active' : ''), type:'button',
+      role:'tab', 'aria-selected': x.id === s.id ? 'true' : 'false',
+      text:x.label, onclick:() => { if(x.id !== s.id) helpGo({ kind:'section', id:x.id }); } }))));
+
+  box.append(h('div', { class:'help-section-head' },
+    h('h3', { text:s.label }),
+    h('p', { class:'sub', text:s.short })));
+
+  s.groups
+    .filter(g => !onlyGroup || g.id === onlyGroup)
+    .forEach(g => {
+      const list = articlesOf(s.id, g.id);
+      if(!list.length) return;                        // nunca desenha grupo vazio
+      const card = h('div', { class:'card help-group' + (onlyGroup === g.id ? ' is-active' : '') },
+        h('p', { class:'help-group-title', text:g.label }));
+      list.forEach(a => card.append(helpItemButton(a)));
+      box.append(card);
+    });
+
+  if(onlyGroup){
+    box.append(h('div', { class:'row auto' },
+      h('button', { class:'btn ghost sm', type:'button', text:'Ver todo o caminho “' + s.label + '”',
+        onclick:() => helpGo({ kind:'section', id:s.id }) })));
+  }
+}
+
+/* ---------- UM ARTIGO ---------- */
+function helpArticlePanel(box){
+  const a = getArticle(helpUi.route.id);
+  if(!a){ helpGo({ kind:'home' }); return; }
+  box.append(helpBackBar(helpBackLabel()));
+  box.append(helpBreadcrumb(a));
+  box.append(h('div', { class:'card help-article-card' },
+    h('h3', { class:'help-article-title', text:a.title }),
+    articleBody(a, { inDrawer:false })));
+}
+
+/** O rótulo do "voltar" diz para onde vai — nunca "voltar" genérico. */
+function helpBackLabel(){
+  const prev = helpUi.stack.length ? helpUi.stack[helpUi.stack.length - 1] : null;
+  if(!prev) return 'Ajuda';
+  if(prev.kind === 'home') return 'Ajuda';
+  if(prev.kind === 'faq') return 'Perguntas comuns';
+  if(prev.kind === 'glossary') return 'Glossário';
+  if(prev.kind === 'section'){
+    const s = helpSection(prev.id);
+    const g = prev.group ? helpGroup(prev.id, prev.group) : null;
+    return g ? g.label : (s ? s.label : 'Ajuda');
+  }
+  if(prev.kind === 'article'){
+    const a = getArticle(prev.id);
+    return a ? a.title : 'Ajuda';
+  }
+  return 'Ajuda';
+}
+
+function helpBackBar(label){
+  return h('div', { class:'help-back' },
+    h('button', { class:'help-back-btn', type:'button', onclick:() => helpBack() },
+      icon('i-chev', 'back-chev'), h('span', { text: label })));
+}
+
+/* ---------- FAQ ---------- */
+function helpFaqPanel(box){
+  const openId = helpUi.route.id || null;
+  box.append(helpBackBar('Ajuda'));
+  box.append(h('div', { class:'help-section-head' },
+    h('h3', { text:'Perguntas comuns' }),
+    h('p', { class:'sub', text:'Respostas curtas. Quando existe uma explicação completa, o link está dentro da resposta.' })));
+
+  let target = null;
+  HELP_FAQ_GROUPS.forEach(g => {
+    const list = HELP_FAQ.filter(f => f.g === g.id);
+    if(!list.length) return;
+    const card = h('div', { class:'card' }, h('p', { class:'help-group-title', text:g.label }));
+    list.forEach(f => {
+      const node = faqNode(f, f.id === openId);
+      if(f.id === openId) target = node;
+      card.append(node);
+    });
+    box.append(card);
+  });
+
+  if(target) setTimeout(() => {
+    try { target.scrollIntoView({ block:'center', behavior: state.settings.reduceMotion ? 'auto' : 'smooth' }); } catch(_){}
+    const btn = target.querySelector('.faq-q');
+    if(btn) btn.focus({ preventScroll:true });
+  }, 60);
+}
+
+/* ---------- GLOSSÁRIO ---------- */
+function helpGlossaryPanel(box){
+  const focusKey = helpUi.route.id || null;
+  box.append(helpBackBar('Ajuda'));
+  box.append(h('div', { class:'help-section-head' },
+    h('h3', { text:'Glossário' }),
+    h('p', { class:'sub', text:'Os termos usados na interface, explicados em uma linha. Cada um leva à explicação completa.' })));
+
+  const listBox = h('div', { class:'glossary-index' });
+  const filterInput = h('input', { type:'search', id:'gloss-q', value: helpUi.glossaryQuery,
+    placeholder:'Filtrar termos…', 'aria-label':'Filtrar termos do glossário', autocomplete:'off' });
+  filterInput.addEventListener('input', () => {
+    helpUi.glossaryQuery = filterInput.value;
+    drawGlossary(listBox, null);
+  });
+
+  box.append(h('div', { class:'card' },
+    h('div', { class:'help-search compact' }, icon('i-search'), filterInput),
+    listBox));
+
+  drawGlossary(listBox, focusKey);
+}
+
+function drawGlossary(listBox, focusKey){
+  clear(listBox);
+  const q = normalizeText(helpUi.glossaryQuery);
+  const keys = GLOSSARY_KEYS.filter(k => {
+    if(!q) return true;
+    const g = HELP_GLOSSARY[k];
+    return normalizeText(g.term + ' ' + g.short + ' ' + (g.alias || '')).includes(q);
+  });
+
+  if(!keys.length){
+    listBox.append(h('p', { class:'hint', style:'margin-top:12px',
+      text:'Nenhum termo com “' + helpUi.glossaryQuery + '”. Tente pesquisar na Ajuda inteira.' }));
+    return;
+  }
+
+  let letter = null, target = null;
+  keys.forEach(k => {
+    const g = HELP_GLOSSARY[k];
+    const L = g.term.normalize('NFD').replace(/[\u0300-\u036f]/g, '').charAt(0).toUpperCase();
+    if(L !== letter){
+      letter = L;
+      listBox.append(h('p', { class:'gloss-letter', text:L, 'aria-hidden':'true' }));
+    }
+    const isFocus = focusKey === k;
+    const item = h('div', { class:'gloss-entry' + (isFocus ? ' is-selected' : '') },
+      h('p', { class:'ge-term', text:g.term }),
+      h('p', { class:'ge-def', text:g.short }),
+      g.article && getArticle(g.article)
+        ? h('button', { class:'linkbtn', type:'button', text: glossaryCallLabel(k),
+            onclick:() => openHelpArticle(g.article) })
+        : null);
+    if(isFocus) target = item;
+    listBox.append(item);
+  });
+
+  if(target) setTimeout(() => {
+    try { target.scrollIntoView({ block:'center', behavior: state.settings.reduceMotion ? 'auto' : 'smooth' }); } catch(_){}
+  }, 60);
 }
 
 /* =========================================================================
@@ -8705,20 +9363,33 @@ function openReportProblemDrawer(){
 /* =========================================================================
    AJUDA DESTA TELA
    ========================================================================= */
+/**
+ * Explicação curta da tela atual: o que dá para fazer aqui, o que os números
+ * significam e qual o próximo passo. Nunca abre um artigo inteiro quando três
+ * linhas resolvem — o aprofundamento fica em "Leia também", nomeado.
+ */
 function openScreenHelp(){
   const s = SCREEN_HELP[ui.view];
   if(!s){ setView('help'); return; }
+  const articles = (s.articles || []).map(getArticle).filter(Boolean).slice(0, 4);
   const body = h('div',
     h('p', { class:'prose', style:'margin-bottom:14px', text:s.intro }),
-    h('ul', { class:'reasons' }, s.points.map(p => h('li', { text:p }))),
-    s.articles && s.articles.length ? h('div', { style:'margin-top:18px' },
-      h('p', { class:'card-title', text:'Saiba mais' }),
-      s.articles.map(id => { const a = getArticle(id); return a ? h('button', { class:'help-item', type:'button', onclick:() => openHelpArticleDrawer(a.id) },
-        h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:a.title }), h('div', { class:'hi-sum', text:a.summary }))) : null; })
-    ) : null,
-    h('div', { style:'margin-top:16px' },
-      h('button', { class:'btn ghost sm', type:'button', text:'Ver mais na Central de Ajuda',
-        onclick:() => { Drawer.close(); setView('help'); } }))
+    h('ul', { class:'reasons' }, s.points.map(p => h('li', null, richText(p)))),
+    s.cta ? h('div', { class:'help-cta' },
+      h('p', { class:'card-title', text:'Próximo passo' }),
+      h('button', { class:'btn primary sm', type:'button', text:s.cta.label,
+        onclick:() => runHelpAction(s.cta.action) })) : null,
+    articles.length ? h('div', { class:'help-related' },
+      h('p', { class:'card-title', text:'Leia também' }),
+      articles.map(a => h('button', { class:'help-item', type:'button',
+        onclick:() => openHelpArticle(a.id, { forceDrawer:true }) },
+        h('span', { class:'hi-main' },
+          h('div', { class:'hi-title', text:a.title }),
+          h('div', { class:'hi-sum', text:a.summary })),
+        icon('i-arrow', 'nav-icon')))) : null,
+    h('div', { class:'drawer-note' },
+      h('button', { class:'btn ghost sm', type:'button', text:'Abrir a Central de Ajuda',
+        onclick:() => { Drawer.close(); helpUi.stack = []; helpUi.route = { kind:'home' }; helpClearSearch(); setView('help'); } }))
   );
   Drawer.open('Ajuda · ' + s.title, body);
 }
@@ -8999,19 +9670,21 @@ function maybeShowWhatsNew(){
     ? `A importância de ${mig.topics} ${mig.topics === 1 ? 'tópico foi convertida' : 'tópicos foi convertida'} para a nova escala (baixa → 2, normal → 3, alta → 4). Nenhuma revisão foi reagendada.`
     : 'Tópicos e prazos antigos foram convertidos para a nova escala. Nenhuma revisão foi reagendada.';
 
-  /* v5.2.1 — quem já viu as novidades da 5.2 não deve receber o anúncio da 5.2
-     de novo só porque a versão mudou. Recebe a nota curta de estabilização. */
+  /* Quem já viu as novidades da 5.2 recebe só o que mudou depois dela. Quem
+     vem de antes recebe o anúncio da 5.2 primeiro — a Ajuda nova é o segundo
+     assunto, não o único. */
   const cfg = cameFrom52
-    ? { title:'Ciclo 5.2.1',
-        sub:'Uma atualização de acabamento. Seus dados, revisões, prazos e planos continuam como estavam.',
+    ? { title:'Ciclo 5.3',
+        sub:'A Ajuda foi reconstruída. Seus dados, revisões, prazos e planos continuam como estavam.',
         items:[
-          'Correções de estabilidade, acessibilidade e acabamento visual em todas as telas.',
-          'Telas Hoje e Disciplinas bem mais rápidas com muitas disciplinas e sessões.',
-          'Restauração de backup mais segura: agora acontece em uma operação única.',
-          'No celular, a busca e a "Ajuda desta tela" ficaram acessíveis no topo.'
+          'A Central de Ajuda agora tem dois caminhos claros: usar o Ciclo, ou aprender a estudar.',
+          'Busca com resultados ranqueados: digite, use as setas, Enter — e leia.',
+          'Artigos com a mesma estrutura, exemplos de várias áreas e um próximo passo no fim.',
+          'Glossário contextual: passe o mouse, use o teclado ou toque num termo e veja o que ele significa sem sair da página.'
         ],
-        note:null }
-    : { title:'Novidades do Ciclo 5.2',
+        note:null,
+        cta:'Abrir a Ajuda' }
+    : { title:'Novidades do Ciclo 5.3',
         sub: cameFrom51
           ? 'Seus dados, revisões e planos continuam como estavam.'
           : 'O Diário de Estudos agora se chama Ciclo. Seus dados, revisões e planos continuam como estavam.',
@@ -9019,9 +9692,11 @@ function maybeShowWhatsNew(){
           'Estrutura em três níveis: Área de Estudo → Disciplina → Tópico. A Área de Estudo continua opcional.',
           'Uma só escala de prioridade, de 1 (muito baixa) a 5 (muito alta), para disciplinas, tópicos e prazos.',
           'Prazos completos: tipo, data de início, status, orientações e anotações.',
-          'Análises novas: escolha o que analisar e o período, clique nos cartões para ver detalhes e baixe um relatório em texto.'
+          'Análises: escolha o que analisar e o período, clique nos cartões para ver detalhes e baixe um relatório em texto.',
+          'Ajuda reconstruída: busca com teclado, artigos com exemplos e glossário contextual.'
         ],
-        note: converted };
+        note: converted,
+        cta:'Abrir a Ajuda' };
 
   openModal(close => ({
     title: cfg.title,
@@ -9034,43 +9709,16 @@ function maybeShowWhatsNew(){
       h('button', { class:'btn ghost', type:'button', text:'Ver o histórico de versões', onclick: async () => {
         close(); await markSeen(); openChangelog();
       } }),
+      h('button', { class:'btn ghost', type:'button', text: cfg.cta, onclick: async () => {
+        close(); await markSeen();
+        helpUi.stack = []; helpUi.route = { kind:'home' }; helpClearSearch(); setView('help');
+      } }),
       h('button', { class:'btn primary', type:'button', text:'Continuar', onclick: async () => {
         close(); await markSeen();
       } })
     ]
   }), { size:'wide', onClose:(r) => { if(r === null) markSeen(); } });
 }
-
-/* =========================================================================
-   APRENDER A ESTUDAR — leitura dos guias em painel lateral.
-   ========================================================================= */
-function studyGuideNode(g){
-  const box = h('div', { class:'help-article prose' });
-  if(g.oneLine) box.append(h('p', { class:'one-line' }, h('span', { class:'ol-tag', text:'EM UMA FRASE' }), g.oneLine));
-  box.append(h('h4', { text:'O QUE É' }), h('p', { text:g.what }));
-  box.append(h('h4', { text:'POR QUE É ÚTIL' }), h('p', { text:g.why }));
-  box.append(h('h4', { text:'COMO FAZER' }), h('ul', null, g.how.map(x => h('li', { text:x }))));
-  box.append(h('h4', { text:'EXEMPLO' }), h('p', { text:g.example }));
-  box.append(h('h4', { text:'NO CICLO' }), h('p', { text:g.inApp }));
-  if(g.caution) box.append(h('p', { class:'hint', style:'margin-top:12px', text:g.caution }));
-  return box;
-}
-
-function openStudyGuideDrawer(id){
-  const g = STUDY_GUIDES.find(x => x.id === id);
-  if(!g) return;
-  const related = STUDY_GUIDES.filter(x => x.id !== g.id).slice(0, 3);
-  Drawer.open(g.title, h('div',
-    h('p', { class:'hi-cat', text:'APRENDER A ESTUDAR' }),
-    h('p', { class:'hint', style:'margin-bottom:14px', text:g.summary }),
-    studyGuideNode(g),
-    h('div', { style:'margin-top:18px' },
-      h('p', { class:'card-title', text:'Continue lendo' }),
-      related.map(r => h('button', { class:'help-item', type:'button', onclick:() => openStudyGuideDrawer(r.id) },
-        h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:r.title }), h('div', { class:'hi-sum', text:r.summary })))))
-  ));
-}
-
 
 /* =========================================================================
    v5 — PRIMEIRO ACESSO
@@ -9322,21 +9970,9 @@ function openQuickStart(preset){
    Derivado do estado real. Não bloqueia nada, pode ser ocultado, e some
    sozinho quando deixa de ser útil.
    ========================================================================= */
-const START_ACTIONS = {
-  addDiscipline: () => openDisciplineModal(null),
-  quickStart:    () => openQuickStart(),
-  addTopic:      () => {
-    const d = activeDisciplines()[0];
-    if(d) openTopicModal(d.id, null); else openDisciplineModal(null);
-  },
-  reviewDemo:    () => openInteractiveGuide('ig-revisao'),
-  plan:          () => setView('plan'),
-  addArea:       () => openAreaModal(null),
-  openReviews:   () => setView('reviews'),
-  openDisciplines: () => setView('disciplines'),
-  addDeadline:   () => openDeadlineModal(null),
-  openAnalytics: () => setView('analytics')
-};
+/* v5.3 — uma única tabela de ações (HELP_ACTIONS). O checklist e os artigos
+   disparam exatamente os mesmos destinos, então nenhum botão fica órfão. */
+const START_ACTIONS = HELP_ACTIONS;
 
 function startProgress(){
   const hasDiscipline = activeDisciplines().length > 0;
@@ -9385,19 +10021,11 @@ function startGuideCard(){
 
 
 /* =========================================================================
-   v5 — AJUDA INTERATIVA
-   Explica mostrando e deixa executar. As demonstrações rodam inteiramente
-   em memória: nada aqui toca no IndexedDB do usuário.
+   DEMONSTRAÇÕES DA AJUDA
+   Explicam mostrando. Rodam inteiramente em memória: nada aqui toca no
+   IndexedDB, cria disciplina, tópico, revisão ou progresso. Recarregar a
+   página não deixa vestígio de nenhuma delas.
    ========================================================================= */
-function guideTree(tree){
-  if(!tree) return null;
-  const box = h('div', { class:'tree' });
-  if(tree.area) box.append(h('div', { class:'tree-area' }, h('span', { class:'tree-tag', text:AREA_TERM }), tree.area));
-  box.append(h('div', { class:'tree-disc' }, h('span', { class:'tree-tag', text:'Disciplina' }), tree.discipline));
-  (tree.topics || []).forEach(t =>
-    box.append(h('div', { class:'tree-topic' }, h('span', { class:'tree-tag', text:'Tópico' }), t)));
-  return box;
-}
 
 /** Demonstração de revisão: o usuário clica nas respostas e vê o efeito. */
 function reviewDemoNode(){
@@ -9483,34 +10111,6 @@ function planDemoNode(){
   box.append(h('p', { class:'hint', style:'margin-top:10px', text:d.note }),
     h('p', { class:'demo-note', text:'Este é só um exemplo. Nada aqui é salvo nos seus dados.' }));
   return box;
-}
-
-function openInteractiveGuide(id){
-  const g = INTERACTIVE_GUIDES.find(x => x.id === id);
-  if(!g) return;
-
-  const body = h('div',
-    h('p', { class:'one-line' }, h('span', { class:'ol-tag', text:'EM UMA FRASE' }), g.oneLine),
-    h('p', { class:'prose', style:'margin-bottom:14px', text:g.what }),
-    guideTree(g.tree),
-    g.demo === 'review' ? reviewDemoNode() : null,
-    g.demo === 'plan' ? planDemoNode() : null,
-    g.demo === 'structure' ? structureDemoNode() : null,
-    g.demo === 'priority' ? priorityDemoNode() : null,
-    g.examples && g.examples.length
-      ? h('div', { style:'margin-top:14px' },
-          h('p', { class:'card-title', text:'Exemplos' }),
-          h('ul', { class:'reasons' }, g.examples.map(x => h('li', { text:x }))))
-      : null,
-    h('div', { class:'row auto', style:'margin-top:18px' },
-      h('button', { class:'btn primary sm', type:'button', text:g.actionLabel, onclick:() => {
-        Drawer.close();
-        const fn = START_ACTIONS[g.action];
-        if(fn) setTimeout(fn, 180);
-      } }))
-  );
-  if(g.demo === 'review') setMeta('reviewDemoSeen', true).catch(err => console.error(err));
-  Drawer.open(g.title, body);
 }
 
 /* =========================================================================
@@ -9674,10 +10274,10 @@ function renderSettings(){
 
   /* ---------- INTERFACE E AJUDA ---------- */
   const ajuda = card('Interface e ajuda',
-    setRow('Ajuda contextual', 'Completa inclui dicas de primeira visita. Discreta mantém só os botões "?". A Central de Ajuda continua disponível em qualquer opção.',
+    setRow('Ajuda contextual', 'Completa inclui as dicas de primeira visita. Discreta mantém só os botões "?" ao lado dos rótulos. A Central de Ajuda, a busca e o glossário continuam disponíveis em qualquer opção.',
       segmented([{ value:'full', label:'Completa' }, { value:'discreet', label:'Discreta' }, { value:'off', label:'Desativada' }],
         s.helpMode, async v => { state.settings.helpMode = v; await saveSettings(); renderSettings(); }, 'Ajuda contextual')),
-    setRow('Explicações ao passar o mouse', 'Mostra detalhes adicionais em gráficos, barras e botões de ajuda.',
+    setRow('Explicações ao passar o mouse', 'Mostra detalhes em gráficos, barras e termos do glossário. Mesmo desligado, clicar ou tocar no termo continua explicando.',
       switchControl(s.hoverHints, async v => { state.settings.hoverHints = v; await saveSettings(); }, 'Explicações ao passar o mouse')),
     setRow('Mostrar frase do dia', 'Uma frase curta sobre estudo na tela Hoje. Muda a cada dia, sem usar internet.',
       switchControl(state.settings.showDailyQuote, async v => { state.settings.showDailyQuote = v; await saveSettings(); if(ui.view === 'today') renderToday(); }, 'Mostrar frase do dia')),
@@ -9700,7 +10300,7 @@ function renderSettings(){
       h('button', { class:'btn primary sm', type:'button', text:'Fazer backup agora',
         onclick: once(exportBackupWithFeedback) }),
       h('button', { class:'btn ghost sm', type:'button', text:'Abrir tela Dados', onclick:() => setView('data') }),
-      h('button', { class:'linkbtn', type:'button', text:'Onde meus dados ficam?', onclick:() => openHelpArticleDrawer('onde-dados') }))
+      h('button', { class:'linkbtn', type:'button', text:'Onde meus dados ficam?', onclick:() => openHelpArticle('privacidade') }))
   );
 
   /* ---------- SOBRE ---------- */

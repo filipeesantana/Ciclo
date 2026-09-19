@@ -50,7 +50,7 @@ Você não precisa criar Área de Estudo, definir prioridade, montar um plano ou
 
 **Histórico**: todas as sessões registradas, com busca e filtros.
 
-**Ajuda**: explicações curtas com exemplos, demonstrações que você pode experimentar sem mexer nos seus dados, dúvidas frequentes e glossário. Cada tela tem também um botão **Ajuda desta tela**.
+**Ajuda**: pesquise uma dúvida ou escolha um dos dois caminhos — *Usar o Ciclo* (como a ferramenta funciona) e *Aprender a estudar* (como estudar melhor). Os artigos seguem sempre o mesmo formato: a ideia em uma frase, como funciona, um exemplo e o que fazer depois. Termos como *domínio* e *plano base* se explicam no próprio texto, sem tirar você da página. Cada tela tem também um botão **Ajuda desta tela**.
 
 No computador, **Ctrl + K** abre uma busca rápida para ir a qualquer tela, disciplina, tópico, prazo ou ação.
 
@@ -114,7 +114,7 @@ As observações são fatos calculados dos seus registros. Elas mostram o que ac
 
 Além de organizar seus estudos, o Ciclo traz conteúdo curto sobre **como estudar melhor**: recuperação ativa, espaçamento, a diferença entre reconhecer e lembrar, prática intercalada, explicação, resumos, flashcards, Pomodoro, consistência e descanso.
 
-Cada texto começa com uma explicação em uma frase e segue o mesmo formato: o que é, por que ajuda, como fazer, um exemplo e como isso aparece no Ciclo.
+Cada texto começa com uma explicação em uma frase e segue o mesmo formato dos demais artigos: como funciona, por que importa, como fazer, um exemplo e como isso aparece no Ciclo.
 
 ## Privacidade
 
@@ -164,7 +164,20 @@ O endereço também está no aplicativo, em **Ajuda** e em **Configurações →
 
 ## Versão atual
 
-**v5.2.1**
+**v5.3.0**
+
+**A Ajuda precisa ajudar.** Esta versão reconstrói a Central de Ajuda. O conteúdo continua o mesmo — e ganhou exemplos —, mas encontrar uma resposta ficou muito mais direto:
+
+- **Dois caminhos, não quatro portas.** *Usar o Ciclo* e *Aprender a estudar*. *Primeiros passos* é a entrada rápida para quem chegou agora; dúvidas frequentes e glossário viraram apoio, não categorias concorrentes.
+- **Busca no centro.** Digite, use as setas, pressione Enter e leia. A busca funciona sem acento, procura em artigos, perguntas e no glossário, e mostra sempre qual resultado está selecionado.
+- **Nunca se perder.** Todo artigo mostra onde você está, de onde veio e o que faz sentido ler depois. Voltar leva ao nível anterior, sempre o mesmo. Acabaram os caminhos que davam voltas.
+- **Artigos com um formato só.** A ideia em uma frase, como funciona, um exemplo concreto, como aquilo aparece no Ciclo e um próximo passo de verdade. O aprofundamento fica recolhido, para quem quiser.
+- **Glossário que acompanha você.** Passe o mouse, use o teclado ou toque num termo como *domínio*, *aderência* ou *plano base* e veja o que ele significa sem abandonar o que estava lendo.
+- **Exemplos de todo tipo de estudo.** Tecnologia, faculdade, escola, idiomas, música, ciências e concursos — e nenhuma demonstração toca nos seus dados.
+
+Nada mudou nos seus dados: nenhum formato novo, nenhuma revisão reagendada e backups anteriores continuam sendo aceitos.
+
+### v5.2.1
 
 Uma versão de acabamento, sem funcionalidades novas. O foco foi estabilidade, interface, acessibilidade e o comportamento no celular:
 
@@ -173,8 +186,6 @@ Uma versão de acabamento, sem funcionalidades novas. O foco foi estabilidade, i
 - **Teclado e foco:** o *Tab* circula dentro do que está aberto e, ao fechar, o foco volta para onde estava.
 - **Celular:** a busca e a ajuda da tela ficaram disponíveis no topo, os controles pequenos ganharam área de toque confortável e nomes longos não empurram mais o conteúdo para os lados.
 - **Mais rápido em bases grandes:** as telas Hoje e Disciplinas recalculam menos e abrem em uma fração do tempo anterior, mesmo com milhares de sessões registradas.
-
-Seus dados, revisões, prazos e planos continuam exatamente como estavam. Nenhum formato de dados mudou e backups de versões anteriores continuam sendo aceitos.
 
 ### v5.2
 
