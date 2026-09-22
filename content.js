@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — CONTEÚDO ESTÁTICO (v5.3.0)
+   CICLO — CONTEÚDO ESTÁTICO (v6.0.0)
    Textos, guias e frases. Nada aqui vai para o IndexedDB e nada vem da rede.
 
    Blocos: DAILY_QUOTES · REVIEW_METHOD_GUIDES · HELP_SECTIONS ·
@@ -1181,7 +1181,7 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Cada item mostra os motivos em texto — "atrasada há 4 dias", "prioridade alta", "Prova de Cálculo em 5 dias". O cálculo interno nunca aparece, porque o número não ajudaria você a decidir nada.' },
     { h:'Quando a fila acumula' },
-    { p:'Ter 30 revisões pendentes não significa que você precisa fazer 30 hoje. Use "Montar sessão de revisão", informe quanto tempo você tem, e o Ciclo seleciona os itens mais relevantes que cabem nesse tempo. O restante continua na fila, sem nada ser marcado como concluído.' }
+    { p:'Ter 30 revisões pendentes não significa que você precisa fazer 30 hoje. Use "Revisar por 20 min" ou "Escolher tempo", informe quanto tempo você tem, e o Ciclo seleciona os itens mais relevantes que cabem nesse tempo. O restante continua na fila, sem nada ser marcado como concluído.' }
   ],
   cta:{ action:'openReviews', label:'Abrir Revisões' },
   related:['resultados-revisao','dominio','desativar-revisao']
@@ -1250,41 +1250,50 @@ const HELP_ARTICLES = [
 /* ------------------------------------------------ USAR · ENTENDENDO MEU PROGRESSO */
 {
   id:'analises', section:'usar', group:'progresso',
-  title:'Análises: o que analisar e qual período',
-  oneLine:'Duas escolhas no topo comandam toda a página.',
-  summary:'Escopo e período, e a diferença entre os períodos oferecidos.',
-  keywords:'analises analise periodo escopo filtro o que analisar hoje semana mes personalizado',
+  title:'Análises: escolher o que entender',
+  oneLine:'Primeiro você escolhe; depois o Ciclo monta só a análise relevante.',
+  summary:'As três escolhas — o que analisar, qual período e o que ver — e a diferença entre os períodos.',
+  keywords:'analises analise periodo escopo filtro o que analisar hoje semana mes personalizado foco gerar alterar',
   content:[
     { h:'Como funciona' },
-    { p:'No topo de Análises você responde duas perguntas: o [[escopo|escopo]] — tudo, uma Área de Estudo, uma disciplina ou um tópico — e o período. A faixa "Analisando" mostra sempre a escolha atual, mesmo quando você rola a página.' },
+    { p:'Análises começa com uma pergunta: o que você quer entender? Você responde três coisas e clica em "Gerar análise".' },
+    { steps:[
+      'O que analisar: todos os estudos, uma Área de Estudo, uma disciplina ou um tópico. É o [[escopo|escopo]].',
+      'Qual período: esta semana, últimos 7 dias, este mês, últimos 30 dias, tudo — ou datas que você escolhe.',
+      'O que ver: visão geral, tempo e constância, planejamento, revisões, conteúdo ou prazos.'
+    ]},
     { h:'Diferença entre os períodos' },
     { ul:[
       'Esta semana e Este mês cobrem o período inteiro, inclusive os dias que ainda vão chegar.',
       'Últimos 7 e 30 dias terminam hoje.',
-      'Tudo começa na primeira sessão registrada.'
+      'Tudo começa na primeira sessão registrada.',
+      'Personalizado: escolha o primeiro dia e depois o último, no calendário ou nos campos de data.'
     ]},
-    { note:'Minutos são a unidade principal. Créditos existem para acompanhamento, mas como cada disciplina tem sua própria regra de conversão, eles não representam o mesmo esforço entre disciplinas diferentes.' }
+    { h:'Exemplo' },
+    { p:'Redes de Computadores · Últimos 30 dias · Revisões mostra só as revisões dessa disciplina nesse período: quantas foram feitas, como foram e o que está atrasado.' },
+    { note:'Algumas combinações não fazem sentido e ficam indisponíveis com a explicação ao lado — por exemplo, Planejamento para um tópico, porque o plano semanal é por disciplina.' }
   ],
   cta:{ action:'openAnalytics', label:'Abrir Análises' },
   related:['analises-como-ler','calendario','relatorio']
 },
 {
   id:'analises-como-ler', section:'usar', group:'progresso',
-  title:'Como ler suas análises',
-  oneLine:'Primeiro o essencial; depois, os detalhes que você quiser.',
-  summary:'As duas camadas da página e o que cada uma responde.',
-  keywords:'analises ler entender resumo cartoes detalhes atencao explorar graficos',
+  title:'Como ler uma análise',
+  oneLine:'Resumo, poucos números, um gráfico e os principais insights. O resto, se você quiser.',
+  summary:'A ordem do resultado e onde ficam os detalhes.',
+  keywords:'analises ler entender resumo numeros detalhes insights explorar graficos alterar exportar',
   content:[
-    { h:'Entenda rápido' },
+    { h:'A ordem do resultado' },
     { ul:[
+      'No topo, o que está sendo analisado, o período e o foco. "Alterar análise" volta às escolhas, já preenchidas; "Cancelar" mantém o resultado anterior.',
       'Seu período em resumo — poucas frases com o que aconteceu.',
-      'Cartões principais — tempo, sessões, plano cumprido, revisões e conteúdo. Clique em qualquer um para ver os detalhes.',
-      'Tópicos que merecem atenção — revisões atrasadas, conteúdos esquecidos várias vezes, domínio baixo e prazos próximos.',
-      'Prazos — os próximos, dentro do que está sendo analisado.'
+      'Três ou quatro números essenciais. Os que têm seta abrem os detalhes.',
+      'Um gráfico principal, escolhido conforme o foco.',
+      'Principais insights — pontos de atenção e pontos positivos, sem julgamento.'
     ]},
-    { h:'Explore os detalhes' },
-    { p:'Calendário, tempo ao longo do período, para onde foi o tempo, tempo por prioridade, planejado × realizado, progresso no conteúdo, revisões, dificuldade e observações. Nos gráficos, clique numa barra, fatia ou linha para ver mais e, quando fizer sentido, analisar só aquele item.' },
-    { note:'Tudo funciona pelo teclado: Tab navega, Enter abre, Esc fecha os detalhes.' }
+    { h:'Explorar mais' },
+    { p:'No fim da página ficam as outras visões — calendário, distribuição do tempo, semana a semana, prioridades, dificuldade e mais. Cada uma abre só quando você clicar. Nos gráficos, clique numa linha ou barra para ver mais e, quando fizer sentido, analisar só aquele item.' },
+    { note:'Tudo funciona pelo teclado: Tab navega, as setas escolhem opções, Enter abre, Esc fecha os detalhes.' }
   ],
   related:['calendario','analises-observacoes','relatorio']
 },
@@ -1296,7 +1305,7 @@ const HELP_ARTICLES = [
   keywords:'calendario heatmap mapa dias consistencia intervalo selecionar dia periodo',
   content:[
     { h:'Como funciona' },
-    { p:'Cada quadrado é um dia. A barrinha colorida mostra quanto você estudou nele, comparado com o dia mais intenso do mês. O pontinho indica um prazo. O calendário respeita o que está sendo analisado: com uma disciplina escolhida, mostra só o tempo dela.' },
+    { p:'O calendário fica em Análises → Explorar mais. Cada quadrado é um dia. A barrinha colorida mostra quanto você estudou nele, comparado com o dia mais intenso do mês. O pontinho indica um prazo. Ele respeita o que está sendo analisado: com uma disciplina escolhida, mostra só o tempo dela.' },
     { h:'Ver um dia' },
     { p:'Clique em um dia para ver as sessões dele. No painel, "Analisar este dia" muda o período da página para aquele dia.' },
     { h:'Escolher um intervalo' },
@@ -1381,7 +1390,7 @@ const HELP_ARTICLES = [
       ]}
     ]}},
     { h:'Preciso obedecer?' },
-    { p:'Não. A recomendação existe para poupar você de decidir quando bate a indecisão. Estudar outra coisa é perfeitamente válido e não gera penalidade nenhuma — a tela Hoje mostra também a 2ª e a 3ª opção.' },
+    { p:'Não. A recomendação existe para poupar você de decidir quando bate a indecisão. Estudar outra coisa é perfeitamente válido e não gera penalidade nenhuma — em "Outras opções", a tela Hoje mostra também a 2ª e a 3ª sugestão, e "Por quê?" explica cada motivo.' },
     { note:'Os motivos sempre aparecem em texto claro, como "faltam 40min do plano semanal". O Ciclo não mostra a pontuação bruta porque o número em si não ajuda a decidir nada.' }
   ],
   cta:{ action:'openToday', label:'Abrir a tela Hoje' },
@@ -1396,13 +1405,14 @@ const HELP_ARTICLES = [
   content:[
     { h:'Como funciona' },
     { ul:[
-      '"Copiar resumo" coloca na área de transferência um texto curto com o escopo, o período, o resumo, os números principais e algumas observações.',
-      '"Baixar relatório (.txt)" gera um arquivo completo, com seções de Escopo, Período, Resumo, Prioridades, Tempo, Planejamento, Disciplinas, Tópicos, Revisões, Prazos e Observações.'
+      'No resultado de uma análise, o botão "Exportar" oferece as duas opções.',
+      '"Copiar resumo" coloca na área de transferência um texto curto com o escopo, o período, o foco, o resumo, os números principais e os principais insights.',
+      '"Baixar relatório (.txt)" gera um arquivo completo, com seções de Escopo, Período, Foco, Resumo, Prioridades, Tempo, Planejamento, Disciplinas, Tópicos, Revisões, Prazos e Observações.'
     ]},
     { h:'Exemplo' },
     { p:'O nome do arquivo segue o padrão ciclo-relatorio-matematica-2026-09-16.txt.' },
     { h:'Relatório semanal' },
-    { p:'Na mesma tela existe o relatório de uma semana por vez, com setas para semanas anteriores. Ele é sempre calculado na hora, então nunca fica desatualizado.' },
+    { p:'Em Explorar mais, "Semana a semana" mostra uma semana por vez, com setas para semanas anteriores. Ele é sempre calculado na hora, então nunca fica desatualizado.' },
     { note:'Os dois são gerados no seu navegador. Comentários de sessões, orientações e anotações pessoais dos prazos nunca entram.' }
   ],
   related:['privacidade']
@@ -1506,12 +1516,12 @@ const HELP_ARTICLES = [
   keywords:'navegacao telas menu organizacao onde encontrar mais celular',
   content:[
     { ul:[
-      'Hoje — o que faz sentido estudar agora, progresso da semana e revisões pendentes.',
-      'Planejamento — horas por semana e distribuição entre disciplinas.',
-      'Revisões — a fila de revisões atrasadas, de hoje e das próximas.',
-      'Disciplinas — Áreas de Estudo, disciplinas, tópicos e prazos.',
-      'Análises — métricas e gráficos do período escolhido.',
-      'Histórico — a lista completa de sessões, com busca e filtros.',
+      'Hoje — o que estudar agora e o que vem a seguir.',
+      'Planejamento — quanto tempo você tem por semana e como ele se divide.',
+      'Revisões — o que revisar agora; as próximas ficam logo abaixo.',
+      'Disciplinas — Áreas de Estudo, disciplinas e tópicos; a aba Prazos mostra o que está chegando.',
+      'Análises — escolha o que quer entender e gere uma análise sob medida.',
+      'Histórico — todas as sessões, dia a dia, com busca e filtros.',
       'Ajuda — esta Central.',
       'Dados — backup, restauração e privacidade.',
       'Configurações — aparência, preferências de estudo, revisões e ajuda.'
@@ -1981,7 +1991,7 @@ const HELP_FAQ = [
     a:'Não. Tudo vem com padrões que funcionam: estratégia Adaptativa e método Automático. Você só mexe se quiser.' },
   { id:'faq-fila-grande', g:'revisoes', article:'fila-revisao',
     q:'Tenho muitas revisões atrasadas. Preciso fazer todas?',
-    a:'Não. Use "Montar sessão de revisão", diga quanto tempo você tem e o Ciclo escolhe as mais importantes que cabem nesse tempo. O resto continua na fila.' },
+    a:'Não. Em Revisões, use "Revisar por 20 min" ou "Escolher tempo", diga quanto tempo você tem e o Ciclo escolhe as mais importantes que cabem nesse tempo. O resto continua na fila.' },
   { id:'faq-metodo-mudou', g:'revisoes', article:'metodos-revisao',
     q:'Por que o método sugerido mudou?',
     a:'O Ciclo alterna entre as opções adequadas à natureza da disciplina para variar a forma de revisar. Se a última revisão foi "esqueci", ele passa a sugerir recordação ativa.' },
@@ -2137,38 +2147,38 @@ const CONTEXT_HELP = {
 const SCREEN_HELP = {
   today:      { title:'Hoje',
                 intro:'Esta tela responde a uma pergunta: o que faz sentido estudar agora.',
-                points:['A próxima sessão é uma sugestão calculada, com os motivos sempre visíveis.','O progresso da semana compara o realizado com o plano vigente.','As revisões pendentes aparecem aqui e podem ser iniciadas direto.'],
+                points:['A sugestão principal vem com um motivo em uma frase. "Por quê?" mostra todos os sinais usados.','"Outras opções" lista a 2ª e a 3ª sugestão.','"A seguir" reúne as revisões do dia, o andamento da semana e o próximo prazo.'],
                 cta:{ action:'quickStart', label:'Começar a estudar agora' },
                 articles:['como-o-ciclo-sugere','comecar-sessao','cronometro'] },
   plan:       { title:'Planejamento',
                 intro:'Você diz quanto tempo tem por semana e o Ciclo distribui entre as disciplinas.',
-                points:['A prioridade da disciplina (1 a 5) define quem recebe mais tempo.','Mínimo é o piso garantido de cada disciplina.','A distribuição automática é só uma sugestão: tudo continua editável.','A semana atual guarda seu próprio registro histórico.'],
+                points:['A tela mostra a divisão da semana e quanto já foi feito.','"Ajustar" abre os detalhes: horas, prioridade, mínimo e minutos de cada disciplina.','A distribuição automática é só uma sugestão: tudo continua editável.','Cada semana guarda seu próprio registro histórico.'],
                 articles:['planejamento','distribuicao','plano-base'] },
   reviews:    { title:'Revisões',
                 intro:'Tópicos estudados voltam automaticamente para revisão, em intervalos que se adaptam.',
-                points:['Atrasadas e de hoje aparecem primeiro.','O resultado que você informa ajusta o próximo intervalo.','Com a fila cheia, use "Montar sessão de revisão" e diga quanto tempo você tem.'],
+                points:['O que é para agora aparece primeiro, começando pelo que corre mais risco de ser esquecido.','"Revisar por 20 min" monta uma sessão com as mais importantes que cabem nesse tempo.','O resultado que você informa ajusta o próximo intervalo.','As próximas revisões ficam recolhidas no fim da tela.'],
                 cta:{ action:'openReviews', label:'Ver a fila de revisões' },
                 articles:['o-que-e-revisao','quando-revisar','metodos-revisao','fila-revisao'] },
   disciplines:{ title:'Disciplinas',
-                intro:'Aqui fica a estrutura do conteúdo: Área de Estudo → Disciplina → Tópico, além dos prazos.',
-                points:['Só a disciplina é obrigatória. A Área de Estudo é opcional e não tem prioridade.','Disciplina, tópico e prazo usam a mesma escala de prioridade, de 1 a 5.','Para adicionar um tópico, abra a disciplina, escreva o nome e clique em "+ Adicionar".','Prazos próximos dão mais atenção à disciplina ou ao tópico ligado a eles.'],
+                intro:'Aqui fica a estrutura do conteúdo — Área de Estudo → Disciplina → Tópico — e, na aba Prazos, o que está chegando.',
+                points:['Só a disciplina é obrigatória. A Área de Estudo é opcional e não tem prioridade.','Clique numa disciplina para ver e adicionar tópicos.','A prioridade só aparece na lista quando foge do padrão (Mediana).','Prazos próximos dão mais atenção à disciplina ou ao tópico ligado a eles.'],
                 cta:{ action:'addDiscipline', label:'Adicionar uma disciplina' },
                 articles:['estrutura-conteudo','topicos','prioridades','prazos'] },
   analytics:  { title:'Análises',
-                intro:'Responda duas perguntas no topo — o que analisar e qual período — e toda a página se ajusta.',
-                points:['A faixa "Analisando" mostra sempre a escolha atual.','Clique nos cartões principais para ver os detalhes.','No calendário, clique num dia ou use "Selecionar intervalo".','Copie um resumo ou baixe o relatório em .txt no fim da página.'],
+                intro:'Escolha o que analisar, o período e o que você quer ver. Depois clique em "Gerar análise".',
+                points:['O resultado mostra um resumo, poucos números, um gráfico e os principais insights.','"Alterar análise" volta às escolhas sem perder o resultado atual.','"Explorar mais" guarda calendário, distribuição e outras visões — cada uma abre só quando você pedir.','"Exportar" copia um resumo ou baixa o relatório em .txt da análise atual.'],
                 articles:['analises','analises-como-ler','calendario','relatorio'] },
   history:    { title:'Histórico',
-                intro:'A lista completa de sessões registradas, com busca e filtros.',
-                points:['A busca procura em disciplina, área, tópico e comentário.','Os filtros se combinam entre si.','Editar uma sessão recalcula os créditos pela regra da disciplina.'],
+                intro:'Todas as sessões registradas, organizadas por dia.',
+                points:['A busca procura em disciplina, área, tópico e comentário.','"Filtros" abre um painel; os filtros ativos aparecem abaixo da busca e saem com um clique.','Clique numa sessão para editar ou remover. Editar recalcula os créditos pela regra da disciplina.'],
                 articles:['sessoes','registro-manual','creditos'] },
   data:       { title:'Dados',
                 intro:'Backup, restauração e informações de privacidade.',
-                points:['O JSON restaura tudo; o CSV serve para planilha.','Importar substitui os dados atuais e pede confirmação.','Backups das versões anteriores continuam sendo aceitos.'],
+                points:['O backup (.json) restaura tudo; o CSV serve para planilha.','Restaurar substitui os dados atuais e pede confirmação.','Backups das versões anteriores continuam sendo aceitos.'],
                 cta:{ action:'backupNow', label:'Fazer backup agora' },
                 articles:['backup','importar','mudar-computador','privacidade'] },
   settings:   { title:'Configurações',
-                intro:'Preferências de aparência, estudo, revisões e ajuda.',
+                intro:'Preferências organizadas em grupos: aparência, estudos, revisões, ajuda, dados e sobre.',
                 points:['O tema Sistema acompanha a preferência do seu sistema operacional.','A densidade compacta reduz espaçamentos sem diminuir a fonte.','A ajuda contextual pode ser completa, discreta ou desativada — a Central de Ajuda continua acessível em qualquer opção.'],
                 articles:['atalhos','telas'] },
   help:       { title:'Ajuda',
@@ -2247,6 +2257,7 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 };
 
 const CHANGELOG = [
+  { v:'6.0', d:'Zero Visual Noise. Nova linguagem visual, mais calma: menos caixas, bordas, cores e informação ao mesmo tempo, com mais hierarquia e espaço. Cada tela responde uma pergunta. Hoje mostra uma recomendação e o que vem a seguir; Revisões começa pelo que é para agora; Planejamento mostra a divisão da semana e guarda os detalhes em "Ajustar"; Disciplinas ganhou uma aba de Prazos; o Histórico virou uma leitura por dia, com filtros num painel; Configurações foi organizada em grupos. Análises foi reconstruída: primeiro você escolhe o que analisar, o período e o que quer ver; depois recebe um resumo, poucos números, um gráfico principal e os principais insights, com aprofundamento sob demanda em "Explorar mais". Nenhum dado foi alterado.' },
   { v:'5.3', d:'Central de Ajuda reconstruída: dois caminhos claros (Usar o Ciclo e Aprender a estudar), busca com navegação por teclado e resultados ranqueados, artigos com estrutura única e exemplos, glossário contextual que explica um termo sem tirar você da página, FAQ organizado por assunto e caminho de volta previsível em qualquer ponto.' },
   { v:'5.2.1', d:'Revisão geral de estabilidade, interface, integrações, acessibilidade e acabamento pré-lançamento. Seus dados, revisões, prazos e planos continuam exatamente como estavam.' },
   { v:'5.2', d:'Estrutura clara em três níveis: Área de Estudo → Disciplina → Tópico, com Área de Estudo opcional. Uma única escala de prioridade, de 1 (muito baixa) a 5 (muito alta), para disciplinas, tópicos e prazos — a antiga importância dos tópicos foi convertida automaticamente, sem mexer nas revisões. Prazos completos: tipo, data de início, status, orientações e anotações. Análises reconstruídas: escolha o que analisar e o período, leia o resumo, clique nos cartões para ver detalhes, use o calendário para ver um dia ou escolher um intervalo e baixe um relatório em texto.' },

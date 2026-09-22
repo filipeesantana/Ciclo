@@ -38,17 +38,19 @@ Você não precisa criar Área de Estudo, definir prioridade, montar um plano ou
 
 ## Principais recursos
 
-**Hoje**: a tela do dia a dia. Mostra a sessão que faz mais sentido agora, com o motivo da sugestão, as revisões do dia, o progresso da semana e uma frase curta sobre estudo.
+Cada tela responde a uma pergunta. O que importa aparece primeiro; o resto fica a um clique.
 
-**Planejamento**: você diz quantas horas tem por semana e o Ciclo sugere como dividir esse tempo entre as matérias. Todos os valores podem ser editados, e cada semana guarda o próprio registro.
+**Hoje** — *o que devo fazer agora?* Uma recomendação em destaque, com o motivo em uma frase e um botão para começar. Abaixo, só o que vem a seguir: as revisões do dia, como está a semana e o próximo prazo.
 
-**Revisões**: a fila do que precisa ser revisado, ordenada pelo que corre mais risco de ser esquecido. Dá para montar uma sessão de 10, 20 ou 30 minutos com as revisões mais importantes.
+**Planejamento** — *como vou distribuir meu tempo?* Você diz quantas horas tem por semana e o Ciclo sugere a divisão entre as matérias. A tela mostra a divisão da semana e quanto já foi feito; os detalhes ficam em *Ajustar*. Cada semana guarda o próprio registro.
 
-**Disciplinas**: tudo o que você estuda, organizado em Área de Estudo → Disciplina → Tópico, com prioridades, progresso no conteúdo e prazos.
+**Revisões** — *o que preciso revisar?* Primeiro o que é para agora, começando pelo que corre mais risco de ser esquecido, com um botão para revisar por 20 minutos. As próximas revisões ficam recolhidas logo abaixo.
 
-**Análises**: escolha o que analisar (tudo, uma Área de Estudo, uma disciplina ou um tópico) e o período. Você lê primeiro um resumo e os números principais, e depois explora calendário, gráficos, prioridades, revisões e prazos. Tudo calculado no seu navegador, com regras fixas e explicadas.
+**Disciplinas** — *o que estou estudando?* Tudo o que você estuda, em Área de Estudo → Disciplina → Tópico. Cada linha mostra só o essencial; o detalhe abre com um clique. A aba **Prazos** responde *o que está chegando?*
 
-**Histórico**: todas as sessões registradas, com busca e filtros.
+**Análises** — *o que quero entender?* Você escolhe o que analisar, o período e o que quer ver. Depois recebe um resumo, poucos números, um gráfico principal e os principais insights, com mais visões disponíveis quando quiser.
+
+**Histórico** — *o que já fiz?* Todas as sessões, dia a dia, com busca e filtros num painel.
 
 **Ajuda**: pesquise uma dúvida ou escolha um dos dois caminhos — *Usar o Ciclo* (como a ferramenta funciona) e *Aprender a estudar* (como estudar melhor). Os artigos seguem sempre o mesmo formato: a ideia em uma frase, como funciona, um exemplo e o que fazer depois. Termos como *domínio* e *plano base* se explicam no próprio texto, sem tirar você da página. Cada tela tem também um botão **Ajuda desta tela**.
 
@@ -102,13 +104,23 @@ Quem quiser mais controle pode escolher outras estratégias de revisão (ciclo p
 
 ## Análises
 
-No topo da tela você responde duas perguntas: **o que analisar** (tudo, uma Área de Estudo, uma disciplina ou um tópico) e **qual período** (hoje, esta semana, últimos 7 dias, este mês, últimos 30 dias, tudo ou datas personalizadas). A faixa *Analisando* mostra sempre essa escolha.
+Análises não começa despejando números. Primeiro pergunta: **o que você quer entender?**
 
-- **Entenda rápido:** um resumo em poucas frases, os números principais (tempo, sessões, plano cumprido, revisões, conteúdo) e os tópicos que merecem atenção. Cada cartão abre os detalhes.
-- **Explore:** calendário (clique num dia para ver o que foi estudado ou selecione um intervalo), tempo ao longo do período, para onde foi o tempo, tempo por prioridade, planejado × realizado, progresso no conteúdo, revisões e observações.
-- **Leve com você:** copie um resumo ou baixe um relatório completo em texto (`ciclo-relatorio-…-AAAA-MM-DD.txt`). Ele é gerado no seu navegador e não inclui comentários nem anotações pessoais.
+1. **O que analisar** — todos os estudos, uma Área de Estudo, uma disciplina ou um tópico (com busca, para quem tem muitos).
+2. **Qual período** — hoje, esta semana, últimos 7 dias, este mês, últimos 30 dias, tudo ou datas escolhidas no calendário.
+3. **O que ver** — visão geral, tempo e constância, planejamento, revisões, conteúdo ou prazos.
 
-As observações são fatos calculados dos seus registros. Elas mostram o que aconteceu, sem tentar adivinhar o porquê.
+Ao clicar em **Gerar análise**, você recebe só o que responde à sua escolha:
+
+- **Seu período em resumo** — poucas frases sobre o que aconteceu. Por exemplo: *"Você estudou 12h40 em 9 dos últimos 30 dias."*
+- **Três ou quatro números essenciais** — os que têm seta abrem os detalhes.
+- **Um gráfico principal**, escolhido conforme o foco: tempo ao longo do período, planejado × realizado, resultado das revisões, situação dos tópicos ou linha do tempo dos prazos.
+- **Principais insights** — pontos de atenção e pontos positivos, sem alarme.
+- **Explorar mais** — calendário, distribuição do tempo, semana a semana, prioridades e outras visões, que abrem só quando você clicar.
+
+*Alterar análise* volta às escolhas já preenchidas, sem perder o resultado até você gerar outro. Combinações que não fazem sentido (como planejamento de um único tópico) aparecem indisponíveis, com a explicação ao lado. Em *Exportar*, você copia um resumo ou baixa um relatório em texto (`ciclo-relatorio-…-AAAA-MM-DD.txt`) com exatamente o escopo, o período e o foco escolhidos — gerado no seu navegador, sem comentários nem anotações pessoais.
+
+Os insights são fatos calculados dos seus registros. Eles mostram o que aconteceu, sem tentar adivinhar o porquê.
 
 ## Aprender a estudar
 
@@ -150,6 +162,7 @@ A tela Dados mostra quando foi seu último backup. Exportar de vez em quando e g
 - **Cada decisão aparece só quando é necessária.** Você não precisa montar um plano para estudar pela primeira vez, nem escolher uma estratégia de revisão para criar uma disciplina.
 - **Explicação no momento certo.** Os conceitos são explicados quando aparecem, com exemplo e ação, e não num manual que precisa ser lido antes.
 - **Sugestões que se explicam.** Toda recomendação mostra o motivo em linguagem humana, como *"Faltam 40min de Matemática nesta semana"*.
+- **Menos por vez, mais quando precisar.** Cada tela mostra o que ajuda na decisão do momento; a profundidade continua lá, atrás de um clique.
 - **Sério, sem virar jogo.** Sem pontos, rankings ou sequências punitivas. O foco é estudar.
 
 ## Como é feito
@@ -164,18 +177,22 @@ O endereço também está no aplicativo, em **Ajuda** e em **Configurações →
 
 ## Versão atual
 
-**v5.3.0**
+**v6.0.0 — Zero Visual Noise**
 
-**A Ajuda precisa ajudar.** Esta versão reconstrói a Central de Ajuda. O conteúdo continua o mesmo — e ganhou exemplos —, mas encontrar uma resposta ficou muito mais direto:
+O Ciclo continua completo; o que mudou foi *quando, onde e como* cada informação aparece.
 
-- **Dois caminhos, não quatro portas.** *Usar o Ciclo* e *Aprender a estudar*. *Primeiros passos* é a entrada rápida para quem chegou agora; dúvidas frequentes e glossário viraram apoio, não categorias concorrentes.
-- **Busca no centro.** Digite, use as setas, pressione Enter e leia. A busca funciona sem acento, procura em artigos, perguntas e no glossário, e mostra sempre qual resultado está selecionado.
-- **Nunca se perder.** Todo artigo mostra onde você está, de onde veio e o que faz sentido ler depois. Voltar leva ao nível anterior, sempre o mesmo. Acabaram os caminhos que davam voltas.
-- **Artigos com um formato só.** A ideia em uma frase, como funciona, um exemplo concreto, como aquilo aparece no Ciclo e um próximo passo de verdade. O aprofundamento fica recolhido, para quem quiser.
-- **Glossário que acompanha você.** Passe o mouse, use o teclado ou toque num termo como *domínio*, *aderência* ou *plano base* e veja o que ele significa sem abandonar o que estava lendo.
-- **Exemplos de todo tipo de estudo.** Tecnologia, faculdade, escola, idiomas, música, ciências e concursos — e nenhuma demonstração toca nos seus dados.
+- **Nova linguagem visual, mais calma:** menos caixas, bordas, cores e informação ao mesmo tempo. Tipografia, espaço e hierarquia fazem o trabalho — nos temas escuro e claro.
+- **Cada tela responde a uma pergunta**, com uma ação principal clara e o resto sob demanda.
+- **Hoje, Revisões e Planejamento** mostram primeiro o que importa agora; detalhes ficam em *Por quê?*, *Outras opções*, *Ajustar* e nas seções recolhidas.
+- **Disciplinas** virou uma lista limpa, com a aba **Prazos** para o que está chegando. **Histórico** é lido dia a dia, com filtros num painel. **Configurações** foi organizada em grupos.
+- **Análises reconstruída:** escolher → gerar → entender → explorar. Resumo, poucos números, um gráfico principal, insights e aprofundamento sob demanda.
+- **Melhor no celular e no teclado:** tudo funciona sem mouse, com foco visível, contraste revisado e respeito a *reduzir animações*.
 
-Nada mudou nos seus dados: nenhum formato novo, nenhuma revisão reagendada e backups anteriores continuam sendo aceitos.
+Nada mudou nos seus dados: nenhum formato novo, nenhuma revisão reagendada, e backups de qualquer versão anterior continuam sendo aceitos.
+
+### v5.3
+
+A Central de Ajuda foi reconstruída: dois caminhos claros (*Usar o Ciclo* e *Aprender a estudar*), busca com teclado, artigos com o mesmo formato, glossário contextual e exemplos de várias áreas.
 
 ### v5.2.1
 
