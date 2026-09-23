@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — CONTEÚDO ESTÁTICO (v6.0.0)
+   CICLO — CONTEÚDO ESTÁTICO (v6.1.0)
    Textos, guias e frases. Nada aqui vai para o IndexedDB e nada vem da rede.
 
    Blocos: DAILY_QUOTES · REVIEW_METHOD_GUIDES · HELP_SECTIONS ·
@@ -123,10 +123,10 @@ const DAILY_QUOTES = [
   { id:98, text:'Quem revisa no dia certo estuda menos e lembra mais.', author:null, attributionStatus:'original', category:'longo prazo' },
   { id:99, text:'Grifar o livro inteiro é decidir não escolher nada.', author:null, attributionStatus:'original', category:'foco' },
   { id:100, text:'Aprender é notar a diferença entre o que você achava que sabia e o que sabe.', author:null, attributionStatus:'original', category:'aprendizagem' },
-  { id:101, text:'A sessão curta que você faz vence a sessão ideal que você imagina.', author:null, attributionStatus:'original', category:'prática' },
+  { id:101, text:'O estudo curto que você faz vence o estudo ideal que você imagina.', author:null, attributionStatus:'original', category:'prática' },
   { id:102, text:'Estudar é um ofício: melhora com repetição orientada.', author:null, attributionStatus:'original', category:'melhoria contínua' },
   { id:103, text:'Se toda matéria é urgente, nenhuma é prioritária.', author:null, attributionStatus:'original', category:'planejamento' },
-  { id:104, text:'Registre a sessão: a memória do esforço é pior que a memória do conteúdo.', author:null, attributionStatus:'original', category:'planejamento' },
+  { id:104, text:'Registre o estudo: a memória do esforço é pior que a memória do conteúdo.', author:null, attributionStatus:'original', category:'planejamento' },
   { id:105, text:'O melhor plano é aquele que você consegue cumprir numa semana ruim.', author:null, attributionStatus:'original', category:'planejamento' },
   { id:106, text:'Descobrir uma lacuna é progresso, não fracasso.', author:null, attributionStatus:'original', category:'erro' },
   { id:107, text:'Estudar com o celular ao lado é estudar pela metade.', author:null, attributionStatus:'original', category:'foco' },
@@ -177,7 +177,7 @@ const DAILY_QUOTES = [
   { id:152, text:'Se você acertou sem pensar, talvez ainda esteja só reconhecendo.', author:null, attributionStatus:'original', category:'aprendizagem' },
   { id:153, text:'Um resumo escrito de memória vale mais que dez resumos copiados.', author:null, attributionStatus:'original', category:'prática' },
   { id:154, text:'Descanso também é parte do método.', author:null, attributionStatus:'original', category:'paciência' },
-  { id:155, text:'A pior sessão é aquela que você não começou.', author:null, attributionStatus:'original', category:'prática' },
+  { id:155, text:'O pior estudo é aquele que você não começou.', author:null, attributionStatus:'original', category:'prática' },
   { id:156, text:'Planejar demais é uma forma elegante de adiar.', author:null, attributionStatus:'original', category:'preparação' },
   { id:157, text:'Revisar é conversar com o que você foi ontem.', author:null, attributionStatus:'original', category:'aprendizagem' },
   { id:158, text:'Ter o material organizado não é ter o conteúdo aprendido.', author:null, attributionStatus:'original', category:'prática' },
@@ -220,7 +220,7 @@ const DAILY_QUOTES = [
   { id:195, text:'Aprender leva tempo, e tempo não se negocia — se organiza.', author:null, attributionStatus:'original', category:'tempo' },
   { id:196, text:'O conteúdo que você explica sem gaguejar é o conteúdo que você sabe.', author:null, attributionStatus:'original', category:'aprendizagem' },
   { id:197, text:'Quem anota o que não entendeu volta com um mapa; quem não anota, volta perdido.', author:null, attributionStatus:'original', category:'prática' },
-  { id:198, text:'Nenhuma sessão é desperdiçada quando você sabe o que fez nela.', author:null, attributionStatus:'original', category:'melhoria contínua' },
+  { id:198, text:'Nenhum estudo é desperdiçado quando você sabe o que fez nele.', author:null, attributionStatus:'original', category:'melhoria contínua' },
   { id:199, text:'Trocar de matéria a cada cinco minutos é conversar sem ouvir.', author:null, attributionStatus:'original', category:'foco' },
   { id:200, text:'Comece devagar. Continue simples. Não pare.', author:null, attributionStatus:'original', category:'consistência' },
   { id:201, text:'Planejar a semana leva dez minutos e devolve horas.', author:null, attributionStatus:'original', category:'planejamento' },
@@ -304,7 +304,7 @@ const DAILY_QUOTES = [
   { id:279, text:'Estude como quem constrói, não como quem empilha.', author:null, attributionStatus:'original', category:'melhoria contínua' },
   { id:280, text:'A rotina tira do estudo o peso da decisão diária.', author:null, attributionStatus:'original', category:'disciplina' },
   { id:281, text:'Anotar em suas próprias palavras já é metade de aprender.', author:null, attributionStatus:'original', category:'prática' },
-  { id:282, text:'Quando bater o desânimo, reduza o tamanho da sessão, não abandone o dia.', author:null, attributionStatus:'original', category:'persistência' },
+  { id:282, text:'Quando bater o desânimo, reduza o tamanho do estudo, não abandone o dia.', author:null, attributionStatus:'original', category:'persistência' },
   { id:283, text:'A clareza do objetivo determina a qualidade do esforço.', author:null, attributionStatus:'original', category:'foco' },
   { id:284, text:'Pequenos ajustes semanais superam grandes reformas anuais.', author:null, attributionStatus:'original', category:'melhoria contínua' },
   { id:285, text:'O conteúdo difícil merece o seu melhor horário, não as suas sobras.', author:null, attributionStatus:'original', category:'planejamento' },
@@ -315,7 +315,7 @@ const DAILY_QUOTES = [
   { id:290, text:'Estudar bem é reduzir o número de coisas que competem pela sua atenção.', author:null, attributionStatus:'original', category:'foco' },
   { id:291, text:'Nenhum conteúdo é chato depois que você entende para que ele serve.', author:null, attributionStatus:'original', category:'curiosidade' },
   { id:292, text:'A constância é discreta: só aparece nos resultados.', author:null, attributionStatus:'original', category:'consistência' },
-  { id:293, text:'Guardar cinco minutos para anotar o que aprendeu multiplica o valor da sessão.', author:null, attributionStatus:'original', category:'prática' },
+  { id:293, text:'Guardar cinco minutos para anotar o que aprendeu multiplica o valor do estudo.', author:null, attributionStatus:'original', category:'prática' },
   { id:294, text:'Terminar o dia sabendo o que fazer amanhã é meio caminho andado.', author:null, attributionStatus:'original', category:'preparação' },
   { id:295, text:'O estudo de longo prazo é feito de decisões pequenas e repetidas.', author:null, attributionStatus:'original', category:'longo prazo' },
   { id:296, text:'Não se cobre por dias perdidos; cobre-se por semanas abandonadas.', author:null, attributionStatus:'original', category:'persistência' },
@@ -324,7 +324,7 @@ const DAILY_QUOTES = [
   { id:299, text:'O tempo passa de qualquer forma; a diferença é o que fica depois.', author:null, attributionStatus:'original', category:'tempo' },
   { id:300, text:'Estudar é um contrato silencioso com a pessoa que você quer ser.', author:null, attributionStatus:'original', category:'longo prazo' },
   { id:301, text:'Ninguém revisa tudo. Revise o que mais custa esquecer.', author:null, attributionStatus:'original', category:'planejamento' },
-  { id:302, text:'Sessões curtas e frequentes constroem o que maratonas raramente sustentam.', author:null, attributionStatus:'original', category:'consistência' },
+  { id:302, text:'Estudos curtos e frequentes constroem o que maratonas raramente sustentam.', author:null, attributionStatus:'original', category:'consistência' },
   { id:303, text:'A vontade vem depois do início, quase nunca antes.', author:null, attributionStatus:'original', category:'disciplina' },
   { id:304, text:'Um tópico dominado hoje ainda pede visitas ocasionais.', author:null, attributionStatus:'original', category:'longo prazo' },
   { id:305, text:'Escrever o que ficou confuso é mais produtivo que reler tudo.', author:null, attributionStatus:'original', category:'prática' },
@@ -344,7 +344,7 @@ const DAILY_QUOTES = [
   { id:319, text:'Desistir de um método não é desistir do objetivo.', author:null, attributionStatus:'original', category:'melhoria contínua' },
   { id:320, text:'Transformar dúvida em pergunta escrita já organiza metade do raciocínio.', author:null, attributionStatus:'original', category:'curiosidade' },
   { id:321, text:'O plano serve ao estudo, não o contrário.', author:null, attributionStatus:'original', category:'planejamento' },
-  { id:322, text:'Não julgue a sessão pelo humor; julgue pelo que ficou registrado.', author:null, attributionStatus:'original', category:'melhoria contínua' },
+  { id:322, text:'Não julgue o estudo pelo humor; julgue pelo que ficou registrado.', author:null, attributionStatus:'original', category:'melhoria contínua' },
   { id:323, text:'É melhor entender três exemplos do que decorar dez definições.', author:null, attributionStatus:'original', category:'aprendizagem' },
   { id:324, text:'Constância não exige entusiasmo, apenas presença.', author:null, attributionStatus:'original', category:'consistência' },
   { id:325, text:'A memória esquece o que nunca foi cobrada a lembrar.', author:null, attributionStatus:'original', category:'prática' },
@@ -357,7 +357,7 @@ const DAILY_QUOTES = [
   { id:332, text:'Um bom estudante coleciona dúvidas resolvidas, não páginas lidas.', author:null, attributionStatus:'original', category:'curiosidade' },
   { id:333, text:'O progresso costuma ser silencioso até virar evidente.', author:null, attributionStatus:'original', category:'longo prazo' },
   { id:334, text:'Estudar sem meta é caminhar sem destino: cansa igual, chega menos.', author:null, attributionStatus:'original', category:'planejamento' },
-  { id:335, text:'Feche a sessão anotando onde recomeçar.', author:null, attributionStatus:'original', category:'preparação' },
+  { id:335, text:'Termine o estudo anotando onde recomeçar.', author:null, attributionStatus:'original', category:'preparação' },
   { id:336, text:'Todo esforço bem distribuído parece menor do que foi.', author:null, attributionStatus:'original', category:'esforço' },
   { id:337, text:'O que você pratica é o que você se torna capaz de fazer.', author:null, attributionStatus:'original', category:'prática' },
   { id:338, text:'Se estudar virou sofrimento constante, o problema costuma ser o método.', author:null, attributionStatus:'original', category:'melhoria contínua' },
@@ -365,7 +365,7 @@ const DAILY_QUOTES = [
   { id:340, text:'Escolher três prioridades da semana já organiza o resto.', author:null, attributionStatus:'original', category:'planejamento' },
   { id:341, text:'A memória de longo prazo é construída por visitas, não por mudanças.', author:null, attributionStatus:'original', category:'longo prazo' },
   { id:342, text:'Estudar é menos sobre inteligência e mais sobre retorno ao conteúdo.', author:null, attributionStatus:'original', category:'aprendizagem' },
-  { id:343, text:'Uma boa sessão termina com você sabendo o que ainda não sabe.', author:null, attributionStatus:'original', category:'erro' },
+  { id:343, text:'Um bom estudo termina com você sabendo o que ainda não sabe.', author:null, attributionStatus:'original', category:'erro' },
   { id:344, text:'Comece pelo que você entende e avance até onde trava.', author:null, attributionStatus:'original', category:'preparação' },
   { id:345, text:'A rotina é um empréstimo de disciplina para os dias difíceis.', author:null, attributionStatus:'original', category:'disciplina' },
   { id:346, text:'Ler rápido é habilidade; lembrar depois é o objetivo.', author:null, attributionStatus:'original', category:'aprendizagem' },
@@ -441,7 +441,7 @@ const DAILY_QUOTES = [
   { id:416, text:'O tempo bem investido no básico sustenta todo o avançado.', author:null, attributionStatus:'original', category:'preparação' },
   { id:417, text:'Nem todo dia rende igual, e tudo bem: o que conta é a soma.', author:null, attributionStatus:'original', category:'consistência' },
   { id:418, text:'Aprender é permitir que a versão anterior de você esteja errada.', author:null, attributionStatus:'original', category:'erro' },
-  { id:419, text:'Termine a sessão antes do cansaço decidir por você.', author:null, attributionStatus:'original', category:'paciência' },
+  { id:419, text:'Termine o estudo antes que o cansaço decida por você.', author:null, attributionStatus:'original', category:'paciência' },
   { id:420, text:'O melhor sistema de estudos é aquele que você ainda estará usando em seis meses.', author:null, attributionStatus:'original', category:'longo prazo' }
 ];
 
@@ -606,27 +606,27 @@ const HELP_GLOSSARY = {
   areaEstudo: { term:'Área de Estudo', article:'estrutura-conteudo', proper:true, alias:'area areas contexto grupo',
     short:'Opcional. Reúne disciplinas relacionadas — Faculdade, Trabalho, Música. Serve só para organizar e não tem prioridade.' },
   disciplina: { term:'Disciplina', article:'disciplinas', alias:'materia matéria assunto curso',
-    short:'Aquilo que você estuda. Toda sessão registrada fica ligada a uma disciplina.' },
+    short:'Aquilo que você estuda. Todo estudo registrado fica ligado a uma disciplina.' },
   topico: { term:'Tópico', article:'topicos', alias:'assunto conteudo parte capitulo',
     short:'Uma parte de uma disciplina. É o tópico que entra no ciclo de revisão e mostra seu progresso no conteúdo.' },
-  sessao: { term:'Sessão', article:'sessoes', alias:'estudo registro bloco tempo',
-    short:'Um bloco de estudo registrado: disciplina, tempo e, se você quiser, tópico, tipo e dificuldade.' },
+  sessao: { term:'Estudo registrado', article:'sessoes', alias:'sessao sessão sessoes de estudo registro bloco tempo',
+    short:'Cada vez que você estuda e registra: disciplina, tempo e, se quiser, tópico, tipo e dificuldade. Nas Análises aparece como "sessões de estudo".' },
   prioridade: { term:'Prioridade', article:'prioridades', alias:'peso importancia importância escala',
     short:'De 1 (muito baixa) a 5 (muito alta). Indica quanto algo merece sua atenção agora. O padrão é 3.' },
   minimoSemanal: { term:'Mínimo semanal', article:'distribuicao', alias:'minimo piso garantido reserva',
     short:'Tempo reservado para uma disciplina antes de qualquer divisão, para ela não ser esquecida.' },
   disponibilidade: { term:'Disponibilidade semanal', article:'planejamento', alias:'horas semana tempo capacidade',
     short:'Quantas horas por semana você pretende estudar. É o número que sustenta todo o planejamento.' },
-  planoBase: { term:'Plano base', article:'plano-base', alias:'modelo semanal padrão padrao',
-    short:'É a distribuição semanal que o Ciclo usa como referência para montar as semanas seguintes.' },
-  aderencia: { term:'Aderência', article:'planejado-realizado', alias:'plano cumprido meta porcentagem',
-    short:'Quanto do tempo planejado foi realmente estudado no período. Também aparece como "plano cumprido".' },
-  cobertura: { term:'Cobertura', article:'cobertura-dominio', alias:'conteudo estudado percentual topicos',
-    short:'A proporção de tópicos que já receberam pelo menos uma sessão. Também aparece como "conteúdo estudado".' },
-  dominio: { term:'Domínio', article:'dominio', alias:'retencao retenção consolidado dominar',
-    short:'Uma estimativa de quanto um tópico está consolidado, com base nos resultados das suas revisões. Vai de 1 a 5.' },
+  planoBase: { term:'Plano semanal', article:'plano-base', alias:'plano base modelo semanal padrão padrao distribuicao',
+    short:'O modelo de divisão do seu tempo por semana. Cada semana guarda uma cópia do plano que valia nela.' },
+  aderencia: { term:'Plano cumprido', article:'planejado-realizado', alias:'aderencia aderência meta porcentagem planejado realizado',
+    short:'Quanto do tempo planejado foi de fato estudado no período. 100% é ter cumprido exatamente o previsto.' },
+  cobertura: { term:'Conteúdo estudado', article:'cobertura-dominio', alias:'cobertura percentual topicos progresso',
+    short:'A parte dos tópicos que você já estudou pelo menos uma vez.' },
+  dominio: { term:'Consolidação', article:'dominio', alias:'dominio domínio retencao retenção consolidado dominar memoria',
+    short:'Uma estimativa, de 1 a 5, de quanto um tópico já está firme na memória, com base nos resultados das suas revisões.' },
   dificuldade: { term:'Dificuldade', article:'dificuldade', alias:'esforco esforço percepcao percebida',
-    short:'De 1 a 5, quanto aquela sessão pareceu difícil para você. É só para análise: não altera créditos nem revisões.' },
+    short:'De 1 a 5, quanto aquele estudo pareceu difícil para você. É só para análise: não altera créditos nem revisões.' },
   credito: { term:'Crédito', article:'creditos', alias:'creditos unidade conversao minutos',
     short:'Uma unidade de acompanhamento. Cada disciplina define quantos minutos valem 1 crédito (o padrão é 20).' },
   prazo: { term:'Prazo', article:'prazos', alias:'prova trabalho entrega projeto data tarefa',
@@ -635,14 +635,14 @@ const HELP_GLOSSARY = {
     short:'Nas Análises, aquilo que está sendo analisado: tudo, uma Área de Estudo, uma disciplina ou um tópico.' },
   revisao: { term:'Revisão', article:'o-que-e-revisao', alias:'revisar rever retomar',
     short:'Voltar a um conteúdo já estudado para testar o que você ainda consegue lembrar — antes de consultar.' },
-  estrategiaRevisao: { term:'Estratégia de revisão', article:'quando-revisar', alias:'adaptativa ciclo programado intensiva manutencao quando',
-    short:'Decide QUANDO um tópico volta: adaptativa, ciclo programado, intensiva ou manutenção. A padrão é a adaptativa.' },
-  metodoRevisao: { term:'Método de revisão', article:'metodos-revisao', alias:'como revisar recordacao exercicios explicacao flashcards',
-    short:'Decide COMO revisar: tentar lembrar, resolver exercícios, explicar, escrever de memória, flashcards…' },
-  intervaloRevisao: { term:'Intervalo de revisão', article:'quando-revisar', alias:'dias espaco proxima data',
+  estrategiaRevisao: { term:'Quando revisar', article:'quando-revisar', alias:'estrategia estratégia de revisao adaptativa ciclo programado intensiva manutencao ritmo',
+    short:'O ritmo com que um tópico volta: adaptativa (o padrão), ciclo programado, intensiva ou manutenção.' },
+  metodoRevisao: { term:'Como revisar', article:'metodos-revisao', alias:'metodo método de revisao recordacao exercicios explicacao flashcards',
+    short:'O que fazer durante a revisão: tentar lembrar, resolver exercícios, explicar, escrever de memória, flashcards…' },
+  intervaloRevisao: { term:'Tempo até a próxima revisão', article:'quando-revisar', alias:'intervalo de revisao dias espaco proxima data',
     short:'Quantos dias faltam até o tópico voltar. Cresce quando você lembra bem e encurta quando você esquece.' },
-  naturezaConteudo: { term:'Natureza do conteúdo', article:'metodos-revisao', alias:'conceitual memorizacao problemas pratica mista',
-    short:'Se a disciplina é mais conceitual, de memorização, de resolução de problemas ou prática. Orienta o método sugerido.' },
+  naturezaConteudo: { term:'Tipo de conteúdo', article:'metodos-revisao', alias:'natureza do conteudo conceitual memorizacao problemas pratica misto',
+    short:'Se a disciplina é mais conceitual, de memorização, de resolução de problemas ou prática. Ajuda o Ciclo a sugerir como revisar.' },
   recomendacao: { term:'Recomendação', article:'como-o-ciclo-sugere', alias:'sugestao proxima sessao hoje',
     short:'A sugestão do que estudar agora, calculada no seu navegador por regras fixas — e sempre explicada em texto.' },
   recordacaoAtiva: { term:'Recordação ativa', article:'recordacao-ativa', alias:'active recall lembrar recuperacao ativa testar',
@@ -650,7 +650,7 @@ const HELP_GLOSSARY = {
   repeticaoEspacada: { term:'Repetição espaçada', article:'espacamento', alias:'espacamento spaced intervalo distribuir',
     short:'Voltar ao mesmo conteúdo em dias diferentes, com intervalos que crescem, em vez de estudar tudo de uma vez.' },
   modoFoco: { term:'Modo foco', article:'modo-foco', alias:'concentracao tela cheia distracao',
-    short:'Uma tela limpa com disciplina, tópico e cronômetro. Esc sai do foco sem finalizar a sessão.' },
+    short:'Uma tela limpa com disciplina, tópico e cronômetro. Esc sai do foco sem encerrar o estudo.' },
   backup: { term:'Backup', article:'backup', alias:'exportar json copia seguranca arquivo',
     short:'Um arquivo .json com todos os seus dados. É o que restaura o Ciclo em outro computador ou depois de limpar o navegador.' },
   indexeddb: { term:'IndexedDB', article:'privacidade', proper:true, alias:'banco dados armazenamento navegador local',
@@ -668,20 +668,20 @@ const HELP_ARTICLES = [
 {
   id:'primeiros-passos', section:'usar', group:'comecando',
   title:'Primeiros passos',
-  oneLine:'Em poucos minutos: diga o que você estuda e comece uma sessão.',
+  oneLine:'Em poucos minutos: diga o que você estuda e comece a estudar.',
   summary:'O caminho mais curto entre abrir o Ciclo e começar a estudar.',
   keywords:'inicio começar comecar primeiro uso tutorial introducao novo iniciante nao sei por onde',
   content:[
-    { p:'Você não precisa configurar nada antes de estudar. Basta informar uma coisa que você estuda e iniciar uma sessão — o resto aparece conforme faz sentido.' },
+    { p:'Você não precisa configurar nada antes de estudar. Basta informar uma coisa que você estuda e começar — o resto aparece conforme faz sentido.' },
     { h:'Cinco passos, na ordem que você quiser' },
     { steps:[
       'Adicione algo que você estuda: uma matéria, um idioma, uma certificação, um instrumento.',
-      'Comece uma sessão. O Ciclo conta o tempo para você.',
+      'Comece a estudar. O Ciclo conta o tempo para você.',
       'Adicione tópicos aos poucos, quando quiser acompanhar partes específicas.',
       'O Ciclo avisa quando revisar. Cada tópico estudado volta sozinho no momento certo.',
       'Organize sua semana quando quiser. Dizer quantas horas você tem é opcional e melhora as sugestões.'
     ]},
-    { note:'Nada aqui é obrigatório na primeira vez: [[areaEstudo]], [[prioridade|prioridade]], [[planoBase|plano base]] e [[estrategiaRevisao|estratégia de revisão]] já vêm com padrões que funcionam.' }
+    { note:'Nada aqui é obrigatório na primeira vez: [[areaEstudo|área]], [[prioridade|prioridade]], [[planoBase|plano semanal]] e [[estrategiaRevisao|o ritmo das revisões]] já vêm com padrões que funcionam.' }
   ],
   cta:{ action:'addDiscipline', label:'Adicionar o que você estuda' },
   related:['estrutura-conteudo','comecar-sessao','o-que-e-revisao']
@@ -703,7 +703,9 @@ const HELP_ARTICLES = [
     { tree:{ area:'Tecnologia', discipline:'Redes de Computadores', topics:['OSPF','VLAN'] } },
     { demo:'structure' },
     { h:'O que é obrigatório' },
-    { p:'Só a [[disciplina|disciplina]]. Disciplinas sem Área de Estudo aparecem como "Sem área" e funcionam normalmente. Dá para registrar sessões sem tópico algum — você só não terá revisões nem progresso de conteúdo enquanto não criar tópicos.' },
+    { p:'Só a [[disciplina|disciplina]]. Disciplinas sem Área de Estudo aparecem como "Sem área" e funcionam normalmente. Dá para registrar estudos sem tópico algum — você só não terá revisões nem progresso de conteúdo enquanto não criar tópicos.' },
+    { h:'No Ciclo' },
+    { p:'Em Disciplinas, cada nível abre o próximo, como o índice de um caderno: toque numa área para ver as disciplinas dela e numa disciplina para ver os tópicos. Uma área criada aparece mesmo vazia.' },
     { note:'Área de Estudo não tem prioridade: ela apenas agrupa. Prioridade existe para disciplinas, tópicos e prazos.' }
   ],
   cta:{ action:'openDisciplines', label:'Abrir Disciplinas' },
@@ -711,21 +713,21 @@ const HELP_ARTICLES = [
 },
 {
   id:'comecar-sessao', section:'usar', group:'comecando',
-  title:'Como começar uma sessão',
+  title:'Como começar a estudar',
   oneLine:'Clique em Registrar, escolha o que vai estudar e o tempo começa a contar.',
   summary:'Pelo botão Registrar, pelo cronômetro ou pela sugestão da tela Hoje.',
-  keywords:'comecar estudar iniciar sessao registrar botao cronometro agora',
+  keywords:'comecar estudar comecar a estudar iniciar sessao registrar estudo botao cronometro agora',
   content:[
     { h:'Como funciona' },
-    { p:'O botão Registrar fica sempre visível no canto inferior direito e também responde à tecla R. Ele abre duas opções: começar agora com o cronômetro, ou lançar manualmente um estudo que já aconteceu.' },
+    { p:'O botão Registrar fica sempre visível no canto inferior direito e também responde à tecla R. Ele abre duas opções: "Estudar agora", com o cronômetro, ou "Já estudei", para lançar um estudo que já aconteceu.' },
     { h:'Três caminhos' },
     { ul:[
-      'Pela tela Hoje — a próxima sessão sugerida já vem com disciplina e tópico preenchidos.',
+      'Pela tela Hoje — a sugestão já vem com disciplina e tópico preenchidos.',
       'Pelo botão Registrar — você escolhe livremente a disciplina e o tópico.',
-      'Pela tela Revisões — começar uma revisão já abre o cronômetro com o método sugerido.'
+      'Pela tela Revisões — começar uma revisão já abre o cronômetro com um jeito de revisar sugerido.'
     ]},
     { h:'No Ciclo' },
-    { p:'Só a disciplina e o tempo são obrigatórios. Tópico, tipo de sessão, [[dificuldade|dificuldade]] e comentário são opcionais e podem ser informados no fim.' }
+    { p:'Só a disciplina e o tempo são obrigatórios. Tópico, tipo de estudo, [[dificuldade|dificuldade]] e comentário são opcionais e podem ser informados no fim.' }
   ],
   cta:{ action:'quickStart', label:'Começar a estudar agora' },
   related:['cronometro','sessoes','registro-manual']
@@ -746,11 +748,13 @@ const HELP_ARTICLES = [
     { h:'Como criar' },
     { steps:[
       'Abra Disciplinas.',
-      'Clique em "+ Área de Estudo".',
+      'Clique em "Adicionar" e escolha "Nova área de estudo".',
       'Dê um nome curto.',
-      'Marque quais disciplinas entram nela. Dá para mudar depois.'
+      'Se quiser, traga disciplinas para ela. Dá para mudar depois.'
     ]},
-    { note:'Excluir uma Área de Estudo não apaga nada: as disciplinas dela voltam a aparecer como "Sem área".' }
+    { p:'A área aparece na hora, mesmo vazia. Abra a área para adicionar disciplinas; em "Mais", você renomeia, escolhe disciplinas, arquiva ou exclui.' },
+    { p:'Também dá para criar uma área no próprio formulário da disciplina: em "Onde quer organizar?", escolha "+ Criar nova área".' },
+    { note:'Excluir uma área não apaga nada: as disciplinas dela voltam para "Sem área". Arquivar uma área arquiva junto as disciplinas dela, com todo o histórico preservado.' }
   ],
   cta:{ action:'addArea', label:'Criar uma Área de Estudo' },
   related:['disciplinas','topicos']
@@ -760,7 +764,7 @@ const HELP_ARTICLES = [
   title:'Disciplinas',
   oneLine:'A principal coisa que você estuda. Tudo o que você registra fica ligado a uma.',
   summary:'Criar, editar, arquivar e o que cada campo significa.',
-  keywords:'disciplina materia criar adicionar editar arquivar excluir nome creditos natureza',
+  keywords:'disciplina materia criar adicionar editar arquivar excluir nome creditos natureza tipo de conteudo',
   content:[
     { h:'Como funciona' },
     { p:'Uma [[disciplina|disciplina]] é o que você estuda: uma matéria, um idioma, um instrumento, uma certificação. Só o nome é obrigatório.' },
@@ -769,19 +773,19 @@ const HELP_ARTICLES = [
     { h:'Como criar' },
     { steps:[
       'Abra Disciplinas.',
-      'Clique em "+ Disciplina".',
+      'Clique em "Adicionar" → "Nova disciplina" (dentro de uma área, use "Adicionar disciplina").',
       'Digite o nome.',
-      'Se quiser, escolha a Área de Estudo e a prioridade. A prioridade começa em 3 — Mediana.'
+      'Se quiser, escolha onde organizar e a prioridade. A prioridade começa em 3 — Média.'
     ]},
-    { details:{ title:'Opções avançadas da disciplina', content:[
+    { details:{ title:'Mais opções da disciplina', content:[
       { ul:[
         'Minutos por crédito — quantos minutos valem 1 [[credito|crédito]] nessa disciplina. O padrão é 20.',
-        'Natureza do conteúdo — se a disciplina é mais conceitual, de memorização, de resolução de problemas ou prática. Orienta o método de revisão sugerido.',
-        'Estratégia de revisão — vale para os tópicos da disciplina, a menos que um tópico tenha a sua própria.'
+        'Tipo de conteúdo — se a disciplina é mais conceitual, de memorização, de resolução de problemas ou prática. Ajuda o Ciclo a sugerir como revisar.',
+        'Quando revisar — o ritmo das revisões. Vale para os tópicos da disciplina, a menos que um tópico tenha o seu próprio.'
       ]}
     ]}},
     { h:'Arquivar em vez de excluir' },
-    { p:'Arquivar tira a disciplina do uso ativo — planejamento, recomendações e revisões — e preserva todo o histórico. A exclusão definitiva apaga as sessões junto e por isso fica como ação secundária.' }
+    { p:'Arquivar tira a disciplina do uso ativo — planejamento, recomendações e revisões — e preserva todo o histórico. A exclusão definitiva apaga junto os estudos registrados e por isso fica como ação secundária.' }
   ],
   cta:{ action:'addDiscipline', label:'Adicionar uma disciplina' },
   related:['topicos','prioridades','creditos']
@@ -794,14 +798,14 @@ const HELP_ARTICLES = [
   keywords:'topico topicos adicionar varios criar parte conteudo capitulo revisao',
   content:[
     { h:'Como funciona' },
-    { p:'Tópicos dividem a disciplina em partes. Não são obrigatórios, mas são eles que permitem ao Ciclo agendar [[revisao|revisões]], calcular [[cobertura|cobertura]] e acompanhar o [[dominio|domínio]] de cada conteúdo.' },
+    { p:'Tópicos dividem a disciplina em partes. Não são obrigatórios, mas são eles que permitem ao Ciclo agendar [[revisao|revisões]], mostrar o [[cobertura|conteúdo estudado]] e acompanhar a [[dominio|consolidação]] de cada conteúdo.' },
     { h:'Exemplo' },
     { ul:['Matemática → Derivadas','Inglês → Present Perfect','História → Era Vargas','Anatomia → Sistema cardiovascular','Violão → Formação de acordes'] },
     { h:'Como adicionar' },
     { steps:[
       'Abra a disciplina.',
-      'Escreva o nome no campo "Novo tópico".',
-      'Clique em "+ Adicionar" ou pressione Enter.',
+      'Escreva o nome no campo "Nome do novo tópico".',
+      'Clique em "Adicionar tópico" ou pressione Enter.',
       'Confirme o nome, a prioridade e se o tópico entra nas revisões.'
     ]},
     { note:'Para colar vários de uma vez, um por linha, use "Adicionar vários de uma vez".' },
@@ -816,11 +820,12 @@ const HELP_ARTICLES = [
   title:'Prioridades',
   oneLine:'Prioridade indica quanto algo merece sua atenção neste momento.',
   summary:'Uma escala de 1 a 5 para disciplinas, tópicos e prazos.',
-  keywords:'prioridade escala 1 5 muito baixa mediana alta peso importancia disciplina topico prazo',
+  keywords:'prioridade escala 1 5 muito baixa media mediana alta peso importancia disciplina topico prazo barrinhas',
   content:[
     { h:'Como funciona' },
     { p:'O Ciclo usa a [[prioridade|prioridade]] para distribuir o tempo da semana, ordenar recomendações e organizar as revisões. A escala é a mesma em todo lugar:' },
-    { ul:['1 — Muito baixa','2 — Baixa','3 — Mediana (o padrão)','4 — Alta','5 — Muito alta'] },
+    { ul:['1 — Muito baixa','2 — Baixa','3 — Média (o padrão)','4 — Alta','5 — Muito alta'] },
+    { p:'Em todo o Ciclo, a prioridade aparece com o mesmo símbolo: cinco barrinhas em escada. Quantas estão preenchidas é o nível — uma barrinha é muito baixa, cinco é muito alta.' },
     { h:'Exemplo' },
     { tree:{ area:'Tecnologia', discipline:'Redes de Computadores', priority:5,
              topics:[{ name:'Subnetting', priority:5 }, { name:'VLAN', priority:4 }, { name:'OSPF', priority:2 }] } },
@@ -835,7 +840,7 @@ const HELP_ARTICLES = [
       { p:'A diferença entre os níveis é real, mas não é absurda: com 5 horas por semana, disciplinas de prioridade baixa continuam recebendo sua parte.' }
     ]}},
     { h:'No Ciclo' },
-    { p:'Você altera a prioridade ao editar uma disciplina, um tópico ou um prazo. Se tudo for 5, nada se destaca — use prioridade alta para o que realmente merece e deixe o resto em 3.' }
+    { p:'Você muda a prioridade direto na página da disciplina ou do tópico, clicando nas barrinhas, ou ao editar um prazo. Se tudo for 5, nada se destaca — use prioridade alta para o que realmente merece e deixe o resto em 3.' }
   ],
   cta:{ action:'editPriority', label:'Alterar uma prioridade agora' },
   related:['prioridade-topico','distribuicao','prazos']
@@ -923,18 +928,18 @@ const HELP_ARTICLES = [
 /* --------------------------------------------------------------- USAR · ESTUDANDO */
 {
   id:'sessoes', section:'usar', group:'estudando',
-  title:'Sessões de estudo',
-  oneLine:'Sessão é um bloco de estudo que você registrou.',
+  title:'Registrar um estudo',
+  oneLine:'Cada vez que você estuda e registra, o Ciclo guarda esse estudo.',
   summary:'O dado mais importante do Ciclo: o que ele guarda e para que serve.',
-  keywords:'sessao bloco estudo registro tempo minutos comentario o que e uma sessao',
+  keywords:'sessao sessoes bloco estudo registro registrar tempo minutos comentario o que e uma sessao',
   content:[
     { h:'Como funciona' },
-    { p:'Uma [[sessao|sessão]] é qualquer período em que você estudou algo e registrou. Pode ter 10 minutos ou duas horas. Ela guarda a disciplina, o tempo e — se você quiser — o tópico, o tipo, a dificuldade e um comentário.' },
+    { p:'Um [[sessao|estudo registrado]] é qualquer período em que você estudou algo e anotou no Ciclo. Pode ter 10 minutos ou duas horas. Ele guarda a disciplina, o tempo e — se você quiser — o tópico, o tipo, a dificuldade e um comentário.' },
     { h:'Exemplo' },
     { ul:['Inglês · 20 min','Cálculo · Derivadas · 40 min · exercícios · difícil','Redes de Computadores · VLAN · 1h · laboratório'] },
     { h:'Por que registrar' },
-    { p:'Registrar transforma sensação em informação. As sessões alimentam o planejamento, as análises e as revisões: sem elas, o Ciclo não tem como sugerir nada.' },
-    { details:{ title:'Tipos de sessão', content:[
+    { p:'Registrar transforma sensação em informação. Os registros alimentam o planejamento, as análises e as revisões: sem eles, o Ciclo não tem como sugerir nada.' },
+    { details:{ title:'Tipos de estudo', content:[
       { p:'Classificar é opcional, mas alimenta uma análise útil: a proporção entre teoria e prática.' },
       { ul:[
         'Teoria — leitura, videoaula, explicação.',
@@ -944,10 +949,10 @@ const HELP_ARTICLES = [
         'Projeto — trabalho maior e contínuo.',
         'Outro — o que não se encaixa acima.'
       ]},
-      { p:'Se você marcar o tipo como Revisão e a sessão tiver um tópico, o Ciclo pergunta como você se saiu e ajusta o intervalo da próxima revisão.' }
+      { p:'Se você marcar o tipo como Revisão e o estudo tiver um tópico, o Ciclo pergunta como você se saiu e ajusta o intervalo da próxima revisão.' }
     ]}}
   ],
-  cta:{ action:'openHistory', label:'Ver minhas sessões' },
+  cta:{ action:'openHistory', label:'Ver meus estudos' },
   related:['cronometro','registro-manual','dificuldade']
 },
 {
@@ -961,8 +966,8 @@ const HELP_ARTICLES = [
     { p:'Com um cronômetro ativo, aparece uma barra no topo com a disciplina, o tópico e o tempo. Dali você pode pausar, retomar, entrar no [[modoFoco|modo foco]] ou finalizar.' },
     { h:'Ele sobrevive a fechar a aba' },
     { p:'O tempo é calculado por marcação de horário, não por um contador que roda na tela. Se você recarregar a página, fechar e reabrir o navegador, o cronômetro volta com o tempo correto.' },
-    { h:'Sessão esquecida' },
-    { p:'Se você voltar e houver uma sessão aberta há muitas horas, o Ciclo pergunta o que fazer em vez de registrar tudo automaticamente. Ao finalizar, a duração pode ser corrigida antes de salvar.' }
+    { h:'Cronômetro esquecido' },
+    { p:'Se você voltar e o cronômetro estiver ligado há muitas horas, o Ciclo pergunta o que fazer em vez de registrar tudo automaticamente. Ao finalizar, a duração pode ser corrigida antes de salvar.' }
   ],
   related:['modo-foco','registro-manual']
 },
@@ -978,7 +983,7 @@ const HELP_ARTICLES = [
     { h:'No Ciclo' },
     { ul:[
       'Você entra pela barra do cronômetro ou pela busca de comandos (Ctrl + K).',
-      'Esc sai do foco sem finalizar a sessão.',
+      'Esc sai do foco sem encerrar o estudo.',
       'Pausar, retomar e finalizar continuam disponíveis dentro do foco.'
     ]}
   ],
@@ -992,10 +997,10 @@ const HELP_ARTICLES = [
   keywords:'manual retroativo passado esqueci lancar data minutos ontem',
   content:[
     { h:'Como funciona' },
-    { p:'No botão Registrar, escolha a aba "Registrar manualmente". Você informa disciplina, tópico, data e minutos.' },
+    { p:'No botão Registrar, escolha "Já estudei". Você informa disciplina, tópico, data e minutos.' },
     { h:'No Ciclo' },
     { p:'A data pode ser anterior a hoje, o que é útil para recuperar estudos que não foram lançados na hora. Os [[credito|créditos]] são calculados a partir dos minutos, usando a regra da disciplina.' },
-    { note:'Editar uma sessão no Histórico recalcula os créditos pela regra atual da disciplina.' }
+    { note:'Editar um estudo no Histórico recalcula os créditos pela regra atual da disciplina.' }
   ],
   cta:{ action:'openHistory', label:'Abrir Histórico' },
   related:['dificuldade','creditos']
@@ -1003,16 +1008,16 @@ const HELP_ARTICLES = [
 {
   id:'dificuldade', section:'usar', group:'estudando',
   title:'Dificuldade percebida',
-  oneLine:'Quanto aquela sessão pareceu difícil para você, de 1 a 5.',
+  oneLine:'Quanto aquele estudo pareceu difícil para você, de 1 a 5.',
   summary:'É opcional, é só para análise e não altera nada nas revisões.',
   keywords:'dificuldade percebida esforco nivel facil dificil 1 5 diferenca dominio',
   content:[
     { h:'Como funciona' },
-    { p:'A [[dificuldade|dificuldade]] vai de "Muito fácil" (1) a "Muito difícil" (5) e registra como aquela sessão pareceu para você, na hora. É opcional.' },
+    { p:'A [[dificuldade|dificuldade]] vai de "Muito fácil" (1) a "Muito difícil" (5) e registra como aquele estudo pareceu para você, na hora. É opcional.' },
     { h:'O que ela não faz' },
     { p:'Ela é puramente analítica: não altera créditos, não altera o planejamento e não altera o intervalo das revisões. Serve para você enxergar depois quais conteúdos estão custando mais esforço.' },
-    { h:'Dificuldade não é domínio' },
-    { p:'Dificuldade é a sua percepção no momento do estudo. [[dominio|Domínio]] vem do resultado das revisões ao longo do tempo. Um conteúdo pode ser difícil e mesmo assim estar bem dominado — e o contrário também acontece.' }
+    { h:'Dificuldade não é consolidação' },
+    { p:'Dificuldade é a sua percepção no momento do estudo. [[dominio|Consolidação]] vem do resultado das revisões ao longo do tempo. Um conteúdo pode ser difícil e mesmo assim estar bem consolidado — e o contrário também acontece.' }
   ],
   related:['dominio','analises-como-ler']
 },
@@ -1068,16 +1073,16 @@ const HELP_ARTICLES = [
 },
 {
   id:'plano-base', section:'usar', group:'semana',
-  title:'Plano base e semana atual',
-  oneLine:'É a distribuição semanal que o Ciclo usa como referência para montar as semanas seguintes.',
+  title:'Plano semanal e semana atual',
+  oneLine:'O plano é o modelo; cada semana guarda uma cópia do que valia nela.',
   summary:'Cada semana guarda o plano que valia nela.',
   keywords:'plano base semana atual historico snapshot alterar proxima semana',
   content:[
     { h:'Como funciona' },
-    { p:'O [[planoBase|plano base]] é o modelo. Toda semana recebe uma cópia própria dele no momento em que começa.' },
+    { p:'O [[planoBase|plano semanal]] é o modelo. Toda semana recebe uma cópia própria dele no momento em que começa.' },
     { h:'Exemplo' },
     { ul:[
-      'Em março seu plano base era: Matemática 2h, Inglês 1h.',
+      'Em março seu plano era: Matemática 2h, Inglês 1h.',
       'Em abril você mudou para: Matemática 3h, Inglês 30min.',
       'As análises de março continuam comparando com 2h e 1h — o plano que realmente valia lá.'
     ]},
@@ -1089,12 +1094,12 @@ const HELP_ARTICLES = [
 {
   id:'planejado-realizado', section:'usar', group:'semana',
   title:'Planejado × realizado',
-  oneLine:'Aderência é quanto do tempo planejado foi de fato estudado.',
+  oneLine:'"Plano cumprido" é quanto do tempo planejado foi de fato estudado.',
   summary:'Como a comparação é feita e por que passar de 100% não é sempre melhor.',
   keywords:'planejado realizado aderencia plano cumprido porcentagem meta comparacao',
   content:[
     { h:'Como funciona' },
-    { p:'[[aderencia|Aderência]] de 100% significa que você cumpriu exatamente o previsto; acima disso significa que estudou mais. A comparação usa o plano histórico de cada semana tocada pelo período.' },
+    { p:'[[aderencia|Plano cumprido]] de 100% significa que você cumpriu exatamente o previsto; acima disso significa que estudou mais. A comparação usa o plano histórico de cada semana tocada pelo período.' },
     { h:'Exemplo' },
     { p:'Se o período cobre apenas três dias de uma semana, o planejado daquela semana entra proporcionalmente a esses três dias.' },
     { note:'Passar de 100% não é automaticamente melhor — pode significar que outra disciplina ficou para trás. Por isso a análise mostra também o desempenho por disciplina.' }
@@ -1112,11 +1117,11 @@ const HELP_ARTICLES = [
   keywords:'revisao revisar rever o que e como funcionam as revisoes ciclo espacada automatica',
   content:[
     { h:'Como funciona' },
-    { p:'Quando você estuda um tópico pela primeira vez, ele entra no ciclo automaticamente: a primeira revisão fica marcada para o dia seguinte, com [[dominio|domínio]] inicial 2 de 5. Na revisão, você tenta lembrar antes de consultar e depois diz como foi.' },
+    { p:'Quando você estuda um tópico pela primeira vez, ele entra no ciclo automaticamente: a primeira revisão fica marcada para o dia seguinte, com [[dominio|consolidação]] inicial 2 de 5. Na revisão, você tenta lembrar antes de consultar e depois diz como foi.' },
     { demo:'review' },
     { h:'No Ciclo' },
-    { p:'Você vê algo simples, como "Você tem 2 revisões hoje". O Ciclo cuida das datas, sugere um método e mostra um roteiro curto.' },
-    { note:'Sessões normais em um tópico já cadastrado não reprogramam nada — só o resultado de uma revisão altera o ciclo.' }
+    { p:'Você vê algo simples, como "Você tem 2 revisões hoje". O Ciclo cuida das datas, sugere um jeito de revisar e mostra um roteiro curto.' },
+    { note:'Estudos comuns em um tópico já cadastrado não reprogramam nada — só o resultado de uma revisão altera o ciclo.' }
   ],
   cta:{ action:'openReviews', label:'Abrir Revisões' },
   related:['quando-revisar','metodos-revisao','resultados-revisao']
@@ -1124,21 +1129,21 @@ const HELP_ARTICLES = [
 {
   id:'quando-revisar', section:'usar', group:'revisando',
   title:'Quando revisar?',
-  oneLine:'A estratégia decide o intervalo até a próxima revisão.',
+  oneLine:'O Ciclo decide quantos dias esperar até a próxima revisão.',
   summary:'Adaptativa, ciclo programado, intensiva e manutenção.',
   keywords:'quando revisar estrategia adaptativa ciclo programado intensiva manutencao intervalo dias',
   content:[
     { h:'Como funciona' },
-    { p:'A [[estrategiaRevisao|estratégia de revisão]] responde a uma única pergunta: QUANDO este conteúdo deve voltar. Ela não diz como revisar — isso é o método.' },
+    { p:'[[estrategiaRevisao|Quando revisar]] responde a uma única pergunta: em quantos dias este conteúdo deve voltar. Não diz como revisar — isso é outra escolha.' },
     { h:'Adaptativa (padrão)' },
-    { p:'O [[intervaloRevisao|intervalo de revisão]] responde ao seu resultado. Lembrou bem, o intervalo cresce; esqueceu, ele volta para o dia seguinte. É a escolha certa para quase todo mundo.' },
-    { details:{ title:'As outras três estratégias', content:[
+    { p:'O [[intervaloRevisao|tempo até a próxima revisão]] acompanha o seu resultado. Lembrou bem, o intervalo cresce; esqueceu, ele volta para o dia seguinte. É a escolha certa para quase todo mundo.' },
+    { details:{ title:'Os outros três ritmos', content:[
       { ul:[
         'Ciclo programado — intervalos previsíveis: 1, 3, 7, 14, 30 e 60 dias. O resultado move você dentro do ciclo.',
         'Intensiva — intervalos curtos (1, 2, 3, 5, 7, 10, 14 dias) para períodos de prova. Quando o prazo passa, o Ciclo avisa e sugere voltar ao ritmo normal.',
         'Manutenção — intervalos longos (14 a 180 dias) para conteúdo já consolidado que você só quer manter acessível.'
       ]},
-      { p:'A estratégia pode ser definida em Configurações (vale para tudo), na disciplina, ou em um tópico específico. O nível mais específico vence. O intervalo máximo é de 180 dias.' }
+      { p:'O ritmo pode ser definido em Configurações (vale para tudo), na disciplina ou em um tópico específico, sempre em "Quando revisar". O nível mais específico vence. O intervalo máximo é de 180 dias.' }
     ]}},
     { h:'No Ciclo' },
     { p:'Você não precisa escolher nada: sem mexer em nada, tudo usa a adaptativa.' }
@@ -1147,13 +1152,13 @@ const HELP_ARTICLES = [
 },
 {
   id:'metodos-revisao', section:'usar', group:'revisando',
-  title:'Métodos de revisão: como revisar',
-  oneLine:'Revisar não é reler. O método decide o que você faz nos minutos da revisão.',
+  title:'Como revisar',
+  oneLine:'Revisar não é reler. "Como revisar" decide o que você faz nos minutos da revisão.',
   summary:'Sete formas de trabalhar o conteúdo, e como o Ciclo escolhe uma.',
   keywords:'metodo como revisar recordacao ativa exercicios explicacao resumo flashcards intercalada livre automatico',
   content:[
     { h:'Como funciona' },
-    { p:'O [[metodoRevisao|método de revisão]] responde a outra pergunta: COMO revisar. O Ciclo sugere um, mostra um roteiro curto e deixa você trocar quando quiser.' },
+    { p:'[[metodoRevisao|Como revisar]] responde a outra pergunta: o que fazer durante a revisão. O Ciclo sugere um jeito, mostra um roteiro curto e deixa você trocar quando quiser.' },
     { ul:[
       'Recordação ativa — feche o material e tente lembrar antes de conferir.',
       'Exercícios — resolva questões antes de olhar a resposta.',
@@ -1163,8 +1168,8 @@ const HELP_ARTICLES = [
       'Prática intercalada — misture tipos de problema em vez de repetir só um.',
       'Revisão livre — você decide a abordagem.'
     ]},
-    { h:'Método automático' },
-    { p:'No modo Automático, o Ciclo escolhe a partir da [[naturezaConteudo|natureza do conteúdo]] da disciplina: conteúdo conceitual tende a recordação ativa e explicação; memorização, a recordação ativa e flashcards; resolução de problemas, a exercícios e prática intercalada. Se a última revisão foi "esqueci", ele prefere recordação ativa.' },
+    { h:'No automático' },
+    { p:'No modo Automático, o Ciclo escolhe a partir do [[naturezaConteudo|tipo de conteúdo]] da disciplina: conteúdo conceitual tende a recordação ativa e explicação; memorização, a recordação ativa e flashcards; resolução de problemas, a exercícios e prática intercalada. Se a última revisão foi "esqueci", ele prefere recordação ativa.' },
     { note:'A sugestão é sempre explicada na tela e nunca impede você de escolher outra coisa.' }
   ],
   related:['fila-revisao','recordacao-ativa','revisao-nao-e-reler']
@@ -1177,7 +1182,7 @@ const HELP_ARTICLES = [
   keywords:'fila ordem revisao atrasada backlog acumulo montar sessao escolher 30 revisoes',
   content:[
     { h:'Como funciona' },
-    { p:'A fila considera vários sinais ao mesmo tempo: há quantos dias a revisão está atrasada, a [[prioridade|prioridade]] do tópico (e, com menos peso, a da disciplina), o [[dominio|domínio]] atual, o resultado da última revisão, quantas vezes você já esqueceu aquele conteúdo, prazos próximos e há quanto tempo você não revisa.' },
+    { p:'A fila considera vários sinais ao mesmo tempo: há quantos dias a revisão está atrasada, a [[prioridade|prioridade]] do tópico (e, com menos peso, a da disciplina), a [[dominio|consolidação]] atual, o resultado da última revisão, quantas vezes você já esqueceu aquele conteúdo, prazos próximos e há quanto tempo você não revisa.' },
     { h:'Exemplo' },
     { p:'Cada item mostra os motivos em texto — "atrasada há 4 dias", "prioridade alta", "Prova de Cálculo em 5 dias". O cálculo interno nunca aparece, porque o número não ajudaria você a decidir nada.' },
     { h:'Quando a fila acumula' },
@@ -1190,15 +1195,15 @@ const HELP_ARTICLES = [
   id:'resultados-revisao', section:'usar', group:'revisando',
   title:'Esqueci, Lembrei com dificuldade, Lembrei bem, Dominei',
   oneLine:'Sua resposta decide quando o tópico volta.',
-  summary:'O que cada resposta faz com o intervalo e com o domínio.',
+  summary:'O que cada resposta faz com a próxima data e com a consolidação.',
   keywords:'esqueci dificuldade lembrei bem dominei resultado revisao intervalo honestidade',
   content:[
     { h:'Como funciona' },
     { ul:[
-      'Esqueci — a próxima revisão volta para amanhã e o domínio cai 2 pontos.',
-      'Lembrei com dificuldade — o intervalo cresce pouco (metade a mais, no mínimo 2 dias) e o domínio cai 1 ponto.',
-      'Lembrei bem — o intervalo mais que dobra (no mínimo 4 dias) e o domínio sobe 1 ponto.',
-      'Dominei — o intervalo cresce bastante (no mínimo 7 dias) e o domínio vai direto para 5.'
+      'Esqueci — a próxima revisão volta para amanhã e a consolidação cai 2 pontos.',
+      'Lembrei com dificuldade — o intervalo cresce pouco (metade a mais, no mínimo 2 dias) e a consolidação cai 1 ponto.',
+      'Lembrei bem — o intervalo mais que dobra (no mínimo 4 dias) e a consolidação sobe 1 ponto.',
+      'Dominei — o intervalo cresce bastante (no mínimo 7 dias) e a consolidação vai direto para 5.'
     ]},
     { p:'"Esqueci" e "Lembrei com dificuldade" também zeram a sequência de acertos seguidos.' },
     { note:'Responder com honestidade é o que faz o sistema trabalhar a seu favor. Marcar "Dominei" sem ter dominado só adia o problema.' }
@@ -1207,22 +1212,22 @@ const HELP_ARTICLES = [
 },
 {
   id:'dominio', section:'usar', group:'revisando',
-  title:'O que é domínio?',
-  oneLine:'Domínio é uma estimativa de quanto um tópico está consolidado.',
+  title:'O que é consolidação?',
+  oneLine:'Uma estimativa de quanto um tópico já está firme na sua memória.',
   summary:'De 1 a 5, calculado a partir dos resultados das suas revisões.',
-  keywords:'dominio dominado status topico nao iniciado em estudo em revisao consolidado retencao',
+  keywords:'consolidacao consolidado dominio dominado status topico nao iniciado em estudo em revisao consolidado retencao',
   content:[
     { h:'Como funciona' },
-    { p:'O [[dominio|domínio]] começa em 2, sobe quando você lembra e cai quando você esquece. Ele é uma estimativa a partir do seu histórico de revisões — não é uma medição exata do que está na sua cabeça.' },
+    { p:'A [[dominio|consolidação]] começa em 2, sobe quando você lembra e cai quando você esquece. Ela é uma estimativa a partir do seu histórico de revisões — não é uma medição exata do que está na sua cabeça.' },
     { h:'Exemplo' },
-    { ul:['OSPF · domínio 2 de 5 — "Você teve dificuldade nas últimas revisões."','Present Perfect · domínio 5 de 5 — "As últimas revisões foram bem."'] },
+    { ul:['OSPF · consolidação 2 de 5 — "Você teve dificuldade nas últimas revisões."','Present Perfect · consolidação 5 de 5 — "As últimas revisões foram bem."'] },
     { h:'Quando um tópico é considerado dominado' },
-    { p:'Domínio 4 ou 5 e pelo menos duas revisões seguidas bem-sucedidas. O status é sempre calculado do histórico, nunca definido à mão:' },
+    { p:'Consolidação 4 ou 5 e pelo menos duas revisões seguidas bem-sucedidas. O status é sempre calculado do histórico, nunca definido à mão:' },
     { ul:[
-      'Não iniciado — nenhuma sessão registrada.',
+      'Não iniciado — nenhum estudo registrado.',
       'Em estudo — já estudado, mas ainda sem nenhuma revisão concluída.',
       'Em revisão — já tem histórico de revisão, mas ainda não atingiu o critério.',
-      'Dominado — domínio 4 ou 5 e duas revisões seguidas bem-sucedidas.'
+      'Dominado — consolidação 4 ou 5 e duas revisões seguidas bem-sucedidas.'
     ]},
     { note:'Um tópico dominado pode voltar para "em revisão" se você esquecer depois. Isso é esperado: o status reflete a situação atual, não uma conquista permanente.' }
   ],
@@ -1236,7 +1241,7 @@ const HELP_ARTICLES = [
   keywords:'desativar desligar revisao topico automatica pausar parar arquivar',
   content:[
     { h:'Como funciona' },
-    { p:'Ao editar um tópico, existe a opção "Incluir no ciclo de revisão". Desmarcando, ele deixa de gerar revisões, mas continua acumulando sessões e tempo normalmente.' },
+    { p:'Ao editar um tópico, existe a opção "Incluir nas revisões". Desmarcando, ele deixa de gerar revisões, mas continua acumulando estudos e tempo normalmente.' },
     { h:'No Ciclo' },
     { ul:[
       'Em Configurações → Revisões você desliga a inclusão automática de novos tópicos.',
@@ -1266,7 +1271,7 @@ const HELP_ARTICLES = [
     { ul:[
       'Esta semana e Este mês cobrem o período inteiro, inclusive os dias que ainda vão chegar.',
       'Últimos 7 e 30 dias terminam hoje.',
-      'Tudo começa na primeira sessão registrada.',
+      'Tudo começa no primeiro estudo registrado.',
       'Personalizado: escolha o primeiro dia e depois o último, no calendário ou nos campos de data.'
     ]},
     { h:'Exemplo' },
@@ -1307,7 +1312,7 @@ const HELP_ARTICLES = [
     { h:'Como funciona' },
     { p:'O calendário fica em Análises → Explorar mais. Cada quadrado é um dia. A barrinha colorida mostra quanto você estudou nele, comparado com o dia mais intenso do mês. O pontinho indica um prazo. Ele respeita o que está sendo analisado: com uma disciplina escolhida, mostra só o tempo dela.' },
     { h:'Ver um dia' },
-    { p:'Clique em um dia para ver as sessões dele. No painel, "Analisar este dia" muda o período da página para aquele dia.' },
+    { p:'Clique em um dia para ver o que foi estudado nele. No painel, "Analisar este dia" muda o período da página para aquele dia.' },
     { h:'Escolher um intervalo' },
     { steps:[
       'Clique em "Selecionar intervalo".',
@@ -1320,15 +1325,15 @@ const HELP_ARTICLES = [
 },
 {
   id:'cobertura-dominio', section:'usar', group:'progresso',
-  title:'Cobertura e domínio',
-  oneLine:'Cobertura é quanto do conteúdo você já viu; domínio é quanto você realmente retém.',
+  title:'Conteúdo estudado e consolidação',
+  oneLine:'Conteúdo estudado é quanto você já viu; consolidação é quanto realmente ficou.',
   summary:'Duas medidas diferentes de propósito.',
-  keywords:'cobertura dominio conteudo estudado percentual progresso diferenca',
+  keywords:'cobertura dominio consolidacao conteudo estudado percentual progresso diferenca',
   content:[
     { h:'Como funciona' },
-    { p:'[[cobertura|Cobertura]] é a proporção de tópicos que já receberam pelo menos uma sessão. [[dominio|Domínio]] é a proporção de tópicos que atingiram o status "dominado".' },
+    { p:'[[cobertura|Conteúdo estudado]] é a parte dos tópicos que você já estudou pelo menos uma vez. Consolidados são os tópicos que atingiram o status "dominado" (veja [[dominio|consolidação]]).' },
     { h:'Exemplo' },
-    { p:'80% de cobertura com 20% de domínio normalmente indica que faltou revisar, não estudar: você passou por quase tudo, mas pouca coisa ficou.' },
+    { p:'80% de conteúdo estudado com 20% consolidado normalmente indica que faltou revisar, não estudar: você passou por quase tudo, mas pouca coisa ficou.' },
     { note:'Só entram na conta os tópicos cadastrados em disciplinas ativas. Disciplinas arquivadas ficam de fora do cálculo atual, mas o histórico delas permanece.' }
   ],
   related:['analises-observacoes','relatorio']
@@ -1341,9 +1346,9 @@ const HELP_ARTICLES = [
   keywords:'credito creditos minutos conversao unidade regra disciplina',
   content:[
     { h:'Como funciona' },
-    { p:'Cada disciplina define quantos minutos valem 1 [[credito|crédito]] (o padrão é 20). Ao registrar 40 minutos numa disciplina de 20 min/crédito, a sessão vale 2 créditos.' },
+    { p:'Cada disciplina define quantos minutos valem 1 [[credito|crédito]] (o padrão é 20). Ao registrar 40 minutos numa disciplina de 20 min/crédito, o estudo vale 2 créditos.' },
     { h:'No Ciclo' },
-    { p:'Você altera essa regra em Disciplinas → editar → Opções avançadas. Créditos já registrados não mudam retroativamente: o valor histórico de cada sessão é preservado.' },
+    { p:'Você altera essa regra em Disciplinas → a disciplina → Editar → Mais opções. Créditos já registrados não mudam retroativamente: o valor histórico de cada estudo é preservado.' },
     { note:'Como a regra varia entre disciplinas, o planejamento e as comparações gerais trabalham em minutos.' }
   ],
   related:['analises-observacoes','relatorio']
@@ -1358,7 +1363,7 @@ const HELP_ARTICLES = [
     { h:'Como funciona' },
     { p:'As observações são frases calculadas a partir dos seus registros, sempre as mesmas para os mesmos dados. Elas descrevem o que aconteceu ("Matemática recebeu 40% do tempo planejado") e nunca afirmam por quê.' },
     { h:'Tópicos que merecem atenção' },
-    { p:'São escolhidos por fatos concretos — revisão atrasada, esquecimentos repetidos, domínio baixo, prazo próximo, prioridade alta ainda não iniciada. A prioridade só ajuda a ordenar a lista.' }
+    { p:'São escolhidos por fatos concretos — revisão atrasada, esquecimentos repetidos, pouca consolidação, prazo próximo, prioridade alta ainda não iniciada. A prioridade só ajuda a ordenar a lista.' }
   ],
   related:['relatorio']
 },
@@ -1378,13 +1383,13 @@ const HELP_ARTICLES = [
       'Há quantos dias você não a estuda.',
       'Se existe prazo próximo.',
       'Quantas revisões pendentes ela tem e há quanto tempo estão atrasadas.',
-      'O domínio médio dos tópicos.',
+      'O quanto os tópicos já estão consolidados.',
       'Se você já passou bastante do tempo planejado — isso reduz a pontuação.'
     ]},
     { details:{ title:'Qual tópico é escolhido dentro da disciplina', content:[
       { ol:[
         'Tópico com revisão vencida.',
-        'Tópico com domínio baixo.',
+        'Tópico ainda pouco consolidado.',
         'Tópico em estudo sem contato há dias.',
         'O próximo ainda não iniciado, na sua ordem.'
       ]}
@@ -1413,7 +1418,7 @@ const HELP_ARTICLES = [
     { p:'O nome do arquivo segue o padrão ciclo-relatorio-matematica-2026-09-16.txt.' },
     { h:'Relatório semanal' },
     { p:'Em Explorar mais, "Semana a semana" mostra uma semana por vez, com setas para semanas anteriores. Ele é sempre calculado na hora, então nunca fica desatualizado.' },
-    { note:'Os dois são gerados no seu navegador. Comentários de sessões, orientações e anotações pessoais dos prazos nunca entram.' }
+    { note:'Os dois são gerados no seu navegador. Comentários dos estudos, orientações e anotações pessoais dos prazos nunca entram.' }
   ],
   related:['privacidade']
 },
@@ -1433,11 +1438,11 @@ const HELP_ARTICLES = [
       'Guarde o arquivo em algum lugar que não seja só este computador.'
     ]},
     { h:'O que o arquivo contém' },
-    { p:'Tudo: Áreas de Estudo, disciplinas, tópicos, prioridades, sessões, planos, semanas, prazos e configurações.' },
+    { p:'Tudo: áreas, disciplinas, tópicos, prioridades, estudos registrados, planos, semanas, prazos e configurações.' },
     { h:'JSON ou CSV?' },
     { ul:[
       'JSON — o [[backup|backup]] completo e restaurável. É o arquivo que traz seus dados de volta.',
-      'CSV — apenas a lista de sessões, em formato de planilha. Serve para abrir no Excel ou no Google Sheets. Não restaura o Ciclo.'
+      'CSV — apenas a lista de estudos, em formato de planilha. Serve para abrir no Excel ou no Google Sheets. Não restaura o Ciclo.'
     ]},
     { note:'A tela Dados mostra quando foi seu último backup e avisa discretamente quando faz muito tempo.' }
   ],
@@ -1519,9 +1524,9 @@ const HELP_ARTICLES = [
       'Hoje — o que estudar agora e o que vem a seguir.',
       'Planejamento — quanto tempo você tem por semana e como ele se divide.',
       'Revisões — o que revisar agora; as próximas ficam logo abaixo.',
-      'Disciplinas — Áreas de Estudo, disciplinas e tópicos; a aba Prazos mostra o que está chegando.',
+      'Disciplinas — suas áreas, disciplinas e tópicos, como um índice; a aba Prazos mostra o que está chegando.',
       'Análises — escolha o que quer entender e gere uma análise sob medida.',
-      'Histórico — todas as sessões, dia a dia, com busca e filtros.',
+      'Histórico — todos os estudos, dia a dia, com busca e filtros.',
       'Ajuda — esta Central.',
       'Dados — backup, restauração e privacidade.',
       'Configurações — aparência, preferências de estudo, revisões e ajuda.'
@@ -1540,7 +1545,7 @@ const HELP_ARTICLES = [
     { p:'Os atalhos funcionam quando você não está digitando em um campo de texto.' },
     { ul:[
       'Ctrl + K (ou ⌘ + K) — busca de comandos: telas, disciplinas, tópicos, prazos, ações e ajuda.',
-      'R — abre o registro de sessão. Com um cronômetro rodando, abre a finalização.',
+      'R — abre o registro de estudo. Com um cronômetro rodando, abre a finalização.',
       'H — vai para Hoje.',
       'P — vai para Planejamento.',
       'V — vai para Revisões.',
@@ -1576,7 +1581,7 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Ler três páginas e fechar o livro conseguindo explicar a ideia central com suas palavras é estudar. Reler as três páginas quatro vezes, não necessariamente.' },
     { h:'No Ciclo' },
-    { p:'Cada vez que você registra uma [[sessao|sessão]], o Ciclo guarda quanto tempo e em que conteúdo. Se houver tópico, ele também agenda a revisão.' }
+    { p:'Cada vez que você registra um [[sessao|estudo]], o Ciclo guarda quanto tempo e em que conteúdo. Se houver tópico, ele também agenda a revisão.' }
   ],
   related:['reconhecer-x-lembrar','recordacao-ativa']
 },
@@ -1634,7 +1639,7 @@ const HELP_ARTICLES = [
     { h:'Como funciona' },
     { p:'Depois de aprender algo, o acesso àquela informação tende a enfraquecer com o tempo, especialmente se você nunca mais a usa.' },
     { h:'Por que importa' },
-    { p:'Entender isso muda a forma de estudar: em vez de tentar fixar tudo numa sessão, você planeja reencontros.' },
+    { p:'Entender isso muda a forma de estudar: em vez de tentar fixar tudo de uma vez, você planeja reencontros.' },
     { h:'Exemplo' },
     { p:'Um conteúdo visto uma única vez há dois meses costuma exigir quase um reestudo. O mesmo conteúdo revisado três vezes no período costuma voltar em poucos minutos.' },
     { h:'No Ciclo' },
@@ -1673,13 +1678,13 @@ const HELP_ARTICLES = [
   keywords:'espacamento repeticao espacada spaced intervalo distribuir maratona vespera',
   content:[
     { h:'Como funciona' },
-    { p:'[[repeticaoEspacada|Repetição espaçada]] é estudar o mesmo conteúdo em encontros separados por dias, em vez de repetir tudo numa sessão longa.' },
+    { p:'[[repeticaoEspacada|Repetição espaçada]] é estudar o mesmo conteúdo em encontros separados por dias, em vez de repetir tudo num único bloco longo.' },
     { h:'Por que importa' },
     { p:'O mesmo tempo total distribuído costuma render memória mais duradoura do que concentrado. E o intervalo pode crescer conforme o conteúdo fica mais firme.' },
     { h:'Exemplo' },
-    { p:'Quatro sessões de 30 minutos em quatro dias rendem mais que duas horas seguidas na véspera.' },
+    { p:'Quatro blocos de 30 minutos em quatro dias rendem mais que duas horas seguidas na véspera.' },
     { h:'No Ciclo' },
-    { p:'É exatamente o que as estratégias de revisão fazem: escolher quando o conteúdo deve voltar.' }
+    { p:'É exatamente o que o Ciclo faz em "Quando revisar": escolher quando o conteúdo deve voltar.' }
   ],
   related:['consistencia-guia']
 },
@@ -1747,7 +1752,7 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Um resumo de meia página feito de memória vale mais que cinco páginas copiadas do livro.' },
     { h:'No Ciclo' },
-    { p:'Use o método "Resumo de memória" nas revisões e registre no comentário da sessão o que ficou de fora.' }
+    { p:'Use o método "Resumo de memória" nas revisões e registre no comentário do estudo o que ficou de fora.' }
   ],
   related:['exercicios-guia']
 },
@@ -1774,7 +1779,7 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Em vez de reler a teoria de integrais, resolva cinco integrais. Os erros mostram o que estudar.' },
     { h:'No Ciclo' },
-    { p:'Classifique a sessão como "Exercícios" para acompanhar sua proporção entre teoria e prática nas Análises.' }
+    { p:'Classifique o estudo como "Exercícios" para acompanhar sua proporção entre teoria e prática nas Análises.' }
   ],
   related:['intercalada-guia','corrigir-erros']
 },
@@ -1794,7 +1799,7 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Misture derivadas, integrais e limites numa mesma lista, em vez de fazer vinte de cada.' },
     { h:'No Ciclo' },
-    { p:'Disciplinas marcadas como "Resolução de problemas" tendem a receber este método nas sugestões automáticas.' }
+    { p:'Disciplinas com tipo de conteúdo "Resolução de problemas" tendem a receber este jeito de revisar nas sugestões automáticas.' }
   ],
   related:['corrigir-erros']
 },
@@ -1817,7 +1822,7 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Errar uma integral por trocar o sinal é desatenção; errar por não reconhecer a substituição é conceito. As duas exigem respostas diferentes.' },
     { h:'No Ciclo' },
-    { p:'Use o comentário da sessão para registrar o tipo de erro. Depois, o Histórico permite buscar por essa palavra.' }
+    { p:'Use o comentário do estudo para registrar o tipo de erro. Depois, o Histórico permite buscar por essa palavra.' }
   ],
   related:['sessoes-longas']
 },
@@ -1825,7 +1830,7 @@ const HELP_ARTICLES = [
 /* ------------------------------------------ APRENDER · COMO ORGANIZAR O TEMPO? */
 {
   id:'sessoes-longas', section:'aprender', group:'tempo',
-  title:'Quanto tempo deve durar uma sessão',
+  title:'Quanto tempo deve durar um estudo',
   oneLine:'A duração importa menos do que o que você faz dentro dela.',
   summary:'Blocos curtos com recuperação ativa rendem mais que horas de leitura.',
   keywords:'quanto tempo sessao duracao longa curta bloco estudar horas minutos',
@@ -1910,7 +1915,7 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Duas horas descansado costumam render mais que quatro horas arrastadas de madrugada.' },
     { h:'No Ciclo' },
-    { p:'Se as suas sessões estão ficando longas e a [[dificuldade|dificuldade]] percebida subindo, isso costuma aparecer nas Análises.' }
+    { p:'Se os seus estudos estão ficando longos e a [[dificuldade|dificuldade]] percebida subindo, isso costuma aparecer nas Análises.' }
   ],
   related:[]
 }
@@ -1936,7 +1941,7 @@ const HELP_FAQ = [
     a:'Não. Ela só organiza disciplinas relacionadas. Sem Área de Estudo, a disciplina aparece como "Sem área" e funciona normalmente.' },
   { id:'faq-topicos-antes', g:'comecando', article:'topicos',
     q:'Preciso cadastrar todos os tópicos antes de começar?',
-    a:'Não. Dá para registrar sessões sem tópico algum. Os tópicos habilitam revisões, conteúdo estudado e domínio, então vale cadastrá-los aos poucos.' },
+    a:'Não. Dá para registrar estudos sem tópico algum. Os tópicos habilitam revisões, conteúdo estudado e consolidação, então vale cadastrá-los aos poucos.' },
   { id:'faq-cronometro', g:'comecando', article:'registro-manual',
     q:'Preciso usar o cronômetro?',
     a:'Não. O registro manual permite lançar data e minutos depois, inclusive de dias anteriores.' },
@@ -1961,11 +1966,11 @@ const HELP_FAQ = [
     q:'O que acontece se eu ficar alguns dias sem estudar?',
     a:'Nada é marcado como falha. As revisões daquele período ficam pendentes e as disciplinas não estudadas ganham mais peso na recomendação.' },
   { id:'faq-dificuldade-dominio', g:'estudando', article:'dominio',
-    q:'Dificuldade e domínio são a mesma coisa?',
-    a:'Não. Dificuldade é o quanto uma sessão pareceu difícil, informada por você na hora. Domínio é a retenção do tópico ao longo do tempo, calculada pelos resultados das revisões.' },
+    q:'Dificuldade e consolidação são a mesma coisa?',
+    a:'Não. Dificuldade é o quanto um estudo pareceu difícil, informada por você na hora. Consolidação é o quanto o tópico ficou na memória ao longo do tempo, calculada pelos resultados das revisões.' },
   { id:'faq-arquivar', g:'estudando', article:'disciplinas',
     q:'Arquivar apaga meu histórico?',
-    a:'Não. Arquivar tira do uso ativo e preserva tudo. Só a exclusão definitiva, que fica como ação secundária, remove sessões.' },
+    a:'Não. Arquivar tira do uso ativo e preserva tudo. Só a exclusão definitiva, que fica como ação secundária, remove os estudos registrados.' },
   { id:'faq-prioridade-diferenca', g:'estudando', article:'prioridade-topico',
     q:'Qual a diferença entre a prioridade da disciplina e a do tópico?',
     a:'A da disciplina define quanto tempo ela recebe na semana. A do tópico define a ordem dentro da disciplina, principalmente nas revisões. As duas usam a escala de 1 a 5.' },
@@ -1975,26 +1980,26 @@ const HELP_FAQ = [
     q:'Como funcionam as revisões?',
     a:'Depois que você estuda um tópico, ele entra sozinho no ciclo. Quando chega a hora, o Ciclo avisa; você tenta lembrar antes de consultar e depois diz como foi. Sua resposta decide quando o tópico volta.' },
   { id:'faq-dominio', g:'revisoes', article:'dominio',
-    q:'O que é domínio?',
-    a:'Uma estimativa de quanto um tópico está consolidado, de 1 a 5, com base nos resultados das suas revisões. Começa em 2, sobe quando você lembra e cai quando esquece.' },
+    q:'O que é consolidação?',
+    a:'Uma estimativa, de 1 a 5, de quanto um tópico já está firme na memória, com base nos resultados das suas revisões. Começa em 2, sobe quando você lembra e cai quando esquece.' },
   { id:'faq-revisao-cedo', g:'revisoes', article:'resultados-revisao',
     q:'Por que uma revisão apareceu de novo tão cedo?',
     a:'Provavelmente o último resultado foi "Esqueci" (volta para o dia seguinte) ou "Lembrei com dificuldade" (o intervalo cresce pouco).' },
   { id:'faq-desativar-revisao', g:'revisoes', article:'desativar-revisao',
     q:'Posso desativar a revisão de um tópico?',
-    a:'Sim, desmarcando "Incluir no ciclo de revisão" ao editar o tópico. Em Configurações também dá para desligar a inclusão automática de novos tópicos.' },
+    a:'Sim, desmarcando "Incluir nas revisões" ao editar o tópico. Em Configurações também dá para desligar a inclusão automática de novos tópicos.' },
   { id:'faq-estrategia-metodo', g:'revisoes', article:'quando-revisar',
-    q:'Qual a diferença entre estratégia e método de revisão?',
-    a:'Estratégia é QUANDO o conteúdo volta (o intervalo). Método é COMO você vai revisar (lembrar, resolver, explicar…). São escolhas independentes.' },
+    q:'Qual a diferença entre "quando revisar" e "como revisar"?',
+    a:'"Quando revisar" é o ritmo: em quantos dias o conteúdo volta. "Como revisar" é o que você faz na revisão (lembrar, resolver, explicar…). São escolhas independentes.' },
   { id:'faq-precisa-escolher', g:'revisoes', article:'quando-revisar',
-    q:'Preciso escolher estratégia e método para cada tópico?',
-    a:'Não. Tudo vem com padrões que funcionam: estratégia Adaptativa e método Automático. Você só mexe se quiser.' },
+    q:'Preciso escolher quando e como revisar cada tópico?',
+    a:'Não. Tudo vem com padrões que funcionam: "Adaptativa" para quando revisar e "Automático" para como revisar. Você só mexe se quiser.' },
   { id:'faq-fila-grande', g:'revisoes', article:'fila-revisao',
     q:'Tenho muitas revisões atrasadas. Preciso fazer todas?',
     a:'Não. Em Revisões, use "Revisar por 20 min" ou "Escolher tempo", diga quanto tempo você tem e o Ciclo escolhe as mais importantes que cabem nesse tempo. O resto continua na fila.' },
   { id:'faq-metodo-mudou', g:'revisoes', article:'metodos-revisao',
-    q:'Por que o método sugerido mudou?',
-    a:'O Ciclo alterna entre as opções adequadas à natureza da disciplina para variar a forma de revisar. Se a última revisão foi "esqueci", ele passa a sugerir recordação ativa.' },
+    q:'Por que o jeito de revisar sugerido mudou?',
+    a:'O Ciclo alterna entre as opções adequadas ao tipo de conteúdo da disciplina para variar a forma de revisar. Se a última revisão foi "esqueci", ele passa a sugerir recordação ativa.' },
   { id:'faq-dominei', g:'revisoes', article:'resultados-revisao',
     q:'Marcar "Dominei" sem ter dominado atrapalha?',
     a:'Sim. O intervalo cresce bastante e o conteúdo pode voltar tarde demais. Responder com honestidade é o que faz o sistema trabalhar a seu favor.' },
@@ -2005,7 +2010,7 @@ const HELP_FAQ = [
     a:'Pode. O plano é uma referência, não um teto. A disciplina que passou do previsto apenas perde peso na recomendação, para abrir espaço às que estão atrás.' },
   { id:'faq-plano-cumprido', g:'planejamento', article:'planejado-realizado',
     q:'O que significa "plano cumprido"?',
-    a:'Quanto do tempo planejado foi realmente estudado no período — também chamado de aderência. 100% é ter cumprido exatamente o previsto.' },
+    a:'Quanto do tempo planejado foi realmente estudado no período. 100% é ter cumprido exatamente o previsto.' },
   { id:'faq-plano-obrigatorio', g:'planejamento', article:'planejamento',
     q:'O planejamento é obrigatório?',
     a:'Não. Sem ele o Ciclo continua sugerindo o que estudar, só com menos informação. Informar suas horas por semana melhora bastante as sugestões.' },
@@ -2014,7 +2019,7 @@ const HELP_FAQ = [
     a:'Muito pouco. A influência cresce conforme a data se aproxima e depende da prioridade do prazo. Com data de início, ele só começa a pesar a partir dela.' },
   { id:'faq-criar-prazo', g:'planejamento', article:'prazos',
     q:'Como criar um prazo?',
-    a:'Em Disciplinas, na seção Prazos, use "+ Prazo". Informe o tipo, o título e a data; ligar a uma disciplina e a um tópico é opcional, mas é o que faz o prazo influenciar as sugestões.' },
+    a:'Em Disciplinas, na aba Prazos, use "+ Prazo". Informe o tipo, o título e a data; ligar a uma disciplina e a um tópico é opcional, mas é o que faz o prazo influenciar as sugestões.' },
 
   /* ---- análises ---- */
   { id:'faq-creditos', g:'analises', article:'creditos',
@@ -2025,7 +2030,7 @@ const HELP_FAQ = [
     a:'Em Análises, escolha "Uma disciplina" na primeira pergunta. Também dá para clicar numa disciplina em qualquer gráfico e usar "Analisar só esta disciplina".' },
   { id:'faq-relatorio-comentarios', g:'analises', article:'relatorio',
     q:'O relatório .txt inclui meus comentários?',
-    a:'Não. Ele traz números, nomes, prioridades e prazos. Comentários de sessões e anotações pessoais ficam de fora.' },
+    a:'Não. Ele traz números, nomes, prioridades e prazos. Comentários dos estudos e anotações pessoais ficam de fora.' },
   { id:'faq-frase-dia', g:'analises',
     q:'O que é a frase do dia?',
     a:'Uma frase curta sobre estudo que muda a cada dia. É escolhida localmente, sem internet, e pode ser desligada em Configurações → Interface e ajuda.' },
@@ -2042,7 +2047,7 @@ const HELP_FAQ = [
     a:'Na tela Dados, clique em "Exportar backup (.json)" e guarde o arquivo fora deste computador. É o arquivo que restaura tudo.' },
   { id:'faq-json-csv', g:'dados', article:'backup',
     q:'Qual a diferença entre backup JSON e CSV?',
-    a:'O JSON é o backup completo, o único que restaura o Ciclo. O CSV traz só as sessões, para abrir em planilha.' },
+    a:'O JSON é o backup completo, o único que restaura o Ciclo. O CSV traz só a lista de estudos, para abrir em planilha.' },
   { id:'faq-outro-computador', g:'dados', article:'mudar-computador',
     q:'Como levo meus dados para outro computador?',
     a:'Exporte o backup JSON em Dados, leve o arquivo e importe no outro computador pela mesma tela. Não existe sincronização automática.' }
@@ -2053,13 +2058,13 @@ const HELP_SEARCH_SUGGESTIONS = [
   'Como começar',
   'Como funcionam as revisões?',
   'Como criar um prazo?',
-  'O que é domínio?',
+  'O que é consolidação?',
   'Como fazer backup?',
   'Como usar Análises?'
 ];
 
 /** Exemplos mostrados sob o campo de busca (nunca clicáveis como categoria). */
-const HELP_SEARCH_EXAMPLES = ['como funciona revisão?', 'o que é domínio?', 'como criar uma Área de Estudo?'];
+const HELP_SEARCH_EXAMPLES = ['como funciona revisão?', 'o que é consolidação?', 'como criar uma área?'];
 
 /** Perguntas comuns destacadas na Home da Ajuda. */
 const HELP_HOME_FAQ = ['faq-como-escolhe','faq-area','faq-revisoes-como','faq-dominio','faq-onde-dados'];
@@ -2103,8 +2108,8 @@ const CONTEXT_HELP = {
                       tip:'A ordem dentro da disciplina: tópicos mais prioritários aparecem antes nas revisões. Não muda o tempo da disciplina.' },
   importancia:      { title:'Prioridade do tópico', article:'prioridade-topico',
                       tip:'A ordem dentro da disciplina, principalmente nas revisões.' },
-  estrutura:        { title:'Área de Estudo → Disciplina → Tópico', article:'estrutura-conteudo',
-                      tip:'A Área de Estudo organiza (é opcional), a disciplina é o que você estuda e o tópico é uma parte dela.' },
+  estrutura:        { title:'Área → Disciplina → Tópico', article:'estrutura-conteudo',
+                      tip:'A área organiza (é opcional), a disciplina é o que você estuda e o tópico é uma parte dela. Ex.: Tecnologia › Redes de Computadores › OSPF.' },
   areaEstudo:       { term:'areaEstudo' },
   prazo:            { term:'prazo' },
   escopo:           { title:'O que analisar', article:'analises',
@@ -2114,14 +2119,14 @@ const CONTEXT_HELP = {
   calendario:       { title:'Calendário', article:'calendario',
                       tip:'Clique em um dia para ver os detalhes, ou use "Selecionar intervalo" para escolher vários dias.' },
   atencao:          { title:'Tópicos que merecem atenção', article:'analises-observacoes',
-                      tip:'Escolhidos por fatos: revisão atrasada, esquecimentos, domínio baixo, prazo próximo.' },
+                      tip:'Escolhidos por fatos: revisão atrasada, esquecimentos, pouca consolidação, prazo próximo.' },
   insights:         { title:'Observações', article:'analises-observacoes',
                       tip:'Fatos calculados dos seus registros. Descrevem o que aconteceu, sem supor causas.' },
   minimo:           { term:'minimoSemanal' },
   aderencia:        { title:'Plano cumprido', article:'planejado-realizado',
-                      tip:'Quanto do tempo planejado foi realmente estudado. Também chamado de aderência.' },
+                      tip:'Quanto do tempo planejado foi realmente estudado.' },
   cobertura:        { title:'Conteúdo estudado', article:'cobertura-dominio',
-                      tip:'Proporção de tópicos que já receberam pelo menos uma sessão. Também chamado de cobertura.' },
+                      tip:'A parte dos tópicos que você já estudou pelo menos uma vez.' },
   dominio:          { term:'dominio' },
   creditos:         { term:'credito' },
   revisao:          { title:'Revisão espaçada', article:'quando-revisar',
@@ -2133,7 +2138,7 @@ const CONTEXT_HELP = {
                       tip:'Cada semana guarda o plano que valia nela; mudar o plano não reescreve o passado.' },
   distribuicao:     { title:'Distribuição', article:'distribuicao',
                       tip:'Respeita os mínimos, divide o resto por prioridade e fecha no total exato.' },
-  tiposessao:       { title:'Tipo de sessão', article:'sessoes',
+  tiposessao:       { title:'Tipo de estudo', article:'sessoes',
                       tip:'Classificar ajuda a ver a proporção entre teoria e prática.' },
   estrategia:       { term:'estrategiaRevisao' },
   metodo:           { term:'metodoRevisao' },
@@ -2156,12 +2161,12 @@ const SCREEN_HELP = {
                 articles:['planejamento','distribuicao','plano-base'] },
   reviews:    { title:'Revisões',
                 intro:'Tópicos estudados voltam automaticamente para revisão, em intervalos que se adaptam.',
-                points:['O que é para agora aparece primeiro, começando pelo que corre mais risco de ser esquecido.','"Revisar por 20 min" monta uma sessão com as mais importantes que cabem nesse tempo.','O resultado que você informa ajusta o próximo intervalo.','As próximas revisões ficam recolhidas no fim da tela.'],
+                points:['O que é para agora aparece primeiro, começando pelo que corre mais risco de ser esquecido.','"Revisar por 20 min" escolhe as mais importantes que cabem nesse tempo.','O resultado que você informa ajusta quando o tópico volta.','As próximas revisões ficam recolhidas no fim da tela.'],
                 cta:{ action:'openReviews', label:'Ver a fila de revisões' },
                 articles:['o-que-e-revisao','quando-revisar','metodos-revisao','fila-revisao'] },
   disciplines:{ title:'Disciplinas',
-                intro:'Aqui fica a estrutura do conteúdo — Área de Estudo → Disciplina → Tópico — e, na aba Prazos, o que está chegando.',
-                points:['Só a disciplina é obrigatória. A Área de Estudo é opcional e não tem prioridade.','Clique numa disciplina para ver e adicionar tópicos.','A prioridade só aparece na lista quando foge do padrão (Mediana).','Prazos próximos dão mais atenção à disciplina ou ao tópico ligado a eles.'],
+                intro:'Seus estudos organizados como um índice: Área → Disciplina → Tópico. Na aba Prazos, o que está chegando.',
+                points:['Só a disciplina é obrigatória. A área é opcional e não tem prioridade.','Abra uma área para ver as disciplinas dela; abra uma disciplina para ver os tópicos. "Disciplinas", no caminho do topo, volta ao índice.','As barrinhas mostram a prioridade, de 1 a 5. Na página da disciplina ou do tópico, clique nelas para mudar.','Prazos próximos dão mais atenção à disciplina ou ao tópico ligado a eles.'],
                 cta:{ action:'addDiscipline', label:'Adicionar uma disciplina' },
                 articles:['estrutura-conteudo','topicos','prioridades','prazos'] },
   analytics:  { title:'Análises',
@@ -2169,8 +2174,8 @@ const SCREEN_HELP = {
                 points:['O resultado mostra um resumo, poucos números, um gráfico e os principais insights.','"Alterar análise" volta às escolhas sem perder o resultado atual.','"Explorar mais" guarda calendário, distribuição e outras visões — cada uma abre só quando você pedir.','"Exportar" copia um resumo ou baixa o relatório em .txt da análise atual.'],
                 articles:['analises','analises-como-ler','calendario','relatorio'] },
   history:    { title:'Histórico',
-                intro:'Todas as sessões registradas, organizadas por dia.',
-                points:['A busca procura em disciplina, área, tópico e comentário.','"Filtros" abre um painel; os filtros ativos aparecem abaixo da busca e saem com um clique.','Clique numa sessão para editar ou remover. Editar recalcula os créditos pela regra da disciplina.'],
+                intro:'Todos os estudos registrados, organizados por dia.',
+                points:['A busca procura em disciplina, área, tópico e comentário.','"Filtros" abre um painel; os filtros ativos aparecem abaixo da busca e saem com um clique.','Clique num estudo para editar ou remover. Editar recalcula os créditos pela regra da disciplina.'],
                 articles:['sessoes','registro-manual','creditos'] },
   data:       { title:'Dados',
                 intro:'Backup, restauração e informações de privacidade.',
@@ -2221,7 +2226,7 @@ const HOW_TO_START = [
     text:'Pode ser uma matéria, um idioma, uma certificação, um instrumento — qualquer coisa que você queira aprender.',
     example:'Matemática · Inglês · Anatomia · CCNA · Violão',
     action:'addDiscipline', actionLabel:'Adicionar agora' },
-  { id:'session', title:'Comece uma sessão',
+  { id:'session', title:'Comece a estudar',
     text:'Escolha o que vai estudar e quanto tempo. O Ciclo conta o tempo para você.',
     example:'Inglês · 20 minutos',
     action:'quickStart', actionLabel:'Começar a estudar' },
@@ -2257,6 +2262,7 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 };
 
 const CHANGELOG = [
+  { v:'6.1', d:'Human Interface / Calm Structure. Disciplinas virou um índice navegável: Disciplinas → Área → Disciplina → Tópico, com caminho no topo (e "voltar" no celular). Uma área criada aparece mesmo vazia, com convite para adicionar a primeira disciplina; dá para criar a área no próprio formulário da disciplina, e renomear, arquivar ou excluir pela página da área. A prioridade ganhou um único símbolo para 1 a 5, em todo lugar, e pode ser mudada direto no detalhe. Linguagem mais simples em toda a interface ("Começar a estudar", "Registrar estudo", "Quando revisar", "Como revisar", "Consolidação"). Mais espaço, menos maiúsculas e movimento mais suave ao navegar. Nenhum dado foi alterado.' },
   { v:'6.0', d:'Zero Visual Noise. Nova linguagem visual, mais calma: menos caixas, bordas, cores e informação ao mesmo tempo, com mais hierarquia e espaço. Cada tela responde uma pergunta. Hoje mostra uma recomendação e o que vem a seguir; Revisões começa pelo que é para agora; Planejamento mostra a divisão da semana e guarda os detalhes em "Ajustar"; Disciplinas ganhou uma aba de Prazos; o Histórico virou uma leitura por dia, com filtros num painel; Configurações foi organizada em grupos. Análises foi reconstruída: primeiro você escolhe o que analisar, o período e o que quer ver; depois recebe um resumo, poucos números, um gráfico principal e os principais insights, com aprofundamento sob demanda em "Explorar mais". Nenhum dado foi alterado.' },
   { v:'5.3', d:'Central de Ajuda reconstruída: dois caminhos claros (Usar o Ciclo e Aprender a estudar), busca com navegação por teclado e resultados ranqueados, artigos com estrutura única e exemplos, glossário contextual que explica um termo sem tirar você da página, FAQ organizado por assunto e caminho de volta previsível em qualquer ponto.' },
   { v:'5.2.1', d:'Revisão geral de estabilidade, interface, integrações, acessibilidade e acabamento pré-lançamento. Seus dados, revisões, prazos e planos continuam exatamente como estavam.' },

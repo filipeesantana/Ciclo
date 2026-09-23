@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="color-scheme" content="dark light">
-<meta name="description" content="Ciclo é um sistema de estudos que roda no seu navegador: organize o que você estuda, registre suas sessões, receba revisões no momento certo e acompanhe seu progresso — sem conta e sem servidor.">
+<meta name="description" content="Ciclo é um sistema de estudos que roda no seu navegador: organize o que você estuda, registre seus estudos, receba revisões no momento certo e acompanhe seu progresso — sem conta e sem servidor.">
 <meta name="application-name" content="Ciclo">
 <title>Ciclo — Seu sistema de estudos</title>
 <link rel="stylesheet" href="styles.css">
@@ -28,6 +28,8 @@
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol>
   <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.2a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4"/><path d="M12 17.4h.01"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
@@ -115,17 +117,17 @@
       </section>
 
       <section id="view-plan" class="view" aria-labelledby="h-plan">
-        <div class="page-head"><h2 id="h-plan">Planejamento</h2><p class="sub">Como distribuir o seu tempo.</p></div>
+        <div class="page-head"><h2 id="h-plan">Planejamento</h2><p class="sub">Quanto tempo você tem e como ele se divide.</p></div>
         <div id="plan-body" class="view-body"></div>
       </section>
 
       <section id="view-reviews" class="view" aria-labelledby="h-reviews">
-        <div class="page-head"><h2 id="h-reviews">Revisões</h2><p class="sub">O que precisa ser revisado.</p></div>
+        <div class="page-head"><h2 id="h-reviews">Revisões</h2><p class="sub">O que precisa revisar?</p></div>
         <div id="reviews-body" class="view-body"></div>
       </section>
 
       <section id="view-disciplines" class="view" aria-labelledby="h-disc">
-        <div class="page-head"><h2 id="h-disc">Disciplinas</h2><p class="sub">O que você estuda e o que está chegando.</p></div>
+        <div class="page-head"><h2 id="h-disc">Disciplinas</h2><p class="sub">O que você está estudando e o que está chegando.</p></div>
         <div id="disciplines-body" class="view-body"></div>
       </section>
 
@@ -215,7 +217,7 @@
     <p class="focus-clock num" id="focus-clock">00:00:00</p>
     <p class="focus-state" id="focus-state"></p>
     <div class="focus-actions" id="focus-actions"></div>
-    <p class="focus-hint">Esc sai do modo foco sem finalizar a sessão.</p>
+    <p class="focus-hint">Esc sai do modo foco sem encerrar o estudo.</p>
   </div>
 </div>
 

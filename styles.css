@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO v6.0.0 — folha de estilo única · Zero Visual Noise
+   CICLO v6.1.0 — folha de estilo única · Human Interface / Calm Structure
    (antes "Diário de Estudos")
 
    Organização:
@@ -8,6 +8,7 @@
      11 OVERLAYS · 12 SCREENS · 13 HELP & CONTACT · 14 ANALYTICS
      15 ONBOARDING & GUIDES · 16 MOTION · 17 RESPONSIVE · 18 ACCESSIBILITY
      19 V6 — COMPOSIÇÃO SEM RUÍDO (blocos, linhas, Análises v6)
+     20 V6.1 — CALM STRUCTURE (índice navegável, prioridade, ritmo editorial)
 
    v6 — princípios visuais:
      · tipografia e espaço fazem a hierarquia; caixas só para unidades independentes;
@@ -113,8 +114,8 @@
   --radius-xs:        4px;
   --radius-sm:        7px;
   --radius-md:        9px;
-  --radius-lg:        12px;
-  --radius-xl:        16px;
+  --radius-lg:        10px;       /* v6.1: menos arredondado — nem tudo é cartão */
+  --radius-xl:        14px;
 
   /* tipografia — somente fontes do sistema */
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
@@ -132,7 +133,7 @@
   /* movimento */
   --motion-fast:      120ms;
   --motion-base:      180ms;
-  --motion-slow:      260ms;
+  --motion-slow:      250ms;
   --ease-standard:    cubic-bezier(.2,.8,.2,1);
   --ease-emphasized:  cubic-bezier(.16,1,.3,1);
   --ease-exit:        cubic-bezier(.4,0,1,1);
@@ -143,8 +144,9 @@
   --pad-row:  10px;
 
   /* v6 — ritmo vertical entre blocos e largura de leitura */
-  --space-block: 40px;        /* entre assuntos diferentes */
-  --space-inner: 14px;        /* dentro de um assunto */
+  --space-block: 44px;        /* entre assuntos diferentes (v6.1: mais respiro) */
+  --space-inner: 16px;        /* dentro de um assunto */
+  --space-tight: 10px;        /* elementos intimamente relacionados */
   --measure:     760px;       /* telas de uma coluna */
   --measure-wide:920px;       /* listas com colunas extras */
 
@@ -1092,28 +1094,6 @@ html.focus-active body > .app{ filter:blur(2px); pointer-events:none; user-selec
   font-size:10.5px; font-weight:650; letter-spacing:.09em; text-transform:uppercase;
   color:var(--text-tertiary); margin:0 0 8px;
 }
-.mini-tree{
-  display:inline-flex; flex-direction:column; gap:2px;
-  padding:10px 14px; border-radius:var(--radius-md);
-  background:var(--surface-sunken); border:1px solid var(--border-soft);
-  font-size:13px;
-}
-.mt-row{ display:flex; align-items:center; gap:8px; position:relative }
-.mt-row.lvl1{ padding-left:18px }
-.mt-row.lvl2{ padding-left:36px }
-.mt-row.lvl1::before,.mt-row.lvl2::before{
-  content:""; position:absolute; top:-2px; height:12px; width:8px;
-  border-left:1px solid var(--border-strong); border-bottom:1px solid var(--border-strong); border-radius:0 0 0 3px;
-}
-.mt-row.lvl1::before{ left:5px }
-.mt-row.lvl2::before{ left:23px }
-.mt-tag{ min-width:70px; font-size:10px; font-weight:650; letter-spacing:.07em; text-transform:uppercase; color:var(--text-tertiary) }
-
-.example-line{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px }
-.example-line span{
-  font-size:11.5px; color:var(--text-secondary);
-  padding:2px 9px; border-radius:999px; background:var(--surface-sunken); border:1px solid var(--border-soft);
-}
 .inline-new{ margin-top:8px }
 .inline-new[hidden]{ display:none!important }
 .req{ color:var(--danger) }
@@ -1124,53 +1104,51 @@ html.focus-active body > .app{ filter:blur(2px); pointer-events:none; user-selec
 .check-row{ display:flex; align-items:center; gap:10px; margin:0; padding:6px 0; font-size:13.5px; color:var(--text); cursor:pointer }
 .check-row.strong{ font-weight:500 }
 
-/* ---------- v5.2 · seletor de prioridade ---------- */
-.prio-label{ display:flex; align-items:center; font-size:12.5px; font-weight:500; color:var(--text-secondary); margin-bottom:8px }
+/* ---------- v6.1 · prioridade: uma linguagem para 1–5 ----------
+   Cinco hastes em escada. A quantidade preenchida é o nível; a cor só
+   reforça (latão nos níveis 4 e 5). Transição curta ao preencher/esvaziar. */
+.prio-glyph{ display:inline-flex; align-items:flex-end; gap:2px; height:12px; flex-shrink:0; --prio-ink:var(--text-secondary) }
+.prio-glyph i{
+  display:block; width:3px; border-radius:1px; background:var(--border-strong);
+  transition:background-color var(--motion-base) var(--ease-standard);
+}
+.prio-glyph i:nth-child(1){ height:4px } .prio-glyph i:nth-child(2){ height:6px } .prio-glyph i:nth-child(3){ height:8px }
+.prio-glyph i:nth-child(4){ height:10px } .prio-glyph i:nth-child(5){ height:12px }
+.prio-glyph i.on{ background:var(--prio-ink) }
+.prio-glyph[data-level="4"],.prio-glyph[data-level="5"]{ --prio-ink:var(--accent) }
+
+.prio-mark{ display:inline-flex; align-items:center; gap:9px; flex-shrink:0; white-space:nowrap; font-size:13px; color:var(--text-secondary) }
+.prio-mark.is-compact{ padding:6px 4px }
+.prio-mark-t{ color:var(--text) }
+
+/* seletor dos formulários */
+.prio-label{ display:flex; align-items:center; font-size:13px; font-weight:500; color:var(--text-secondary); margin-bottom:10px }
 .prio-options{ display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:6px }
 .prio-opt{
   position:relative;
-  display:flex; flex-direction:column; align-items:center; gap:3px;
-  padding:9px 4px 8px; min-height:58px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+  padding:12px 4px 10px; min-height:64px;
   border:1px solid var(--border); border-radius:var(--radius-md);
-  background:var(--surface); color:var(--text-secondary);
+  background:transparent; color:var(--text-secondary);
   transition:border-color var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard),
              color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
 }
+.prio-opt .prio-glyph{ height:14px }
+.prio-opt .prio-glyph i{ width:3.5px }
+.prio-opt .prio-glyph i:nth-child(1){ height:5px } .prio-opt .prio-glyph i:nth-child(2){ height:7px } .prio-opt .prio-glyph i:nth-child(3){ height:9.5px }
+.prio-opt .prio-glyph i:nth-child(4){ height:12px } .prio-opt .prio-glyph i:nth-child(5){ height:14px }
 .prio-opt:hover{ border-color:var(--border-strong); background:var(--surface-hover); color:var(--text) }
 .prio-opt:active{ transform:scale(.97) }
-.prio-num{
-  width:26px; height:26px; border-radius:50%;
-  display:inline-flex; align-items:center; justify-content:center;
-  border:1.5px solid var(--border-strong); font-size:13px; font-weight:600; color:var(--text);
-  transition:background-color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
-}
-.prio-word{ font-size:11px; line-height:1.2; text-align:center }
+.prio-word{ font-size:11.5px; line-height:1.25; text-align:center }
 .prio-opt[aria-checked="true"]{
   border-color:var(--primary); background:var(--primary-tint); color:var(--text);
   box-shadow:inset 0 0 0 1px var(--primary);
 }
-.prio-opt[aria-checked="true"] .prio-num{ background:var(--primary); border-color:var(--primary); color:var(--on-primary) }
-.prio-opt[aria-checked="true"] .prio-word{ font-weight:600 }
-.prio-desc{ margin-top:8px; font-size:12.5px; color:var(--text-secondary); line-height:1.45; min-height:1.45em }
-.prio-desc strong{ color:var(--text); font-weight:600 }
-
-/* selo compacto — número + texto, barras só reforçam */
-.prio-chip{
-  display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
-  padding:1px 8px 1px 6px; border-radius:999px;
-  font-size:11.5px; font-weight:550; line-height:1.6;
-  background:var(--surface-hover); color:var(--text-secondary); border:1px solid transparent;
-}
-.prio-chip.compact{ padding:0 7px 0 5px; font-size:11px }
-.prio-bars{ display:inline-flex; align-items:flex-end; gap:1.5px; height:10px }
-.prio-bars i{ display:block; width:2.5px; border-radius:1px; background:var(--border-strong) }
-.prio-bars i:nth-child(1){ height:4px } .prio-bars i:nth-child(2){ height:5.5px } .prio-bars i:nth-child(3){ height:7px }
-.prio-bars i:nth-child(4){ height:8.5px } .prio-bars i:nth-child(5){ height:10px }
-.prio-bars i.on{ background:currentColor }
-.prio-chip.p4,.prio-chip.p5{ background:var(--accent-soft); color:var(--accent) }
-.prio-chip.p5{ border-color:var(--accent-line) }
-.prio-chip.p3{ color:var(--text) }
-.prio-chip.p1,.prio-chip.p2{ color:var(--text-tertiary) }
+.prio-opt[aria-checked="true"] .prio-word{ font-weight:550 }
+.prio-desc{ display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 10px; margin-top:12px; font-size:13px; color:var(--text-secondary); line-height:1.5; min-height:1.5em }
+.prio-desc .prio-glyph{ align-self:center; --prio-ink:var(--text) }
+.prio-desc .prio-glyph[data-level="4"],.prio-desc .prio-glyph[data-level="5"]{ --prio-ink:var(--accent) }
+.prio-desc strong{ color:var(--text); font-weight:550 }
 
 /* ---------- v5.2 · prazos ---------- */
 .dl-when{ display:flex; flex-direction:column; gap:1px; margin-top:2px }
@@ -1795,9 +1773,9 @@ html[data-theme="light"] .cal-day.edge .lv{ background:rgba(255,255,255,.75)!imp
 @keyframes fadeUp{ from{ opacity:0; transform:translateY(6px) } to{ opacity:1; transform:none } }
 @keyframes pop{ from{ opacity:0; transform:scale(.97) } to{ opacity:1; transform:none } }
 @keyframes overlayIn{ from{ opacity:0 } to{ opacity:1 } }
-@keyframes modalIn{ from{ opacity:0; transform:translateY(6px) scale(.975) } to{ opacity:1; transform:none } }
-@keyframes drawerIn{ from{ opacity:.4; transform:translateX(32px) } to{ opacity:1; transform:none } }
-@keyframes sheetIn{ from{ opacity:.4; transform:translateY(40px) } to{ opacity:1; transform:none } }
+@keyframes modalIn{ from{ opacity:0; transform:scale(.985) } to{ opacity:1; transform:none } }   /* v6.1: escala mínima, sem deslocamento */
+@keyframes drawerIn{ from{ opacity:.4; transform:translateX(20px) } to{ opacity:1; transform:none } }   /* v6.1: movimento curto e físico */
+@keyframes sheetIn{ from{ opacity:.4; transform:translateY(28px) } to{ opacity:1; transform:none } }
 @keyframes toastIn{ from{ opacity:0; transform:translateY(12px) scale(.97) } to{ opacity:1; transform:none } }
 @keyframes slideDown{ from{ opacity:0; transform:translateY(-8px) } to{ opacity:1; transform:none } }
 @keyframes contentSwap{ from{ opacity:.35; transform:translateY(4px) } to{ opacity:1; transform:none } }
@@ -2193,35 +2171,9 @@ button.line-main:hover{ background:var(--surface-hover) }
 .panel-actions{ display:flex; gap:8px; flex-wrap:wrap }
 .panel-help{ display:flex; align-items:center; font-size:13px; color:var(--text-secondary); max-width:56ch; line-height:1.5 }
 .panel-foot{ margin-top:26px }
-.hierarchy-legend{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:12.5px; color:var(--text-tertiary) }
-.hierarchy-legend .sep,.detail-path .sep{ color:var(--text-tertiary); opacity:.7 }
+.detail-path .sep{ color:var(--text-tertiary); opacity:.7 }
 
-/* ---------- disciplinas ---------- */
-.area-section{ margin-top:34px }
-.area-head{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding-bottom:8px; border-bottom:1px solid var(--border) }
-.area-name{ font-size:20px; line-height:1.2; letter-spacing:-.012em; overflow-wrap:anywhere }
-.area-count{ font-size:12px; color:var(--text-tertiary); flex:1 }
-.area-section.is-loose .area-name{ color:var(--text-secondary) }
-.area-empty{ font-size:13px; color:var(--text-secondary); padding:12px 0 }
-.disc-list{ display:flex; flex-direction:column }
-.disc-row{ display:flex; align-items:center; gap:12px; padding:4px 0; border-bottom:1px solid var(--border-soft) }
-.disc-row:last-child{ border-bottom:none }
-.disc-row.is-archived{ opacity:.65 }
-.dr-main{
-  flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; text-align:left;
-  padding:9px 8px; margin-left:-8px; border-radius:var(--radius-sm); color:inherit;
-  transition:background-color var(--motion-fast) var(--ease-standard);
-}
-.dr-main:hover{ background:var(--surface-hover) }
-.dr-t{ display:flex; align-items:center; font-size:15px; font-weight:600; color:var(--text); overflow-wrap:anywhere }
-.dr-s{ display:flex; flex-wrap:wrap; gap:0 6px; font-size:12.5px; color:var(--text-secondary) }
-.dr-s > span + span::before{ content:"·"; margin-right:6px; color:var(--text-tertiary) }
-.dr-side{ display:flex; align-items:center; gap:10px; flex-shrink:0 }
-.dr-cov{ font-size:12.5px; color:var(--text-secondary); white-space:nowrap }
-.dr-cov .num{ color:var(--text) }
-.dr-play{ border-color:transparent; color:var(--text-tertiary) }
-.dr-play:hover{ color:var(--primary); border-color:var(--border) }
-
+/* ---------- disciplinas (v6.1: ver seção 20 · índice navegável) ---------- */
 .inline-note{
   display:flex; align-items:center; justify-content:space-between; gap:8px 18px; flex-wrap:wrap;
   font-size:13px; color:var(--text-secondary); line-height:1.5;
@@ -2648,3 +2600,276 @@ button.line-main:hover{ background:var(--surface-hover) }
 .suggestions{ margin-top:18px }
 .suggestion-note + .suggestion-note{ margin-top:8px }
 #help-body{ max-width:var(--measure-wide) }
+
+
+/* =========================================================================
+   20 · V6.1 — CALM STRUCTURE / HUMAN INTERFACE
+   Continuação da v6: nada de decoração nova. O que muda é ritmo, leitura e
+   movimento. Referência de organização: um caderno muito bem indexado —
+   seção → subseção → conteúdo, com espaço para respirar.
+
+   · rótulos de seção em caixa normal (não mais VERSALETE em toda parte);
+   · pesos moderados: 400 texto, 500 ênfase, 600 raro;
+   · linhas navegáveis com › no lugar de cartões estruturais;
+   · movimento espacial curto ao entrar e voltar nos níveis.
+   ========================================================================= */
+
+/* ---------- tipografia: menos versal, menos peso ---------- */
+.block-label,
+.an-block-t{
+  font-family:var(--serif); font-size:19px; font-weight:400; letter-spacing:-.008em;
+  text-transform:none; color:var(--text); margin:0 0 14px; gap:6px;
+}
+.section-label{
+  font-size:12.5px; font-weight:550; letter-spacing:0; text-transform:none; color:var(--text-secondary);
+}
+.nr-label,
+.an-head-k,
+.an-repeat-l,
+.an-pick-group,
+.tree-tag,
+.mt-tag,
+.dp-kicker{
+  font-size:12.5px; font-weight:500; letter-spacing:0; text-transform:none; color:var(--text-tertiary);
+}
+.eyebrow,.ob-step,.ol-tag,.demo-label,.hi-cat,.report-tech-title,.tb-label,.palette-group,.welcome-tag{
+  font-size:12.5px; font-weight:550; letter-spacing:0; text-transform:none;
+}
+.tf-kicker{ font-size:13.5px; font-weight:500; letter-spacing:0; text-transform:none }
+th,.alloc-head{ font-size:12px; letter-spacing:0; text-transform:none; font-weight:550 }
+.insight-k{ font-size:11.5px; letter-spacing:0; text-transform:none; font-weight:550 }
+.timerbar .tb-label{ font-size:12px }
+
+.card-title{ font-weight:550 }
+.nav-item[aria-current="page"]{ font-weight:550 }
+.tab[aria-selected="true"]{ font-weight:600 }
+.set-tab[aria-selected="true"]{ font-weight:550 }
+.chip[aria-pressed="true"],.chip.active{ font-weight:550 }
+.an-chip[aria-checked="true"]{ font-weight:550 }
+.an-option-t{ font-weight:550 }
+.fab{ font-weight:600 }
+.day-head{ font-weight:600 }
+.dr-t,.ix-t{ font-weight:500 }
+.line-t,.nr-title,.dl-line-t,.al-t,.an-pick-t,.an-explore-l{ font-weight:500 }
+.fact-v{ font-size:17px; font-weight:500 }
+.fact-l{ font-size:12.5px }
+.stat .v.is-text{ font-weight:550 }
+.dl-when strong{ font-weight:550 }
+.empty strong{ font-size:20px }
+
+/* estado discreto: uma palavra, não um selo */
+.state-tag{
+  border:0; padding:0; margin-left:2px; border-radius:0;
+  font-size:12.5px; font-weight:400; font-style:italic; color:var(--text-tertiary); line-height:inherit;
+}
+
+/* ---------- ritmo e respiro ---------- */
+body{ line-height:1.6 }
+.page-head{ margin-bottom:32px }
+.page-head .sub{ margin-top:8px }
+.toolbar{ margin-bottom:30px }
+.tabs{ margin-bottom:28px }
+.panel-bar{ margin-bottom:18px; gap:12px 20px }
+.panel-foot{ margin-top:28px; display:flex; flex-wrap:wrap; gap:10px 22px }
+.line{ padding:13px 0 }
+.next-row{ padding:16px 0 }
+.nr-main{ gap:3px }
+.kv-list > div{ padding:11px 0 }
+.field{ margin-bottom:18px }
+label{ margin-bottom:7px }
+.hint{ margin-top:6px }
+.modal{ padding:28px }
+.modal h3{ margin-bottom:8px }
+.modal .modal-sub{ margin-bottom:20px }
+.modal-actions{ margin-top:26px; padding-top:18px }
+.drawer-head{ padding:20px 26px }
+.drawer-body{ padding:24px 26px 36px }
+.detail-actions{ margin-top:22px }
+.inline-note{ margin:16px 0 4px; padding:12px 0 12px 14px }
+.advanced-body{ padding:16px 18px }
+
+/* ---------- feedback de toque/clique: curto e físico ---------- */
+.btn:active{ transform:scale(.985) }
+.icon-btn:active{ transform:scale(.96) }
+
+/* ---------- Disciplinas: o índice ---------- */
+.view.is-deep > .page-head{ display:none }
+.disc-screen{ max-width:var(--measure) }
+
+.panel-lead{ display:flex; align-items:center; font-size:14.5px; color:var(--text-secondary); line-height:1.5 }
+
+.ix-list{ display:flex; flex-direction:column; border-top:1px solid var(--border-soft) }
+.ix-row{ display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--border-soft) }
+.ix-main{
+  flex:1; min-width:0;
+  display:flex; align-items:center; gap:14px;
+  min-height:66px; padding:12px 12px; margin:0 -12px;
+  text-align:left; color:inherit; border-radius:var(--radius-sm);
+  transition:background-color var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
+  -webkit-tap-highlight-color:transparent;
+}
+.ix-main:active{ transform:scale(.992) }
+.ix-main:focus-visible{ outline-offset:-2px }
+.ix-text{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px }
+.ix-t{ display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 8px; font-size:16px; line-height:1.35; color:var(--text); overflow-wrap:anywhere }
+.ix-s{ display:flex; flex-wrap:wrap; gap:0 6px; font-size:13px; line-height:1.45; color:var(--text-secondary) }
+.ix-s > span + span::before{ content:"·"; margin-right:6px; color:var(--text-tertiary) }
+.ix-go{
+  width:16px; height:16px; flex-shrink:0; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;
+  color:var(--text-tertiary);
+  transition:color var(--motion-fast) var(--ease-standard), transform var(--motion-base) var(--ease-standard);
+}
+.ix-row.is-loose .ix-name{ color:var(--text-secondary); font-style:italic }
+.ix-row.is-archived .ix-name{ color:var(--text-secondary) }
+.ix-list.is-topics .ix-main{ min-height:58px; gap:12px }
+.ix-list.is-topics .ix-t{ font-size:15px }
+.ix-row .row-actions{ gap:2px; padding-left:4px }
+@media (hover:hover) and (pointer:fine){
+  /* reordenar é ocasional: aparece ao passar o mouse ou com foco do teclado */
+  .ix-row .row-actions{ opacity:0; transition:opacity var(--motion-fast) var(--ease-standard) }
+  .ix-row:hover .row-actions,.ix-row .row-actions:focus-within{ opacity:1 }
+}
+.ix-archived{ margin-top:14px }
+.ix-empty{ padding:22px 0 6px }
+.ix-empty > p:first-child{ font-family:var(--serif); font-size:20px; line-height:1.3; letter-spacing:-.008em; color:var(--text) }
+.ix-empty-s{ font-size:13.5px; line-height:1.55; color:var(--text-secondary); max-width:58ch; margin-top:6px }
+
+/* cabeçalho de nível: caminho, título, contexto */
+.level-head{ margin-bottom:6px }
+.level-nav{ min-height:22px; margin-bottom:16px }
+.crumbs ol{ display:flex; flex-wrap:wrap; align-items:center; font-size:13px; line-height:1.5; color:var(--text-tertiary) }
+.crumbs li{ display:inline-flex; align-items:center; min-width:0 }
+.crumbs li + li::before{ content:"›"; margin:0 9px; color:var(--text-tertiary); opacity:.75 }
+.crumb-link{
+  color:var(--text-secondary); padding:2px 5px; margin:-2px -5px; border-radius:var(--radius-xs);
+  transition:color var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard);
+}
+.crumb-link:hover{ color:var(--text); background:var(--surface-hover) }
+.crumbs [aria-current="page"]{ color:var(--text-secondary) }
+.crumb-back{ display:none }
+.level-title{
+  display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 14px;
+  font-family:var(--serif); font-size:var(--fs-display); font-weight:400; line-height:1.15; letter-spacing:-.018em;
+  overflow-wrap:anywhere;
+}
+.level-title:focus{ outline:none }
+.level-title:focus-visible{ outline:2px solid var(--primary); outline-offset:6px; border-radius:var(--radius-xs) }
+.level-title .state-tag{ font-family:var(--sans); font-size:14px; letter-spacing:0 }
+.level-sub{ font-size:14.5px; color:var(--text-secondary); margin-top:8px; line-height:1.5 }
+.level-actions{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:22px 0 30px }
+.level-actions .linkbtn{ margin-left:6px }
+.level-section{ margin-top:var(--space-block) }
+.section-head{ display:flex; align-items:baseline; gap:10px; margin-bottom:12px }
+.section-title{ display:flex; align-items:center; font-family:var(--serif); font-size:19px; font-weight:400; letter-spacing:-.008em; color:var(--text) }
+.section-count{ font-family:var(--mono); font-size:12.5px; color:var(--text-tertiary) }
+.disc-screen .facts{ margin:26px 0 0; gap:16px 24px }
+.disc-screen .kv-list{ margin-top:22px }
+.topic-add-row{ display:flex; gap:8px; margin-top:18px }
+.topic-bulk{ display:inline-block; margin-top:12px }
+
+/* convite contextual depois de criar uma área (não bloqueia nada) */
+.invite{
+  margin-top:10px; padding:18px 20px 18px 18px;
+  border-left:2px solid var(--primary); background:var(--primary-tint);
+  border-radius:0 var(--radius-md) var(--radius-md) 0;
+  animation:fadeUp var(--motion-slow) var(--ease-standard);
+}
+.invite-t{ font-family:var(--serif); font-size:19px; line-height:1.3; letter-spacing:-.008em }
+.invite-s{ font-size:14px; color:var(--text-secondary); margin-top:3px }
+.invite-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:16px }
+
+/* prioridade editável no detalhe: as hastes são os botões */
+.pi-field{ margin-top:20px }
+.pi-row{ display:flex; align-items:flex-end; flex-wrap:wrap; gap:8px 14px }
+.pi-label{ font-size:13px; line-height:1.3; color:var(--text-secondary); min-width:74px; padding-bottom:5px }
+.pi-group{ display:inline-flex; align-items:flex-end; gap:1px; height:34px }
+.pi-bar{
+  display:flex; align-items:flex-end; justify-content:center;
+  width:18px; height:34px; padding:0 6px 4px; border-radius:var(--radius-xs);
+  transition:background-color var(--motion-fast) var(--ease-standard);
+}
+.pi-bar i{
+  display:block; width:100%; border-radius:2px; background:var(--border-strong); transform-origin:bottom;
+  transition:background-color var(--motion-base) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
+}
+.pi-bar:nth-child(1) i{ height:7px } .pi-bar:nth-child(2) i{ height:11px } .pi-bar:nth-child(3) i{ height:15px }
+.pi-bar:nth-child(4) i{ height:19px } .pi-bar:nth-child(5) i{ height:23px }
+.pi-bar.on i{ background:var(--text-secondary) }
+.pi-group[data-level="4"] .pi-bar.on i,.pi-group[data-level="5"] .pi-bar.on i{ background:var(--accent) }
+.pi-bar:active i{ transform:scaleY(.9) }
+.pi-bar:focus-visible{ outline-offset:0 }
+.pi-text{ font-size:14px; line-height:1.3; font-weight:500; color:var(--text); padding-bottom:5px }
+.pi-hint{ font-size:13px; line-height:1.5; color:var(--text-tertiary); margin-top:6px; max-width:60ch; padding-left:88px }
+
+/* painel rápido do tópico (outras telas) */
+.topic-drawer .detail-prio{ margin:2px 0 4px }
+
+/* ---------- movimento: profundidade espacial, curta ---------- */
+.disc-screen.nav-forward{ animation:navForward var(--motion-slow) var(--ease-standard) }
+.disc-screen.nav-back{ animation:navBack var(--motion-slow) var(--ease-standard) }
+@keyframes navForward{ from{ opacity:0; transform:translateX(10px) } to{ opacity:1; transform:none } }
+@keyframes navBack{ from{ opacity:0; transform:translateX(-10px) } to{ opacity:1; transform:none } }
+
+/* abrir/fechar seções recolhidas: altura + opacidade, onde o navegador permite */
+@supports (interpolate-size: allow-keywords){
+  :root{ interpolate-size:allow-keywords }
+  details::details-content{
+    block-size:0; overflow:hidden;
+    transition:block-size var(--motion-base) var(--ease-standard), content-visibility var(--motion-base) allow-discrete;
+  }
+  details[open]::details-content{ block-size:auto }
+}
+
+/* hover só onde existe ponteiro fino — e sem "saltar" */
+@media (hover:hover) and (pointer:fine){
+  .ix-main:hover{ background:var(--surface-hover) }
+  .ix-main:hover .ix-go{ color:var(--text-secondary); transform:translateX(2px) }
+  .pi-bar:hover{ background:var(--surface-hover) }
+  /* prévia: passar sobre a 4ª haste mostra como ficaria em 4 */
+  .pi-group:hover .pi-bar i{ background:var(--border-strong) }
+  .pi-group:hover .pi-bar:hover i,
+  .pi-group:hover .pi-bar:has(~ .pi-bar:hover) i{ background:var(--text-secondary) }
+}
+
+/* ---------- celular: um nível por vez, voltar sempre à mão ---------- */
+@media (max-width:860px){
+  .crumbs{ display:none }
+  .level-nav{ margin-bottom:8px }
+  .crumb-back{
+    display:inline-flex; align-items:center; gap:2px; max-width:100%;
+    min-height:44px; padding:8px 12px 8px 4px; margin-left:-6px;
+    font-size:15px; color:var(--text-secondary); border-radius:var(--radius-sm);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .crumb-back span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  .crumb-back .btn-icon{ width:20px; height:20px }
+  .crumb-back:active{ background:var(--surface-hover) }
+  .level-title{ font-size:26px }
+  .level-actions{ margin:18px 0 24px }
+  .ix-main{ min-height:62px; padding:12px 8px; margin:0 -8px; gap:12px }
+  .ix-t{ font-size:15.5px }
+  .pi-hint{ padding-left:0 }
+  .pi-bar{ width:28px; height:40px; padding:0 11px 5px }
+  .pi-group{ height:40px }
+  .modal{ padding:22px 20px }
+  .page-head{ margin-bottom:20px }
+}
+@media (max-width:380px){
+  .ix-row .row-actions .icon-btn.mini{ width:30px }
+}
+@media (hover:none),(pointer:coarse){
+  .ix-row .row-actions .icon-btn.mini{ width:34px; height:40px }
+}
+@media (prefers-reduced-motion: reduce){
+  .disc-screen.nav-forward,.disc-screen.nav-back,.invite{ animation:none }
+}
+
+/* Ajuda também sem versalete: o caminho e os subtítulos leem como texto */
+.help-result .hr-path,
+.help-group .help-group-title,
+.card > .help-group-title{ font-size:12.5px; font-weight:500; letter-spacing:0; text-transform:none }
+.help-article h4{
+  font-family:var(--serif); font-size:18px; font-weight:400; letter-spacing:-.006em; text-transform:none;
+  color:var(--text); margin:28px 0 8px;
+}
+.hi-cat{ color:var(--text-tertiary) }

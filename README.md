@@ -1,6 +1,6 @@
 # Ciclo
 
-**Seu sistema de estudos.** Organize o que você estuda, registre suas sessões, receba revisões no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta, sem servidor, sem internet.
+**Seu sistema de estudos.** Organize o que você estuda, registre seus estudos, receba revisões no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta, sem servidor, sem internet.
 
 O nome vem do próprio método: **planejar → estudar → revisar → analisar → reajustar**, e começar de novo.
 
@@ -12,7 +12,7 @@ O nome vem do próprio método: **planejar → estudar → revisar → analisar 
 
 O Ciclo é uma plataforma pessoal de planejamento, revisão e análise de estudos. Você diz o que está estudando e registra o tempo; o Ciclo organiza o conteúdo, lembra quando revisar cada tópico e mostra, em linguagem simples, como está o seu progresso.
 
-Ele é completo, mas não exige que você entenda tudo antes de começar. Abrir o Ciclo, adicionar o que você estuda e iniciar a primeira sessão leva poucos minutos. O resto (tópicos, prioridades, revisões, prazos, planejamento, análises) aparece conforme você usa.
+Ele é completo, mas não exige que você entenda tudo antes de começar. Abrir o Ciclo, adicionar o que você estuda e começar a estudar leva poucos minutos. O resto (tópicos, prioridades, revisões, prazos, planejamento, análises) aparece conforme você usa.
 
 ## Para que serve
 
@@ -29,7 +29,7 @@ Serve para qualquer pessoa e qualquer área: escola, faculdade, concursos, idiom
 ## Como começar
 
 1. **Adicione algo que você estuda.** Uma matéria, um idioma, uma certificação, um instrumento.
-2. **Comece uma sessão.** Escolha quanto tempo quer estudar e o Ciclo conta o tempo para você.
+2. **Comece a estudar.** Escolha quanto tempo quer estudar e o Ciclo conta o tempo para você.
 3. **Adicione tópicos conforme precisar.** Por exemplo, *Matemática → Derivadas*. Não precisa cadastrar tudo de uma vez.
 4. **O Ciclo avisa quando revisar.** Cada tópico estudado volta sozinho no momento certo.
 5. **Organize sua semana quando quiser.** Dizer quantas horas você tem por semana é opcional e melhora as sugestões.
@@ -46,13 +46,13 @@ Cada tela responde a uma pergunta. O que importa aparece primeiro; o resto fica 
 
 **Revisões** — *o que preciso revisar?* Primeiro o que é para agora, começando pelo que corre mais risco de ser esquecido, com um botão para revisar por 20 minutos. As próximas revisões ficam recolhidas logo abaixo.
 
-**Disciplinas** — *o que estou estudando?* Tudo o que você estuda, em Área de Estudo → Disciplina → Tópico. Cada linha mostra só o essencial; o detalhe abre com um clique. A aba **Prazos** responde *o que está chegando?*
+**Disciplinas** — *o que estou estudando?* Tudo o que você estuda, navegado como o índice de um caderno: abra uma área, depois uma disciplina, depois um tópico. Um caminho no topo mostra onde você está (no celular, um botão de voltar). A aba **Prazos** responde *o que está chegando?*
 
 **Análises** — *o que quero entender?* Você escolhe o que analisar, o período e o que quer ver. Depois recebe um resumo, poucos números, um gráfico principal e os principais insights, com mais visões disponíveis quando quiser.
 
-**Histórico** — *o que já fiz?* Todas as sessões, dia a dia, com busca e filtros num painel.
+**Histórico** — *o que já fiz?* Todos os estudos registrados, dia a dia, com busca e filtros num painel.
 
-**Ajuda**: pesquise uma dúvida ou escolha um dos dois caminhos — *Usar o Ciclo* (como a ferramenta funciona) e *Aprender a estudar* (como estudar melhor). Os artigos seguem sempre o mesmo formato: a ideia em uma frase, como funciona, um exemplo e o que fazer depois. Termos como *domínio* e *plano base* se explicam no próprio texto, sem tirar você da página. Cada tela tem também um botão **Ajuda desta tela**.
+**Ajuda**: pesquise uma dúvida ou escolha um dos dois caminhos — *Usar o Ciclo* (como a ferramenta funciona) e *Aprender a estudar* (como estudar melhor). Os artigos seguem sempre o mesmo formato: a ideia em uma frase, como funciona, um exemplo e o que fazer depois. Termos como *consolidação* e *plano semanal* se explicam no próprio texto, sem tirar você da página. Cada tela tem também um botão **Ajuda desta tela**.
 
 No computador, **Ctrl + K** abre uma busca rápida para ir a qualquer tela, disciplina, tópico, prazo ou ação.
 
@@ -70,11 +70,15 @@ Outros exemplos: *Faculdade → Direito Penal → Crimes contra o patrimônio*, 
 
 Só a disciplina é obrigatória. Disciplinas sem Área de Estudo aparecem como **Sem área** e funcionam normalmente; quando fizer sentido, o Ciclo sugere organizá-las de forma discreta, sem insistir.
 
+Uma área criada existe mesmo vazia: ela aparece na lista, abre normalmente e convida (sem obrigar) a adicionar a primeira disciplina. Dá para criar uma área no próprio formulário da disciplina, em *Onde quer organizar?*. Mover uma disciplina de área não mexe em tópicos, estudos, revisões, prazos ou planos.
+
 ## Prioridades
 
 Disciplinas, tópicos e prazos usam a mesma escala:
 
-**1** Muito baixa · **2** Baixa · **3** Mediana (padrão) · **4** Alta · **5** Muito alta
+**1** Muito baixa · **2** Baixa · **3** Média (padrão) · **4** Alta · **5** Muito alta
+
+A prioridade aparece sempre com o mesmo símbolo: cinco barrinhas em escada, e quantas estão preenchidas é o nível. Na página de uma disciplina ou de um tópico, basta clicar nas barrinhas para mudar.
 
 - **Na disciplina**, a prioridade define quanto tempo ela recebe no plano semanal e o peso dela nas sugestões.
 - **No tópico**, define a ordem dentro da disciplina: tópicos mais prioritários aparecem antes nas revisões, que ficam um pouco mais próximas.
@@ -97,10 +101,10 @@ Depois que você estuda um tópico, ele entra sozinho no ciclo de revisão. Quan
 
 - **Quando revisar**: o Ciclo decide o intervalo. Se você lembrou bem, o tópico demora mais para voltar; se esqueceu, volta logo.
 - **Como revisar**: revisar não é reler. O Ciclo sugere um jeito de revisar (tentar lembrar antes de olhar o material, resolver exercícios, explicar com suas palavras, escrever de memória…) e mostra um roteiro curto. Você pode trocar quando quiser.
-- **Sessões de revisão**: com muitas revisões acumuladas, basta dizer quanto tempo você tem. O Ciclo escolhe as mais importantes que cabem nesse tempo, e o restante continua na fila.
+- **Revisar com o tempo que você tem**: com muitas revisões acumuladas, basta dizer quanto tempo você tem. O Ciclo escolhe as mais importantes que cabem nesse tempo, e o restante continua na fila.
 - **Resultado**: ao terminar, você responde como foi (*Esqueci*, *Lembrei com dificuldade*, *Lembrei bem* ou *Dominei*) e o Ciclo ajusta a próxima data.
 
-Quem quiser mais controle pode escolher outras estratégias de revisão (ciclo programado, intensiva para provas, manutenção) por disciplina ou por tópico. Ninguém precisa mexer nisso para usar bem o Ciclo.
+Quem quiser mais controle pode escolher outro ritmo em *Quando revisar* (ciclo programado, intensiva para provas, manutenção) por disciplina ou por tópico. Ninguém precisa mexer nisso para usar bem o Ciclo.
 
 ## Análises
 
@@ -147,8 +151,8 @@ Isso tem duas consequências práticas:
 
 Por isso existe o backup, na tela **Dados**:
 
-- **Backup completo (.json)**: guarda tudo (Áreas de Estudo, disciplinas, tópicos, prioridades, sessões, planos, prazos e configurações). É o arquivo que restaura o Ciclo em outro computador ou depois de limpar o navegador.
-- **Sessões (.csv)**: apenas o histórico de sessões, para abrir numa planilha.
+- **Backup completo (.json)**: guarda tudo (áreas, disciplinas, tópicos, prioridades, estudos registrados, planos, prazos e configurações). É o arquivo que restaura o Ciclo em outro computador ou depois de limpar o navegador.
+- **Histórico (.csv)**: apenas a lista de estudos, para abrir numa planilha.
 
 Ao importar um backup, o Ciclo verifica o arquivo antes de gravar qualquer coisa e pede confirmação. Backups de versões anteriores, inclusive da época do Diário de Estudos, continuam sendo aceitos e são convertidos para o formato atual.
 
@@ -159,10 +163,11 @@ A tela Dados mostra quando foi seu último backup. Exportar de vez em quando e g
 **A ferramenta trabalha para você, não o contrário.**
 
 - **Facilidade antes de configuração.** Tudo tem um padrão sensato; personalizar é opcional.
-- **Cada decisão aparece só quando é necessária.** Você não precisa montar um plano para estudar pela primeira vez, nem escolher uma estratégia de revisão para criar uma disciplina.
+- **Cada decisão aparece só quando é necessária.** Você não precisa montar um plano para estudar pela primeira vez, nem escolher como revisar para criar uma disciplina.
 - **Explicação no momento certo.** Os conceitos são explicados quando aparecem, com exemplo e ação, e não num manual que precisa ser lido antes.
 - **Sugestões que se explicam.** Toda recomendação mostra o motivo em linguagem humana, como *"Faltam 40min de Matemática nesta semana"*.
 - **Menos por vez, mais quando precisar.** Cada tela mostra o que ajuda na decisão do momento; a profundidade continua lá, atrás de um clique.
+- **Palavras comuns.** Se um termo precisa de glossário, primeiro o Ciclo tenta usar uma palavra melhor.
 - **Sério, sem virar jogo.** Sem pontos, rankings ou sequências punitivas. O foco é estudar.
 
 ## Como é feito
@@ -177,18 +182,22 @@ O endereço também está no aplicativo, em **Ajuda** e em **Configurações →
 
 ## Versão atual
 
-**v6.0.0 — Zero Visual Noise**
+**v6.1.0 — Human Interface / Calm Structure**
 
-O Ciclo continua completo; o que mudou foi *quando, onde e como* cada informação aparece.
+O mesmo Ciclo, mais fácil de ler e de navegar.
 
-- **Nova linguagem visual, mais calma:** menos caixas, bordas, cores e informação ao mesmo tempo. Tipografia, espaço e hierarquia fazem o trabalho — nos temas escuro e claro.
-- **Cada tela responde a uma pergunta**, com uma ação principal clara e o resto sob demanda.
-- **Hoje, Revisões e Planejamento** mostram primeiro o que importa agora; detalhes ficam em *Por quê?*, *Outras opções*, *Ajustar* e nas seções recolhidas.
-- **Disciplinas** virou uma lista limpa, com a aba **Prazos** para o que está chegando. **Histórico** é lido dia a dia, com filtros num painel. **Configurações** foi organizada em grupos.
-- **Análises reconstruída:** escolher → gerar → entender → explorar. Resumo, poucos números, um gráfico principal, insights e aprofundamento sob demanda.
-- **Melhor no celular e no teclado:** tudo funciona sem mouse, com foco visível, contraste revisado e respeito a *reduzir animações*.
+- **Organização mais natural entre Área, Disciplina e Tópico:** Disciplinas virou um índice — abra uma área, depois uma disciplina, depois um tópico. Áreas criadas aparecem mesmo vazias, e dá para criá-las sem sair do formulário da disciplina.
+- **Navegação hierárquica:** caminho no topo (*Disciplinas › Tecnologia › CCNA › OSPF*) no computador e botão de voltar no celular, sem perder o lugar.
+- **Prioridade visual consistente:** um único símbolo para os níveis 1 a 5, em todo lugar, com mudança direta no detalhe.
+- **Linguagem simplificada:** *Começar a estudar*, *Registrar estudo*, *O que precisa revisar?*, *Quando revisar*, *Como revisar*, *Consolidação*. O glossário virou exceção.
+- **Interface mais espaçosa e humana:** mais respiro, menos maiúsculas e menos negrito; linhas navegáveis no lugar de caixas.
+- **Motion refinado:** movimentos curtos ao entrar e voltar nos níveis, ao escolher a prioridade e ao abrir seções — sempre respeitando *reduzir animações*.
 
 Nada mudou nos seus dados: nenhum formato novo, nenhuma revisão reagendada, e backups de qualquer versão anterior continuam sendo aceitos.
+
+### v6.0
+
+**Zero Visual Noise.** Nova linguagem visual, mais calma, com cada tela respondendo a uma pergunta; *Hoje*, *Revisões* e *Planejamento* mostram primeiro o que importa agora; *Análises* reconstruída (escolher → gerar → entender → explorar); melhor no celular e no teclado.
 
 ### v5.3
 

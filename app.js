@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v6.0.0 · Zero Visual Noise
+   CICLO — v6.1.0 · Human Interface / Calm Structure
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -15,14 +15,15 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '6.0.0';
+const APP_VERSION = '6.1.0';
 const APP_SCHEMA_VERSION = 5;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
                                        // ganham tipo, status, data de início, orientações e
-                                       // anotações. A v5.2.1, a v5.3 e a v6.0 (redesenho de
-                                       // interface) não criam campo persistente novo, por
-                                       // isso o formato continua em 5. A v6 guarda só a
+                                       // anotações. A v5.2.1, a v5.3, a v6.0 e a v6.1
+                                       // (interface e linguagem) não criam campo persistente
+                                       // novo, por isso o formato continua em 5. A v6.1 passa
+                                       // a usar `archived` das áreas, campo que já existia. A v6 guarda só a
                                        // última consulta de Análises em `meta`, que é uma
                                        // conveniência de interface (fora do backup).
 
@@ -70,15 +71,15 @@ const REVIEW_OUTCOMES = [
    Vale para Disciplina, Tópico e Prazo. Área de Estudo não tem prioridade:
    ela só organiza.
    ========================================================================= */
-const PRIORITY_DEFAULT = 3;
+const PRIORITY_DEFAULT = 3;               // v6.1: rótulo do 3 passa de "Mediana" para "Média" (só texto)
 const PRIORITY_LEVELS = [
   { v:1, label:'Muito baixa', hint:'Este item merece pouca atenção no momento.' },
   { v:2, label:'Baixa',       hint:'Pode receber menos atenção que o padrão.' },
-  { v:3, label:'Mediana',     hint:'Prioridade padrão.' },
+  { v:3, label:'Média',       hint:'Prioridade padrão.' },
   { v:4, label:'Alta',        hint:'Merece atenção frequente.' },
   { v:5, label:'Muito alta',  hint:'Está entre seus principais focos.' }
 ];
-const PRIORITY_LABELS = { 1:'Muito baixa', 2:'Baixa', 3:'Mediana', 4:'Alta', 5:'Muito alta' };
+const PRIORITY_LABELS = { 1:'Muito baixa', 2:'Baixa', 3:'Média', 4:'Alta', 5:'Muito alta' };
 
 /* Explicação de cada nível ajustada ao que está sendo priorizado. */
 const PRIORITY_CONTEXT_HINTS = {
@@ -146,17 +147,17 @@ const METRIC_WORDS = {
 
 /* ---------- v4: natureza do conteúdo da disciplina ---------- */
 const CONTENT_NATURES = [
-  { v:'mixed',           label:'Mista',                  hint:'Um pouco de tudo. É o padrão.' },
+  { v:'mixed',           label:'Misto',                  hint:'Um pouco de tudo. É o padrão.' },
   { v:'conceptual',      label:'Conceitual',             hint:'Teorias, definições, processos.' },
   { v:'memorization',    label:'Memorização',            hint:'Listas, termos, datas, vocabulário.' },
   { v:'problem_solving', label:'Resolução de problemas', hint:'Cálculo, lógica, questões.' },
   { v:'practical',       label:'Prática',                hint:'Laboratório, execução, habilidade manual.' }
 ];
-function contentNatureLabel(v){ const x = CONTENT_NATURES.find(n => n.v === v); return x ? x.label : 'Mista'; }
+function contentNatureLabel(v){ const x = CONTENT_NATURES.find(n => n.v === v); return x ? x.label : 'Misto'; }
 
 /* ---------- v4: QUANDO revisar (estratégia de espaçamento) ---------- */
 const REVIEW_STRATEGIES = [
-  { v:'adaptive',   label:'Adaptativa',      short:'O intervalo responde ao seu resultado. Recomendada.' },
+  { v:'adaptive',   label:'Adaptativa',      short:'O tempo até a próxima revisão acompanha o seu resultado. Recomendada.' },
   { v:'fixed',      label:'Ciclo programado', short:'Intervalos previsíveis: 1, 3, 7, 14, 30, 60 dias.' },
   { v:'intensive',  label:'Intensiva',        short:'Revisões mais frequentes. Para provas e prazos.' },
   { v:'maintenance',label:'Manutenção',       short:'Intervalos longos, para conteúdo já consolidado.' }
@@ -401,7 +402,8 @@ function fmtClock(ms){
 }
 function fmtPct(n){ return fmtNumber(n, 0) + '%'; }
 
-function sortByName(a, b){ return str(a.name).localeCompare(str(b.name), 'pt-BR'); }
+/* v6.1: ordem natural — "Aula 2" vem antes de "Aula 10"; maiúsculas/acentos não mudam a ordem. */
+function sortByName(a, b){ return str(a.name).localeCompare(str(b.name), 'pt-BR', { numeric:true, sensitivity:'base' }); }
 
 /* =========================================================================
    DATE HELPERS  — datas acadêmicas são sempre LOCAIS (YYYY-MM-DD), sem UTC.
@@ -1425,14 +1427,14 @@ const ReviewEngine = {
   effectiveMethod(topic){
     const configured = this.configuredMethod(topic);
     if(configured !== 'auto') {
-      return { method: configured, auto:false, reason:'Você escolheu este método para este conteúdo.' };
+      return { method: configured, auto:false, reason:'Você escolheu este jeito de revisar para este conteúdo.' };
     }
     const d = topic ? getDiscipline(topic.disciplineId) : null;
     const nature = (d && d.contentNature) || 'mixed';
     const options = AUTO_METHOD_BY_NATURE[nature] || AUTO_METHOD_BY_NATURE.mixed;
 
     let pick = options[0];
-    let reason = `Sugerido porque a disciplina está marcada como "${contentNatureLabel(nature)}".`;
+    let reason = `Sugerido porque o conteúdo desta disciplina é do tipo "${contentNatureLabel(nature)}".`;
 
     // Alternar entre as opções da natureza evita repetir sempre o mesmo método.
     if(options.length > 1 && topic && (topic.reviewRepetitions || 0) % 2 === 1){
@@ -1620,7 +1622,7 @@ const ReviewEngine = {
     else if(tp === 3 && disc && PriorityEngine.clamp(disc.priority) === 5) reasons.push(`${disc.name} é prioridade muito alta`);
 
     const mastery = topic.masteryLevel || REVIEW_INITIAL_MASTERY;
-    if(mastery <= 2){ score += W.LOW_MASTERY * ((3 - mastery) / 2); reasons.push(`domínio ${mastery}/5`); }
+    if(mastery <= 2){ score += W.LOW_MASTERY * ((3 - mastery) / 2); reasons.push(`ainda pouco consolidado (${mastery} de 5)`); }
 
     if(topic.lastReviewOutcome === 'forgot'){ score += W.BAD_LAST_RESULT; reasons.push('você esqueceu na última revisão'); }
     else if(topic.lastReviewOutcome === 'hard'){ score += W.BAD_LAST_RESULT * 0.6; reasons.push('você teve dificuldade na última revisão'); }
@@ -1756,7 +1758,7 @@ const RecommendationEngine = {
     const inStudy = tps.filter(t => topicStatus(t) === 'em_estudo' || topicStatus(t) === 'em_revisao');
     const lowRetention = inStudy.filter(t => (t.masteryLevel || 5) <= 2)
                                 .sort((a, b) => ((a.masteryLevel || 5) - (b.masteryLevel || 5)) || byPriority(a, b));
-    if(lowRetention.length) return { topic:lowRetention[0], suggestedType:null, reason:'tópico com domínio baixo' };
+    if(lowRetention.length) return { topic:lowRetention[0], suggestedType:null, reason:'tópico ainda pouco consolidado' };
 
     // tempo sem contato ponderado pela prioridade do tópico
     const stale = inStudy.filter(t => t.lastStudiedAt && (daysSinceISO(t.lastStudiedAt) || 0) >= 3)
@@ -1791,7 +1793,7 @@ const RecommendationEngine = {
     if(dp >= 4) r.push(`${disc.name} é prioridade ${PRIORITY_LABELS[dp].toLowerCase()}`);
     const topic = topicPick && topicPick.topic;
     if(topic && PriorityEngine.clamp(topic.priority) >= 4) r.push(`${topic.name} é prioridade ${PriorityEngine.label(topic.priority).toLowerCase()}`);
-    if(f.lastISO === null) r.push('ainda sem nenhuma sessão registrada');
+    if(f.lastISO === null) r.push('ainda sem nenhum estudo registrado');
     else if(f.daysSince >= 2) r.push(`último estudo ${fmtRelativePast(f.lastISO)}`);
     if(f.dueCount > 0) r.push(`${f.dueCount} ${f.dueCount === 1 ? 'revisão pendente' : 'revisões pendentes'}${f.overdue > 0 ? ` (atraso de ${f.overdue} ${f.overdue===1?'dia':'dias'})` : ''}`);
     if(f.deadline && f.deadline.days !== null && f.deadline.days <= 30 && !(topicPick && topicPick.reason === DeadlineEngine.phrase(f.deadline.dl))){
@@ -2291,7 +2293,7 @@ const AnalyticsEngine = {
       const fails = t.reviewFailures || 0;
       if(fails >= 2){ reasons.push(`esquecido ${fails} vezes nas revisões`); score += 1.5 + Math.min(fails, 5) * 0.3; }
       const st = topicStatus(t);
-      if(t.masteryLevel && t.masteryLevel <= 2 && st !== 'nao_iniciado'){ reasons.push(`domínio ${t.masteryLevel}/5`); score += 1; }
+      if(t.masteryLevel && t.masteryLevel <= 2 && st !== 'nao_iniciado'){ reasons.push(`pouco consolidado (${t.masteryLevel} de 5)`); score += 1; }
       const dl = DeadlineEngine.forTopic(t);
       if(dl.deadline && dl.score >= DEADLINE_MODEL.NOTEWORTHY * (dl.specific ? 1 : DEADLINE_MODEL.DISCIPLINE_WIDE_ON_TOPIC)){
         reasons.push(DeadlineEngine.phrase(dl.deadline)); score += 2 * dl.score;
@@ -2341,9 +2343,9 @@ const AnalyticsEngine = {
     const t = a.totals;
     const where = a.scope.type === 'all' ? '' : ` em ${a.scope.label}`;
     if(t.count === 0){
-      out.push(`Nenhuma sessão registrada${where} neste período.`);
+      out.push(`Nenhum estudo registrado${where} neste período.`);
     } else {
-      out.push(`Você estudou ${fmtDuration(t.minutes)}${where} em ${plural(t.count, 'sessão', 'sessões')}, com estudo em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')}.`);
+      out.push(`Você estudou ${fmtDuration(t.minutes)}${where} em ${plural(t.count, 'sessão de estudo', 'sessões de estudo')}, com estudo em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')}.`);
     }
     const pa = a.planAdherence;
     if(pa.hasPlan) out.push(`Cumpriu ${safePct(pa.pct)} do plano: ${fmtDuration(pa.realized)} de ${fmtDuration(pa.planned)} planejadas.`);
@@ -2378,7 +2380,7 @@ const AnalyticsEngine = {
     const t = a.totals;
     const sc = a.scope;
     if(t.count === 0 && !a.deadlines.open.length && !a.reviews.overdueNow){
-      add('time', 'Nenhuma sessão registrada neste período. Escolha um período maior ou registre uma sessão para ver mais detalhes.');
+      add('time', 'Nenhum estudo registrado neste período. Escolha um período maior ou registre um estudo para ver mais detalhes.');
       return out;
     }
 
@@ -2406,7 +2408,7 @@ const AnalyticsEngine = {
       add('priority', `Disciplinas com prioridade alta ou muito alta receberam ${safePct(pr.highDiscShare)} do tempo.`);
     }
     pr.highDiscNoTime.slice(0, 2).forEach(d =>
-      add('priority', `${d.name} tem prioridade ${PRIORITY_LABELS[PriorityEngine.clamp(d.priority)].toLowerCase()} e não teve sessões neste período.`));
+      add('priority', `${d.name} tem prioridade ${PRIORITY_LABELS[PriorityEngine.clamp(d.priority)].toLowerCase()} e não foi estudada neste período.`));
     if(sc.type === 'discipline' || sc.type === 'area'){
       const n = pr.highTopicNoTime.length;
       if(n > 0 && t.count > 0) add('content', `${plural(n, 'tópico de prioridade alta ou muito alta não foi estudado', 'tópicos de prioridade alta ou muito alta não foram estudados')} neste período.`);
@@ -2432,7 +2434,7 @@ const AnalyticsEngine = {
     if(r.forgetful.length){ const f = r.forgetful[0]; add('reviews', `${f.name} já foi esquecido ${f.reviewFailures} vezes nas revisões.`); }
     const highLate = r.overdueList.filter(x => PriorityEngine.clamp(x.priority) >= 4).length;
     if(highLate) add('reviews', `${plural(highLate, 'tópico de prioridade alta ou muito alta está', 'tópicos de prioridade alta ou muito alta estão')} com revisão atrasada.`);
-    if(r.avgMastery !== null && r.avgMastery < 2.5) add('reviews', `O domínio médio dos tópicos em revisão está em ${fmtNumber(r.avgMastery, 1)}/5.`);
+    if(r.avgMastery !== null && r.avgMastery < 2.5) add('reviews', `A consolidação média dos tópicos em revisão está em ${fmtNumber(r.avgMastery, 1)} de 5.`);
     const solid = r.byMethod.filter(x => x.used >= 5);
     if(solid.length){
       const best = solid.slice().sort((x,y) => (y.rate || 0) - (x.rate || 0))[0];
@@ -2463,7 +2465,7 @@ const AnalyticsEngine = {
     const typedTotal = sum(typed, x => x.count);
     if(typedTotal >= 3){
       const top = typed.slice().sort((x,y) => y.count - x.count)[0];
-      add('types', `${fmtNumber((top.count / typedTotal) * 100, 0)}% das sessões classificadas foram do tipo "${top.label}".`);
+      add('types', `${fmtNumber((top.count / typedTotal) * 100, 0)}% dos estudos classificados foram do tipo "${top.label}".`);
     }
 
     if(a.projection.available && a.projection.target){
@@ -2497,7 +2499,7 @@ const AnalyticsEngine = {
     a.deadlines.overdue.slice(0, 3).forEach(x => add('deadlines', `${x.dl.title}: ${DeadlineEngine.dueText(x.dl).toLowerCase()}.`));
     a.deadlines.soon.filter(x => x.days <= 7 && x.studied === 0 && (x.dl.disciplineId || x.dl.topicId)).slice(0, 2)
       .forEach(x => add('deadlines', `${DeadlineEngine.phrase(x.dl)}, sem estudo registrado para ele neste período.`));
-    a.priorities.highDiscNoTime.slice(0, 2).forEach(d => add('priority', `${d.name} (prioridade ${PriorityEngine.text(d.priority)}) sem sessões no período.`));
+    a.priorities.highDiscNoTime.slice(0, 2).forEach(d => add('priority', `${d.name} (prioridade ${PriorityEngine.text(d.priority)}) sem estudo no período.`));
     if(a.planAdherence.hasPlan){
       a.planAdherence.perDiscipline.filter(x => x.pct !== null && x.pct < 50 && x.planned > 0 && !x.archived).slice(0, 2)
         .forEach(x => add('plan', `${x.label} com ${safePct(x.pct)} do tempo planejado.`));
@@ -2736,7 +2738,7 @@ const Backup = {
       reviewStrategyAtTime: REVIEW_STRATEGIES.some(x => x.v === s.reviewStrategyAtTime) ? s.reviewStrategyAtTime : null,
       createdAt: str(s.createdAt) || nowISO(), updatedAt: str(s.updatedAt) || nowISO()
     }));
-    if(droppedSessions) warnings.push(`${droppedSessions} sessão(ões) sem disciplina correspondente foram ignoradas.`);
+    if(droppedSessions) warnings.push(`${plural(droppedSessions, 'estudo registrado', 'estudos registrados')} sem disciplina correspondente ${droppedSessions === 1 ? 'foi ignorado' : 'foram ignorados'}.`);
 
     const planIds = new Set();
     data.plans = data.plans.filter(p => p && p.id && !planIds.has(p.id) && planIds.add(p.id)).map(p => ({
@@ -2884,6 +2886,13 @@ const ui = {
   analyticsShowAllInsights: false,
   anPick: null,               // estado transitório do seletor (busca, mês do calendário)
   discTab: 'disciplines',     // v6: Disciplinas | Prazos
+  /* v6.1 — Disciplinas navegada como índice: Disciplinas → Área → Disciplina → Tópico */
+  discNav: { level:'root', areaId:null, disciplineId:null, topicId:null },
+  discNavDir: null,           // 'forward' | 'back' — direção do movimento no próximo desenho
+  discFocus: null,            // data-fk que recebe o foco depois do próximo desenho
+  discScroll: {},             // rolagem lembrada por nível (voltar não perde o lugar)
+  areaJustCreated: null,      // área recém-criada e ainda vazia: convite contextual
+  showArchivedAreas: false,
   historyLimit: 150,          // v6: quantas sessões o Histórico desenha antes de "Mostrar mais"
   settingsGroup: 'appearance',// v6: grupo aberto em Configurações
   planEditing: false,         // v6: Planejamento em modo de ajuste
@@ -3406,10 +3415,10 @@ function renderTimerBar(){
   // anima só quando a barra aparece; re-renderizações não repetem a entrada
   const isNew = !slot.querySelector('.timerbar');
   const state_ = TimerService.isRunning ? 'running' : 'paused';
-  const bar = h('div', { class:'timerbar' + (isNew ? ' is-entering' : ''), role:'region', 'aria-label':'Sessão em andamento', 'data-state': state_ },
+  const bar = h('div', { class:'timerbar' + (isNew ? ' is-entering' : ''), role:'region', 'aria-label':'Estudo em andamento', 'data-state': state_ },
     h('span', { class:'tb-status', 'aria-hidden':'true' }),
     h('div', { class:'tb-what' },
-      h('div', { class:'tb-label', text: TimerService.isRunning ? 'Em andamento' : 'Pausada' }),
+      h('div', { class:'tb-label', text: TimerService.isRunning ? 'Estudando' : 'Pausado' }),
       h('div', { class:'tb-disc', text: disc ? disc.name : '(disciplina removida)' }),
       h('div', { class:'tb-topic', text: (topic ? topic.name : 'Sem tópico') + (d.presetType ? ' · ' + sessionTypeLabel(d.presetType) : '') }
     )),
@@ -3433,24 +3442,24 @@ function renderTimerBar(){
 }
 
 async function discardTimer(){
-  const ok = await confirmModal('Descartar esta sessão sem registrar o tempo?', { confirmLabel:'Descartar' });
+  const ok = await confirmModal('Descartar este estudo sem registrar o tempo?', { title:'Descartar o tempo', confirmLabel:'Descartar' });
   if(!ok) return;
   TimerService.discard();
   renderTimerBar();
-  toast('Sessão descartada.');
+  toast('Nada foi registrado.', 'info', { title:'Tempo descartado' });
 }
 
 /* ---------- INICIAR SESSÃO ---------- */
 function startTimer(disciplineId, topicId, presetType, presetMethod){
   if(TimerService.isActive){
-    toast('Já existe uma sessão em andamento. Finalize-a antes de iniciar outra.', 'err');
+    toast('Termine o estudo atual antes de começar outro.', 'err', { title:'Você já está estudando' });
     return;
   }
   TimerService.start(disciplineId, topicId, presetType, presetMethod);
   renderTimerBar();
   const d = getDiscipline(disciplineId), t = topicId ? getTopic(topicId) : null;
   toast((d ? d.name : '') + (t ? ' · ' + t.name : '') + ' — o tempo já está contando.', 'ok',
-    { title: presetType === 'revisao' ? 'Revisão iniciada' : 'Sessão iniciada' });
+    { title: presetType === 'revisao' ? 'Revisão iniciada' : 'Estudo iniciado' });
 }
 
 /** Modal do botão global "+ Registrar": cronômetro ou registro manual. */
@@ -3458,9 +3467,11 @@ function openRegisterModal(preset){
   const p = preset || {};
   if(!activeDisciplines().length){
     openModal(close => ({
-      title:'Nenhuma disciplina ativa',
-      content: emptyState('Cadastre uma disciplina primeiro', 'Em Disciplinas você cria áreas, disciplinas e tópicos. Depois é só registrar suas sessões aqui.'),
-      actions:[ h('button', { class:'btn primary', type:'button', text:'Ir para Disciplinas', onclick:() => { close(); setView('disciplines'); } }) ]
+      title:'Primeiro, o que você está estudando?',
+      content: h('p', { class:'modal-sub', text:'Adicione uma disciplina — um nome basta. Depois é só registrar seus estudos aqui.' }),
+      actions:[
+        h('button', { class:'btn ghost', type:'button', text:'Agora não', onclick:() => close() }),
+        h('button', { class:'btn primary', type:'button', text:'Adicionar disciplina', onclick:() => { close(); openDisciplineModal(null); } }) ]
     }));
     return;
   }
@@ -3474,9 +3485,9 @@ function openRegisterModal(preset){
     const content = h('div');
 
     const tabs = h('div', { class:'chips', style:'margin-bottom:14px' },
-      h('button', { class:'chip', type:'button', 'aria-pressed': mode === 'timer' ? 'true':'false', text:'Cronômetro',
+      h('button', { class:'chip', type:'button', 'aria-pressed': mode === 'timer' ? 'true':'false', text:'Estudar agora',
         onclick:() => { mode = 'timer'; rebuild(); } }),
-      h('button', { class:'chip', type:'button', 'aria-pressed': mode === 'manual' ? 'true':'false', text:'Registrar manualmente',
+      h('button', { class:'chip', type:'button', 'aria-pressed': mode === 'manual' ? 'true':'false', text:'Já estudei',
         onclick:() => { mode = 'manual'; rebuild(); } })
     );
 
@@ -3494,7 +3505,7 @@ function openRegisterModal(preset){
       body.append(discSel, topicSel);
 
       if(mode === 'timer'){
-        body.append(h('p', { class:'hint', text:'O cronômetro continua rodando mesmo se você recarregar ou fechar a aba.' }));
+        body.append(h('p', { class:'hint', text:'O Ciclo conta o tempo por você — mesmo se você recarregar ou fechar a aba.' }));
       } else {
         const dateInput = h('input', { type:'date', id:'rm-date', value: (p.date && p.date <= todayISO()) ? p.date : todayISO(), max: todayISO() });
         const minInput = h('input', { type:'number', id:'rm-min', min:'1', step:'1', value:String(state.settings.defaultSessionMinutes), inputmode:'numeric' });
@@ -3524,7 +3535,7 @@ function openRegisterModal(preset){
             h('div', { class:'field' }, h('label', { for:'rm-date', text:'Data' }), dateInput),
             h('div', { class:'field' }, h('label', { for:'rm-min', text:'Minutos' }), quick, minInput, preview)
           ),
-          selectField('rm-type', 'Tipo de sessão', [{value:'',label:'— Não informado —'}].concat(SESSION_TYPES.map(t => ({ value:t.v, label:t.label }))), type,
+          selectField('rm-type', 'Tipo de estudo', [{value:'',label:'— Não informado —'}].concat(SESSION_TYPES.map(t => ({ value:t.v, label:t.label }))), type,
             (e) => { type = e.target.value || null; renderOutcome(); }),
           h('div', { class:'field' }, h('label', { text:'Dificuldade percebida (opcional)' }),
             pillGroup(DIFFICULTIES.map(d => ({ value:d.v, label:d.label, color:d.color })), difficulty, v => { difficulty = v ? Number(v) : null; })),
@@ -3537,10 +3548,10 @@ function openRegisterModal(preset){
       }
       // o rótulo da ação principal acompanha a aba escolhida: o botão precisa
       // dizer o que vai acontecer, não o que aconteceria na abertura do modal.
-      primaryBtn.textContent = mode === 'timer' ? 'Iniciar sessão' : 'Salvar sessão';
+      primaryBtn.textContent = mode === 'timer' ? 'Começar a estudar' : 'Salvar estudo';
     }
 
-    const primaryBtn = h('button', { class:'btn primary', type:'button', text:'Iniciar sessão',
+    const primaryBtn = h('button', { class:'btn primary', type:'button', text:'Começar a estudar',
       onclick: async () => {
         if(!discId){ toast('Escolha uma disciplina.', 'err'); return; }
         if(mode === 'timer'){ close(); startTimer(discId, topicId || null, type); return; }
@@ -3555,7 +3566,7 @@ function openRegisterModal(preset){
     rebuild();
 
     return {
-      title:'Registrar progresso',
+      title:'Registrar estudo',
       content,
       actions:[
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
@@ -3591,10 +3602,10 @@ function openFinishModal(){
         outcomeField.append(
           h('label', { text:'Como você se saiu?' }),
           pillGroup(REVIEW_OUTCOMES.map(o => ({ value:o.v, label:o.label })), outcome, v => { outcome = v; }),
-          h('p', { class:'hint', text:'Isso ajusta o intervalo até a próxima revisão deste tópico.' }),
-          h('label', { style:'margin-top:10px', text:'Método usado' }),
+          h('p', { class:'hint', text:'Isso ajusta quando este tópico volta para revisão.' }),
+          h('label', { style:'margin-top:10px', text:'Como você revisou' }),
           (() => {
-            const sel = h('select', { 'aria-label':'Método usado na revisão' });
+            const sel = h('select', { 'aria-label':'Como você revisou' });
             CONCRETE_METHODS.forEach(mv => sel.appendChild(h('option', { value:mv, selected: mv === method }, methodLabel(mv))));
             sel.addEventListener('change', () => { method = sel.value; });
             return sel;
@@ -3603,7 +3614,7 @@ function openFinishModal(){
       }
     };
 
-    const typeSel = selectField('fin-type', 'Tipo de sessão',
+    const typeSel = selectField('fin-type', 'Tipo de estudo',
       [{value:'',label:'— Não informado —'}].concat(SESSION_TYPES.map(t => ({ value:t.v, label:t.label }))), type,
       (e) => { type = e.target.value || null; renderOutcome(); });
 
@@ -3620,10 +3631,10 @@ function openFinishModal(){
     update();
 
     return {
-      title:'Finalizar sessão',
+      title:'Como foi o estudo?',
       content,
       actions:[
-        h('button', { class:'btn ghost', type:'button', text:'Voltar', onclick:() => close() }),
+        h('button', { class:'btn ghost', type:'button', text:'Continuar estudando', onclick:() => close() }),
         h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: async () => {
           const minutes = Number(minInput.value);
           if(!(minutes > 0)){ toast('Informe um tempo válido.', 'err'); return; }
@@ -3653,14 +3664,14 @@ function offerStaleSession(){
   if(hours < 6) return;
   const elapsedMin = Math.round(TimerService.getElapsed() / 60000);
   openModal(close => ({
-    title:'Sessão em andamento há muito tempo',
+    title:'O cronômetro ficou ligado',
     content: h('div',
-      h('p', { class:'modal-sub', text:`Existe uma sessão de ${(getDiscipline(TimerService.data.disciplineId) || {}).name || ''} iniciada há ${fmtDuration(elapsedMin)}. Provavelmente você esqueceu de finalizá-la.` }),
-      h('p', { class:'hint', text:'Ao finalizar você poderá corrigir a duração antes de salvar.' })
+      h('p', { class:'modal-sub', text:`O estudo de ${(getDiscipline(TimerService.data.disciplineId) || {}).name || ''} começou há ${fmtDuration(elapsedMin)}. Talvez o cronômetro tenha ficado ligado sem querer.` }),
+      h('p', { class:'hint', text:'Ao finalizar, você pode corrigir o tempo antes de salvar.' })
     ),
     actions:[
       h('button', { class:'btn ghost', type:'button', text:'Continuar', onclick:() => close() }),
-      h('button', { class:'btn danger', type:'button', text:'Descartar', onclick: async () => { close(); TimerService.discard(); renderTimerBar(); toast('Sessão descartada.'); } }),
+      h('button', { class:'btn danger', type:'button', text:'Descartar', onclick: async () => { close(); TimerService.discard(); renderTimerBar(); toast('Nada foi registrado.', 'info', { title:'Tempo descartado' }); } }),
       h('button', { class:'btn primary', type:'button', text:'Finalizar', onclick:() => { close(); openFinishModal(); } })
     ]
   }), { dismissible:false });
@@ -3714,7 +3725,7 @@ async function saveSession(input){
     });
   } catch(err){
     console.error(err);
-    toast('Não foi possível salvar a sessão.', 'err');
+    toast('Tente novamente. Nada foi perdido.', 'err', { title:'Não foi possível salvar o estudo' });
     return;
   }
 
@@ -3737,7 +3748,7 @@ async function saveSession(input){
     ];
     if(prog.plannedTotal > 0) rows.push(['Semana', `${fmtDuration(prog.realizedTotal)} / ${fmtDuration(prog.plannedTotal)}`]);
     if(topicCopy && topicCopy.reviewDueDate) rows.push(['Próxima revisão', fmtRelativeFuture(topicCopy.reviewDueDate)]);
-    toastRich('Sessão registrada', rows);
+    toastRich('Estudo registrado', rows);
   }
 }
 
@@ -3749,13 +3760,13 @@ async function updateSession(id, changes){
   updated.credits = creditsFor(updated.disciplineId, updated.minutes);
   await DB.put('sessions', updated);
   await refresh();
-  toast('Sessão atualizada.', 'ok');
+  toast('Estudo atualizado.', 'ok');
 }
 
 async function deleteSession(id){
   await DB.delete('sessions', id);
   await refresh();
-  toast('Sessão removida.');
+  toast('Estudo removido do histórico.');
 }
 
 /* =========================================================================
@@ -3798,11 +3809,11 @@ function renderToday(){
     mount(root, h('div', { class:'today' },
       h('section', { class:'focus-block', 'aria-labelledby':'tf-title' },
         h('p', { class:'tf-eyebrow', text:`${greetingWord()}. O que vamos estudar?` }),
-        h('h3', { class:'tf-title', id:'tf-title', text:'Começar a estudar' }),
-        h('p', { class:'tf-reason', text:'Escolha o que vai estudar e quanto tempo. O Ciclo conta o tempo e registra tudo para você.' }),
+        h('h3', { class:'tf-title', id:'tf-title', text:'Seu primeiro estudo' }),
+        h('p', { class:'tf-reason', text:'Escolha o que vai estudar e por quanto tempo. O Ciclo conta o tempo e registra tudo para você.' }),
         h('div', { class:'tf-actions' },
-          h('button', { class:'btn primary lg', type:'button', onclick:() => openQuickStart() }, icon('i-play'), 'Começar sessão'),
-          h('button', { class:'linkbtn', type:'button', text:'O que é uma sessão?', onclick:() => openInteractiveGuide('ig-sessao') }))),
+          h('button', { class:'btn primary lg', type:'button', onclick:() => openQuickStart() }, icon('i-play'), 'Começar a estudar'),
+          h('button', { class:'linkbtn muted', type:'button', text:'Como funciona?', onclick:() => openInteractiveGuide('ig-sessao') }))),
       startGuideCard(),
       dailyQuoteCard()));
     return;
@@ -3823,14 +3834,15 @@ function todayFocus(top, alts){
       h('p', { class:'tf-eyebrow', text:`${greetingWord()}. O que vamos estudar?` }),
       h('h3', { class:'tf-title', id:'tf-title', text:'Escolha o que estudar agora' }),
       h('div', { class:'tf-actions' },
-        h('button', { class:'btn primary lg', type:'button', onclick:() => openQuickStart() }, icon('i-play'), 'Começar sessão')));
+        h('button', { class:'btn primary lg', type:'button', onclick:() => openQuickStart() }, icon('i-play'), 'Começar a estudar')));
   }
   const isReview = top.suggestedType === 'revisao';
   const title = top.topic ? top.topic.name : top.discipline.name;
-  const kicker = top.topic ? top.discipline.name : areaNameOf(top.discipline);
+  // Acima do título: a disciplina (quando o foco é um tópico) ou a área — nunca "Sem área".
+  const kicker = top.topic ? top.discipline.name : (top.discipline.areaId && getArea(top.discipline.areaId) ? getArea(top.discipline.areaId).name : null);
   return h('section', { class:'focus-block', 'aria-labelledby':'tf-title' },
     h('p', { class:'tf-eyebrow', text:`${greetingWord()}. ${isReview ? 'Hora de revisar.' : 'O que vamos estudar?'}` }),
-    h('p', { class:'tf-kicker', text: kicker }),
+    kicker ? h('p', { class:'tf-kicker', text: kicker }) : null,
     h('h3', { class:'tf-title', id:'tf-title', text: title }),
     top.reasons.length ? h('p', { class:'tf-reason', text: capFirst(top.reasons[0]) + '.' }) : null,
     h('p', { class:'tf-meta' },
@@ -3838,7 +3850,7 @@ function todayFocus(top, alts){
     h('div', { class:'tf-actions' },
       h('button', { class:'btn primary lg', type:'button',
         onclick:() => startTimer(top.discipline.id, top.topic ? top.topic.id : null, top.suggestedType) },
-        icon('i-play'), isReview ? 'Começar revisão' : 'Começar sessão'),
+        icon('i-play'), isReview ? 'Começar a revisar' : 'Começar a estudar'),
       h('button', { class:'linkbtn muted', type:'button', text:'Por quê?', onclick:() => explainAction(top) }),
       alts.length ? h('button', { class:'linkbtn muted', type:'button', text:'Outras opções', onclick:() => openAlternatives(alts) }) : null));
 }
@@ -3931,7 +3943,7 @@ function openAlternatives(alts){
       h('div', { class:'line-main static' },
         h('span', { class:'line-t', text: a.discipline.name + (a.topic ? ' — ' + a.topic.name : '') }),
         h('span', { class:'line-s', text: capFirst(a.reasons[0] || '') })),
-      h('button', { class:'btn ghost sm', type:'button', text:'Iniciar', 'aria-label':'Iniciar ' + a.discipline.name,
+      h('button', { class:'btn ghost sm', type:'button', text:'Estudar', 'aria-label':'Estudar ' + a.discipline.name,
         onclick:() => { Drawer.close(); startTimer(a.discipline.id, a.topic ? a.topic.id : null, a.suggestedType); } })))));
   Drawer.open('Outras opções agora', body);
 }
@@ -3943,7 +3955,7 @@ function explainAction(action){
       h('p', { class:'modal-sub', text: `${action.discipline.name}${action.topic ? ' — ' + action.topic.name : ''} foi sugerido porque:` }),
       h('ul', { class:'reasons' }, action.reasons.map(r => h('li', { text:capFirst(r) }))),
       signalGrid(action),
-      h('p', { class:'hint', style:'margin-top:14px', text:'A sugestão combina o plano da semana, a prioridade, o tempo desde o último estudo, prazos próximos, revisões pendentes e domínio dos tópicos. Nada é aleatório e nada sai do seu navegador.' })
+      h('p', { class:'hint', style:'margin-top:14px', text:'A sugestão combina o plano da semana, a prioridade, o tempo desde o último estudo, prazos próximos, revisões pendentes e o quanto cada tópico já está consolidado. Nada é aleatório e nada sai do seu navegador.' })
     ),
     actions:[ h('button', { class:'btn ghost', type:'button', text:'Fechar', onclick:() => close() }) ]
   }));
@@ -3981,7 +3993,7 @@ function renderReviews(){
     h('p', { class:'tf-reason', text: n
       ? (overdue.length ? `${plural(overdue.length, 'está atrasada', 'estão atrasadas')}. A lista começa pelo que corre mais risco de ser esquecido.`
                         : (n > 6 ? 'Não precisa fazer todas hoje: escolha um tempo e o Ciclo separa as mais importantes.' : 'Comece pela primeira. O resultado de cada uma ajusta quando ela volta.'))
-      : (upcoming.length ? `A próxima é ${upcoming[0].name}, ${fmtRelativeFuture(upcoming[0].reviewDueDate)}.` : 'A fila se preenche sozinha conforme os intervalos vencem.') }),
+      : (upcoming.length ? `A próxima é ${upcoming[0].name}, ${fmtRelativeFuture(upcoming[0].reviewDueDate)}.` : 'Os tópicos voltam sozinhos quando chega a hora.') }),
     n ? h('div', { class:'tf-actions' },
       h('button', { class:'btn primary lg', type:'button', onclick:() => startQueuedReviewSession(revMin) }, icon('i-play'), `Revisar por ${revMin} min`),
       h('button', { class:'btn ghost', type:'button', text:'Escolher tempo', onclick:openSessionBuilder }),
@@ -4060,14 +4072,14 @@ function startReview(topicId, presetMethod){
         h('p', { class:'modal-sub', text: disciplineName(t.disciplineId) + ' · ' + fmtRelativeFuture(t.reviewDueDate) +
           ' · prioridade ' + PriorityEngine.text(t.priority) + ' · ~' + minutes + ' min' }),
         h('div', { class:'method-box' },
-          h('p', { class:'card-title', style:'margin:0 0 4px' }, 'Método: ' + guide.label, helpDot('metodo')),
+          h('p', { class:'card-title', style:'margin:0 0 4px' }, 'Como revisar: ' + guide.label, helpDot('metodo')),
           h('p', { class:'hint', style:'margin-bottom:8px', text: guide.intro }),
           method === em.method && em.auto ? h('p', { class:'hint', style:'color:var(--brass)', text: em.reason }) : null,
           h('ol', { class:'method-steps' }, guide.steps.map(st => h('li', { text:st }))),
           guide.note ? h('p', { class:'hint', style:'margin-top:8px', text:guide.note }) : null
         ),
         h('div', { class:'field', style:'margin-top:14px' },
-          h('label', { text:'Usar outro método' }),
+          h('label', { text:'Prefere revisar de outro jeito?' }),
           h('div', { class:'chips' }, CONCRETE_METHODS.map(mv =>
             h('button', { class:'chip', type:'button', 'aria-pressed': mv === method ? 'true':'false', text: methodLabel(mv),
               onclick:() => { method = mv; build(); } }))))
@@ -4134,7 +4146,7 @@ function openSessionBuilder(){
         return;
       }
       preview.append(h('p', { class:'card-title', style:'margin-top:6px',
-        text:`REVISÃO · ${plan.totalMinutes} MIN` }));
+        text:`Revisão de ${plan.totalMinutes} min` }));
       plan.items.forEach(it => preview.append(h('div', { class:'builder-item' },
         h('div', { class:'bi-main' },
           h('div', { class:'bi-name', text: it.topic.name }),
@@ -4185,14 +4197,14 @@ function startQueuedReviewSession(minutes){
   if(!plan.items.length){ toast('Nenhuma revisão pendente agora.', 'info'); return; }
   ui.reviewQueue = plan.items.map(i => ({ topicId:i.topic.id, method:i.method }));
   toast(`${plan.items.length} ${plan.items.length === 1 ? 'revisão' : 'revisões'} · cerca de ${plan.totalMinutes} min. Comece por ${plan.items[0].topic.name}.`, 'info',
-    { title:`Sessão de ${minutes} minutos montada` });
+    { title:`Revisão de ${minutes} minutos pronta` });
   runNextQueuedReview();
 }
 
 /** Encadeia as revisões escolhidas na sessão montada. */
 function runNextQueuedReview(){
   if(!ui.reviewQueue || !ui.reviewQueue.length){
-    toast('Todas as revisões escolhidas foram registradas.', 'ok', { title:'Sessão de revisão concluída' });
+    toast('Todas as revisões escolhidas foram registradas.', 'ok', { title:'Revisões concluídas' });
     return;
   }
   const next = ui.reviewQueue.shift();
@@ -4213,17 +4225,17 @@ function openReviewPrimer(){
     h('ol', { class:'flow' }, flow.map(f => h('li', { text:f }))),
     h('div', { class:'two-col', style:'margin-top:18px' },
       h('div', { class:'card elevated' },
-        h('p', { class:'card-title', text:'QUANDO revisar' }),
-        h('p', { class:'hint', text:'É a estratégia. Ela decide o intervalo até a próxima revisão. A padrão é a Adaptativa: se você lembra bem, o intervalo cresce; se esquece, ele encurta.' })),
+        h('p', { class:'card-title', text:'Quando revisar' }),
+        h('p', { class:'hint', text:'O Ciclo decide quantos dias esperar até a próxima revisão. Se você lembra bem, o tempo cresce; se esquece, ele encurta.' })),
       h('div', { class:'card elevated' },
-        h('p', { class:'card-title', text:'COMO revisar' }),
-        h('p', { class:'hint', text:'É o método. Pode ser tentar lembrar, resolver exercícios, explicar em voz alta, escrever de memória… O Ciclo sugere um, e você pode trocar.' }))),
+        h('p', { class:'card-title', text:'Como revisar' }),
+        h('p', { class:'hint', text:'Tentar lembrar, resolver exercícios, explicar em voz alta, escrever de memória… O Ciclo sugere um jeito, e você pode trocar.' }))),
     h('p', { class:'card-title', style:'margin-top:18px', text:'O que significa cada resposta' }),
     h('div', { class:'outcome-grid' },
-      h('div', null, h('strong', { text:'Esqueci boa parte' }), h('span', { text:'O conteúdo volta amanhã e o domínio cai.' })),
-      h('div', null, h('strong', { text:'Lembrei com dificuldade' }), h('span', { text:'O intervalo cresce pouco.' })),
-      h('div', null, h('strong', { text:'Lembrei bem' }), h('span', { text:'O intervalo cresce e o domínio sobe.' })),
-      h('div', null, h('strong', { text:'Dominei' }), h('span', { text:'O intervalo cresce bastante e o domínio vai ao máximo.' }))),
+      h('div', null, h('strong', { text:'Esqueci boa parte' }), h('span', { text:'O conteúdo volta amanhã.' })),
+      h('div', null, h('strong', { text:'Lembrei com dificuldade' }), h('span', { text:'Volta em poucos dias.' })),
+      h('div', null, h('strong', { text:'Lembrei bem' }), h('span', { text:'O tempo até a próxima revisão cresce.' })),
+      h('div', null, h('strong', { text:'Dominei' }), h('span', { text:'O tempo até a próxima revisão cresce bastante.' }))),
     h('p', { class:'hint', style:'margin-top:16px', text:'Responder com honestidade é o que faz o sistema funcionar. Marcar "lembrei bem" sem ter lembrado só adia o problema.' }),
     h('div', { class:'row auto', style:'margin-top:16px' },
       h('button', { class:'btn ghost sm', type:'button', text:'O que é revisão?', onclick:() => openStudyGuideDrawer('o-que-e-revisao') }),
@@ -4587,22 +4599,58 @@ async function deletePlan(id){
 }
 
 /* =========================================================================
-   v5.2 — COMPONENTES DE PRIORIDADE
-   Um único seletor 1–5 para Disciplina, Tópico e Prazo. Funciona com mouse,
-   toque e teclado (setas, Home, End). Número + texto: nunca só cor.
+   v6.1 — PRIORIDADE: UMA LINGUAGEM VISUAL PARA 1–5
+   Disciplina, Tópico e Prazo usam o mesmo símbolo: cinco hastes em escada.
+   A QUANTIDADE preenchida é o nível — a leitura nunca depende de cor (a cor
+   só reforça os níveis 4 e 5). Todo nível existe e aparece, inclusive o 1.
+   Três formas, uma linguagem:
+     · priorityMark(p, {compact})  leitura (lista: só as hastes; detalhe: + "3 · Média")
+     · priorityInline({...})       edição direta no detalhe (as hastes são os botões)
+     · priorityPicker({...})       seletor dos formulários
    ========================================================================= */
+function priorityText(p){ const v = PriorityEngine.clamp(p); return `${v} · ${PRIORITY_LABELS[v]}`; }
+
+/** As cinco hastes. `level` controla quantas ficam preenchidas. */
+function priorityGlyph(level){
+  const v = PriorityEngine.clamp(level);
+  return h('span', { class:'prio-glyph', 'aria-hidden':'true', dataset:{ level:String(v) } },
+    [1,2,3,4,5].map(i => h('i', { class: i <= v ? 'on' : null })));
+}
+/** Atualiza as hastes no lugar — é o que permite preencher/esvaziar com transição. */
+function setPriorityGlyph(glyph, level){
+  if(!glyph) return;
+  const v = PriorityEngine.clamp(level);
+  glyph.dataset.level = String(v);
+  Array.from(glyph.children).forEach((bar, i) => bar.classList.toggle('on', i < v));
+}
+
+/** Indicador de leitura. Compacto nas listas; completo ("3 · Média") nos detalhes. */
+function priorityMark(p, opts){
+  const v = PriorityEngine.clamp(p);
+  const o = opts || {};
+  const label = `Prioridade ${priorityText(v)}`;
+  return h('span', { class:'prio-mark p' + v + (o.compact ? ' is-compact' : ''), role:'img', 'aria-label':label, title: o.compact ? label : null },
+    priorityGlyph(v),
+    o.compact ? null : h('span', { class:'prio-mark-t', 'aria-hidden':'true', text: priorityText(v) }));
+}
+/** Nome antigo, mantido para as chamadas existentes (Ajuda, Análises, Prazos). */
+function priorityChip(p, opts){ return priorityMark(p, { compact: !!(opts && opts.compact) }); }
+
 function priorityPicker(opts){
   const o = opts || {};
   let value = PriorityEngine.clamp(o.value);
   const labelId = (o.id || 'prio') + '-label';
   const wrap = h('div', { class:'prio-picker', id: o.id || null });
   const group = h('div', { class:'prio-options', role:'radiogroup', 'aria-labelledby': o.labelledBy || labelId });
-  const desc = h('p', { class:'prio-desc', 'aria-live':'polite' });
+  const descGlyph = priorityGlyph(value);
+  const descText = h('strong');
+  const descHint = h('span', { class:'prio-desc-hint' });
+  const desc = h('p', { class:'prio-desc', 'aria-live':'polite' }, descGlyph, descText, descHint);
 
   const buttons = PRIORITY_LEVELS.map(level => {
     const b = h('button', { type:'button', class:'prio-opt p' + level.v, role:'radio', dataset:{ v:String(level.v) },
-      'aria-label': `${level.v} — ${level.label}` },
-      h('span', { class:'prio-num num', text:String(level.v) }),
+      'aria-label': `${level.v} · ${level.label}` },
+      priorityGlyph(level.v),
       h('span', { class:'prio-word', text:level.label }));
     b.addEventListener('click', () => select(level.v, false));
     b.addEventListener('keydown', (e) => {
@@ -4623,8 +4671,9 @@ function priorityPicker(opts){
       b.setAttribute('aria-checked', on ? 'true' : 'false');
       b.tabIndex = on ? 0 : -1;
     });
-    clear(desc);
-    desc.append(h('strong', { text:`${value} — ${PRIORITY_LABELS[value]}` }), ' ', h('span', { text: PriorityEngine.hint(value, o.context) }));
+    setPriorityGlyph(descGlyph, value);
+    descText.textContent = priorityText(value);
+    descHint.textContent = PriorityEngine.hint(value, o.context);
   }
   function select(v, focus){
     value = PriorityEngine.clamp(v);
@@ -4644,14 +4693,66 @@ function priorityPicker(opts){
   return wrap;
 }
 
-/** Selo compacto de prioridade: "5 · Muito alta" com barras de nível. */
-function priorityChip(p, opts){
-  const v = PriorityEngine.clamp(p);
+/**
+ * Prioridade editável no próprio detalhe (Disciplina e Tópico).
+ * As hastes são os botões: clicar na 4ª deixa a prioridade em 4. A gravação
+ * espera um instante (setas do teclado passam por vários níveis) e grava só a
+ * intenção mais recente. Enquanto isso, o valor pendente sobrevive a um
+ * redesenho da tela — ninguém vê o valor "voltar" antes de gravar.
+ */
+const PendingPriority = new Map();
+function priorityInline(opts){
   const o = opts || {};
-  return h('span', { class:'prio-chip p' + v + (o.compact ? ' compact' : ''), title:`Prioridade ${v} — ${PRIORITY_LABELS[v]}`,
-      'aria-label': `Prioridade ${v}, ${PRIORITY_LABELS[v].toLowerCase()}` },
-    h('span', { class:'prio-bars', 'aria-hidden':'true' }, [1,2,3,4,5].map(i => h('i', { class: i <= v ? 'on' : '' }))),
-    h('span', { class:'prio-text', 'aria-hidden':'true', text: o.compact ? String(v) : `${v} · ${PRIORITY_LABELS[v]}` }));
+  const key = o.key || 'prio';
+  let value = PriorityEngine.clamp(PendingPriority.has(key) ? PendingPriority.get(key) : o.value);
+  const text = h('span', { class:'pi-text', 'aria-hidden':'true' });
+  const hint = h('p', { class:'pi-hint', 'aria-live':'polite' });
+  const group = h('div', { class:'pi-group', role:'radiogroup', 'aria-label': o.label || 'Prioridade' });
+  const bars = PRIORITY_LEVELS.map(level => {
+    const b = h('button', { type:'button', class:'pi-bar', role:'radio', 'data-fk': key + '-' + level.v,
+      'aria-label': `Prioridade ${level.v} · ${level.label}` }, h('i'));
+    b.addEventListener('click', () => pick(level.v, false));
+    b.addEventListener('keydown', (e) => {
+      let next = null;
+      if(e.key === 'ArrowRight' || e.key === 'ArrowUp') next = Math.min(5, value + 1);
+      else if(e.key === 'ArrowLeft' || e.key === 'ArrowDown') next = Math.max(1, value - 1);
+      else if(e.key === 'Home') next = 1;
+      else if(e.key === 'End') next = 5;
+      if(next !== null){ e.preventDefault(); pick(next, true); }
+    });
+    group.append(b);
+    return b;
+  });
+  let timer = null;
+  function paint(){
+    group.dataset.level = String(value);
+    bars.forEach((b, i) => {
+      b.classList.toggle('on', i < value);
+      const cur = i + 1 === value;
+      b.setAttribute('aria-checked', cur ? 'true' : 'false');
+      b.tabIndex = cur ? 0 : -1;
+    });
+    text.textContent = priorityText(value);
+    hint.textContent = PriorityEngine.hint(value, o.context);
+  }
+  function pick(v, focus){
+    const next = PriorityEngine.clamp(v);
+    if(focus) bars[next - 1].focus();
+    if(next === value) return;
+    value = next;
+    paint();
+    PendingPriority.set(key, value);
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const committed = value;
+      try { if(typeof o.onCommit === 'function') await o.onCommit(committed); }
+      finally { if(PendingPriority.get(key) === committed) PendingPriority.delete(key); }
+    }, 420);
+  }
+  paint();
+  return h('div', { class:'pi-field' },
+    h('div', { class:'pi-row' }, h('span', { class:'pi-label', text:'Prioridade' }), group, text),
+    hint);
 }
 
 /** "30 de setembro de 2026" */
@@ -4668,115 +4769,587 @@ function disciplinePath(disc){
 }
 
 /* =========================================================================
-   TELA: DISCIPLINAS — v6
-   Duas perguntas vizinhas, uma por vez: "O que estou estudando?" (Área de
-   Estudo → Disciplina → Tópico) e "O que está chegando?" (Prazos).
-   Cada linha mostra só o que ajuda a decidir; o resto fica no detalhe.
+   TELA: DISCIPLINAS — v6.1 · Calm Structure
+   A aba é a entrada de toda a hierarquia, navegada como um caderno indexado:
+
+       Disciplinas  →  Área  →  Disciplina  →  Tópico
+
+   Cada nível mostra só o que pertence a ele; a profundidade acontece por
+   navegação, nunca por uma árvore inteira aberta. Uma Área criada EXISTE,
+   mesmo vazia. Quem nunca criou Área vê as disciplinas direto no primeiro
+   nível (nada de um "Sem área" solitário no caminho). A aba Prazos continua
+   ao lado, no primeiro nível.
    ========================================================================= */
-function renderDisciplines(){
-  const root = $('#disciplines-body');
-  const openCount = DeadlineEngine.open().length;
-  const tab = ui.discTab === 'deadlines' ? 'deadlines' : 'disciplines';
-  const tabs = h('div', { class:'tabs', role:'tablist', 'aria-label':'Disciplinas e prazos' });
-  [['disciplines', 'Disciplinas', null], ['deadlines', 'Prazos', openCount || null]].forEach(([v, label, count]) => {
-    const on = tab === v;
-    tabs.append(h('button', { class:'tab', type:'button', role:'tab', id:'dtab-' + v, 'aria-selected': on ? 'true' : 'false',
-      'aria-controls':'dpanel', tabindex: on ? '0' : '-1',
-      onclick:() => { if(ui.discTab !== v){ ui.discTab = v; renderDisciplines(); const t = $('#dtab-' + v); if(t) t.focus(); } } },
-      label, count ? h('span', { class:'tab-count', text:String(count) }) : null));
-  });
-  tabs.addEventListener('keydown', (e) => {
-    if(e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-    e.preventDefault();
-    ui.discTab = tab === 'deadlines' ? 'disciplines' : 'deadlines';
-    renderDisciplines();
-    const t = $('#dtab-' + ui.discTab); if(t) t.focus();
-  });
-  const panel = h('div', { class:'tab-panel', id:'dpanel', role:'tabpanel', 'aria-labelledby':'dtab-' + tab },
-    tab === 'deadlines' ? deadlinesPanel() : disciplinesPanel());
-  mount(root, h('div', { class:'narrow-screen wide' }, tabs, panel));
+const NO_AREA = '__none__';
+
+/** Área de uma disciplina, ou NO_AREA quando não tem (ou a área sumiu). */
+function areaKeyOf(d){ return d && d.areaId && getArea(d.areaId) ? d.areaId : NO_AREA; }
+function disciplinesIn(areaKey, includeArchived){
+  return state.disciplines.filter(d => areaKeyOf(d) === areaKey && (includeArchived || !d.archived)).sort(sortByName);
+}
+/** Existe organização por Áreas? (alguma área ativa, ou disciplina ativa dentro de uma área) */
+function usesAreas(){
+  return state.areas.some(a => !a.archived) || state.disciplines.some(d => !d.archived && areaKeyOf(d) !== NO_AREA);
+}
+/** Área visível no primeiro nível: ativa, ou arquivada mas ainda com disciplina ativa (nunca some com conteúdo). */
+function areaIsListed(a){ return !a.archived || disciplinesIn(a.id, false).length > 0; }
+
+function discLevelKey(n){
+  if(!n || n.level === 'root') return 'root';
+  if(n.level === 'area') return 'area:' + n.areaId;
+  if(n.level === 'discipline') return 'disc:' + n.disciplineId;
+  return 'topic:' + n.topicId;
+}
+/** Ao voltar, o foco cai na linha de onde a pessoa veio. */
+function discChildFocus(n){
+  if(!n) return null;
+  if(n.level === 'topic') return 'topic-' + n.topicId;
+  if(n.level === 'discipline') return 'disc-' + n.disciplineId;
+  if(n.level === 'area') return 'area-' + n.areaId;
+  return null;
 }
 
-function disciplinesPanel(){
+/** Valida a posição guardada contra os dados atuais. Entidade removida → sobe um nível. */
+function resolveDiscNav(){
+  const n = ui.discNav || { level:'root' };
+  const r = { level:'root', areaKey:null, area:null, disc:null, topic:null, areaMode: usesAreas() };
+  let topic = n.level === 'topic' && n.topicId ? getTopic(n.topicId) : null;
+  const discId = topic ? topic.disciplineId : ((n.level === 'discipline' || n.level === 'topic') ? n.disciplineId : null);
+  const disc = discId ? getDiscipline(discId) : null;
+  if(topic && !disc) topic = null;
+  if(disc){
+    r.disc = disc; r.topic = topic;
+    r.level = topic ? 'topic' : 'discipline';
+    r.areaKey = areaKeyOf(disc);
+    r.area = r.areaKey !== NO_AREA ? getArea(r.areaKey) : null;
+    return r;
+  }
+  if(n.level !== 'root' && n.areaId){
+    if(n.areaId === NO_AREA){
+      if(r.areaMode){ r.level = 'area'; r.areaKey = NO_AREA; }
+      return r;
+    }
+    const a = getArea(n.areaId);
+    if(a){ r.level = 'area'; r.areaKey = a.id; r.area = a; }
+  }
+  return r;
+}
+
+/**
+ * Navega dentro da hierarquia. `dir` define o movimento ('forward' | 'back')
+ * e para onde o foco vai: título do novo nível ao entrar; linha de origem ao
+ * voltar. A rolagem de cada nível é lembrada para o voltar não perder o lugar.
+ */
+function navDisc(target, dir){
+  const prev = ui.discNav || { level:'root' };
+  if(ui.view === 'disciplines') ui.discScroll[discLevelKey(prev)] = window.scrollY;
+  const next = Object.assign({ level:'root', areaId:null, disciplineId:null, topicId:null }, target || {});
+  ui.discNav = next;
+  ui.discTab = 'disciplines';
+  ui.discNavDir = dir || null;
+  ui.discFocus = dir === 'back' ? (discChildFocus(prev) || 'level-title') : 'level-title';
+  if(next.level !== 'area' || next.areaId !== ui.areaJustCreated) ui.areaJustCreated = null;
+  Tooltip.hide();
+  if(Drawer.isOpen) Drawer.close();
+  if(ui.view !== 'disciplines') setView('disciplines');
+  else renderDisciplines();
+  const y = dir === 'back' ? (ui.discScroll[discLevelKey(next)] || 0) : 0;
+  window.scrollTo({ top:y, behavior:'auto' });
+}
+function openArea(areaKey){ navDisc({ level:'area', areaId:areaKey }, 'forward'); }
+/** Abre a disciplina no seu lugar da hierarquia (de qualquer tela). */
+function openDisciplineDetail(discId){
+  const d = getDiscipline(discId);
+  if(!d) return;
+  ui.openDisciplineId = discId;
+  navDisc({ level:'discipline', disciplineId:d.id, areaId:areaKeyOf(d) }, 'forward');
+}
+/** Abre o tópico como página própria dentro de Disciplinas. */
+function openTopicPage(topicId){
+  const t = getTopic(topicId);
+  if(!t) return;
+  const d = getDiscipline(t.disciplineId);
+  navDisc({ level:'topic', topicId:t.id, disciplineId:t.disciplineId, areaId:areaKeyOf(d) }, 'forward');
+}
+
+function renderDisciplines(){
+  const root = $('#disciplines-body');
+  const section = $('#view-disciplines');
+  const tab = ui.discTab === 'deadlines' ? 'deadlines' : 'disciplines';
+  const nav = tab === 'disciplines' ? resolveDiscNav() : null;
+  const deep = !!(nav && nav.level !== 'root');
+  if(section) section.classList.toggle('is-deep', deep);
+
+  // foco: preserva o elemento equivalente depois do redesenho (setas, reordenar…)
+  const active = document.activeElement;
+  const keepFk = active && root.contains(active) ? active.getAttribute('data-fk') : null;
+
+  let body;
+  if(deep){
+    body = nav.level === 'area' ? discAreaLevel(nav) : nav.level === 'discipline' ? discDisciplineLevel(nav) : discTopicLevel(nav);
+  } else {
+    const openCount = DeadlineEngine.open().length;
+    const tabs = h('div', { class:'tabs', role:'tablist', 'aria-label':'Disciplinas e prazos' });
+    [['disciplines', 'Disciplinas', null], ['deadlines', 'Prazos', openCount || null]].forEach(([v, label, count]) => {
+      const on = tab === v;
+      tabs.append(h('button', { class:'tab', type:'button', role:'tab', id:'dtab-' + v, 'aria-selected': on ? 'true' : 'false',
+        'aria-controls':'dpanel', tabindex: on ? '0' : '-1',
+        onclick:() => { if(ui.discTab !== v){ ui.discTab = v; if(v === 'disciplines') ui.discNav = { level:'root' }; renderDisciplines(); const t = $('#dtab-' + v); if(t) t.focus(); } } },
+        label, count ? h('span', { class:'tab-count', text:String(count) }) : null));
+    });
+    tabs.addEventListener('keydown', (e) => {
+      if(e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      ui.discTab = tab === 'deadlines' ? 'disciplines' : 'deadlines';
+      if(ui.discTab === 'disciplines') ui.discNav = { level:'root' };
+      renderDisciplines();
+      const t = $('#dtab-' + ui.discTab); if(t) t.focus();
+    });
+    body = [tabs, h('div', { class:'tab-panel', id:'dpanel', role:'tabpanel', 'aria-labelledby':'dtab-' + tab },
+      tab === 'deadlines' ? deadlinesPanel() : discRootLevel(nav))];
+  }
+
+  const dir = ui.discNavDir;
+  ui.discNavDir = null;
+  mount(root, h('div', { class:'narrow-screen disc-screen' + (dir ? ' nav-' + dir : '') }, body));
+
+  const wanted = ui.discFocus || keepFk;
+  ui.discFocus = null;
+  if(wanted){
+    const sel = '[data-fk="' + (window.CSS && CSS.escape ? CSS.escape(wanted) : wanted) + '"]';
+    const el = root.querySelector(sel) || (dir ? root.querySelector('[data-fk="level-title"]') : null);
+    if(el){ try { el.focus({ preventScroll:true }); } catch(_){ el.focus(); } }
+  }
+}
+
+/* ---------- peças compartilhadas ---------- */
+
+/** Linha navegável do índice: título, uma linha de contexto, um sinal à direita e ›. */
+function indexRow(o){
+  const sub = (o.sub || []).filter(Boolean).map(s => typeof s === 'string' ? { text:s } : s);
+  return h('li', { class:'ix-row' + (o.cls ? ' ' + o.cls : '') },
+    h('button', { class:'ix-main', type:'button', 'data-fk':o.fk, onclick:o.onOpen, 'aria-label':o.ariaLabel || null },
+      o.lead || null,
+      h('span', { class:'ix-text' },
+        h('span', { class:'ix-t' }, h('span', { class:'ix-name', text:o.title }), o.tag ? h('span', { class:'state-tag', text:o.tag }) : null),
+        sub.length ? h('span', { class:'ix-s' }, sub.map(s => h('span', { class:s.cls || null, text:s.text }))) : null),
+      o.side || null,
+      icon('i-next', 'ix-go')),
+    o.after || null);
+}
+
+/** Cabeçalho de nível: caminho (desktop), voltar (celular), título e contexto. */
+function levelHead(trail, title, sub, tag){
+  const parent = trail[trail.length - 2];
+  const crumbs = h('nav', { class:'crumbs', 'aria-label':'Você está em' },
+    h('ol', null, trail.map((c, i) => h('li', null, i === trail.length - 1
+      ? h('span', { 'aria-current':'page', text:c.label })
+      : h('button', { class:'crumb-link', type:'button', onclick:c.go, text:c.label })))));
+  const back = parent ? h('button', { class:'crumb-back', type:'button', onclick:parent.go, 'aria-label':'Voltar para ' + parent.label },
+    icon('i-back', 'btn-icon'), h('span', { text:parent.label })) : null;
+  return h('header', { class:'level-head' },
+    h('div', { class:'level-nav' }, back, crumbs),
+    h('h2', { class:'level-title', tabindex:'-1', 'data-fk':'level-title' }, h('span', { text:title }), tag ? h('span', { class:'state-tag', text:tag }) : null),
+    sub ? h('p', { class:'level-sub', text:sub }) : null);
+}
+
+function discTrail(r){
+  const t = [{ label:'Disciplinas', go:() => navDisc({ level:'root' }, 'back') }];
+  if(r.level === 'root') return t;
+  if(r.areaKey && (r.areaKey !== NO_AREA || r.areaMode)){
+    const key = r.areaKey;
+    t.push({ label: r.area ? r.area.name : NO_AREA_LABEL, go:() => navDisc({ level:'area', areaId:key }, 'back') });
+  }
+  if(r.disc && r.level !== 'area'){
+    const d = r.disc, key = r.areaKey;
+    t.push({ label:d.name, go:() => navDisc({ level:'discipline', disciplineId:d.id, areaId:key }, 'back') });
+  }
+  if(r.topic) t.push({ label:r.topic.name });
+  else t[t.length - 1] = { label:t[t.length - 1].label };   // o nível atual não é link
+  return t;
+}
+
+/** "+ Adicionar": disciplina ou área, sem dois botões competindo. */
+function discAddMenu(){
+  return menuButton('Adicionar', [
+    { label:'Nova disciplina', run:() => openDisciplineModal(null) },
+    { label:'Nova área de estudo', run:() => openAreaModal(null) }
+  ], { ariaLabel:'Adicionar disciplina ou área', className:'btn primary sm', icon:'i-plus', fk:'add' });
+}
+
+/* ---------- nível 1 · o índice ---------- */
+function discRootLevel(r){
   const parts = [];
   parts.push(h('div', { class:'panel-bar' },
-    h('p', { class:'hierarchy-legend', 'aria-label':'Como o conteúdo se organiza' },
-      h('span', { text:AREA_TERM }), h('span', { class:'sep', 'aria-hidden':'true', text:'›' }),
-      h('span', { text:'Disciplina' }), h('span', { class:'sep', 'aria-hidden':'true', text:'›' }),
-      h('span', { text:'Tópico' }), helpDot('estrutura')),
-    h('div', { class:'panel-actions' },
-      h('button', { class:'btn ghost sm', type:'button', onclick:() => openAreaModal(null) }, icon('i-plus'), AREA_TERM),
-      h('button', { class:'btn primary sm', type:'button', onclick:() => openDisciplineModal(null) }, icon('i-plus'), 'Disciplina'))));
+    h('p', { class:'panel-lead' }, 'Organize o que você está estudando.', helpDot('estrutura')),
+    discAddMenu()));
 
   const nudge = areaNudgeCard('disciplines');
   if(nudge) parts.push(nudge);
 
-  const list = ui.showArchivedDisciplines ? state.disciplines : activeDisciplines();
-  if(!list.length){
-    parts.push(h('section', { class:'quiet-empty' }, emptyState('Você ainda não adicionou nada para estudar',
-      'Comece com apenas uma disciplina — por exemplo Matemática, Inglês, Anatomia ou Redes de Computadores. Áreas de Estudo e tópicos podem vir depois.',
+  const active = activeDisciplines();
+  const archivedDiscs = state.disciplines.filter(d => d.archived);
+  const hiddenAreas = state.areas.filter(a => !areaIsListed(a)).sort(sortByName);
+
+  if(r.areaMode){
+    const rows = state.areas.filter(areaIsListed).sort(sortByName).map(areaRow);
+    const looseAll = disciplinesIn(NO_AREA, true);
+    if(looseAll.length) rows.push(noAreaRow(looseAll));
+    parts.push(h('ul', { class:'ix-list' }, rows));
+  } else if(active.length){
+    parts.push(h('ul', { class:'ix-list' }, active.slice().sort(sortByName).map(disciplineRow)));
+  } else {
+    parts.push(h('section', { class:'quiet-empty' }, emptyState('O que você está estudando?',
+      'Comece com uma disciplina — por exemplo Matemática, Inglês, Anatomia ou Redes de Computadores. Áreas e tópicos podem vir depois.',
       h('div', { class:'empty-actions' },
         h('button', { class:'btn primary', type:'button', text:'Adicionar uma disciplina', onclick:() => openDisciplineModal(null) }),
-        h('button', { class:'btn ghost', type:'button', text:'Como organizar meus estudos?', onclick:() => openInteractiveGuide('ig-estrutura') })))));
-  } else {
-    const groups = new Map();
-    list.forEach(d => {
-      const key = d.areaId && getArea(d.areaId) ? d.areaId : '__none__';
-      if(!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(d);
-    });
-    state.areas.slice().filter(a => !a.archived).sort(sortByName).forEach(area => {
-      const items = groups.get(area.id) || [];
-      parts.push(h('section', { class:'area-section', 'aria-labelledby':'area-' + area.id },
-        h('div', { class:'area-head' },
-          h('h3', { class:'area-name', id:'area-' + area.id, text:area.name }),
-          h('span', { class:'area-count', text: plural(items.length, 'disciplina', 'disciplinas') }),
-          h('button', { class:'linkbtn muted', type:'button', text:'editar', 'aria-label':`Editar ${area.name}`, onclick:() => openAreaModal(area) })),
-        items.length
-          ? h('ul', { class:'disc-list' }, items.slice().sort(sortByName).map(disciplineRow))
-          : h('p', { class:'area-empty' },
-              h('span', { text:'Nenhuma disciplina nesta área ainda. ' }),
-              h('button', { class:'linkbtn', type:'button', text:'adicionar aqui', onclick:() => openDisciplineModal(null, { areaId:area.id }) }))));
-    });
-    const loose = groups.get('__none__');
-    if(loose && loose.length){
-      parts.push(h('section', { class:'area-section is-loose', 'aria-labelledby':'area-none' },
-        h('div', { class:'area-head' },
-          h('h3', { class:'area-name', id:'area-none', text:NO_AREA_LABEL }),
-          h('span', { class:'area-count', text: plural(loose.length, 'disciplina', 'disciplinas') }),
-          state.areas.length ? null : h('button', { class:'linkbtn muted', type:'button', text:'organizar em uma Área', onclick:() => openAreaModal(null) })),
-        h('ul', { class:'disc-list' }, loose.slice().sort(sortByName).map(disciplineRow))));
-    }
+        h('button', { class:'linkbtn muted', type:'button', text:'Como organizar meus estudos?', onclick:() => openInteractiveGuide('ig-estrutura') })))));
   }
-  const archivedCount = state.disciplines.filter(d => d.archived).length;
-  if(archivedCount){
-    parts.push(h('div', { class:'panel-foot' },
-      h('button', { class:'linkbtn muted', type:'button', 'aria-pressed': ui.showArchivedDisciplines ? 'true' : 'false',
-        text: ui.showArchivedDisciplines ? 'Ocultar arquivadas' : `Mostrar arquivadas (${archivedCount})`,
-        onclick:() => { ui.showArchivedDisciplines = !ui.showArchivedDisciplines; renderDisciplines(); } })));
+
+  const foot = [];
+  // sem Áreas, as disciplinas arquivadas continuam acessíveis aqui mesmo
+  if(!r.areaMode && archivedDiscs.length){
+    foot.push(h('button', { class:'linkbtn muted', type:'button', 'aria-pressed': ui.showArchivedDisciplines ? 'true' : 'false',
+      text: ui.showArchivedDisciplines ? 'Ocultar arquivadas' : `Disciplinas arquivadas (${archivedDiscs.length})`,
+      onclick:() => { ui.showArchivedDisciplines = !ui.showArchivedDisciplines; renderDisciplines(); } }));
+  }
+  if(hiddenAreas.length){
+    foot.push(h('button', { class:'linkbtn muted', type:'button', 'aria-pressed': ui.showArchivedAreas ? 'true' : 'false',
+      text: ui.showArchivedAreas ? 'Ocultar áreas arquivadas' : `Áreas arquivadas (${hiddenAreas.length})`,
+      onclick:() => { ui.showArchivedAreas = !ui.showArchivedAreas; renderDisciplines(); } }));
+  }
+  if(foot.length) parts.push(h('div', { class:'panel-foot' }, foot));
+  if(!r.areaMode && ui.showArchivedDisciplines && archivedDiscs.length){
+    parts.push(h('section', { class:'ix-archived', 'aria-label':'Disciplinas arquivadas' },
+      h('ul', { class:'ix-list' }, archivedDiscs.slice().sort(sortByName).map(disciplineRow))));
+  }
+  if(ui.showArchivedAreas && hiddenAreas.length){
+    parts.push(h('section', { class:'ix-archived', 'aria-label':'Áreas arquivadas' },
+      h('ul', { class:'ix-list' }, hiddenAreas.map(areaRow))));
   }
   return parts;
 }
 
-/** Linha de disciplina: nome, um resumo simples e a prioridade só quando foge do padrão. */
+function areaRow(a){
+  const list = disciplinesIn(a.id, false);
+  const due = sum(list, d => ReviewEngine.dueCountFor(d.id));
+  const sub = [
+    list.length ? plural(list.length, 'disciplina', 'disciplinas') : 'Nenhuma disciplina ainda',
+    due ? { text:`${plural(due, 'revisão', 'revisões')} hoje`, cls:'is-due' } : null
+  ];
+  return indexRow({
+    fk:'area-' + a.id, title:a.name, tag: a.archived ? 'arquivada' : null, sub,
+    cls: a.archived ? 'is-archived' : null,
+    ariaLabel: `${a.name}${a.archived ? ' (arquivada)' : ''}. ${sub.filter(Boolean).map(s => s.text || s).join(', ')}. Abrir área`,
+    onOpen:() => openArea(a.id)
+  });
+}
+
+function noAreaRow(all){
+  const active = all.filter(d => !d.archived).length;
+  const sub = active
+    ? [plural(active, 'disciplina', 'disciplinas'), active === 1 ? 'ainda não organizada' : 'ainda não organizadas']
+    : [plural(all.length, 'disciplina arquivada', 'disciplinas arquivadas')];
+  return indexRow({
+    fk:'area-' + NO_AREA, title:NO_AREA_LABEL, sub, cls:'is-loose',
+    ariaLabel:`${NO_AREA_LABEL}: ${sub.join(', ')}. Abrir`,
+    onOpen:() => openArea(NO_AREA)
+  });
+}
+
+/** Linha de disciplina: nome, contexto curto e a prioridade — sempre, de 1 a 5. */
 function disciplineRow(d){
   const prog = disciplineProgress(d.id);
   const last = lastStudyISO(d.id);
-  const due = ReviewEngine.dueCountFor(d.id);
-  const meta = [];
-  meta.push(prog.total ? plural(prog.total, 'tópico', 'tópicos') : 'sem tópicos');
-  if(due > 0) meta.push(`${plural(due, 'revisão', 'revisões')} hoje`);
-  meta.push(last ? `estudada ${fmtRelativePast(last)}` : 'ainda não estudada');
+  const due = d.archived ? 0 : ReviewEngine.dueCountFor(d.id);
+  const sub = [
+    prog.total ? plural(prog.total, 'tópico', 'tópicos') : 'sem tópicos',
+    due > 0 ? { text:`${plural(due, 'revisão', 'revisões')} hoje`, cls:'is-due' } : null,
+    last ? `estudada ${fmtRelativePast(last)}` : 'ainda não estudada'
+  ];
   const p = PriorityEngine.clamp(d.priority);
-  return h('li', { class:'disc-row' + (d.archived ? ' is-archived' : '') },
-    h('button', { class:'dr-main', type:'button', onclick:() => openDisciplineDetail(d.id), 'aria-label': `${d.name}. ${meta.join(', ')}. Abrir` },
-      h('span', { class:'dr-t' }, h('span', { text:d.name }), d.archived ? h('span', { class:'state-tag', text:'arquivada' }) : null),
-      h('span', { class:'dr-s' }, meta.map((m, i) => h('span', { class: i === 1 && due > 0 ? 'is-due' : null, text:m })))),
-    h('span', { class:'dr-side' },
-      prog.total ? h('span', { class:'dr-cov', title:'Conteúdo estudado' }, h('span', { class:'num', text: fmtPct(prog.coverage) }), h('span', { class:'dr-cov-l', text:' estudado' })) : null,
-      p !== PRIORITY_DEFAULT ? priorityChip(p, { compact:true }) : null),
-    d.archived ? null : h('button', { class:'icon-btn dr-play', type:'button', 'aria-label':'Estudar ' + d.name, title:'Estudar',
-      onclick:() => openRegisterModal({ disciplineId:d.id }) }, icon('i-play', 'btn-icon')));
+  return indexRow({
+    fk:'disc-' + d.id, title:d.name, tag: d.archived ? 'arquivada' : null, sub,
+    cls: d.archived ? 'is-archived' : null,
+    side: priorityMark(p, { compact:true }),
+    ariaLabel: `${d.name}${d.archived ? ' (arquivada)' : ''}. ${sub.filter(Boolean).map(s => s.text || s).join(', ')}. Prioridade ${priorityText(p)}. Abrir`,
+    onOpen:() => openDisciplineDetail(d.id)
+  });
+}
+
+/* ---------- nível 2 · uma Área (ou "Sem área") ---------- */
+function discAreaLevel(r){
+  const isNone = r.areaKey === NO_AREA;
+  const a = r.area;
+  const all = disciplinesIn(r.areaKey, true);
+  const active = all.filter(d => !d.archived);
+  const archived = all.filter(d => d.archived);
+  const title = isNone ? NO_AREA_LABEL : a.name;
+  const sub = isNone
+    ? 'Disciplinas que ainda não estão em uma área.'
+    : (active.length ? plural(active.length, 'disciplina', 'disciplinas') : 'Nenhuma disciplina ainda');
+  const parts = [levelHead(discTrail(r), title, sub, !isNone && a.archived ? 'arquivada' : null)];
+
+  const addBtn = h('button', { class:'btn primary sm', type:'button', 'data-fk':'add-disc',
+    onclick:() => openDisciplineModal(null, { areaId: isNone ? null : a.id }) }, icon('i-plus'), 'Adicionar disciplina');
+  let more = null;
+  if(!isNone){
+    more = menuButton('Mais', [
+      { label:'Renomear', run:() => openAreaModal(a, { mode:'rename' }) },
+      { label:'Escolher disciplinas desta área', run:() => openAreaModal(a) },
+      { label: a.archived ? 'Reativar área' : 'Arquivar área', run:() => a.archived ? unarchiveArea(a.id) : archiveArea(a.id) },
+      { label:'Excluir área', run:() => deleteArea(a.id) }
+    ], { ariaLabel:'Mais ações para ' + a.name, fk:'more' });
+  } else if(active.length && state.areas.some(x => !x.archived)){
+    more = h('button', { class:'linkbtn muted', type:'button', text:'Organizar em uma área',
+      onclick:() => openAreaModal(null, { preselect: active.map(d => d.id) }) });
+  }
+  parts.push(h('div', { class:'level-actions' }, a && a.archived ? null : addBtn, more));
+
+  if(a && a.archived){
+    parts.push(h('p', { class:'inline-note' },
+      h('span', { class:'in-text', text:'Esta área está arquivada. Ela fica fora da lista principal, com tudo preservado.' }),
+      h('span', { class:'in-actions' }, h('button', { class:'linkbtn', type:'button', text:'Reativar', onclick:() => unarchiveArea(a.id) }))));
+  }
+
+  if(active.length){
+    parts.push(h('ul', { class:'ix-list' }, active.map(disciplineRow)));
+  } else if(a && ui.areaJustCreated === a.id){
+    parts.push(h('div', { class:'invite', role:'status' },
+      h('p', { class:'invite-t', text:`${a.name} criada.` }),
+      h('p', { class:'invite-s', text:'Quer adicionar uma disciplina agora?' }),
+      h('div', { class:'invite-actions' },
+        h('button', { class:'btn primary sm', type:'button', text:'Adicionar disciplina', onclick:() => openDisciplineModal(null, { areaId:a.id }) }),
+        h('button', { class:'btn ghost sm', type:'button', text:'Agora não', 'data-fk':'invite-later',
+          onclick:() => { ui.areaJustCreated = null; ui.discFocus = 'add-disc'; renderDisciplines(); } }))));
+  } else if(!(a && a.archived)){
+    parts.push(h('div', { class:'ix-empty' },
+      h('p', { text: isNone ? 'Nenhuma disciplina sem área.' : 'Nenhuma disciplina aqui ainda.' }),
+      isNone ? null : h('p', { class:'ix-empty-s', text:'Disciplina é o que você estuda — por exemplo, Redes de Computadores dentro de Tecnologia.' })));
+  }
+
+  if(archived.length){
+    parts.push(h('div', { class:'panel-foot' },
+      h('button', { class:'linkbtn muted', type:'button', 'aria-pressed': ui.showArchivedDisciplines ? 'true' : 'false',
+        text: ui.showArchivedDisciplines ? 'Ocultar arquivadas' : `Arquivadas (${archived.length})`,
+        onclick:() => { ui.showArchivedDisciplines = !ui.showArchivedDisciplines; renderDisciplines(); } })));
+    if(ui.showArchivedDisciplines) parts.push(h('ul', { class:'ix-list ix-archived' }, archived.map(disciplineRow)));
+  }
+  return parts;
+}
+
+/* ---------- nível 3 · uma Disciplina ---------- */
+function discDisciplineLevel(r){
+  const d = r.disc;
+  const prog = disciplineProgress(d.id);
+  const weekProg = PlannerEngine.getCurrentWeekProgress().perDiscipline.find(x => x.disciplineId === d.id);
+  const weekRealized = weekProg ? weekProg.realized : minutesInRange({ start:startOfWeek(today()), end:endOfWeek(today()) }, d.id);
+  const topics = topicsOf(d.id, true);
+  const visible = topics.filter(t => !t.archived);
+  const parts = [levelHead(discTrail(r), d.name, null, d.archived ? 'arquivada' : null)];
+
+  parts.push(priorityInline({ value:d.priority, context:'discipline', key:'dprio-' + d.id, label:'Prioridade de ' + d.name,
+    onCommit: v => setDisciplinePriority(d.id, v) }));
+
+  parts.push(h('div', { class:'facts' },
+    fact(weekProg && weekProg.planned > 0 ? `${fmtDuration(weekRealized)} de ${fmtDuration(weekProg.planned)}` : fmtDuration(weekRealized), 'nesta semana'),
+    fact(prog.coverage !== null ? fmtPct(prog.coverage) : '—', 'conteúdo estudado'),
+    fact(capFirst(fmtRelativePast(lastStudyISO(d.id))), 'último estudo')));
+
+  parts.push(h('div', { class:'level-actions' },
+    d.archived
+      ? h('button', { class:'btn primary sm', type:'button', text:'Reativar', onclick:() => toggleArchiveDiscipline(d.id) })
+      : h('button', { class:'btn primary sm', type:'button', 'data-fk':'study', onclick:() => openRegisterModal({ disciplineId:d.id }) }, icon('i-play'), 'Começar a estudar'),
+    h('button', { class:'btn ghost sm', type:'button', text:'Editar', 'data-fk':'edit', onclick:() => openDisciplineModal(d) }),
+    menuButton('Mais', [
+      { label:'Adicionar prazo', run:() => openDeadlineModal(null, { disciplineId:d.id }) },
+      { label:'Analisar esta disciplina', run:() => applyAnalyticsQuery({ scopeType:'discipline', scopeId:d.id, periodPreset:'30d', focus:'overview' }) },
+      { label: d.archived ? 'Reativar' : 'Arquivar', run:() => toggleArchiveDiscipline(d.id) }
+    ], { ariaLabel:'Mais ações para ' + d.name, fk:'more' })));
+
+  /* tópicos: escrever o nome e confirmar (prioridade e revisão) num modal curto */
+  const addInput = h('input', { type:'text', id:'dd-new-topic', maxlength:'80', autocomplete:'off', 'data-fk':'topic-new',
+    placeholder: visible.length ? 'Nome do novo tópico' : 'Ex.: OSPF', 'aria-label':'Nome do novo tópico' });
+  const addHint = h('p', { class:'hint warn-text', hidden:true });
+  const submitAdd = () => {
+    const name = addInput.value.trim();
+    if(!name){ addHint.hidden = false; addHint.textContent = 'Escreva o nome do tópico primeiro.'; addInput.focus(); return; }
+    openTopicModal(d.id, null, { name });
+  };
+  addInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); submitAdd(); } });
+
+  const topicSection = h('section', { class:'level-section', 'aria-labelledby':'dd-topics' },
+    h('div', { class:'section-head' },
+      h('h3', { class:'section-title', id:'dd-topics' }, 'Tópicos', helpDot('prioridadeTopico')),
+      visible.length ? h('span', { class:'section-count', text:String(visible.length) }) : null));
+  if(!visible.length){
+    topicSection.append(h('p', { class:'ix-empty-s', text:'Tópicos são as partes da disciplina — por exemplo, em Redes de Computadores: Subnetting, VLAN, OSPF. Eles entram nas revisões.' }));
+  } else {
+    topicSection.append(h('ul', { class:'ix-list is-topics' }, visible.map((t, i) => topicRow(t, i, visible.length))));
+  }
+  if(!d.archived){
+    topicSection.append(
+      h('div', { class:'topic-add-row' }, addInput,
+        h('button', { class:'btn ghost sm', type:'button', onclick:submitAdd }, icon('i-plus'), 'Adicionar tópico')),
+      addHint,
+      h('button', { class:'linkbtn muted topic-bulk', type:'button', text:'Adicionar vários de uma vez', onclick:() => openBulkTopicModal(d.id) }));
+  }
+  const archivedTopics = topics.filter(t => t.archived);
+  if(archivedTopics.length){
+    topicSection.append(h('details', { class:'disclosure small' },
+      h('summary', null, h('span', { text:'Tópicos arquivados' }), h('span', { class:'disclosure-count', text:String(archivedTopics.length) })),
+      h('div', { class:'disclosure-body' }, h('ul', { class:'ix-list is-topics' }, archivedTopics.map(t => indexRow({
+        fk:'topic-' + t.id, lead: statusMark(topicStatus(t)), title:t.name, tag:'arquivado', sub:['histórico preservado'], cls:'is-archived',
+        onOpen:() => openTopicPage(t.id) }))))));
+  }
+  parts.push(topicSection);
+
+  const dls = state.deadlines.filter(x => x.disciplineId === d.id && !DeadlineEngine.isDone(x))
+    .sort((a,b) => str(a.date).localeCompare(str(b.date)));
+  if(dls.length){
+    parts.push(h('section', { class:'level-section', 'aria-labelledby':'dd-dl' },
+      h('div', { class:'section-head' }, h('h3', { class:'section-title', id:'dd-dl', text:'Prazos' })),
+      h('ul', { class:'dl-line-list' }, dls.slice(0, 4).map(dl => deadlineLine(dl, null, false)))));
+  }
+  return parts;
+}
+
+function topicRow(t, i, count){
+  const st = topicStatus(t);
+  const meta = t.reviewEnabled && t.reviewDueDate ? `revisão ${fmtRelativeFuture(t.reviewDueDate)}` : TOPIC_STATUS_LABEL[st];
+  const p = PriorityEngine.clamp(t.priority);
+  return indexRow({
+    fk:'topic-' + t.id, lead: statusMark(st), title:t.name, sub:[meta],
+    side: priorityMark(p, { compact:true }),
+    ariaLabel:`${t.name}. ${TOPIC_STATUS_LABEL[st]}${meta !== TOPIC_STATUS_LABEL[st] ? ', ' + meta : ''}. Prioridade ${priorityText(p)}. Abrir`,
+    onOpen:() => openTopicPage(t.id),
+    after: h('span', { class:'row-actions' },
+      h('button', { class:'icon-btn mini', type:'button', text:'↑', title:'Subir', 'aria-label':`Subir ${t.name}`, 'data-fk':'up-' + t.id, disabled: i === 0,
+        onclick: once(() => moveTopic(t.id, -1)) }),
+      h('button', { class:'icon-btn mini', type:'button', text:'↓', title:'Descer', 'aria-label':`Descer ${t.name}`, 'data-fk':'down-' + t.id, disabled: i === count - 1,
+        onclick: once(() => moveTopic(t.id, 1)) }))
+  });
+}
+
+/* ---------- nível 4 · um Tópico ---------- */
+function discTopicLevel(r){
+  const t = r.topic;
+  const parts = [levelHead(discTrail(r), t.name, null, t.archived ? 'arquivado' : null)];
+  parts.push(priorityInline({ value:t.priority, context:'topic', key:'tprio-' + t.id, label:'Prioridade de ' + t.name,
+    onCommit: v => setTopicPriority(t.id, v) }));
+  parts.push(...topicDetailContent(t, { inDrawer:false }));
+  return parts;
+}
+
+/**
+ * Conteúdo do tópico, usado em dois lugares: a página dentro de Disciplinas e
+ * o painel rápido aberto de outras telas (Hoje, Revisões, Análises, Prazos).
+ */
+function topicDetailContent(t, ctx){
+  const c = ctx || {};
+  const leave = () => { if(c.inDrawer) Drawer.close(); };
+  const disc = getDiscipline(t.disciplineId);
+  const sess = sessionsOfTopic(t.id).slice().sort((a,b) => b.date.localeCompare(a.date));
+  const totalMin = sum(sess, s => s.minutes);
+  const st = topicStatus(t);
+
+  const kv = h('dl', { class:'kv-list' });
+  const add = (k, v) => kv.append(h('div', null, h('dt', { text:k }), h('dd', { text:v })));
+  add('Situação', TOPIC_STATUS_LABEL[st]);
+  add('Próxima revisão', t.reviewEnabled ? (t.reviewDueDate ? `${capFirst(fmtRelativeFuture(t.reviewDueDate))} · ${fmtDateBR(t.reviewDueDate)}` : 'depois do primeiro estudo') : 'revisões desligadas');
+  add('Consolidação', t.masteryLevel ? `${t.masteryLevel} de 5` : 'ainda não avaliada');
+  add('Tempo estudado', sess.length ? `${fmtDuration(totalMin)} em ${plural(sess.length, 'vez', 'vezes')}` : 'nenhum estudo ainda');
+
+  const actions = h('div', { class:'level-actions' },
+    t.archived
+      ? h('button', { class:'btn primary sm', type:'button', text:'Reativar tópico', onclick: once(async () => {
+          await persist('topics', Object.assign({}, t, { archived:false })); await refresh(); toast(t.name, 'ok', { title:'Tópico reativado' }); }) })
+      : h('button', { class:'btn primary sm', type:'button', 'data-fk':'study', onclick:() => { leave(); startTimer(t.disciplineId, t.id, null); } }, icon('i-play'), 'Começar a estudar'),
+    !t.archived && t.reviewEnabled ? h('button', { class:'btn ghost sm', type:'button', text:'Revisar agora', onclick:() => { leave(); startReview(t.id); } }) : null,
+    h('button', { class:'btn ghost sm', type:'button', text:'Editar', 'data-fk':'edit', onclick:() => { leave(); openTopicModal(t.disciplineId, t); } }),
+    c.inDrawer ? h('button', { class:'linkbtn muted', type:'button', text:'abrir em Disciplinas', onclick:() => openTopicPage(t.id) }) : null);
+
+  const recent = h('ul', { class:'line-list' });
+  if(!sess.length){
+    recent.appendChild(h('li', { class:'hint', text:'Nenhum estudo registrado neste tópico ainda.' }));
+  } else {
+    sess.slice(0, 6).forEach(s => {
+      const diff = difficultyInfo(s.difficulty);
+      recent.appendChild(h('li', { class:'line' },
+        h('button', { class:'line-main', type:'button', 'aria-label':`Editar o estudo de ${fmtDateBR(s.date)}`, onclick:() => { leave(); openEditSessionModal(s.id); } },
+          h('span', { class:'line-t', text: fmtDateBR(s.date) }),
+          h('span', { class:'line-s', text: [s.type ? sessionTypeLabel(s.type) : null, diff ? diff.label : null, reviewOutcomeLabel(s.reviewOutcome)].filter(Boolean).join(' · ') || '—' })),
+        h('span', { class:'line-v num', text: fmtDuration(s.minutes) })));
+    });
+  }
+
+  const tDeadlines = state.deadlines.filter(dl => !DeadlineEngine.isDone(dl) &&
+    (dl.topicId === t.id || (!dl.topicId && dl.disciplineId === t.disciplineId)))
+    .sort((a,b) => str(a.date).localeCompare(str(b.date)));
+
+  const more = h('details', { class:'disclosure small' },
+    h('summary', null, h('span', { text:'Mais detalhes' })),
+    h('div', { class:'disclosure-body' },
+      (() => { const d2 = h('dl', { class:'kv-list' }); const a2 = (k, v) => d2.append(h('div', null, h('dt', { text:k }), h('dd', { text:v })));
+        a2('Último estudo', capFirst(fmtRelativePast(t.lastStudiedAt)));
+        a2('Próxima revisão a cada', t.reviewIntervalDays ? plural(t.reviewIntervalDays, 'dia', 'dias') : '—');
+        a2('Revisões feitas', String(t.reviewRepetitions || 0));
+        a2('Vezes que esqueceu', String(t.reviewFailures || 0));
+        if(disc) a2('Prioridade da disciplina', priorityText(disc.priority));
+        return d2; })()));
+
+  return [
+    kv,
+    actions,
+    tDeadlines.length ? h('section', { class:'level-section' },
+      h('div', { class:'section-head' }, h('h3', { class:'section-title', text:'Prazos relacionados' })),
+      h('ul', { class:'dl-line-list' }, tDeadlines.slice(0, 3).map(dl => deadlineLine(dl, null, false)))) : null,
+    h('section', { class:'level-section' },
+      h('div', { class:'section-head' }, h('h3', { class:'section-title', text:'Estudos recentes' })),
+      recent,
+      sess.length > 6 ? h('p', { class:'hint', style:'margin-top:8px', text:`+ ${plural(sess.length - 6, 'estudo mais antigo', 'estudos mais antigos')} no Histórico.` }) : null),
+    more
+  ];
+}
+
+/** Painel rápido do tópico, para quem está em outra tela e só quer consultar. */
+function openTopicDrawer(topicId){
+  const t = getTopic(topicId);
+  if(!t) return;
+  const disc = getDiscipline(t.disciplineId);
+  const body = h('div', { class:'topic-drawer' },
+    h('p', { class:'detail-path' }, h('span', { text: disc ? disciplinePath(disc) : '' })),
+    h('div', { class:'detail-prio' }, h('span', { text:'Prioridade' }), priorityMark(t.priority)),
+    ...topicDetailContent(t, { inDrawer:true }));
+  Drawer.open(t.name, body);
+}
+
+async function setDisciplinePriority(id, p){
+  const d = getDiscipline(id);
+  if(!d || PriorityEngine.clamp(d.priority) === p) return;
+  try {
+    await DB.put('disciplines', Object.assign({}, d, { priority:p, updatedAt: nowISO() }));
+    ui.planDraft = null;
+    await refresh();
+    toast(`${d.name} · ${priorityText(p)}`, 'ok', { title:'Prioridade atualizada' });
+  } catch(err){
+    console.error('Falha ao salvar a prioridade:', err);
+    toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a prioridade' });
+  }
+}
+async function setTopicPriority(id, p){
+  const t = getTopic(id);
+  if(!t || PriorityEngine.clamp(t.priority) === p) return;
+  try {
+    const updated = Object.assign({}, t, { priority:p, updatedAt: nowISO() });
+    delete updated.importance;
+    await DB.put('topics', updated);
+    await refresh();
+    toast(`${t.name} · ${priorityText(p)}`, 'ok', { title:'Prioridade atualizada' });
+  } catch(err){
+    console.error('Falha ao salvar a prioridade:', err);
+    toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a prioridade' });
+  }
 }
 
 /* ---------- incentivo gentil a organizar em Áreas (nunca bloqueia) ---------- */
@@ -4792,13 +5365,13 @@ function areaNudgeCard(where){
     if(days < AREA_NUDGE_SNOOZE_DAYS) return null;
   }
   return h('div', { class:'inline-note', role:'note' },
-    h('span', { class:'in-text', text:`${loose.length} disciplinas ainda estão sem Área de Estudo. Agrupar ajuda a encontrar e analisar — por exemplo, Tecnologia › ${loose[0].name}.` }),
+    h('span', { class:'in-text', text:`${loose.length} disciplinas ainda estão sem área. Agrupar ajuda a encontrar — por exemplo, Tecnologia › ${loose[0].name}.` }),
     h('span', { class:'in-actions' },
       h('button', { class:'linkbtn', type:'button', text:'Organizar', onclick:() => openAreaModal(null, { preselect: loose.map(d => d.id) }) }),
       h('button', { class:'linkbtn muted', type:'button', text:'Agora não', onclick: async () => {
         await setMeta('areaNudgeDismissedAt', nowISO());
         render();
-        toast('A organização por Áreas continua disponível aqui e na Ajuda.', 'info');
+        toast('Você pode criar áreas quando quiser, em Disciplinas → Adicionar.', 'info');
       } })));
 }
 
@@ -4806,134 +5379,18 @@ function isDesktopUI(){
   return window.matchMedia('(min-width:861px)').matches;
 }
 
-/**
- * Detalhe da disciplina. No computador abre em painel lateral (mantém a lista
- * visível ao lado); no celular abre em modal.
- */
-function openDisciplineDetail(discId){
-  ui.openDisciplineId = discId;
-  const d = getDiscipline(discId);
-  if(!d) return;
-  if(isDesktopUI()){ openDisciplineDrawer(d); return; }
-  openModal(close => ({
-    title: d.name,
-    content: disciplineDetailBody(d, { leave: close, reopen: () => { close(); openDisciplineDetail(discId); } }),
-    actions:[ h('button', { class:'btn ghost', type:'button', text:'Fechar', onclick:() => close() }) ]
-  }), { size:'wide' });
-}
-
-function openDisciplineDrawer(d){
-  const refreshDrawer = () => { const fresh = getDiscipline(d.id); if(fresh && Drawer.isOpen) Drawer.open(fresh.name, disciplineDetailBody(fresh, ctx)); };
-  const ctx = { leave: () => Drawer.close(), reopen: refreshDrawer };
-  Drawer.open(d.name, disciplineDetailBody(d, ctx));
-}
-
 /** Um fato em linha: valor e rótulo, sem caixa. */
 function fact(value, label){
   return h('div', { class:'fact' }, h('span', { class:'fact-v', text:String(value) }), h('span', { class:'fact-l', text:label }));
 }
 
-/** Conteúdo do detalhe (painel no computador, modal no celular). */
-function disciplineDetailBody(d, ctx){
-  const prog = disciplineProgress(d.id);
-  const weekProg = PlannerEngine.getCurrentWeekProgress().perDiscipline.find(x => x.disciplineId === d.id);
-  const topics = topicsOf(d.id, true);
-  const visible = topics.filter(t => !t.archived);
-  const area = d.areaId ? getArea(d.areaId) : null;
-  const weekRealized = weekProg ? weekProg.realized : minutesInRange({ start:startOfWeek(today()), end:endOfWeek(today()) }, d.id);
-
-  /* adicionar tópico: digitar o nome e confirmar em um modal focado */
-  const addInput = h('input', { type:'text', id:'dd-new-topic', maxlength:'80', autocomplete:'off',
-    placeholder: visible.length ? 'Novo tópico' : 'Ex.: OSPF', 'aria-label':'Nome do novo tópico' });
-  const addHint = h('p', { class:'hint', style:'margin-top:6px', hidden:true });
-  const submitAdd = () => {
-    const name = addInput.value.trim();
-    if(!name){
-      addHint.hidden = false;
-      addHint.textContent = 'Escreva o nome do tópico primeiro.';
-      addHint.classList.add('warn-text');
-      addInput.focus();
-      return;
-    }
-    ctx.leave();
-    openTopicModal(d.id, null, { name });
-  };
-  addInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); submitAdd(); } });
-
-  const topicList = h('div', { class:'topic-list' });
-  if(!visible.length){
-    topicList.append(h('p', { class:'hint', text:'Nenhum tópico ainda. Tópicos são as partes da disciplina — por exemplo, em Redes de Computadores: Subnetting, VLAN, OSPF.' }));
-  } else {
-    visible.forEach((t, i) => {
-      const st = topicStatus(t);
-      const meta = t.reviewEnabled && t.reviewDueDate ? `revisão ${fmtRelativeFuture(t.reviewDueDate)}` : TOPIC_STATUS_LABEL[st];
-      const p = PriorityEngine.clamp(t.priority);
-      topicList.append(h('div', { class:'topic-row' },
-        statusMark(st),
-        h('button', { class:'tr-main', type:'button', 'aria-label': `${t.name}, ${TOPIC_STATUS_LABEL[st]}`,
-          onclick:() => { if(isDesktopUI()) openTopicDrawer(t.id); else { ctx.leave(); openTopicModal(d.id, t); } } },
-          h('span', { class:'tr-name', text:t.name }),
-          h('span', { class:'tr-meta', text: meta })),
-        p !== PRIORITY_DEFAULT ? priorityChip(p, { compact:true }) : null,
-        h('span', { class:'row-actions' },
-          h('button', { class:'icon-btn mini', type:'button', text:'↑', title:'Subir', 'aria-label':`Subir ${t.name}`, disabled: i === 0,
-            onclick: async () => { await moveTopic(t.id, -1); ctx.reopen(); } }),
-          h('button', { class:'icon-btn mini', type:'button', text:'↓', title:'Descer', 'aria-label':`Descer ${t.name}`, disabled: i === visible.length - 1,
-            onclick: async () => { await moveTopic(t.id, 1); ctx.reopen(); } }),
-          h('button', { class:'linkbtn muted', type:'button', text:'editar', 'aria-label':`Editar ${t.name}`,
-            onclick:() => { ctx.leave(); openTopicModal(d.id, t); } }))
-      ));
-    });
-  }
-
-  const archived = topics.filter(t => t.archived);
-  if(archived.length){
-    const box = h('details', { class:'disclosure small' },
-      h('summary', null, h('span', { text:'Tópicos arquivados' }), h('span', { class:'disclosure-count', text:String(archived.length) })),
-      h('div', { class:'disclosure-body' }, archived.map(t => h('div', { class:'topic-row is-archived' },
-        statusMark(topicStatus(t)),
-        h('div', { class:'tr-main' }, h('div', { class:'tr-name', text:t.name }), h('div', { class:'tr-meta', text:'histórico preservado' })),
-        h('button', { class:'linkbtn', type:'button', text:'reativar',
-          onclick: async () => { t.archived = false; await persist('topics', t); await refresh(); ctx.reopen(); toast(t.name, 'ok', { title:'Tópico reativado' }); } })))));
-    topicList.append(box);
-  }
-
-  const dls = state.deadlines.filter(x => x.disciplineId === d.id && !DeadlineEngine.isDone(x))
-    .sort((a,b) => str(a.date).localeCompare(str(b.date)));
-
-  return h('div', { class:'disc-detail' },
-    h('p', { class:'detail-path' },
-      area ? h('span', { text:area.name }) : h('span', { class:'muted-text', text:NO_AREA_LABEL }),
-      h('span', { class:'sep', 'aria-hidden':'true', text:'›' }), h('span', { text:d.name })),
-    h('div', { class:'facts' },
-      fact(weekProg && weekProg.planned > 0 ? `${fmtDuration(weekRealized)} / ${fmtDuration(weekProg.planned)}` : fmtDuration(weekRealized), 'nesta semana'),
-      fact(prog.coverage !== null ? fmtPct(prog.coverage) : '—', 'conteúdo estudado'),
-      fact(capFirst(fmtRelativePast(lastStudyISO(d.id))), 'último estudo'),
-      fact(PRIORITY_LABELS[PriorityEngine.clamp(d.priority)], 'prioridade')),
-    h('div', { class:'detail-actions' },
-      d.archived ? null : h('button', { class:'btn primary sm', type:'button', onclick:() => { ctx.leave(); openRegisterModal({ disciplineId:d.id }); } }, icon('i-play'), 'Estudar agora'),
-      h('button', { class:'btn ghost sm', type:'button', text:'Editar', onclick:() => { ctx.leave(); openDisciplineModal(d); } }),
-      menuButton('Mais', [
-        { label:'Adicionar prazo', run:() => { ctx.leave(); openDeadlineModal(null, { disciplineId:d.id }); } },
-        { label:'Analisar esta disciplina', run:() => { ctx.leave(); applyAnalyticsQuery({ scopeType:'discipline', scopeId:d.id, periodPreset:'30d', focus:'overview' }); } },
-        { label: d.archived ? 'Reativar' : 'Arquivar', run: async () => { ctx.leave(); await toggleArchiveDiscipline(d.id); } }
-      ], { ariaLabel:'Mais ações para ' + d.name })),
-    h('section', { class:'detail-section' },
-      h('h4', { class:'block-label' }, 'Tópicos', helpDot('prioridadeTopico')),
-      h('div', { class:'topic-add-row' },
-        addInput,
-        h('button', { class:'btn ghost sm', type:'button', onclick:submitAdd }, icon('i-plus'), 'Adicionar')),
-      addHint,
-      topicList,
-      h('button', { class:'linkbtn muted', type:'button', style:'margin-top:8px', text:'Adicionar vários de uma vez',
-        onclick:() => { ctx.leave(); openBulkTopicModal(d.id); } })),
-    dls.length ? h('section', { class:'detail-section' },
-      h('h4', { class:'block-label', text:'Prazos' }),
-      h('ul', { class:'dl-line-list' }, dls.slice(0, 4).map(dl => deadlineLine(dl, null, false, { before: () => { if(!isDesktopUI()) ctx.leave(); } })))) : null
-  );
-}
-
 /* ---------- CRUD: Áreas de Estudo ---------- */
+/**
+ * Criar, renomear ou escolher as disciplinas de uma Área.
+ * opts.mode === 'rename' mostra só o nome; opts.preselect marca disciplinas.
+ * Uma Área nova passa a existir imediatamente — com ou sem disciplinas — e a
+ * tela abre nela, com um convite (não obrigatório) para adicionar a primeira.
+ */
 function openAreaModal(area, opts){
   // Só é edição quando recebemos uma área de verdade. Protege handlers que
   // repassem o Event por engano (ex.: onclick:openAreaModal).
@@ -4942,11 +5399,12 @@ function openAreaModal(area, opts){
     area = null;
   }
   const o = (opts && !(opts instanceof Event)) ? opts : {};
+  const renameOnly = !!(area && o.mode === 'rename');
   openModal(close => {
     const nameIn = h('input', { type:'text', id:'ar-name', value: area ? area.name : '', placeholder:'Ex.: Tecnologia', maxlength:'60', autocomplete:'off' });
 
     // disciplinas que podem ficar nesta área: as desta área e as ainda sem área
-    const candidates = activeDisciplines()
+    const candidates = renameOnly ? [] : activeDisciplines()
       .filter(d => (area && d.areaId === area.id) || !d.areaId || !getArea(d.areaId))
       .sort(sortByName);
     const preselect = new Set(o.preselect || []);
@@ -4956,75 +5414,137 @@ function openAreaModal(area, opts){
     });
 
     const content = h('div',
-      h('p', { class:'modal-sub', text:'Uma Área de Estudo organiza disciplinas relacionadas. Cada Disciplina reúne os Tópicos que você estuda.' }),
-      h('div', { class:'mini-tree', style:'margin-bottom:16px' },
-        h('div', { class:'mt-row lvl0' }, h('span', { class:'mt-tag', text:AREA_TERM }), 'Tecnologia'),
-        h('div', { class:'mt-row lvl1' }, h('span', { class:'mt-tag', text:'Disciplina' }), 'Redes de Computadores'),
-        h('div', { class:'mt-row lvl2' }, h('span', { class:'mt-tag', text:'Tópico' }), 'OSPF')),
-      h('div', { class:'field' }, h('label', { for:'ar-name', text:'Nome da Área de Estudo' }), nameIn,
-        h('p', { class:'hint', text:'Outros exemplos: Faculdade, Escola, Idiomas, Música, Concurso.' })),
+      area ? null : h('p', { class:'modal-sub', text:'Uma área reúne disciplinas relacionadas. Por exemplo: Tecnologia → Redes de Computadores → OSPF.' }),
+      h('div', { class:'field' }, h('label', { for:'ar-name', text:'Nome da área' }), nameIn,
+        area ? null : h('p', { class:'hint', text:'Outros exemplos: Faculdade, Escola, Idiomas, Música, Concurso.' })),
       checks.length ? h('fieldset', { class:'check-list' },
-        h('legend', { text: area ? 'Disciplinas desta área' : 'Colocar nesta área (opcional)' }),
-        checks.map(({ d, c }) => h('label', { class:'check-row' }, c, h('span', { text:d.name })))) : null,
-      area ? null : h('p', { class:'hint', style:'margin-top:10px', text:'Área de Estudo não tem prioridade: ela serve só para organizar.' })
+        h('legend', { text: area ? 'Disciplinas desta área' : 'Trazer para esta área (opcional)' }),
+        checks.map(({ d, c }) => h('label', { class:'check-row' }, c, h('span', { text:d.name })))) : null
     );
+    nameIn.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); saveBtn.click(); } });
 
-    const actions = [
-      h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
-      h('button', { class:'btn primary', type:'button', text: area ? 'Salvar' : 'Criar Área de Estudo', onclick: async () => {
-        const name = nameIn.value.trim();
-        if(!name){ nameIn.setAttribute('aria-invalid','true'); nameIn.focus(); toast('Escreva o nome da Área de Estudo.', 'err'); return; }
-        const dup = state.areas.find(x => x.name.toLowerCase() === name.toLowerCase() && (!area || x.id !== area.id));
-        if(dup){ nameIn.setAttribute('aria-invalid','true'); toast(`Você já tem a Área "${dup.name}".`, 'err'); return; }
-        const target = area ? Object.assign({}, area, { name, updatedAt: nowISO() }) : newArea(name);
-        const changed = [];
-        checks.forEach(({ d, c }) => {
-          const want = c.checked ? target.id : (d.areaId === target.id ? null : d.areaId);
-          if((d.areaId || null) !== (want || null)) changed.push(Object.assign({}, d, { areaId: want || null, updatedAt: nowISO() }));
+    const saveBtn = h('button', { class:'btn primary', type:'button', text: area ? 'Salvar' : 'Criar área', onclick: async () => {
+      const name = nameIn.value.trim();
+      if(!name){ nameIn.setAttribute('aria-invalid','true'); nameIn.focus(); toast('Escreva o nome da área.', 'err'); return; }
+      const dup = state.areas.find(x => x.name.toLowerCase() === name.toLowerCase() && (!area || x.id !== area.id));
+      if(dup){ nameIn.setAttribute('aria-invalid','true'); toast(`Você já tem a área "${dup.name}".`, 'err'); return; }
+      const target = area ? Object.assign({}, area, { name, updatedAt: nowISO() }) : newArea(name);
+      const changed = [];
+      checks.forEach(({ d, c }) => {
+        const want = c.checked ? target.id : (d.areaId === target.id ? null : d.areaId);
+        if((d.areaId || null) !== (want || null)) changed.push(Object.assign({}, d, { areaId: want || null, updatedAt: nowISO() }));
+      });
+      close();
+      try {
+        await DB.transactional(changed.length ? ['areas','disciplines'] : ['areas'], api => {
+          api.put('areas', target);
+          changed.forEach(d => api.put('disciplines', d));
         });
-        close();
-        try {
-          await DB.transactional(changed.length ? ['areas','disciplines'] : ['areas'], api => {
-            api.put('areas', target);
-            changed.forEach(d => api.put('disciplines', d));
-          });
-          ui.planDraft = null;
-          await refresh();
-          const moved = changed.filter(d => d.areaId === target.id).length;
-          toast(moved ? `${moved} ${moved === 1 ? 'disciplina organizada' : 'disciplinas organizadas'} em ${name}.` : 'Adicione disciplinas a ela quando quiser.', 'ok',
-            { title: area ? 'Área de Estudo atualizada' : `${name} criada` });
-        } catch(err){
-          console.error('Falha ao salvar a área:', err);
-          toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a Área de Estudo' });
+        ui.planDraft = null;
+        await refresh();
+        const moved = changed.filter(d => d.areaId === target.id).length;
+        if(area){
+          toast(moved ? `${plural(moved, 'disciplina', 'disciplinas')} em ${name}.` : name, 'ok', { title: renameOnly ? 'Área renomeada' : 'Área atualizada' });
+        } else {
+          // a área nova aparece na hora: a tela abre nela
+          if(!moved) ui.areaJustCreated = target.id;
+          openArea(target.id);
+          toast(moved ? `${plural(moved, 'disciplina organizada', 'disciplinas organizadas')} nela.` : '', 'ok', { title:`${name} criada` });
         }
-      } })
-    ];
-    if(area){
-      actions.unshift(h('button', { class:'linkbtn danger', type:'button', text:'excluir área', onclick: async () => {
-        const inside = state.disciplines.filter(d => d.areaId === area.id);
-        close();
-        const ok = await confirmModal(inside.length
-          ? `Excluir a Área "${area.name}"? ${inside.length === 1 ? 'A disciplina dela fica' : `As ${inside.length} disciplinas dela ficam`} sem área — nenhuma disciplina, tópico ou sessão é apagado.`
-          : `Excluir a Área "${area.name}"?`, { confirmLabel:'Excluir área' });
-        if(!ok) return;
-        try {
-          await DB.transactional(['areas','disciplines'], api => {
-            api.delete('areas', area.id);
-            inside.forEach(d => api.put('disciplines', Object.assign({}, d, { areaId:null, updatedAt: nowISO() })));
-          });
-          await refresh();
-          toast(inside.length ? 'As disciplinas continuam disponíveis em "Ainda não organizadas".' : area.name, 'info', { title:'Área de Estudo excluída' });
-        } catch(err){
-          console.error('Falha ao excluir a área:', err);
-          toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível excluir a área' });
-        }
-      } }));
-    }
-    return { title: area ? 'Editar Área de Estudo' : 'Nova Área de Estudo', content, actions };
-  });
+      } catch(err){
+        console.error('Falha ao salvar a área:', err);
+        toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a área' });
+      }
+    } });
+
+    const actions = [ h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }), saveBtn ];
+    return { title: renameOnly ? 'Renomear área' : area ? 'Disciplinas da área' : 'Nova área de estudo', content, actions };
+  }, { size: renameOnly ? 'narrow' : null });
+}
+
+/** Excluir uma área nunca apaga disciplinas: elas voltam para "Sem área". */
+async function deleteArea(id){
+  const area = getArea(id);
+  if(!area) return;
+  const inside = state.disciplines.filter(d => d.areaId === area.id);
+  const ok = await confirmModal(inside.length
+    ? `Excluir a área "${area.name}"? ${inside.length === 1 ? 'A disciplina dela fica' : `As ${inside.length} disciplinas dela ficam`} sem área — nenhuma disciplina, tópico ou estudo é apagado.`
+    : `Excluir a área "${area.name}"?`, { confirmLabel:'Excluir área' });
+  if(!ok) return;
+  try {
+    await DB.transactional(['areas','disciplines'], api => {
+      api.delete('areas', area.id);
+      inside.forEach(d => api.put('disciplines', Object.assign({}, d, { areaId:null, updatedAt: nowISO() })));
+    });
+    ui.planDraft = null;
+    await refresh();
+    if(ui.view === 'disciplines') navDisc(inside.length && usesAreas() ? { level:'area', areaId:NO_AREA } : { level:'root' }, 'back');
+    toast(inside.length ? `As disciplinas continuam disponíveis em "${NO_AREA_LABEL}".` : area.name, 'info', { title:'Área excluída' });
+  } catch(err){
+    console.error('Falha ao excluir a área:', err);
+    toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível excluir a área' });
+  }
+}
+
+/**
+ * Arquivar uma área arquiva junto as disciplinas ativas dela — nada fica
+ * órfão numa área escondida. Todo o histórico é preservado.
+ */
+async function archiveArea(id){
+  const area = getArea(id);
+  if(!area || area.archived) return;
+  const inside = state.disciplines.filter(d => d.areaId === area.id && !d.archived);
+  const ok = await confirmModal(inside.length
+    ? `Arquivar "${area.name}"? ${inside.length === 1 ? 'A disciplina dela também é arquivada' : `As ${inside.length} disciplinas dela também são arquivadas`}: saem do planejamento, das sugestões e das revisões. Todo o histórico é preservado.`
+    : `Arquivar "${area.name}"? Ela sai da lista principal e pode ser reativada quando quiser.`,
+    { confirmLabel:'Arquivar', danger:false });
+  if(!ok) return;
+  try {
+    const ts = nowISO();
+    await DB.transactional(inside.length ? ['areas','disciplines'] : ['areas'], api => {
+      api.put('areas', Object.assign({}, area, { archived:true, updatedAt:ts }));
+      inside.forEach(d => api.put('disciplines', Object.assign({}, d, { archived:true, updatedAt:ts })));
+    });
+    ui.planDraft = null;
+    await refresh();
+    if(ui.view === 'disciplines') navDisc({ level:'root' }, 'back');
+    toast(inside.length ? `${plural(inside.length, 'disciplina arquivada', 'disciplinas arquivadas')} junto. Nada foi apagado.` : area.name, 'ok', { title:'Área arquivada' });
+  } catch(err){
+    console.error('Falha ao arquivar a área:', err);
+    toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível arquivar a área' });
+  }
+}
+
+async function unarchiveArea(id){
+  const area = getArea(id);
+  if(!area) return;
+  const archivedInside = state.disciplines.filter(d => d.areaId === area.id && d.archived);
+  let alsoDiscs = false;
+  if(archivedInside.length){
+    alsoDiscs = await confirmModal(`Reativar também ${archivedInside.length === 1 ? 'a disciplina arquivada' : `as ${archivedInside.length} disciplinas arquivadas`} de "${area.name}"?`,
+      { title:'Reativar área', confirmLabel:'Reativar tudo', cancelLabel:'Só a área', danger:false });
+  }
+  try {
+    const ts = nowISO();
+    await DB.transactional(alsoDiscs ? ['areas','disciplines'] : ['areas'], api => {
+      api.put('areas', Object.assign({}, area, { archived:false, updatedAt:ts }));
+      if(alsoDiscs) archivedInside.forEach(d => api.put('disciplines', Object.assign({}, d, { archived:false, updatedAt:ts })));
+    });
+    ui.planDraft = null;
+    await refresh();
+    toast(alsoDiscs ? `${plural(archivedInside.length, 'disciplina reativada', 'disciplinas reativadas')} junto.` : area.name, 'ok', { title:'Área reativada' });
+  } catch(err){
+    console.error('Falha ao reativar a área:', err);
+    toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível reativar a área' });
+  }
 }
 
 /* ---------- CRUD: Disciplinas ---------- */
+/**
+ * Nova disciplina / editar. A relação com a Área aparece logo abaixo do nome:
+ * "Onde quer organizar?". Dá para criar uma Área ali mesmo, sem sair do fluxo;
+ * as duas gravações acontecem na MESMA transação.
+ */
 function openDisciplineModal(disc, opts){
   if(disc && typeof disc.id !== 'string') disc = null;       // Event recebido por engano
   const o = (opts && !(opts instanceof Event)) ? opts : {};
@@ -5032,19 +5552,27 @@ function openDisciplineModal(disc, opts){
     const nameIn = h('input', { type:'text', id:'dm-name', value: disc ? disc.name : '', placeholder:'Ex.: Redes de Computadores', maxlength:'80', autocomplete:'off' });
     let priority = disc ? PriorityEngine.clamp(disc.priority) : PRIORITY_DEFAULT;
 
-    /* Área de Estudo — opcional, com criação na hora */
+    /* Onde organizar — opcional, com criação de Área na hora */
     const initialArea = disc ? (disc.areaId && getArea(disc.areaId) ? disc.areaId : '') : (o.areaId && getArea(o.areaId) ? o.areaId : '');
     const areaSel = h('select', { id:'dm-area' });
-    areaSel.appendChild(h('option', { value:'' }, 'Sem área (organizar depois)'));
-    state.areas.slice().sort(sortByName).forEach(a => areaSel.appendChild(h('option', { value:a.id, selected: a.id === initialArea }, a.name)));
-    areaSel.appendChild(h('option', { value:'__new__' }, '+ Criar nova Área de Estudo…'));
-    const newAreaIn = h('input', { type:'text', id:'dm-new-area', maxlength:'60', placeholder:'Ex.: Tecnologia', autocomplete:'off', 'aria-label':'Nome da nova Área de Estudo' });
-    const newAreaBox = h('div', { class:'inline-new', hidden:true }, newAreaIn,
-      h('p', { class:'hint', text:'A nova Área de Estudo é criada junto com a disciplina.' }));
-    areaSel.addEventListener('change', () => {
-      newAreaBox.hidden = areaSel.value !== '__new__';
-      if(!newAreaBox.hidden) setTimeout(() => newAreaIn.focus(), 20);
-    });
+    state.areas.filter(a => !a.archived || a.id === initialArea).slice().sort(sortByName)
+      .forEach(a => areaSel.appendChild(h('option', { value:a.id, selected: a.id === initialArea }, a.name + (a.archived ? ' (arquivada)' : ''))));
+    areaSel.appendChild(h('option', { value:'', selected: !initialArea }, 'Sem área (organizar depois)'));
+    areaSel.appendChild(h('option', { value:'__new__' }, '+ Criar nova área…'));
+    const newAreaIn = h('input', { type:'text', id:'dm-new-area', maxlength:'60', placeholder:'Ex.: Certificações', autocomplete:'off', 'aria-label':'Nome da nova área' });
+    const newAreaBox = h('div', { class:'inline-new', hidden:true },
+      h('label', { for:'dm-new-area', text:'Nome da nova área' }), newAreaIn,
+      h('p', { class:'hint', text:'A área é criada junto com a disciplina.' }));
+    const areaHint = h('p', { class:'hint' });
+    const syncArea = () => {
+      const v = areaSel.value;
+      newAreaBox.hidden = v !== '__new__';
+      areaHint.textContent = v === '' ? 'Tudo bem deixar sem área. Ela aparece em "Sem área" e pode ser organizada depois.'
+        : v === '__new__' ? '' : `Vai aparecer em ${(getArea(v) || {}).name || ''}.`;
+      areaHint.hidden = !areaHint.textContent;
+    };
+    areaSel.addEventListener('change', () => { syncArea(); if(areaSel.value === '__new__') setTimeout(() => newAreaIn.focus(), 20); });
+    syncArea();
 
     const prio = priorityPicker({ value:priority, context:'discipline', id:'dm-prio', label:'Prioridade', helpKey:'prioridade',
       onChange: v => { priority = v; } });
@@ -5059,87 +5587,88 @@ function openDisciplineModal(disc, opts){
     natureSel.addEventListener('change', () => { nature = natureSel.value; });
 
     const stratSel = h('select', { id:'dm-strategy' });
-    [{ v:'inherit', label:'Usar o padrão geral (' + strategyLabel(state.settings.defaultReviewStrategy) + ')' }]
+    [{ v:'inherit', label:'Padrão geral (' + strategyLabel(state.settings.defaultReviewStrategy) + ')' }]
       .concat(REVIEW_STRATEGIES.map(x => ({ v:x.v, label:x.label })))
       .forEach(x => stratSel.appendChild(h('option', { value:x.v, selected:x.v === dStrategy }, x.label)));
     stratSel.addEventListener('change', () => { dStrategy = stratSel.value; });
 
     const methodSel = h('select', { id:'dm-method' });
-    [{ v:'inherit', label:'Usar o padrão geral (' + methodLabel(state.settings.defaultReviewMethod) + ')' }]
+    [{ v:'inherit', label:'Padrão geral (' + methodLabel(state.settings.defaultReviewMethod) + ')' }]
       .concat(REVIEW_METHODS.map(m => ({ v:m.v, label:m.label })))
       .forEach(x => methodSel.appendChild(h('option', { value:x.v, selected:x.v === dMethod }, x.label)));
     methodSel.addEventListener('change', () => { dMethod = methodSel.value; });
 
     const advanced = h('details', { class:'advanced' },
-      h('summary', null, 'Opções avançadas'),
+      h('summary', null, 'Mais opções'),
       h('div', { class:'advanced-body' },
-        h('div', { class:'field' }, h('label', { for:'dm-nature' }, 'Natureza do conteúdo', helpDot('natureza')), natureSel,
-          h('p', { class:'hint', text:'Orienta o método de revisão sugerido. Pode deixar em Mista.' })),
-        h('div', { class:'field' }, h('label', { for:'dm-strategy' }, 'Estratégia de revisão', helpDot('estrategia')), stratSel),
-        h('div', { class:'field' }, h('label', { for:'dm-method' }, 'Método de revisão', helpDot('metodo')), methodSel),
+        h('p', { class:'hint', style:'margin:0 0 12px', text:'Tudo aqui já vem com um padrão que funciona. Mude só se quiser.' }),
+        h('div', { class:'field' }, h('label', { for:'dm-nature' }, 'Tipo de conteúdo', helpDot('natureza')), natureSel,
+          h('p', { class:'hint', text:'Ajuda o Ciclo a sugerir como revisar.' })),
+        h('div', { class:'field' }, h('label', { for:'dm-strategy' }, 'Quando revisar', helpDot('estrategia')), stratSel),
+        h('div', { class:'field' }, h('label', { for:'dm-method' }, 'Como revisar', helpDot('metodo')), methodSel),
         h('div', { class:'field tight' }, h('label', { for:'dm-mpc' }, 'Minutos por crédito', helpDot('creditos')), mpcIn,
           h('p', { class:'hint', text:'Quantos minutos valem 1 crédito nesta disciplina.' }))));
 
     const content = h('div',
       h('div', { class:'field' },
-        h('label', { for:'dm-name', text: disc ? 'Nome da disciplina' : 'Qual disciplina você quer adicionar?' }), nameIn,
-        disc ? null : h('p', { class:'hint', text:'Disciplina é o que você estuda. Ex.: Matemática, Inglês, Direito Penal, Violão.' })),
+        h('label', { for:'dm-name', text: disc ? 'Nome' : 'O que você está estudando?' }), nameIn,
+        disc ? null : h('p', { class:'hint', text:'Uma matéria, um idioma, uma certificação, um instrumento…' })),
       h('div', { class:'field' },
-        h('label', { for:'dm-area' }, AREA_TERM, h('span', { class:'optional', text:'opcional' }), helpDot('areaEstudo')),
-        areaSel, newAreaBox,
-        h('p', { class:'hint', text:'É o contexto maior onde esta disciplina se encaixa.' }),
-        h('p', { class:'example-line' },
-          h('span', { text:'Tecnologia → Redes de Computadores' }),
-          h('span', { text:'Faculdade → Direito Penal' }),
-          h('span', { text:'Música → Violão' }))),
+        h('label', { for:'dm-area' }, 'Onde quer organizar?', helpDot('areaEstudo')),
+        areaSel, newAreaBox, areaHint),
       h('div', { class:'field' }, prio),
       advanced
     );
+    nameIn.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); saveBtn.click(); } });
 
-    const actions = [
-      h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
-      h('button', { class:'btn primary', type:'button', text: disc ? 'Salvar' : 'Adicionar disciplina', onclick: async () => {
-        const name = nameIn.value.trim();
-        if(!name){ nameIn.setAttribute('aria-invalid','true'); nameIn.focus(); toast('Escreva o nome da disciplina.', 'err'); return; }
-        const dup = state.disciplines.find(x => !x.archived && x.name.toLowerCase() === name.toLowerCase() && (!disc || x.id !== disc.id));
-        if(dup){ nameIn.setAttribute('aria-invalid','true'); toast(`Você já tem "${dup.name}".`, 'err'); return; }
+    const saveBtn = h('button', { class:'btn primary', type:'button', text: disc ? 'Salvar' : 'Criar disciplina', onclick: async () => {
+      const name = nameIn.value.trim();
+      if(!name){ nameIn.setAttribute('aria-invalid','true'); nameIn.focus(); toast('Escreva o nome da disciplina.', 'err'); return; }
+      const dup = state.disciplines.find(x => !x.archived && x.name.toLowerCase() === name.toLowerCase() && (!disc || x.id !== disc.id));
+      if(dup){ nameIn.setAttribute('aria-invalid','true'); toast(`Você já tem "${dup.name}".`, 'err'); return; }
 
-        let areaId = areaSel.value || null;
-        let createdArea = null;
-        if(areaId === '__new__'){
-          const areaName = newAreaIn.value.trim();
-          if(!areaName){ newAreaIn.setAttribute('aria-invalid','true'); newAreaIn.focus(); toast('Escreva o nome da nova Área de Estudo ou escolha "Sem área".', 'err'); return; }
-          const existing = state.areas.find(a => a.name.toLowerCase() === areaName.toLowerCase());
-          if(existing) areaId = existing.id;
-          else { createdArea = newArea(areaName); areaId = createdArea.id; }
+      let areaId = areaSel.value || null;
+      let createdArea = null;
+      if(areaId === '__new__'){
+        const areaName = newAreaIn.value.trim();
+        if(!areaName){ newAreaIn.setAttribute('aria-invalid','true'); newAreaIn.focus(); toast('Escreva o nome da nova área ou escolha "Sem área".', 'err'); return; }
+        const existing = state.areas.find(a => a.name.toLowerCase() === areaName.toLowerCase());
+        if(existing) areaId = existing.id;
+        else { createdArea = newArea(areaName); areaId = createdArea.id; }
+      }
+      const mpc = Math.max(1, Math.round(Number(mpcIn.value) || 20));
+      close();
+      try {
+        let entity;
+        if(disc){
+          entity = Object.assign({}, disc, { name, areaId, priority, minutesPerCredit:mpc,
+            contentNature:nature, reviewStrategy:dStrategy, preferredReviewMethod:dMethod, updatedAt: nowISO() });
+        } else {
+          entity = newDiscipline(name, areaId, priority);
+          Object.assign(entity, { minutesPerCredit:mpc, contentNature:nature, reviewStrategy:dStrategy, preferredReviewMethod:dMethod });
         }
-        const mpc = Math.max(1, Math.round(Number(mpcIn.value) || 20));
-        close();
-        try {
-          let entity;
-          if(disc){
-            entity = Object.assign({}, disc, { name, areaId, priority, minutesPerCredit:mpc,
-              contentNature:nature, reviewStrategy:dStrategy, preferredReviewMethod:dMethod, updatedAt: nowISO() });
-          } else {
-            entity = newDiscipline(name, areaId, priority);
-            Object.assign(entity, { minutesPerCredit:mpc, contentNature:nature, reviewStrategy:dStrategy, preferredReviewMethod:dMethod });
-          }
-          await DB.transactional(createdArea ? ['areas','disciplines'] : ['disciplines'], api => {
-            if(createdArea) api.put('areas', createdArea);
-            api.put('disciplines', entity);
-          });
-          ui.planDraft = null;
-          await refresh();
-          const where = areaId ? ` em ${getArea(areaId) ? getArea(areaId).name : ''}` : '';
-          toast(disc ? `Prioridade ${PriorityEngine.text(priority)}${where}.`
-                     : `Prioridade ${PriorityEngine.text(priority)}${where}. Adicione tópicos quando quiser.`, 'ok',
-            { title: disc ? `${name} atualizada` : `${name} adicionada` });
-        } catch(err){
-          console.error('Falha ao salvar a disciplina:', err);
-          toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a disciplina' });
+        await DB.transactional(createdArea ? ['areas','disciplines'] : ['disciplines'], api => {
+          if(createdArea) api.put('areas', createdArea);
+          api.put('disciplines', entity);
+        });
+        ui.planDraft = null;
+        await refresh();
+        const areaName = areaId && getArea(areaId) ? getArea(areaId).name : null;
+        if(disc){
+          const moved = (disc.areaId || null) !== (areaId || null);
+          toast(moved ? `Agora em ${areaName || NO_AREA_LABEL}. Tópicos, estudos e revisões continuam ligados a ela.` : `Prioridade ${priorityText(priority)}.`, 'ok',
+            { title:`${name} atualizada` });
+        } else {
+          toast(`${areaName ? 'Em ' + areaName : NO_AREA_LABEL} · prioridade ${priorityText(priority)}. Adicione tópicos quando quiser.`, 'ok',
+            { title:`${name} criada` });
         }
-      } })
-    ];
+      } catch(err){
+        console.error('Falha ao salvar a disciplina:', err);
+        toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a disciplina' });
+      }
+    } });
+
+    const actions = [ h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }), saveBtn ];
     if(disc){
       actions.unshift(h('button', { class:'btn ghost', type:'button', text: disc.archived ? 'Reativar' : 'Arquivar',
         onclick: async () => { close(); await toggleArchiveDiscipline(disc.id); } }));
@@ -5154,7 +5683,7 @@ async function toggleArchiveDiscipline(id){
   const d = getDiscipline(id);
   if(!d) return;
   if(!d.archived){
-    const ok = await confirmModal('Arquivar esta disciplina? Ela sai do planejamento, das recomendações e das revisões ativas — todo o histórico é preservado.',
+    const ok = await confirmModal('Arquivar esta disciplina? Ela sai do planejamento, das sugestões e das revisões — todo o histórico é preservado.',
       { confirmLabel:'Arquivar', danger:false });
     if(!ok) return;
   }
@@ -5162,7 +5691,7 @@ async function toggleArchiveDiscipline(id){
   await persist('disciplines', d);
   ui.planDraft = null;
   await refresh();
-  toast(d.archived ? 'Disciplina arquivada. O histórico continua intacto.' : 'Disciplina reativada.', 'ok');
+  toast(d.archived ? 'O histórico continua intacto.' : d.name, 'ok', { title: d.archived ? 'Disciplina arquivada' : 'Disciplina reativada' });
 }
 
 async function deleteDisciplineForever(id){
@@ -5170,7 +5699,7 @@ async function deleteDisciplineForever(id){
   if(!d) return;
   const sess = sessionsOf(id).length, tps = topicsOf(id, true).length;
   const ok = await confirmModal(
-    `Excluir "${d.name}" DEFINITIVAMENTE apaga ${sess} sessão(ões) e ${tps} tópico(s) do histórico. Arquivar preserva tudo. Continuar mesmo assim?`,
+    `Excluir "${d.name}" DEFINITIVAMENTE apaga ${plural(sess, 'registro de estudo', 'registros de estudo')} e ${plural(tps, 'tópico', 'tópicos')}. Arquivar preserva tudo. Continuar mesmo assim?`,
     { confirmLabel:'Excluir definitivamente' });
   if(!ok) return;
   const topicIds = topicsOf(id, true).map(t => t.id);
@@ -5207,12 +5736,12 @@ function topicReviewOptions(disciplineId, topic){
   let tStrategy = topic ? (topic.reviewStrategy || 'inherit') : 'inherit';
   let tMethod = topic ? (topic.preferredReviewMethod || 'inherit') : 'inherit';
   const tStratSel = h('select', { id:'tm-strategy' });
-  [{ v:'inherit', label:'Usar o padrão da disciplina (' + strategyLabel(ReviewEngine.effectiveStrategy({ disciplineId, reviewStrategy:'inherit' })) + ')' }]
+  [{ v:'inherit', label:'Igual à disciplina (' + strategyLabel(ReviewEngine.effectiveStrategy({ disciplineId, reviewStrategy:'inherit' })) + ')' }]
     .concat(REVIEW_STRATEGIES.map(x => ({ v:x.v, label:x.label })))
     .forEach(x => tStratSel.appendChild(h('option', { value:x.v, selected:x.v === tStrategy }, x.label)));
   tStratSel.addEventListener('change', () => { tStrategy = tStratSel.value; });
   const tMethodSel = h('select', { id:'tm-method' });
-  [{ v:'inherit', label:'Usar o padrão da disciplina' }]
+  [{ v:'inherit', label:'Igual à disciplina' }]
     .concat(REVIEW_METHODS.map(m => ({ v:m.v, label:m.label })))
     .forEach(x => tMethodSel.appendChild(h('option', { value:x.v, selected:x.v === tMethod }, x.label)));
   tMethodSel.addEventListener('change', () => { tMethod = tMethodSel.value; });
@@ -5220,9 +5749,9 @@ function topicReviewOptions(disciplineId, topic){
     h('summary', null, 'Opções de revisão'),
     h('div', { class:'advanced-body' },
       h('p', { class:'hint', style:'margin:0 0 10px', text:'Por padrão o tópico segue a disciplina. Só mude se este conteúdo pedir algo diferente.' }),
-      h('div', { class:'field' }, h('label', { for:'tm-strategy' }, 'Estratégia', helpDot('estrategia')), tStratSel),
-      h('div', { class:'field tight' }, h('label', { for:'tm-method' }, 'Método preferido', helpDot('metodo')), tMethodSel),
-      topic && topic.reviewDueDate ? h('p', { class:'hint', style:'margin-top:10px', text:`Mudar a estratégia ou a prioridade não altera a revisão já marcada (${fmtRelativeFuture(topic.reviewDueDate)}); vale a partir da próxima resposta.` }) : null));
+      h('div', { class:'field' }, h('label', { for:'tm-strategy' }, 'Quando revisar', helpDot('estrategia')), tStratSel),
+      h('div', { class:'field tight' }, h('label', { for:'tm-method' }, 'Como revisar', helpDot('metodo')), tMethodSel),
+      topic && topic.reviewDueDate ? h('p', { class:'hint', style:'margin-top:10px', text:`Mudar isso ou a prioridade não altera a revisão já marcada (${fmtRelativeFuture(topic.reviewDueDate)}); vale a partir da próxima resposta.` }) : null));
   return { node, get strategy(){ return tStrategy; }, get method(){ return tMethod; } };
 }
 
@@ -5230,12 +5759,13 @@ function reviewToggle(checked){
   const chk = h('input', { type:'checkbox', id:'tm-review', checked });
   return { chk, node: h('div', { class:'field' },
     h('label', { class:'check-row strong', for:'tm-review' }, chk, h('span', { text:'Incluir nas revisões' })),
-    h('p', { class:'hint', style:'margin-left:26px', text:'O Ciclo avisará quando for hora de revisar este tópico.' })) };
+    h('p', { class:'hint', style:'margin-left:26px', text:'O Ciclo avisa quando for hora de revisar este tópico.' })) };
 }
 
 /**
  * Adicionar ou editar UM tópico. opts.name pré-preenche o nome digitado na
- * disciplina; opts.returnTo === false não reabre a disciplina ao salvar.
+ * página da disciplina. Ao salvar, a tela atual se redesenha sozinha — quem
+ * estava na disciplina continua nela.
  */
 function openTopicModal(disciplineId, topic, opts){
   if(topic && typeof topic.id !== 'string') topic = null;
@@ -5251,61 +5781,58 @@ function openTopicModal(disciplineId, topic, opts){
     const advanced = topicReviewOptions(disciplineId, topic);
 
     const content = h('div',
-      h('p', { class:'modal-sub' }, h('span', { class:'muted-text', text:'Disciplina: ' }), disciplinePath(disc)),
+      h('p', { class:'modal-sub' }, h('span', { class:'muted-text', text:'Em ' }), disciplinePath(disc)),
       h('div', { class:'field' }, h('label', { for:'tm-name', text:'Nome do tópico' }), nameIn,
-        topic ? null : h('p', { class:'hint', text:'Um conteúdo específico da disciplina. Ex.: Subnetting, VLAN, OSPF.' })),
+        topic ? null : h('p', { class:'hint', text:'Uma parte específica da disciplina. Ex.: Subnetting, VLAN, OSPF.' })),
       h('div', { class:'field' }, prio),
       rev.node,
       advanced.node,
       topic && topic.reviewDueDate ? h('p', { class:'hint', style:'margin-top:12px',
-        text:`Próxima revisão ${fmtRelativeFuture(topic.reviewDueDate)} · intervalo atual ${topic.reviewIntervalDays} dia(s) · domínio ${topic.masteryLevel || '—'}/5` }) : null,
+        text:`Próxima revisão ${fmtRelativeFuture(topic.reviewDueDate)} · consolidação ${topic.masteryLevel || '—'} de 5` }) : null,
       topic ? null : h('button', { class:'linkbtn muted', type:'button', style:'margin-top:12px', text:'Prefere adicionar vários tópicos de uma vez?',
         onclick:() => { close(); openBulkTopicModal(disciplineId); } })
     );
+    nameIn.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); saveBtn.click(); } });
 
-    const done = () => { if(o.returnTo !== false) openDisciplineDetail(disciplineId); };
-
-    const actions = [
-      h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => { close(); if(o.name) done(); } }),
-      h('button', { class:'btn primary', type:'button', text: topic ? 'Salvar' : 'Adicionar tópico', onclick: async () => {
-        const name = nameIn.value.trim();
-        if(!name){ nameIn.setAttribute('aria-invalid','true'); nameIn.focus(); toast('Escreva o nome do tópico.', 'err'); return; }
-        const dup = topicsOf(disciplineId).find(x => x.name.toLowerCase() === name.toLowerCase() && (!topic || x.id !== topic.id));
-        if(dup){ nameIn.setAttribute('aria-invalid','true'); toast(`"${dup.name}" já existe em ${disc.name}.`, 'err'); return; }
-        close();
-        try {
-          if(topic){
-            const updated = Object.assign({}, topic, { name, priority, reviewEnabled: rev.chk.checked,
-              reviewStrategy: advanced.strategy, preferredReviewMethod: advanced.method, updatedAt: nowISO() });
-            delete updated.importance;
-            await DB.put('topics', updated);
-            await refresh();
-            toast(`${name} · prioridade ${PriorityEngine.text(priority)}`, 'ok', { title:'Tópico atualizado' });
-          } else {
-            const existing = topicsOf(disciplineId, true);
-            const order = existing.length ? Math.max(...existing.map(t => t.sortOrder || 0)) + 10 : 10;
-            const t = newTopic(disciplineId, name, order);
-            Object.assign(t, { priority, reviewEnabled: rev.chk.checked, reviewStrategy: advanced.strategy, preferredReviewMethod: advanced.method });
-            await DB.put('topics', t);
-            await refresh();
-            toast(`${disc.name} › ${name} · prioridade ${PriorityEngine.text(priority)}`, 'ok', { title:'Tópico adicionado' });
-          }
-          done();
-        } catch(err){
-          console.error('Falha ao salvar o tópico:', err);
-          toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar o tópico' });
+    const saveBtn = h('button', { class:'btn primary', type:'button', text: topic ? 'Salvar' : 'Adicionar tópico', onclick: async () => {
+      const name = nameIn.value.trim();
+      if(!name){ nameIn.setAttribute('aria-invalid','true'); nameIn.focus(); toast('Escreva o nome do tópico.', 'err'); return; }
+      const dup = topicsOf(disciplineId).find(x => x.name.toLowerCase() === name.toLowerCase() && (!topic || x.id !== topic.id));
+      if(dup){ nameIn.setAttribute('aria-invalid','true'); toast(`"${dup.name}" já existe em ${disc.name}.`, 'err'); return; }
+      close();
+      try {
+        if(topic){
+          const updated = Object.assign({}, topic, { name, priority, reviewEnabled: rev.chk.checked,
+            reviewStrategy: advanced.strategy, preferredReviewMethod: advanced.method, updatedAt: nowISO() });
+          delete updated.importance;
+          await DB.put('topics', updated);
+          await refresh();
+          toast(`${name} · prioridade ${priorityText(priority)}`, 'ok', { title:'Tópico atualizado' });
+        } else {
+          const existing = topicsOf(disciplineId, true);
+          const order = existing.length ? Math.max(...existing.map(t => t.sortOrder || 0)) + 10 : 10;
+          const t = newTopic(disciplineId, name, order);
+          Object.assign(t, { priority, reviewEnabled: rev.chk.checked, reviewStrategy: advanced.strategy, preferredReviewMethod: advanced.method });
+          await DB.put('topics', t);
+          if(ui.view === 'disciplines') ui.discFocus = 'topic-' + t.id;
+          await refresh();
+          toast(`${disc.name} › ${name} · prioridade ${priorityText(priority)}`, 'ok', { title:'Tópico adicionado' });
         }
-      } })
-    ];
+      } catch(err){
+        console.error('Falha ao salvar o tópico:', err);
+        toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar o tópico' });
+      }
+    } });
+
+    const actions = [ h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }), saveBtn ];
     if(topic){
       actions.unshift(h('button', { class:'btn ghost', type:'button', text:'Arquivar', onclick: async () => {
         close();
         const ok = await confirmModal('Arquivar este tópico? Ele sai das opções ativas e a revisão fica pausada — o histórico é preservado.', { confirmLabel:'Arquivar', danger:false });
-        if(!ok){ done(); return; }
+        if(!ok) return;
         await persist('topics', Object.assign(topic, { archived:true }));
         await refresh();
         toast(topic.name, 'info', { title:'Tópico arquivado' });
-        done();
       } }));
     }
     return { title: topic ? 'Editar tópico' : 'Adicionar tópico', content, actions };
@@ -5324,13 +5851,13 @@ function openBulkTopicModal(disciplineId){
     return {
       title:'Adicionar vários tópicos',
       content: h('div',
-        h('p', { class:'modal-sub' }, h('span', { class:'muted-text', text:'Disciplina: ' }), disciplinePath(disc)),
+        h('p', { class:'modal-sub' }, h('span', { class:'muted-text', text:'Em ' }), disciplinePath(disc)),
         h('div', { class:'field' }, h('label', { for:'tm-multi', text:'Tópicos (um por linha)' }), area,
           h('p', { class:'hint', text:'Todos recebem a mesma prioridade. Você pode ajustar cada um depois.' })),
         h('div', { class:'field' }, prio),
         rev.node),
       actions:[
-        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => { close(); openDisciplineDetail(disciplineId); } }),
+        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
         h('button', { class:'btn primary', type:'button', text:'Adicionar tópicos', onclick: async () => {
           const known = new Set(topicsOf(disciplineId).map(t => t.name.toLowerCase()));
           const seen = new Set();
@@ -5356,7 +5883,6 @@ function openBulkTopicModal(disciplineId){
             console.error(err);
             toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível adicionar os tópicos' });
           }
-          openDisciplineDetail(disciplineId);
         } })
       ]
     };
@@ -5485,7 +6011,7 @@ function openDeadlineDrawer(id){
         ? h('button', { class:'btn ghost sm', type:'button', text:'Reabrir', onclick: once(() => setDeadlineStatus(dl.id, 'pending')) })
         : h('button', { class:'btn primary sm', type:'button', onclick: once(() => setDeadlineStatus(dl.id, 'completed')) }, icon('i-check'), 'Concluir'),
       h('button', { class:'btn ghost sm', type:'button', text:'Editar', onclick:() => { Drawer.close(); openDeadlineModal(dl); } }),
-      topic && isDesktopUI() ? h('button', { class:'btn ghost sm', type:'button', text:'Ver tópico', onclick:() => openTopicDrawer(topic.id) }) : null,
+      topic ? h('button', { class:'btn ghost sm', type:'button', text:'Ver tópico', onclick:() => openTopicDrawer(topic.id) }) : null,
       h('button', { class:'linkbtn danger', type:'button', text:'excluir', onclick:() => deleteDeadline(dl.id) })));
   Drawer.open(dl.title, body, { onClose:() => { ui.openDeadlineId = null; } });
   ui.openDeadlineId = id;             // depois do open: trocar de conteúdo limpa o anterior
@@ -5629,7 +6155,7 @@ const ANALYTICS_PRESETS = [
   { v:'7d',     label:'Últimos 7 dias',  explain:'Hoje e os seis dias anteriores.' },
   { v:'mes',    label:'Este mês',        explain:'Do dia 1 ao último dia do mês atual.' },
   { v:'30d',    label:'Últimos 30 dias', explain:'Hoje e os 29 dias anteriores.' },
-  { v:'tudo',   label:'Tudo',            explain:'Desde a primeira sessão registrada até hoje.' }
+  { v:'tudo',   label:'Tudo',            explain:'Desde o primeiro estudo registrado até hoje.' }
 ];
 const CUSTOM_PERIOD_EXPLAIN = 'Você escolhe o primeiro e o último dia.';
 
@@ -5913,7 +6439,7 @@ function renderAnalyticsSelector(root){
       h('button', { class:'linkbtn', type:'button', text:'Repetir', onclick:() => applyAnalyticsQuery(last) })));
   }
   if(!state.sessions.length){
-    parts.push(h('p', { class:'an-note', text:'Você ainda não registrou sessões. Prazos e conteúdo já podem ser analisados; tempo e constância aparecem depois das primeiras sessões.' }));
+    parts.push(h('p', { class:'an-note', text:'Você ainda não registrou nenhum estudo. Prazos e conteúdo já podem ser analisados; tempo e constância aparecem depois dos primeiros estudos.' }));
   }
 
   const rerender = (focusKey) => {
@@ -6278,8 +6804,8 @@ function analyticsEmptyFor(a, focus){
   if((focus === 'overview' || focus === 'time') && t.count === 0){
     if(!state.sessions.length){
       title = 'Nada para analisar ainda';
-      text = 'Registre sua primeira sessão e o Ciclo mostra aqui quanto você estudou, com que frequência e onde o tempo foi parar.';
-      extra = h('button', { class:'btn primary', type:'button', text:'Registrar sessão', onclick:() => openRegisterModal() });
+      text = 'Registre seu primeiro estudo e o Ciclo mostra aqui quanto você estudou, com que frequência e onde o tempo foi parar.';
+      extra = h('button', { class:'btn primary', type:'button', text:'Registrar estudo', onclick:() => openRegisterModal() });
     } else {
       title = `Ainda não há registros${where} neste período.`;
       text = `${analyticsPeriodLabel(q)}: ${fmtRangeLabel(a.range)}.`;
@@ -6326,7 +6852,7 @@ function analyticsFocusSummary(a, focus){
   const where = sc.type === 'all' ? '' : ` em ${sc.label}`;
   if(focus === 'time'){
     out.push(`Você estudou ${fmtDuration(t.minutes)}${where} em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')}.`);
-    out.push(`Foram ${plural(t.count, 'sessão', 'sessões')}, com média de ${fmtDuration(t.avgSession)} cada.`);
+    out.push(`Foram ${plural(t.count, 'sessão de estudo', 'sessões de estudo')}, com média de ${fmtDuration(t.avgSession)} cada.`);
     if(t.activeDays > 1) out.push(`Nos dias com estudo, a média foi ${fmtDuration(t.avgPerActiveDay)}.`);
     const best = a.byWeekday.slice().sort((x,y) => y.minutes - x.minutes)[0];
     if(a.days >= 7 && t.count >= 3 && best && best.minutes > 0) out.push(`${best.label} foi o dia da semana com mais tempo (${fmtDuration(best.minutes)}).`);
@@ -6347,15 +6873,15 @@ function analyticsFocusSummary(a, focus){
     if(r.completed >= 2) out.push(`${good} de ${r.completed} terminaram como “Lembrei bem” ou “Dominei”.`);
     out.push(r.overdueNow ? `${plural(r.overdueNow, 'revisão está atrasada', 'revisões estão atrasadas')} agora.` : 'Nenhuma revisão está atrasada agora.');
     if(r.upcoming.length) out.push(`${plural(r.upcoming.length, 'revisão prevista', 'revisões previstas')} para os próximos 7 dias.`);
-    if(r.avgMastery !== null && sc.type !== 'topic') out.push(`O domínio médio dos tópicos em revisão está em ${fmtNumber(r.avgMastery, 1)}/5.`);
+    if(r.avgMastery !== null && sc.type !== 'topic') out.push(`A consolidação média dos tópicos em revisão está em ${fmtNumber(r.avgMastery, 1)} de 5.`);
   } else if(focus === 'content'){
     const c = a.content;
     if(sc.type === 'topic'){
       const tp = getTopic(sc.topicId);
       const st = tp ? topicStatus(tp) : 'nao_iniciado';
       out.push(`${sc.label} está ${TOPIC_STATUS_LABEL[st].toLowerCase()}.`);
-      if(tp && tp.masteryLevel) out.push(`Domínio atual: ${tp.masteryLevel}/5.`);
-      if(tp){ const s = sessionsOfTopic(tp.id); out.push(`No total, ${plural(s.length, 'sessão', 'sessões')} e ${fmtDuration(sum(s, x => x.minutes || 0))} de estudo.`); }
+      if(tp && tp.masteryLevel) out.push(`Consolidação atual: ${tp.masteryLevel} de 5.`);
+      if(tp){ const s = sessionsOfTopic(tp.id); out.push(`No total, ${fmtDuration(sum(s, x => x.minutes || 0))} de estudo, em ${plural(s.length, 'vez', 'vezes')}.`); }
     } else {
       out.push(`Você já estudou ${c.covered} de ${plural(c.totalTopics, 'tópico', 'tópicos')}${where} (${safePct(c.coverage)}).`);
       const inReview = (c.byStatus.find(x => x.key === 'em_revisao') || {}).count || 0;
@@ -6413,14 +6939,14 @@ function analyticsFocusMetrics(a, focus){
   const M = {
     time:     () => ({ key:'time', label:'Tempo estudado', value:fmtDuration(t.minutes), sub: t.activeDays ? `${fmtDuration(t.avgPerActiveDay)} por dia de estudo` : null, delta: delta(cmp.minutesDelta), onOpen:open('time') }),
     days:     () => ({ key:'days', label:'Dias com estudo', value:String(t.activeDays), sub:`de ${plural(a.days, 'dia', 'dias')}`, delta: delta(cmp.activeDaysDelta), onOpen:open('sessions') }),
-    sessions: () => ({ key:'sessions', label:'Sessões', value:String(t.count), sub: t.count ? `média de ${fmtDuration(t.avgSession)}` : null, delta: focus === 'time' ? delta(cmp.sessionsDelta) : null, onOpen:open('sessions') }),
+    sessions: () => ({ key:'sessions', label:'Sessões de estudo', value:String(t.count), sub: t.count ? `média de ${fmtDuration(t.avgSession)}` : null, delta: focus === 'time' ? delta(cmp.sessionsDelta) : null, onOpen:open('sessions') }),
     avgDay:   () => ({ key:'avgday', label:'Média por dia de estudo', value:fmtDuration(t.avgPerActiveDay), sub:`${fmtDuration(t.avgPerDay)} por dia do período`, onOpen:open('time') }),
     plan:     () => ({ key:'plan', label:METRIC_WORDS.adherence.title, value:safePct(a.planAdherence.pct), sub:`${fmtDuration(a.planAdherence.realized)} de ${fmtDuration(a.planAdherence.planned)}`, onOpen:open('plan') }),
     reviews:  () => ({ key:'reviews', label:'Revisões concluídas', value:String(a.reviews.completed), sub: a.reviews.overdueNow ? `${plural(a.reviews.overdueNow, 'atrasada', 'atrasadas')} agora` : 'nenhuma atrasada agora', onOpen:open('reviews') }),
     coverage: () => ({ key:'content', label:METRIC_WORDS.coverage.title, value:`${a.content.covered} de ${a.content.totalTopics}`, sub:`${safePct(a.content.coverage)} dos tópicos`, onOpen:open('content') })
   };
   const topicObj = sc.type === 'topic' ? getTopic(sc.topicId) : null;
-  const masteryMetric = () => ({ key:'mastery', label:'Domínio', value: topicObj && topicObj.masteryLevel ? `${topicObj.masteryLevel}/5` : '—',
+  const masteryMetric = () => ({ key:'mastery', label:'Consolidação', value: topicObj && topicObj.masteryLevel ? `${topicObj.masteryLevel} de 5` : '—',
     sub: topicObj ? TOPIC_STATUS_LABEL[topicStatus(topicObj)] : null, muted: !(topicObj && topicObj.masteryLevel), onOpen:open('content') });
   const r = a.reviews, c = a.content, pa = a.planAdherence, dl = a.deadlines;
 
@@ -6438,7 +6964,7 @@ function analyticsFocusMetrics(a, focus){
       { key:'rlate', label:'Atrasadas agora', value:String(r.overdueNow), onOpen:open('reviews') },
       { key:'rnext', label:'Próximos 7 dias', value:String(r.upcoming.length), onOpen:open('reviews') },
       sc.type === 'topic' ? masteryMetric()
-        : { key:'ravg', label:'Domínio médio', value: r.avgMastery !== null ? `${fmtNumber(r.avgMastery, 1)}/5` : '—', sub:'dos tópicos em revisão', muted: r.avgMastery === null, onOpen:open('content') }
+        : { key:'ravg', label:'Consolidação média', value: r.avgMastery !== null ? `${fmtNumber(r.avgMastery, 1)} de 5` : '—', sub:'dos tópicos em revisão', muted: r.avgMastery === null, onOpen:open('content') }
     ];
   }
   if(focus === 'content'){
@@ -6447,7 +6973,7 @@ function analyticsFocusMetrics(a, focus){
       return [
         { key:'tstatus', label:'Situação', value:TOPIC_STATUS_LABEL[topicStatus(topicObj)], onOpen:open('content') },
         masteryMetric(),
-        { key:'tsess', label:'Sessões no total', value:String(s.length), sub:fmtDuration(sum(s, x => x.minutes || 0)) },
+        { key:'tsess', label:'Sessões de estudo', value:String(s.length), sub:fmtDuration(sum(s, x => x.minutes || 0)) },
         { key:'tnext', label:'Próxima revisão', value: topicObj.reviewEnabled && topicObj.reviewDueDate ? fmtRelativeFuture(topicObj.reviewDueDate) : '—', sub: topicObj.reviewEnabled && topicObj.reviewDueDate ? fmtDateBR(topicObj.reviewDueDate) : null }
       ];
     }
@@ -6561,7 +7087,7 @@ function contentStatusViz(a){
     const dl = h('dl', { class:'kv-list' });
     const kv = (k, v) => dl.append(h('div', null, h('dt', { text:k }), h('dd', { text:v })));
     kv('Situação', TOPIC_STATUS_LABEL[topicStatus(tp)]);
-    kv('Domínio', tp.masteryLevel ? `${tp.masteryLevel}/5` : 'ainda não avaliado');
+    kv('Consolidação', tp.masteryLevel ? `${tp.masteryLevel} de 5` : 'ainda não avaliada');
     kv('Próxima revisão', tp.reviewEnabled ? (tp.reviewDueDate ? `${fmtRelativeFuture(tp.reviewDueDate)} (${fmtDateBR(tp.reviewDueDate)})` : 'depois do primeiro estudo') : 'revisões desligadas');
     kv('Vezes esquecido', String(tp.reviewFailures || 0));
     kv('Prioridade', PriorityEngine.text(tp.priority));
@@ -6696,7 +7222,7 @@ function analyticsExploreItems(a, focus){
   const sc = a.scope, t = a.totals;
   const hasTopics = AnalyticsScope.topics(sc).length > 0;
   const lib = {
-    distribution: { label:'Distribuição do tempo', meta:'por ' + (sc.type === 'all' ? 'área, disciplina ou tópico' : sc.type === 'area' ? 'disciplina ou tópico' : sc.type === 'discipline' ? 'tópico' : 'tipo de sessão'),
+    distribution: { label:'Distribuição do tempo', meta:'por ' + (sc.type === 'all' ? 'área, disciplina ou tópico' : sc.type === 'area' ? 'disciplina ou tópico' : sc.type === 'discipline' ? 'tópico' : 'tipo de estudo'),
                     show: t.count > 0, build:() => exploreContent(analyticsDistributionCard(a)) },
     time:         { label:'Tempo ao longo do período', show: t.count > 0 && a.days > 1, build:() => h('div', { class:'an-explore-content' }, timeChart(a)) },
     weekday:      { label:'Por dia da semana', show: t.count > 0, build:() => { const mx = Math.max(1, ...a.byWeekday.map(x => x.minutes));
@@ -6711,7 +7237,7 @@ function analyticsExploreItems(a, focus){
     deadlines:    { label:'Prazos', show: a.deadlines.all.length > 0, build:() => exploreContent(analyticsDeadlinesCard(a)) },
     priority:     { label:'Tempo por prioridade', show: !!analyticsPriorityCard(a), build:() => exploreContent(analyticsPriorityCard(a)) },
     difficulty:   { label:'Dificuldade percebida', show: a.difficulty.count > 0, build:() => exploreContent(analyticsDifficultyCard(a)) },
-    types:        { label:'Tipos de sessão', show: t.count > 0, build:() => exploreContent(analyticsTypesCard(a)) },
+    types:        { label:'Tipos de estudo', show: t.count > 0, build:() => exploreContent(analyticsTypesCard(a)) },
     projection:   { label:'Ritmo das últimas semanas', show:true, build:() => exploreContent(analyticsProjectionCard(a)) }
   };
   const mainIsTime = (focus === 'overview' || focus === 'time') && a.days > 1;
@@ -6755,8 +7281,8 @@ function menuButton(label, items, opts){
   const o = opts || {};
   const wrap = h('div', { class:'menu-wrap' });
   const menu = h('div', { class:'menu', role:'menu', hidden:true });
-  const btn = h('button', { class:'btn ghost sm', type:'button', 'aria-haspopup':'menu', 'aria-expanded':'false',
-    'aria-label': o.ariaLabel || label }, label, icon('i-chev', 'btn-icon menu-chev'));
+  const btn = h('button', { class: o.className || 'btn ghost sm', type:'button', 'aria-haspopup':'menu', 'aria-expanded':'false',
+    'aria-label': o.ariaLabel || label, 'data-fk': o.fk || null }, o.icon ? icon(o.icon) : null, label, icon('i-chev', 'btn-icon menu-chev'));
   const close = (refocus) => {
     if(menu.hidden) return;
     menu.hidden = true; btn.setAttribute('aria-expanded', 'false');
@@ -6785,10 +7311,7 @@ function menuButton(label, items, opts){
   return wrap;
 }
 
-function openTopicFromAnalytics(t){
-  if(isDesktopUI()) openTopicDrawer(t.id);
-  else { Drawer.close(); openTopicModal(t.disciplineId, t, { returnTo:false }); }
-}
+function openTopicFromAnalytics(t){ openTopicDrawer(t.id); }
 
 function analyticsAttentionCard(a){
   const c = h('div', { class:'card an-attention' },
@@ -6797,7 +7320,7 @@ function analyticsAttentionCard(a){
     c.append(h('p', { class:'hint', text:'Nenhum tópico pede atenção especial agora: sem revisões atrasadas, esquecimentos repetidos ou prazos próximos.' }));
     return c;
   }
-  c.append(h('p', { class:'hint', style:'margin-bottom:8px', text:'Revisões atrasadas, esquecimentos, domínio baixo e prazos próximos. A prioridade ajuda a ordenar.' }));
+  c.append(h('p', { class:'hint', style:'margin-bottom:8px', text:'Revisões atrasadas, esquecimentos, pouca consolidação e prazos próximos. A prioridade ajuda a ordenar.' }));
   const list = h('ul', { class:'line-list' });
   a.attention.forEach(x => {
     list.append(h('li', { class:'line' }, h('button', { class:'line-main', type:'button', onclick:() => openTopicFromAnalytics(x.topic) },
@@ -6857,7 +7380,7 @@ function breakdownRows(a){
   if(sc.type === 'discipline'){
     return { title:'Por tópico', rows: a.byTopic.map(x => ({ ...x, go: getTopic(x.key) ? () => analyzeOnly('topic', x.key) : null })) };
   }
-  return { title:'Por tipo de sessão', rows: a.byType.filter(x => x.count > 0).map(x => ({ key:x.key, label:x.label, minutes:x.minutes, count:x.count,
+  return { title:'Por tipo de estudo', rows: a.byType.filter(x => x.count > 0).map(x => ({ key:x.key, label:x.label, minutes:x.minutes, count:x.count,
     pct: a.totals.minutes > 0 ? x.minutes / a.totals.minutes * 100 : 0 })) };
 }
 
@@ -6870,12 +7393,12 @@ function openAnalyticsDrawer(kind, a){
 
   if(kind === 'time'){
     title = 'Tempo estudado';
-    body.append(drawerIntro(`Soma dos minutos de todas as sessões registradas ${scopeWords(a)} no período.`));
+    body.append(drawerIntro(`Soma dos minutos de todos os estudos registrados ${scopeWords(a)} no período.`));
     body.append(h('div', { class:'stat-grid compact' },
       statBox(fmtDuration(t.minutes), 'total'),
       statBox(fmtDuration(t.avgPerDay), 'média por dia do período'),
       statBox(fmtDuration(t.avgPerActiveDay), 'média por dia com estudo'),
-      statBox(fmtDuration(t.avgSession), 'duração média da sessão'),
+      statBox(fmtDuration(t.avgSession), 'em média, por estudo'),
       statBox(fmtNumber(t.credits), 'créditos')));
     const cmp = a.previousComparison;
     body.append(h('p', { class:'hint', style:'margin-top:10px', text: cmp.available
@@ -6896,20 +7419,20 @@ function openAnalyticsDrawer(kind, a){
   }
 
   else if(kind === 'sessions'){
-    title = 'Sessões';
-    body.append(drawerIntro(`Cada registro de estudo é uma sessão. Aqui estão as sessões ${scopeWords(a)} no período.`));
+    title = 'Sessões de estudo';
+    body.append(drawerIntro(`Cada vez que você estudou e registrou ${scopeWords(a)} no período.`));
     body.append(h('div', { class:'stat-grid compact' },
-      statBox(String(t.count), 'sessões'),
+      statBox(String(t.count), t.count === 1 ? 'vez' : 'vezes'),
       statBox(`${t.activeDays}/${a.days}`, 'dias com estudo'),
       statBox(fmtDuration(t.avgSession), 'duração média'),
       statBox(a.difficulty.avg !== null ? fmtNumber(a.difficulty.avg, 1) + '/5' : '—', 'dificuldade média')));
     const list = a.sessions.slice().sort((x,y) => y.date.localeCompare(x.date) || str(y.createdAt).localeCompare(str(x.createdAt)));
-    if(!list.length) body.append(h('p', { class:'hint', style:'margin-top:12px', text:'Nenhuma sessão neste período.' }));
+    if(!list.length) body.append(h('p', { class:'hint', style:'margin-top:12px', text:'Nenhum estudo neste período.' }));
     else {
       const ul = h('ul', { class:'an-sess-list' });
       list.slice(0, 40).forEach(s => {
         const topic = topicLabelOf(s);
-        ul.append(h('li', null, h('button', { class:'an-sess', type:'button', 'aria-label':`Editar sessão de ${fmtDateBR(s.date)}`,
+        ul.append(h('li', null, h('button', { class:'an-sess', type:'button', 'aria-label':`Editar o estudo de ${fmtDateBR(s.date)}`,
             onclick:() => { Drawer.close(); openEditSessionModal(s.id); } },
           h('span', { class:'an-sess-date', text: fmtDateBR(s.date) }),
           h('span', { class:'an-sess-main' },
@@ -6921,7 +7444,7 @@ function openAnalyticsDrawer(kind, a){
       if(list.length > 40) body.append(h('button', { class:'linkbtn', type:'button', text:'Ver todas no Histórico',
         onclick:() => { Drawer.close(); ui.history.period = 'analises'; setView('history'); } }));
       const maxT = Math.max(1, ...a.byType.map(x => x.count));
-      body.append(drawerSection('Tipos de sessão', a.byType.filter(x => x.count > 0).map(x =>
+      body.append(drawerSection('Tipos de estudo', a.byType.filter(x => x.count > 0).map(x =>
         hbarRow(x.label, x.count / maxT * 100, `${x.count} · ${safePct(x.pct)}`))));
     }
   }
@@ -6929,7 +7452,7 @@ function openAnalyticsDrawer(kind, a){
   else if(kind === 'plan'){
     title = METRIC_WORDS.adherence.title;
     const pa = a.planAdherence;
-    body.append(drawerIntro('Quanto do tempo planejado para a semana foi realmente estudado. Também chamado de aderência ao plano. Cada semana é comparada com o plano que existia naquela semana.'));
+    body.append(drawerIntro('Quanto do tempo planejado para a semana foi realmente estudado. Cada semana é comparada com o plano que existia naquela semana.'));
     if(!pa.applicable){
       body.append(h('p', { class:'influence-note', text:'O plano semanal distribui tempo entre disciplinas, não entre tópicos. Para ver o plano cumprido, analise a disciplina deste tópico.' }));
       if(a.scope.disciplineId) body.append(h('button', { class:'btn sm', type:'button', text:'Analisar a disciplina', onclick:() => analyzeOnly('discipline', a.scope.disciplineId) }));
@@ -6969,7 +7492,7 @@ function openAnalyticsDrawer(kind, a){
     }
     if(r.byMethod.length){
       const mm = Math.max(1, ...r.byMethod.map(x => x.used));
-      body.append(drawerSection('Métodos usados', r.byMethod.map(x => hbarRow(x.label, x.used / mm * 100, `${x.used}×`))));
+      body.append(drawerSection('Como você revisou', r.byMethod.map(x => hbarRow(x.label, x.used / mm * 100, `${x.used}×`))));
     }
     if(r.dueList.length){
       body.append(drawerSection('Para revisar agora', dueReviewsViz(a)));
@@ -6978,7 +7501,7 @@ function openAnalyticsDrawer(kind, a){
       body.append(drawerSection('Esquecidos com mais frequência', r.forgetful.map(tp =>
         hbarRow(tp.name, clamp((tp.reviewFailures / 5) * 100, 10, 100), `${tp.reviewFailures}×`, 'var(--danger)', () => openTopicFromAnalytics(tp)))));
     }
-    if(r.avgMastery !== null) body.append(h('p', { class:'hint', style:'margin-top:10px', text:`Domínio médio dos tópicos em revisão: ${fmtNumber(r.avgMastery, 1)}/5.` }));
+    if(r.avgMastery !== null) body.append(h('p', { class:'hint', style:'margin-top:10px', text:`Consolidação média dos tópicos em revisão: ${fmtNumber(r.avgMastery, 1)} de 5.` }));
     body.append(h('div', { class:'row auto', style:'margin-top:14px' },
       h('button', { class:'btn sm', type:'button', text:'Abrir revisões', onclick:() => { Drawer.close(); setView('reviews'); } })));
   }
@@ -6995,9 +7518,9 @@ function openAnalyticsDrawer(kind, a){
         const kv = (k, v) => dl.append(h('div', null, h('dt', { text:k }), h('dd', { text:v })));
         kv('Situação', TOPIC_STATUS_LABEL[topicStatus(tp)]);
         kv('Prioridade', PriorityEngine.text(tp.priority));
-        kv('Domínio', tp.masteryLevel ? `${tp.masteryLevel}/5` : 'ainda não avaliado');
+        kv('Consolidação', tp.masteryLevel ? `${tp.masteryLevel} de 5` : 'ainda não avaliada');
         kv('Revisões', tp.reviewEnabled ? (tp.reviewDueDate ? `próxima em ${fmtDateBR(tp.reviewDueDate)}` : 'ativadas, começam depois do primeiro estudo') : 'desativadas');
-        kv('Sessões (total)', `${sess.length} · ${fmtDuration(sum(sess, s => s.minutes || 0))}`);
+        kv('Estudos (total)', `${sess.length} · ${fmtDuration(sum(sess, s => s.minutes || 0))}`);
         kv('Vezes esquecido', String(tp.reviewFailures || 0));
         body.append(dl);
         body.append(h('div', { class:'row auto', style:'margin-top:14px' },
@@ -7005,7 +7528,7 @@ function openAnalyticsDrawer(kind, a){
       }
     } else {
       title = METRIC_WORDS.coverage.title;
-      body.append(drawerIntro('Conteúdo estudado = tópicos que você já começou (também chamado de cobertura). Consolidado = tópicos que passaram por revisões com bom resultado (também chamado de domínio). Mostra a situação de agora, não só do período.'));
+      body.append(drawerIntro('Conteúdo estudado: tópicos que você já começou. Consolidados: tópicos que passaram por revisões com bom resultado. Mostra a situação de agora, não só do período.'));
       if(!c.totalTopics){
         body.append(h('p', { class:'influence-note', text:'Ainda não há tópicos cadastrados aqui. Tópicos são as partes de uma disciplina, como "Derivadas" em Matemática.' }));
       } else {
@@ -7020,7 +7543,7 @@ function openAnalyticsDrawer(kind, a){
             hbarRow(x.discipline.name, x.coverage, `${x.covered}/${x.total} · ${safePct(x.coverage)}`, null,
               a.scope.type !== 'discipline' ? () => analyzeOnly('discipline', x.discipline.id) : null))));
         }
-        if(c.weakest.length) body.append(drawerSection('Menor domínio', c.weakest.map(tp =>
+        if(c.weakest.length) body.append(drawerSection('Menos consolidados', c.weakest.map(tp =>
           hbarRow(tp.name, tp.masteryLevel / 5 * 100, `${tp.masteryLevel}/5`, tp.masteryLevel <= 2 ? 'var(--danger)' : 'var(--brass)', () => openTopicFromAnalytics(tp)))));
         const ns = c.notStarted.slice(0, 8);
         if(ns.length) body.append(drawerSection('Ainda não iniciados', h('ul', { class:'line-list' }, ns.map(tp =>
@@ -7202,7 +7725,7 @@ function dayTip(iso, scope){
   const rows = [...byDisc.entries()].sort((a,b) => b[1] - a[1]).slice(0, 5).map(([id, min]) => [disciplineName(id), fmtDuration(min)]);
   return tipBody(fmtDateBR(iso), [
     ['Tempo', fmtDuration(sum(list, x => x.minutes || 0))],
-    ['Sessões', String(list.length)],
+    ['Estudos', String(list.length)],
     '-'
   ].concat(rows));
 }
@@ -7215,23 +7738,23 @@ function openDayDrawer(iso, scope){
   body.append(h('p', { class:'an-drawer-ctx', text: AnalyticsScope.pathText(sc) }));
   const total = sum(list, x => x.minutes || 0);
   if(!list.length){
-    body.append(h('p', { class:'influence-note', text: iso > todayISO() ? 'Este dia ainda não chegou.' : 'Nenhuma sessão registrada neste dia.' }));
+    body.append(h('p', { class:'influence-note', text: iso > todayISO() ? 'Este dia ainda não chegou.' : 'Nenhum estudo registrado neste dia.' }));
   } else {
     body.append(h('div', { class:'stat-grid compact' },
       statBox(fmtDuration(total), 'tempo'),
-      statBox(String(list.length), list.length === 1 ? 'sessão' : 'sessões'),
+      statBox(String(list.length), list.length === 1 ? 'estudo' : 'estudos'),
       statBox(String(list.filter(s => s.type === 'revisao' || s.reviewOutcome).length), 'revisões')));
     const ul = h('ul', { class:'an-sess-list' });
     list.forEach(s => {
       const topic = topicLabelOf(s);
-      ul.append(h('li', null, h('button', { class:'an-sess', type:'button', 'aria-label':'Editar esta sessão',
+      ul.append(h('li', null, h('button', { class:'an-sess', type:'button', 'aria-label':'Editar este estudo',
           onclick:() => { Drawer.close(); openEditSessionModal(s.id); } },
         h('span', { class:'an-sess-main' },
           h('span', { class:'an-sess-title', text: disciplineName(s.disciplineId) + (topic ? ' › ' + topic : '') }),
           h('span', { class:'an-sess-sub', text: [sessionTypeLabel(s.type), s.difficulty ? 'dificuldade ' + s.difficulty + '/5' : null, s.reviewOutcome ? reviewOutcomeLabel(s.reviewOutcome) : null].filter(Boolean).join(' · ') })),
         h('span', { class:'an-sess-min', text: fmtDuration(s.minutes) }))));
     });
-    body.append(drawerSection('Sessões', ul));
+    body.append(drawerSection('Estudos do dia', ul));
   }
   const due = state.deadlines.filter(dl => dl.date === iso && AnalyticsScope.deadlineRelation(sc, dl));
   if(due.length) body.append(drawerSection('Prazos neste dia', h('ul', { class:'dl-line-list' }, due.map(dl => deadlineLine(dl, null, DeadlineEngine.isDone(dl))))));
@@ -7241,7 +7764,7 @@ function openDayDrawer(iso, scope){
       Drawer.close();
       setAnalyticsPeriod({ start:d, end:d }, iso === todayISO() ? 'hoje' : null);
     } }),
-    iso <= todayISO() ? h('button', { class:'btn ghost sm', type:'button', text:'Registrar sessão neste dia', onclick:() => { Drawer.close(); openRegisterModal({ mode:'manual', date: iso, disciplineId: sc.disciplineId || null, topicId: sc.topicId || null }); } }) : null));
+    iso <= todayISO() ? h('button', { class:'btn ghost sm', type:'button', text:'Registrar estudo neste dia', onclick:() => { Drawer.close(); openRegisterModal({ mode:'manual', date: iso, disciplineId: sc.disciplineId || null, topicId: sc.topicId || null }); } }) : null));
   Drawer.open(fmtDateLong(iso), body);
 }
 
@@ -7301,7 +7824,7 @@ function bucketTip(bucket, granularity, scope){
   list.forEach(x => byDisc.set(x.disciplineId, (byDisc.get(x.disciplineId) || 0) + (x.minutes || 0)));
   const rows = [...byDisc.entries()].sort((a,b) => b[1] - a[1]).slice(0, 5).map(([id, min]) => [disciplineName(id), fmtDuration(min)]);
   const head = granularity === 'day' ? fmtDateBR(bucket.key) : fmtRangeLabel(bucket.range);
-  const sub = `${fmtDuration(bucket.minutes)} · ${plural(list.length, 'sessão', 'sessões')}`;
+  const sub = `${fmtDuration(bucket.minutes)} · ${plural(list.length, 'estudo', 'estudos')}`;
   return tipBody(head, rows.length ? [[sub, '']].concat(['-']).concat(rows) : [], rows.length ? null : sub);
 }
 
@@ -7312,7 +7835,7 @@ function openBucketDrawer(bucket, granularity, a){
   body.append(h('p', { class:'an-drawer-ctx', text: AnalyticsScope.pathText(a.scope) }));
   body.append(h('div', { class:'stat-grid compact' },
     statBox(fmtDuration(sum(list, s => s.minutes || 0)), 'tempo'),
-    statBox(String(list.length), 'sessões'),
+    statBox(String(list.length), list.length === 1 ? 'estudo' : 'estudos'),
     statBox(String(new Set(list.map(s => s.date)).size), 'dias com estudo')));
   const useTopics = a.scope.type === 'discipline' || a.scope.type === 'topic';
   const rows = AnalyticsEngine.groupMinutes(list, s => useTopics ? (s.topicId || '__none__') : s.disciplineId,
@@ -7334,8 +7857,8 @@ function distributionModes(scope){
   switch(scope.type){
     case 'all':        return (hasAreas ? [['area','Áreas']] : []).concat([['discipline','Disciplinas'], ['topic','Tópicos']]);
     case 'area':       return [['discipline','Disciplinas'], ['topic','Tópicos']];
-    case 'discipline': return [['topic','Tópicos'], ['type','Tipos de sessão']];
-    default:           return [['type','Tipos de sessão']];
+    case 'discipline': return [['topic','Tópicos'], ['type','Tipos de estudo']];
+    default:           return [['type','Tipos de estudo']];
   }
 }
 
@@ -7380,7 +7903,7 @@ function openDistributionDrawer(row, mode, a){
   body.append(h('div', { class:'stat-grid compact' },
     statBox(fmtDuration(row.minutes), 'tempo'),
     statBox(safePct(row.pct), 'do tempo do período'),
-    statBox(String(row.count), row.count === 1 ? 'sessão' : 'sessões')));
+    statBox(String(row.count), row.count === 1 ? 'estudo' : 'estudos')));
   if(row.others){
     const mx = Math.max(1, ...row.others.map(r => r.minutes));
     body.append(drawerSection('Itens agrupados', row.others.map(r => hbarRow(r.label, r.minutes / mx * 100, `${fmtDuration(r.minutes)} · ${safePct(r.pct)}`, null, distributionAction(r, mode)))));
@@ -7483,13 +8006,13 @@ function analyticsPriorityCard(a){
         h('div', { class:'hbar' }, h('span', { style:`width:${r.minutes / mx * 100}%` })),
         h('span', { class:'hv', text: r.minutes ? `${fmtDuration(r.minutes)} · ${safePct(r.pct)}` : '—' }))),
       (totalMin === pr.topicTotal && totalMin !== pr.total)
-        ? h('p', { class:'hint', text:'Considera só sessões com tópico definido.' })
+        ? h('p', { class:'hint', text:'Considera só estudos com tópico definido.' })
         : null);
   };
   if(showDisc) c.append(block('Disciplinas', pr.byDisc, pr.total));
   if(showTopic) c.append(block('Tópicos', pr.byTopic, pr.topicTotal));
   if(pr.highDiscNoTime.length){
-    c.append(h('p', { class:'section-label', style:'margin-top:12px', text:'Prioridade alta, sem sessões no período' }));
+    c.append(h('p', { class:'section-label', style:'margin-top:12px', text:'Prioridade alta, sem estudo no período' }));
     c.append(h('div', { class:'chips' }, pr.highDiscNoTime.slice(0, 8).map(d =>
       h('button', { class:'chip', type:'button', text:`${d.name} · ${PriorityEngine.clamp(d.priority)}`, onclick:() => analyzeOnly('discipline', d.id) }))));
   }
@@ -7513,13 +8036,13 @@ function analyticsContentCard(a){
     const st = tp ? topicStatus(tp) : 'nao_iniciado';
     c.append(h('div', { class:'stat-grid compact' },
       statBox(TOPIC_STATUS_LABEL[st], 'situação'),
-      statBox(tp && tp.masteryLevel ? `${tp.masteryLevel}/5` : '—', 'domínio'),
+      statBox(tp && tp.masteryLevel ? `${tp.masteryLevel} de 5` : '—', 'consolidação'),
       statBox(tp && tp.reviewDueDate && tp.reviewEnabled ? fmtDateBR(tp.reviewDueDate) : '—', 'próxima revisão')));
     return c;
   }
   c.append(h('div', { class:'stat-grid compact', style:'margin-bottom:12px' },
-    statBox(`${ct.covered} de ${ct.totalTopics}`, METRIC_WORDS.coverage.title, { text:`${safePct(ct.coverage)} · também chamado de cobertura`, dir:'' }),
-    statBox(`${ct.mastered} de ${ct.totalTopics}`, METRIC_WORDS.mastery.title, { text:`${safePct(ct.masteryPct)} · também chamado de domínio`, dir:'' })));
+    statBox(`${ct.covered} de ${ct.totalTopics}`, METRIC_WORDS.coverage.title, { text:`${safePct(ct.coverage)} dos tópicos`, dir:'' }),
+    statBox(`${ct.mastered} de ${ct.totalTopics}`, METRIC_WORDS.mastery.title, { text:`${safePct(ct.masteryPct)} dos tópicos`, dir:'' })));
   if(a.scope.type === 'discipline'){
     const mx = Math.max(1, ...ct.byStatus.map(x => x.count));
     ct.byStatus.forEach(x => c.append(hbarRow(x.label, x.count / mx * 100, String(x.count))));
@@ -7528,7 +8051,7 @@ function analyticsContentCard(a){
       .forEach(x => c.append(hbarRow(x.discipline.name, x.coverage, safePct(x.coverage), null, () => analyzeOnly('discipline', x.discipline.id))));
   }
   if(ct.weakest.length){
-    c.append(h('p', { class:'section-label', style:'margin-top:14px', text:'Menor domínio' }));
+    c.append(h('p', { class:'section-label', style:'margin-top:14px', text:'Menos consolidados' }));
     ct.weakest.forEach(tp => c.append(hbarRow(tp.name, (tp.masteryLevel / 5) * 100, tp.masteryLevel + '/5',
       tp.masteryLevel <= 2 ? 'var(--danger)' : 'var(--brass)', () => openTopicFromAnalytics(tp))));
   }
@@ -7556,7 +8079,7 @@ function analyticsReviewsCard(a){
 function analyticsDifficultyCard(a){
   const c = h('div', { class:'card' }, h('p', { class:'card-title' }, 'Dificuldade percebida', helpDot('dificuldade')));
   if(a.difficulty.count === 0){
-    c.append(h('p', { class:'hint', text:'Nenhuma sessão deste período teve dificuldade informada.' }));
+    c.append(h('p', { class:'hint', text:'Nenhum estudo deste período teve dificuldade informada.' }));
     return c;
   }
   c.append(h('p', { class:'hint', style:'margin-bottom:10px', text:`Média ${fmtNumber(a.difficulty.avg, 1)}/5 em ${plural(a.difficulty.count, 'registro', 'registros')}. Mostra como o estudo pareceu, não o seu desempenho.` }));
@@ -7571,8 +8094,8 @@ function analyticsDifficultyCard(a){
 }
 
 function analyticsTypesCard(a){
-  const c = h('div', { class:'card' }, h('p', { class:'card-title' }, 'Tipos de sessão', helpDot('tiposessao')));
-  if(!a.totals.count){ c.append(h('p', { class:'hint', text:'Sem sessões neste período.' })); return c; }
+  const c = h('div', { class:'card' }, h('p', { class:'card-title' }, 'Tipos de estudo', helpDot('tiposessao')));
+  if(!a.totals.count){ c.append(h('p', { class:'hint', text:'Nenhum estudo neste período.' })); return c; }
   const maxType = Math.max(1, ...a.byType.map(x => x.count));
   a.byType.forEach(t => c.append(hbarRow(t.label, t.count / maxType * 100, t.count ? `${t.count} · ${safePct(t.pct)}` : '0')));
   return c;
@@ -7618,7 +8141,7 @@ function weeklyReportCard(scope){
     statBox(fmtDuration(realized), 'realizado'),
     statBox(planned > 0 ? fmtDuration(planned) : '—', 'planejado'),
     statBox(planned > 0 ? safePct((realized / planned) * 100) : '—', 'plano cumprido'),
-    statBox(String(sess.length), 'sessões'),
+    statBox(String(sess.length), sess.length === 1 ? 'estudo' : 'estudos'),
     statBox(String(new Set(sess.map(s => s.date)).size), 'dias com estudo'),
     statBox(`${reviews}/${scheduled + reviews}`, 'revisões')));
   if(allocs.length){
@@ -7656,7 +8179,7 @@ function buildSummaryText(a){
   L.push(...reportHeaderLines(a), '');
   analyticsFocusSummary(a, reportFocus(a).v).forEach(s => L.push(`• ${s}`));
   L.push('');
-  L.push(`Tempo: ${fmtDuration(a.totals.minutes)} · Sessões: ${a.totals.count} · Dias com estudo: ${a.totals.activeDays} de ${a.days}`);
+  L.push(`Tempo: ${fmtDuration(a.totals.minutes)} · Sessões de estudo: ${a.totals.count} · Dias com estudo: ${a.totals.activeDays} de ${a.days}`);
   if(a.planAdherence.hasPlan) L.push(`Plano cumprido: ${safePct(a.planAdherence.pct)} (${fmtDuration(a.planAdherence.realized)} de ${fmtDuration(a.planAdherence.planned)})`);
   if(a.reviews.completed || a.reviews.overdueNow) L.push(`Revisões: ${a.reviews.completed} concluídas · ${a.reviews.overdueNow} atrasadas agora`);
   if(a.deadlines.upcoming.length) L.push(`Próximos prazos: ${a.deadlines.upcoming.slice(0, 3).map(x => DeadlineEngine.phrase(x.dl)).join('; ')}`);
@@ -7727,21 +8250,21 @@ function buildStudyReportText(a){
       if(d) L.push(`Prioridade da disciplina: ${PriorityEngine.text(d.priority)}`);
     }
     if(pr.topicTotal > 0){
-      L.push('Tempo por prioridade dos tópicos (sessões com tópico):');
+      L.push('Tempo por prioridade dos tópicos (estudos com tópico):');
       pr.byTopic.slice().reverse().filter(r => r.count || r.minutes).forEach(r => bullet(`${PriorityEngine.text(r.p)}: ${fmtDuration(r.minutes)} (${safePct(r.pct)})`));
     }
-    if(pr.highDiscNoTime.length) L.push(`Prioridade alta sem sessões no período: ${pr.highDiscNoTime.map(d => d.name).join(', ')}`);
-    if(pr.total === 0 && !pr.highDiscNoTime.length) L.push('Sem sessões no período para comparar prioridades.');
+    if(pr.highDiscNoTime.length) L.push(`Prioridade alta sem estudo no período: ${pr.highDiscNoTime.map(d => d.name).join(', ')}`);
+    if(pr.total === 0 && !pr.highDiscNoTime.length) L.push('Sem estudos no período para comparar prioridades.');
   }
 
   section('TEMPO');
   const t = a.totals;
   L.push(`Tempo total: ${fmtDuration(t.minutes)}`);
-  L.push(`Sessões: ${t.count}`);
+  L.push(`Sessões de estudo: ${t.count}`);
   L.push(`Dias com estudo: ${t.activeDays} de ${a.days}`);
   L.push(`Média por dia do período: ${fmtDuration(t.avgPerDay)}`);
   L.push(`Média por dia com estudo: ${fmtDuration(t.avgPerActiveDay)}`);
-  L.push(`Duração média da sessão: ${fmtDuration(t.avgSession)}`);
+  L.push(`Duração média por estudo: ${fmtDuration(t.avgSession)}`);
   L.push(`Créditos: ${fmtNumber(t.credits)}`);
   const cmp = a.previousComparison;
   L.push(cmp.available
@@ -7752,7 +8275,7 @@ function buildStudyReportText(a){
     a.byWeekday.forEach(x => bullet(`${x.label}: ${fmtDuration(x.minutes)}`));
     const typed = a.byType.filter(x => x.count > 0);
     if(typed.length){
-      L.push('Por tipo de sessão:');
+      L.push('Por tipo de estudo:');
       typed.forEach(x => bullet(`${x.label}: ${x.count} (${safePct(x.pct)})`));
     }
     if(a.difficulty.avg !== null) L.push(`Dificuldade percebida média: ${fmtNumber(a.difficulty.avg, 1)}/5 (${plural(a.difficulty.count, 'registro', 'registros')})`);
@@ -7799,13 +8322,13 @@ function buildStudyReportText(a){
     ordered.slice(0, limit).forEach(tp => {
       const parts = [a.scope.type === 'discipline' || a.scope.type === 'topic' ? null : disciplineName(tp.disciplineId),
         `prioridade ${PriorityEngine.text(tp.priority)}`, TOPIC_STATUS_LABEL[a.content.status.get(tp.id) || topicStatus(tp)],
-        tp.masteryLevel ? `domínio ${tp.masteryLevel}/5` : null,
+        tp.masteryLevel ? `consolidação ${tp.masteryLevel} de 5` : null,
         `tempo no período ${fmtDuration(mins.get(tp.id) || 0)}`].filter(Boolean);
       bullet(`${tp.name} — ${parts.join(' · ')}`);
     });
     if(ordered.length > limit) L.push(`(e mais ${ordered.length - limit} tópicos sem tempo no período)`);
     const noTopic = mins.get('__none__');
-    if(noTopic) L.push(`Sessões sem tópico definido: ${fmtDuration(noTopic)}`);
+    if(noTopic) L.push(`Estudos sem tópico definido: ${fmtDuration(noTopic)}`);
   }
 
   section('REVISÕES');
@@ -7819,11 +8342,11 @@ function buildStudyReportText(a){
     r.outcomes.forEach(o => bullet(`${o.label}: ${o.count}`));
   }
   if(r.byMethod.length){
-    L.push('Métodos usados:');
+    L.push('Como você revisou:');
     r.byMethod.forEach(m => bullet(`${m.label}: ${m.used}×`));
   }
   if(r.forgetful.length) L.push(`Esquecidos com mais frequência: ${r.forgetful.map(tp => `${tp.name} (${tp.reviewFailures}×)`).join(', ')}`);
-  if(r.avgMastery !== null) L.push(`Domínio médio dos tópicos em revisão: ${fmtNumber(r.avgMastery, 1)}/5`);
+  if(r.avgMastery !== null) L.push(`Consolidação média dos tópicos em revisão: ${fmtNumber(r.avgMastery, 1)} de 5`);
 
   section('PRAZOS');
   const dls = a.deadlines;
@@ -7853,10 +8376,10 @@ function buildStudyReportText(a){
 
   section('INFORMAÇÕES');
   bullet(`Relatório gerado localmente pelo Ciclo ${APP_VERSION}. Nenhum dado foi enviado para a internet.`);
-  bullet('Tempo, sessões e revisões concluídas consideram apenas o escopo e o período acima. O foco define o resumo e os destaques; as demais seções continuam completas.');
-  bullet('Conteúdo, domínio, revisões atrasadas e prazos em aberto mostram a situação no momento da geração.');
+  bullet('Tempo, estudos e revisões concluídas consideram apenas o escopo e o período acima. O foco define o resumo e os destaques; as demais seções continuam completas.');
+  bullet('Conteúdo, consolidação, revisões atrasadas e prazos em aberto mostram a situação no momento da geração.');
   bullet('Prioridades usam os valores atuais de cada disciplina, tópico e prazo.');
-  bullet('Comentários das sessões, orientações e anotações pessoais dos prazos não são incluídos.');
+  bullet('Comentários dos estudos, orientações e anotações pessoais dos prazos não são incluídos.');
   bullet('As observações descrevem fatos dos registros; não indicam causas.');
   return L.join('\n') + '\n';
 }
@@ -7895,9 +8418,9 @@ function renderHistory(){
   const root = $('#history-body');
   const f = ui.history;
   if(!state.sessions.length){
-    mount(root, h('section', { class:'quiet-empty' }, emptyState('Nenhuma sessão registrada ainda',
-      'Use o botão "Registrar" para iniciar o cronômetro ou lançar uma sessão manualmente.',
-      h('button', { class:'btn primary', type:'button', text:'Registrar sessão', onclick:() => openRegisterModal() }))));
+    mount(root, h('section', { class:'quiet-empty' }, emptyState('Nenhum estudo registrado ainda',
+      'Use o botão "Registrar" para começar a estudar com o cronômetro ou para lançar um estudo que já aconteceu.',
+      h('button', { class:'btn primary', type:'button', text:'Registrar estudo', onclick:() => openRegisterModal() }))));
     return;
   }
   const searchIn = h('input', { type:'search', id:'hf-search', value:f.search, placeholder:'Buscar por disciplina, tópico ou comentário…',
@@ -7956,7 +8479,7 @@ function openHistoryFilters(){
         { value:'todos', label:'Todo o histórico' }, { value:'semana', label:'Esta semana' }, { value:'mes', label:'Este mês' },
         { value:'analises', label:'Período da última análise' }
       ], draft.period, e => { draft.period = e.target.value; }),
-      selectField('hf-type', 'Tipo de sessão', [{ value:'', label:'Todos' }].concat(SESSION_TYPES.map(t => ({ value:t.v, label:t.label }))), draft.type, e => { draft.type = e.target.value; }),
+      selectField('hf-type', 'Tipo de estudo', [{ value:'', label:'Todos' }].concat(SESSION_TYPES.map(t => ({ value:t.v, label:t.label }))), draft.type, e => { draft.type = e.target.value; }),
       selectField('hf-diff', 'Dificuldade', [{ value:'', label:'Todas' }].concat(DIFFICULTIES.map(d => ({ value:String(d.v), label:d.label }))), draft.difficulty, e => { draft.difficulty = e.target.value; }));
     const topicSel = $('#hf-topic', body); if(topicSel) topicSel.disabled = !draft.disciplineId;
   };
@@ -8007,9 +8530,9 @@ function renderHistoryTable(){
   const list = filteredSessions();
   clear(holder);
   holder.append(h('p', { class:'list-summary', role:'status', 'aria-live':'polite' },
-    h('strong', { text: plural(list.length, 'sessão', 'sessões') }), ` · ${fmtDuration(sum(list, s => s.minutes))}`));
+    h('strong', { text: plural(list.length, 'estudo', 'estudos') }), ` · ${fmtDuration(sum(list, s => s.minutes))}`));
   if(!list.length){
-    holder.append(h('p', { class:'hint', text:'Nenhuma sessão corresponde a esta busca ou a estes filtros.' }));
+    holder.append(h('p', { class:'hint', text:'Nenhum estudo corresponde a esta busca ou a estes filtros.' }));
     return;
   }
   const shown = list.slice(0, ui.historyLimit);
@@ -8031,7 +8554,7 @@ function renderHistoryTable(){
         const diff = difficultyInfo(s.difficulty);
         const sub = [topic || null, s.type ? sessionTypeLabel(s.type) : null, diff ? diff.label : null, reviewOutcomeLabel(s.reviewOutcome)].filter(Boolean).join(' · ');
         return h('li', { class:'line' },
-          h('button', { class:'line-main', type:'button', 'aria-label':`${disciplineName(s.disciplineId)}${topic ? ', ' + topic : ''}, ${fmtDuration(s.minutes)}. Editar sessão`,
+          h('button', { class:'line-main', type:'button', 'aria-label':`${disciplineName(s.disciplineId)}${topic ? ', ' + topic : ''}, ${fmtDuration(s.minutes)}. Editar estudo`,
               onclick:() => openEditSessionModal(s.id) },
             h('span', { class:'line-t', text: disciplineName(s.disciplineId) }),
             sub ? h('span', { class:'line-s', text: sub }) : null,
@@ -8077,12 +8600,12 @@ function openEditSessionModal(id){
     build();
 
     return {
-      title:'Editar sessão',
+      title:'Editar estudo',
       content: body,
       actions:[
-        h('button', { class:'linkbtn danger', type:'button', text:'remover sessão', onclick: async () => {
+        h('button', { class:'linkbtn danger', type:'button', text:'remover estudo', onclick: async () => {
           close();
-          const ok = await confirmModal('Remover esta sessão do histórico?', { confirmLabel:'Remover' });
+          const ok = await confirmModal('Remover este estudo do histórico?', { confirmLabel:'Remover' });
           if(ok) await deleteSession(id);
         } }),
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
@@ -8119,7 +8642,7 @@ async function exportBackupWithFeedback(){
 function exportCSVWithFeedback(){
   try { Backup.exportCSV(); }
   catch(err){ console.error(err); toast('Tente novamente.', 'err', { title:'Não foi possível exportar o CSV' }); return; }
-  toast(`${state.sessions.length} sessão(ões) em ciclo_sessoes_${todayISO()}.csv`, 'ok', { title:'Sessões exportadas' });
+  toast(`${plural(state.sessions.length, 'estudo', 'estudos')} em ciclo_sessoes_${todayISO()}.csv`, 'ok', { title:'Histórico exportado' });
 }
 function renderData(){
   const root = $('#data-body');
@@ -8146,7 +8669,7 @@ function renderData(){
 
   const counts = [
     plural(state.areas.length, 'área', 'áreas'), plural(state.disciplines.length, 'disciplina', 'disciplinas'),
-    plural(state.topics.length, 'tópico', 'tópicos'), plural(state.sessions.length, 'sessão', 'sessões'),
+    plural(state.topics.length, 'tópico', 'tópicos'), plural(state.sessions.length, 'estudo registrado', 'estudos registrados'),
     plural(state.weeklyPlans.length, 'semana registrada', 'semanas registradas'), plural(state.deadlines.length, 'prazo', 'prazos')
   ];
   const more = h('section', { class:'list-block' },
@@ -8154,8 +8677,8 @@ function renderData(){
     h('ul', { class:'line-list' },
       h('li', { class:'line' },
         h('div', { class:'line-main static' },
-          h('span', { class:'line-t', text:'Exportar sessões (.csv)' }),
-          h('span', { class:'line-s', text:'Só o histórico de sessões, para abrir numa planilha.' })),
+          h('span', { class:'line-t', text:'Exportar histórico (.csv)' }),
+          h('span', { class:'line-s', text:'Só a lista de estudos, para abrir numa planilha.' })),
         h('button', { class:'btn ghost sm', type:'button', text:'Exportar', onclick: once(exportCSVWithFeedback) })),
       h('li', { class:'line' },
         h('div', { class:'line-main static' },
@@ -8182,7 +8705,7 @@ function renderData(){
   const danger = h('details', { class:'disclosure danger-zone' },
     h('summary', null, h('span', { text:'Apagar todos os dados' })),
     h('div', { class:'disclosure-body' },
-      h('p', { class:'block-note', text:'Apaga áreas, disciplinas, tópicos, sessões, planos e prazos deste navegador. Não pode ser desfeito — faça um backup antes.' }),
+      h('p', { class:'block-note', text:'Apaga áreas, disciplinas, tópicos, estudos registrados, planos e prazos deste navegador. Não pode ser desfeito — faça um backup antes.' }),
       h('button', { class:'btn danger sm', type:'button', text:'Apagar todos os dados', onclick:wipeAll })));
 
   mount(root, h('div', { class:'narrow-screen' }, main, more, v2Block, danger));
@@ -8199,7 +8722,7 @@ function onImportFile(e){
     catch(err){ toast(err.message || 'Arquivo inválido.', 'err'); return; }
 
     const d = parsed.data;
-    const summary = `${d.disciplines.length} disciplina(s), ${d.topics.length} tópico(s), ${d.sessions.length} sessão(ões).`;
+    const summary = `${plural(d.disciplines.length, 'disciplina', 'disciplinas')}, ${plural(d.topics.length, 'tópico', 'tópicos')} e ${plural(d.sessions.length, 'estudo registrado', 'estudos registrados')}.`;
     openModal(close => ({
       title:'Restaurar backup',
       content: h('div',
@@ -8218,7 +8741,7 @@ function onImportFile(e){
             // vinda do backup só valia depois de recarregar a página.
             applySettingsEffects();
             syncThemeControls();
-            toast(`${d.disciplines.length} disciplina(s) e ${d.sessions.length} sessão(ões) restauradas.`, 'ok', { title:'Backup restaurado' });
+            toast(`${plural(d.disciplines.length, 'disciplina', 'disciplinas')} e ${plural(d.sessions.length, 'estudo', 'estudos')} de volta.`, 'ok', { title:'Backup restaurado' });
           } catch(err){ console.error(err); toast('Falha ao restaurar o backup.', 'err'); }
         } })
       ]
@@ -8229,7 +8752,7 @@ function onImportFile(e){
 }
 
 async function wipeAll(){
-  const ok1 = await confirmModal('Apagar TODOS os dados desta versão (disciplinas, tópicos, sessões, planos e prazos)?', { confirmLabel:'Continuar' });
+  const ok1 = await confirmModal('Apagar TODOS os dados deste navegador (disciplinas, tópicos, estudos registrados, planos e prazos)?', { confirmLabel:'Continuar' });
   if(!ok1) return;
   const ok2 = await confirmModal('Esta ação é definitiva e não pode ser desfeita. Tem certeza?', { confirmLabel:'Apagar tudo' });
   if(!ok2) return;
@@ -8268,7 +8791,12 @@ function render(){
    ========================================================================= */
 function bindEvents(){
   Overlay.bind();     // Esc/Tab/rolagem das camadas — antes de qualquer atalho global
-  $$('#nav-desktop .nav-item').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+  // Tocar em Disciplinas estando nela volta ao índice (como reabrir o caderno pela capa).
+  const goView = (v) => {
+    if(v === 'disciplines' && ui.view === 'disciplines' && (ui.discNav.level !== 'root' || ui.discTab !== 'disciplines')){ navDisc({ level:'root' }, 'back'); return; }
+    setView(v);
+  };
+  $$('#nav-desktop .nav-item').forEach(b => b.addEventListener('click', () => goView(b.dataset.view)));
   $$('#nav-mobile .mb-item[data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
 
   $('#mb-more').addEventListener('click', () => {
@@ -8276,7 +8804,7 @@ function bindEvents(){
       title:'Mais',
       content: h('div', { class:'ob-list' },
         [['disciplines','Disciplinas'], ['history','Histórico'], ['help','Ajuda'], ['data','Dados'], ['settings','Configurações']].map(([v,l]) =>
-          h('button', { class:'btn ghost block', type:'button', text:l, onclick:() => { close(); setView(v); } }))),
+          h('button', { class:'btn ghost block', type:'button', text:l, onclick:() => { close(); goView(v); } }))),
       actions:[ h('button', { class:'btn ghost', type:'button', text:'Fechar', onclick:() => close() }) ]
     }), { size:'narrow' });
   });
@@ -8435,7 +8963,7 @@ async function init(){
   if(needsSetup){
     openWelcome();
   } else if(migration && migration.migrated){
-    toast(`Dados da V2 migrados: ${migration.counts.disciplines} disciplina(s), ${migration.counts.sessions} sessão(ões).`, 'ok');
+    toast(`${plural(migration.counts.disciplines, 'disciplina', 'disciplinas')} e ${plural(migration.counts.sessions, 'estudo', 'estudos')} trazidos da versão anterior.`, 'ok', { title:'Dados antigos recuperados' });
   } else {
     maybeShowWhatsNew();
   }
@@ -8904,20 +9432,23 @@ const Palette = {
       push('Navegação', VIEW_TITLES[v], null, NAV_ICONS[v] || 'i-arrow', () => setView(v));
     });
 
-    push('Ações', 'Registrar sessão', 'abre o cronômetro ou o registro manual', 'i-plus', () => openRegisterModal(), 'estudar iniciar timer');
+    push('Ações', 'Registrar estudo', 'com cronômetro ou um estudo que já aconteceu', 'i-plus', () => openRegisterModal(), 'estudar iniciar timer sessao registrar');
     push('Ações', 'Adicionar prazo', 'prova, trabalho, projeto, tarefa ou entrega', 'i-plan', () => openDeadlineModal(null), 'prazo prova trabalho entrega projeto tarefa data');
-    push('Ações', 'Nova Área de Estudo', 'organizar disciplinas relacionadas', 'i-disc', () => openAreaModal(null), 'area organizar agrupar');
+    push('Ações', 'Nova área de estudo', 'um grupo para disciplinas relacionadas', 'i-disc', () => openAreaModal(null), 'area organizar agrupar');
     push('Ações', 'Nova disciplina', null, 'i-disc', () => openDisciplineModal(null), 'disciplina materia adicionar');
     push('Ações', 'Fazer backup agora', 'exporta o arquivo .json', 'i-data', () => exportBackupWithFeedback(), 'exportar salvar copia');
-    push('Ações', 'Exportar sessões (.csv)', 'para planilha', 'i-data', () => exportCSVWithFeedback(), 'planilha excel');
+    push('Ações', 'Exportar histórico (.csv)', 'para planilha', 'i-data', () => exportCSVWithFeedback(), 'planilha excel sessoes');
     push('Ações', 'Abrir revisões pendentes', null, 'i-review', () => setView('reviews'), 'revisar fila');
     push('Ações', 'Abrir configurações', null, 'i-settings', () => setView('settings'), 'preferencias tema');
     push('Ações', 'Alternar tema', null, 'i-sun', () => toggleTheme(), 'escuro claro dark light');
     if(TimerService.isActive){
-      push('Ações', 'Finalizar sessão em andamento', null, 'i-play', () => openFinishModal(), 'parar terminar');
+      push('Ações', 'Finalizar o estudo em andamento', null, 'i-play', () => openFinishModal(), 'parar terminar sessao');
       push('Ações', 'Entrar no modo foco', null, 'i-focus', () => FocusMode.enter(), 'concentrar');
     }
 
+    state.areas.filter(a => !a.archived).slice().sort(sortByName).forEach(a => {
+      push('Áreas', a.name, plural(disciplinesIn(a.id, false).length, 'disciplina', 'disciplinas'), 'i-disc', () => openArea(a.id), 'area de estudo grupo');
+    });
     activeDisciplines().slice().sort(sortByName).forEach(d => {
       push('Disciplinas', d.name, areaNameOf(d), 'i-disc', () => openDisciplineDetail(d.id), 'disciplina ' + areaNameOf(d));
     });
@@ -8929,7 +9460,7 @@ const Palette = {
     state.topics.filter(t => !t.archived).forEach(t => {
       const d = getDiscipline(t.disciplineId);
       if(!d || d.archived) return;
-      push('Tópicos', t.name, d.name, 'i-disc', () => { if(isDesktopUI()) openTopicDrawer(t.id); else openTopicModal(d.id, t, { returnTo:false }); }, 'topico estudar ' + d.name);
+      push('Tópicos', t.name, disciplinePath(d), 'i-disc', () => openTopicPage(t.id), 'topico estudar ' + d.name);
     });
 
     /* v5.3 — a busca de comandos lê o MESMO índice da Ajuda: artigos,
@@ -8950,8 +9481,8 @@ const Palette = {
            () => { helpUi.stack = [{ kind:'home' }]; helpUi.route = { kind:'faq', id:f.id }; helpClearSearch(); setView('help'); },
            f.a);
     });
-    push('Ações', 'Começar a estudar agora', 'escolha o que estudar e o tempo', 'i-play', () => openQuickStart(), 'sessao rapida iniciar');
-    push('Ações', 'Montar sessão de revisão', 'escolha quanto tempo você tem', 'i-review', () => openSessionBuilder(), 'revisar fila tempo');
+    push('Ações', 'Começar a estudar', 'escolha o que estudar e o tempo', 'i-play', () => openQuickStart(), 'sessao rapida iniciar');
+    push('Ações', 'Revisar com o tempo que tenho', 'escolha quantos minutos', 'i-review', () => openSessionBuilder(), 'revisar fila tempo sessao');
     push('Ações', 'Como funcionam as revisões', null, 'i-help', () => openReviewPrimer(), 'revisao entender explicacao');
     push('Ações', 'Entrar em contato', CONTACT_EMAIL, 'i-mail', () => openContactDrawer(), 'contato email suporte duvida sugestao');
     push('Ações', 'Relatar um problema', 'copie o relato ou abra no e-mail', 'i-flag', () => openReportProblemDrawer(), 'bug erro problema suporte');
@@ -9084,7 +9615,7 @@ const FocusMode = {
   tick: null,
   _layer: null,
   enter(){
-    if(!TimerService.isActive){ toast('Inicie uma sessão para usar o modo foco.', 'err'); return; }
+    if(!TimerService.isActive){ toast('Comece a estudar para usar o modo foco.', 'info'); return; }
     if(this.isOpen) return;
     const root = document.getElementById('focus-root');
     root.hidden = false;
@@ -9123,7 +9654,7 @@ const FocusMode = {
   renderClock(){
     if(!TimerService.isActive){ this.exit(); return; }
     document.getElementById('focus-clock').textContent = fmtClock(TimerService.getElapsed());
-    document.getElementById('focus-state').textContent = TimerService.isRunning ? 'Sessão em andamento' : 'Sessão pausada';
+    document.getElementById('focus-state').textContent = TimerService.isRunning ? 'Estudando' : 'Pausado';
   }
 };
 
@@ -9349,10 +9880,10 @@ function articleBody(a, ctx){
   const c = ctx || {};
   const box = h('div', { class:'help-article prose' });
 
-  if(c.inDrawer) box.append(h('p', { class:'hi-cat', text: articlePath(a).toUpperCase() }));
+  if(c.inDrawer) box.append(h('p', { class:'hi-cat', text: articlePath(a) }));
   if(a.oneLine){
     box.append(h('p', { class:'one-line' },
-      h('span', { class:'ol-tag', text:'EM UMA FRASE' }), richText(a.oneLine)));
+      h('span', { class:'ol-tag', text:'Em uma frase' }), richText(a.oneLine)));
   }
   renderHelpBlocks(a.content).forEach(n => box.append(n));
 
@@ -9390,7 +9921,7 @@ function helpItemButton(a, opts){
   const o = opts || {};
   return h('button', { class:'help-item', type:'button', onclick:() => openHelpArticle(a.id) },
     h('span', { class:'hi-main' },
-      o.showPath ? h('div', { class:'hi-cat', text: articlePath(a).toUpperCase() }) : null,
+      o.showPath ? h('div', { class:'hi-cat', text: articlePath(a) }) : null,
       h('div', { class:'hi-title', text:a.title }),
       h('div', { class:'hi-sum', text:a.summary })),
     icon('i-arrow', 'nav-icon'));
@@ -9645,7 +10176,7 @@ function helpHomePanel(box){
       first ? h('li', { class:'line' }, h('button', { class:'line-main', type:'button', onclick:() => helpGo({ kind:'article', id:first.id }) },
         h('span', { class:'line-t', text:'Primeiros passos' }), h('span', { class:'line-s', text:'O essencial para começar em poucos minutos.' })), icon('i-arrow', 'nav-icon line-go')) : null,
       h('li', { class:'line' }, h('button', { class:'line-main', type:'button', onclick:() => helpGo({ kind:'glossary' }) },
-        h('span', { class:'line-t', text:'Glossário' }), h('span', { class:'line-s', text:'Domínio, aderência, plano base, cobertura… cada termo em uma linha.' })), icon('i-arrow', 'nav-icon line-go')),
+        h('span', { class:'line-t', text:'Glossário' }), h('span', { class:'line-s', text:'Consolidação, créditos, revisão espaçada… cada termo em uma linha.' })), icon('i-arrow', 'nav-icon line-go')),
       h('li', { class:'line' }, h('button', { class:'line-main', type:'button', onclick:() => openContactDrawer() },
         h('span', { class:'line-t', text:'Entrar em contato' }), h('span', { class:'line-s num', text: CONTACT_EMAIL })), icon('i-mail', 'nav-icon line-go')),
       h('li', { class:'line' }, h('button', { class:'line-main', type:'button', onclick:() => openReportProblemDrawer() },
@@ -9970,7 +10501,7 @@ function buildReportText(description, info){
 function openReportProblemDrawer(){
   const info = reportTechInfo();
   const descField = h('textarea', { id:'report-desc', rows:'6', maxlength:'4000',
-    placeholder:'Ex.: O botão X não responde quando eu clico depois de registrar uma sessão.' });
+    placeholder:'Ex.: O botão X não responde quando eu clico depois de registrar um estudo.' });
   const preview = h('pre', { class:'report-preview' });
   const syncPreview = () => { preview.textContent = buildReportText(descField.value, info); };
   descField.addEventListener('input', syncPreview);
@@ -10020,7 +10551,7 @@ function openReportProblemDrawer(){
       h('p', { class:'report-tech-title', text:'Informações técnicas que serão incluídas' }),
       h('dl', { class:'tech-list' }, info.map(([k, v]) => h('div', null, h('dt', { text:k }), h('dd', { text:v })))),
       h('p', { class:'privacy-note' }, icon('i-check', 'nav-icon'),
-        h('span', { text:'Nenhuma disciplina, tópico, sessão, comentário ou dado de estudo será incluído.' }))),
+        h('span', { text:'Nenhuma disciplina, tópico, comentário ou outro dado de estudo é incluído.' }))),
     details,
     status,
     h('div', { class:'row auto', style:'margin-top:6px' },
@@ -10073,8 +10604,8 @@ const FIRST_TIPS = {
                  text:'Você define quanto pretende estudar por semana; não precisa escolher horários fixos nem estudar todo dia.' },
   reviews:     { id:'reviews-intro',     title:'As revisões aparecem sozinhas',
                  text:'Depois de estudar um tópico, ele entra automaticamente no ciclo de revisão e volta aqui quando chegar a hora.' },
-  disciplines: { id:'disciplines-v52',   title:'Área de Estudo → Disciplina → Tópico',
-                 text:'A disciplina é o que você estuda; os tópicos são as partes dela. A Área de Estudo é opcional e só organiza. Dê prioridade de 1 a 5 quando quiser.' }
+  disciplines: { id:'disciplines-v52',   title:'Seus estudos, organizados como um índice',
+                 text:'Abra uma área para ver as disciplinas dela; abra uma disciplina para ver os tópicos. Ex.: Tecnologia › Redes de Computadores › OSPF. Áreas são opcionais.' }
 };
 
 function renderTips(){
@@ -10098,75 +10629,6 @@ function renderTips(){
       await saveSettings();
       renderTips();
     } })));
-}
-
-/* =========================================================================
-   DRAWER DE TÓPICO
-   ========================================================================= */
-function openTopicDrawer(topicId){
-  const t = getTopic(topicId);
-  if(!t) return;
-  const disc = getDiscipline(t.disciplineId);
-  const sess = sessionsOfTopic(t.id).slice().sort((a,b) => b.date.localeCompare(a.date));
-  const totalMin = sum(sess, s => s.minutes);
-  const st = topicStatus(t);
-
-  const recent = h('ul', { class:'line-list' });
-  if(!sess.length){
-    recent.appendChild(h('li', { class:'hint', text:'Nenhuma sessão registrada neste tópico ainda.' }));
-  } else {
-    sess.slice(0, 6).forEach(s => {
-      const diff = difficultyInfo(s.difficulty);
-      recent.appendChild(h('li', { class:'line' },
-        h('button', { class:'line-main', type:'button', 'aria-label':`Editar sessão de ${fmtDateBR(s.date)}`, onclick:() => { Drawer.close(); openEditSessionModal(s.id); } },
-          h('span', { class:'line-t', text: fmtDateBR(s.date) }),
-          h('span', { class:'line-s', text: [s.type ? sessionTypeLabel(s.type) : null, diff ? diff.label : null, reviewOutcomeLabel(s.reviewOutcome)].filter(Boolean).join(' · ') || '—' })),
-        h('span', { class:'line-v num', text: fmtDuration(s.minutes) })));
-    });
-  }
-
-  const tDeadlines = state.deadlines.filter(dl => !DeadlineEngine.isDone(dl) &&
-    (dl.topicId === t.id || (!dl.topicId && dl.disciplineId === t.disciplineId)))
-    .sort((a,b) => str(a.date).localeCompare(str(b.date)));
-
-  const kv = h('dl', { class:'kv-list' });
-  const add = (k, v) => kv.append(h('div', null, h('dt', { text:k }), h('dd', { text:v })));
-  add('Situação', TOPIC_STATUS_LABEL[st]);
-  add('Domínio', t.masteryLevel ? t.masteryLevel + '/5' : 'ainda não avaliado');
-  add('Próxima revisão', t.reviewEnabled ? (t.reviewDueDate ? `${capFirst(fmtRelativeFuture(t.reviewDueDate))} · ${fmtDateBR(t.reviewDueDate)}` : 'depois do primeiro estudo') : 'revisões desligadas');
-  add('Tempo total', `${fmtDuration(totalMin)} em ${plural(sess.length, 'sessão', 'sessões')}`);
-  add('Prioridade', PRIORITY_LABELS[PriorityEngine.clamp(t.priority)]);
-
-  const more = h('details', { class:'disclosure small' },
-    h('summary', null, h('span', { text:'Mais detalhes' })),
-    h('div', { class:'disclosure-body' },
-      (() => { const d2 = h('dl', { class:'kv-list' }); const a2 = (k, v) => d2.append(h('div', null, h('dt', { text:k }), h('dd', { text:v })));
-        a2('Último estudo', capFirst(fmtRelativePast(t.lastStudiedAt)));
-        a2('Intervalo atual', t.reviewIntervalDays ? plural(t.reviewIntervalDays, 'dia', 'dias') : '—');
-        a2('Revisões concluídas', String(t.reviewRepetitions || 0));
-        a2('Vezes esquecido', String(t.reviewFailures || 0));
-        if(disc) a2('Prioridade da disciplina', PRIORITY_LABELS[PriorityEngine.clamp(disc.priority)]);
-        return d2; })(),
-      h('p', { class:'hint', style:'margin-top:8px', text: PriorityEngine.hint(t.priority, 'topic') })));
-
-  const body = h('div',
-    h('p', { class:'detail-path' }, h('span', { text: disc ? disciplinePath(disc) : '' })),
-    kv,
-    h('div', { class:'detail-actions' },
-      h('button', { class:'btn primary sm', type:'button', onclick:() => { Drawer.close(); startTimer(t.disciplineId, t.id, null); } }, icon('i-play'), 'Estudar'),
-      t.reviewEnabled ? h('button', { class:'btn ghost sm', type:'button', text:'Revisar', onclick:() => { Drawer.close(); startReview(t.id); } }) : null,
-      h('button', { class:'btn ghost sm', type:'button', text:'Editar', onclick:() => { Drawer.close(); openTopicModal(t.disciplineId, t); } }),
-      disc ? h('button', { class:'linkbtn muted', type:'button', text:'ver disciplina', onclick:() => openDisciplineDetail(disc.id) }) : null),
-    tDeadlines.length ? h('section', { class:'detail-section' },
-      h('h4', { class:'block-label', text:'Prazos relacionados' }),
-      h('ul', { class:'dl-line-list' }, tDeadlines.slice(0, 3).map(dl => deadlineLine(dl, null, false)))) : null,
-    h('section', { class:'detail-section' },
-      h('h4', { class:'block-label', text:'Sessões recentes' }),
-      recent,
-      sess.length > 6 ? h('p', { class:'hint', style:'margin-top:8px', text:`+ ${plural(sess.length - 6, 'sessão mais antiga', 'sessões mais antigas')} no Histórico.` }) : null),
-    more
-  );
-  Drawer.open(t.name, body);
 }
 
 /* =========================================================================
@@ -10293,8 +10755,8 @@ function onboardingSteps(){
   return [
     { id:'disc',    done:hasDiscipline, label:'Adicione uma disciplina',
       action:{ text:'Adicionar disciplina', run:() => { setView('disciplines'); setTimeout(() => openDisciplineModal(null), 250); } } },
-    { id:'session', done:hasSession,    label:'Faça sua primeira sessão',
-      action:{ text:'Registrar sessão', run:() => openRegisterModal() } },
+    { id:'session', done:hasSession,    label:'Registre seu primeiro estudo',
+      action:{ text:'Começar a estudar', run:() => openQuickStart() } },
     { id:'topic',   done:hasTopic,      label:'Adicione seu primeiro tópico',
       action:{ text:'Adicionar tópico', run:() => {
         const d = activeDisciplines()[0];
@@ -10342,19 +10804,20 @@ function maybeShowWhatsNew(){
     ? `A importância de ${mig.topics} ${mig.topics === 1 ? 'tópico foi convertida' : 'tópicos foi convertida'} para a escala de prioridade 1–5. Nenhuma revisão foi reagendada.`
     : null;
 
+  const cameFrom6 = /^6\./.test(seen);             // já viu a interface nova da v6
   const items = [
-    'Visual mais calmo: menos caixas, cores e informação ao mesmo tempo. O que importa aparece primeiro; o resto fica a um clique.',
-    'Hoje mostra uma recomendação clara e só o que vem a seguir.',
-    'Análises começam por uma pergunta: o que analisar, qual período e o que você quer ver. Depois, um resumo, poucos números, um gráfico e os principais insights.',
-    'Histórico em ordem cronológica, com filtros num painel. Prazos ganharam uma aba própria em Disciplinas.',
-    'Configurações organizadas em grupos.'
+    'Disciplinas virou um índice: abra uma área, depois uma disciplina, depois um tópico. Áreas criadas continuam aparecendo mesmo vazias.',
+    'A prioridade tem um só símbolo, de 1 a 5, em todo lugar — e dá para mudar direto no detalhe da disciplina ou do tópico.',
+    'Palavras mais simples: "Começar a estudar", "Registrar estudo", "Quando revisar", "Como revisar".',
+    'Mais espaço entre as coisas, menos letras maiúsculas e movimentos mais suaves ao navegar.'
   ];
+  if(!cameFrom6) items.push('Também da 6.0: visual mais calmo, Análises que começam por uma pergunta e Prazos numa aba própria em Disciplinas.');
   const cfg = {
-    title: 'Ciclo 6.0',
-    sub: cameFrom5
-      ? 'Uma interface nova, com o mesmo Ciclo por baixo. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
+    title: 'Ciclo 6.1',
+    sub: cameFrom5 || cameFrom6
+      ? 'O mesmo Ciclo, mais fácil de ler e de navegar. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
       : 'O Diário de Estudos agora se chama Ciclo — e ganhou uma interface nova. Seus dados, revisões e planos continuam como estavam.',
-    items, note: converted, cta:'Abrir Análises'
+    items, note: converted, cta:'Abrir Disciplinas'
   };
 
   openModal(close => ({
@@ -10370,7 +10833,7 @@ function maybeShowWhatsNew(){
       } }),
       h('button', { class:'btn ghost', type:'button', text: cfg.cta, onclick: async () => {
         close(); await markSeen();
-        setView('analytics');
+        navDisc({ level:'root' }, null);
       } }),
       h('button', { class:'btn primary', type:'button', text:'Continuar', onclick: async () => {
         close(); await markSeen();
@@ -10605,7 +11068,7 @@ function openQuickStart(preset){
               startTimer(disc.id, t.id, null);
             } catch(err){
               console.error(err);
-              toast('Não foi possível adicionar o tópico. A sessão continua.', 'err');
+              toast('Não foi possível adicionar o tópico. O estudo continua.', 'err');
               startTimer(disc.id, null, null);
             }
           } })
@@ -10691,7 +11154,7 @@ function reviewDemoNode(){
   const d = REVIEW_DEMO;
   const box = h('div', { class:'demo' });
   box.append(
-    h('p', { class:'demo-label', text:'DEMONSTRAÇÃO' }),
+    h('p', { class:'demo-label', text:'Demonstração' }),
     h('p', { class:'hint', style:'margin-bottom:12px', text:d.intro }),
     h('div', { class:'demo-card' },
       h('div', { class:'demo-topic', text:d.topic }),
@@ -10706,7 +11169,7 @@ function reviewDemoNode(){
       btn.setAttribute('aria-pressed','true');
       mount(result,
         h('p', { class:'demo-next' }, 'Próxima revisão: ', h('strong', { text:o.next })),
-        h('p', { class:'hint', text:`Domínio ${o.mastery}. ${o.explain}` }));
+        h('p', { class:'hint', text:`Consolidação: ${o.mastery}. ${o.explain}` }));
     });
     opts.append(btn);
   });
@@ -10730,7 +11193,7 @@ function structureDemoNode(){
       h('p', { class:'hint', style:'margin-top:8px', text: ex.note }));
   };
   list.forEach((ex, i) => chips.append(h('button', { class:'chip', type:'button', 'aria-pressed':'false', text: ex.label, onclick:() => show(i) })));
-  box.append(h('p', { class:'demo-label', text:'EXPERIMENTE' }),
+  box.append(h('p', { class:'demo-label', text:'Experimente' }),
     h('p', { class:'hint', text:'Escolha um exemplo para ver como os três níveis se encaixam.' }), chips, treeSlot,
     h('p', { class:'demo-note', text:'Este é só um exemplo. Nada aqui é salvo nos seus dados.' }));
   show(0);
@@ -10745,7 +11208,7 @@ function priorityDemoNode(){
     const mult = { 1:'um pouco mais espaçadas', 2:'levemente mais espaçadas', 3:'no ritmo normal', 4:'levemente mais próximas', 5:'um pouco mais próximas' }[v];
     out.textContent = `Com prioridade ${PriorityEngine.text(v)}, as revisões deste tópico ficam ${mult}. O resultado de cada revisão continua sendo o que mais pesa.`;
   };
-  box.append(h('p', { class:'demo-label', text:'EXPERIMENTE' }),
+  box.append(h('p', { class:'demo-label', text:'Experimente' }),
     h('p', { class:'hint', style:'margin-bottom:8px', text:'Tópico de exemplo: Derivadas (Matemática).' }),
     priorityPicker({ value:3, context:'topic', id:'demo-prio', label:'Prioridade do tópico', onChange: update }),
     out,
@@ -10759,7 +11222,7 @@ function planDemoNode(){
   const d = PLAN_DEMO;
   const box = h('div', { class:'demo' });
   box.append(
-    h('p', { class:'demo-label', text:'DEMONSTRAÇÃO' }),
+    h('p', { class:'demo-label', text:'Demonstração' }),
     h('p', { class:'hint', style:'margin-bottom:10px', text:`Imagine que você tem ${d.hours} horas nesta semana. O Ciclo sugeriria:` }));
   const total = sum(d.rows, r => r.minutes);
   d.rows.forEach(r => box.append(h('div', { class:'demo-row' },
@@ -10892,8 +11355,8 @@ function renderSettings(){
 
   /* ---------- ESTUDOS ---------- */
   const estudos = card('Estudos',
-    setRow('Duração padrão da sessão', 'Usada como sugestão ao iniciar uma sessão nova.',
-      numberControl(s.defaultSessionMinutes, 5, 5, async v => { state.settings.defaultSessionMinutes = v; await saveSettings(); }, 'Duração padrão da sessão em minutos')),
+    setRow('Tempo sugerido para estudar', 'Sugestão de minutos ao registrar um estudo.',
+      numberControl(s.defaultSessionMinutes, 5, 5, async v => { state.settings.defaultSessionMinutes = v; await saveSettings(); }, 'Tempo sugerido para estudar, em minutos')),
     setRow('Duração padrão da revisão', 'Revisões costumam ser mais curtas que o estudo inicial.',
       numberControl(s.defaultReviewMinutes, 5, 5, async v => { state.settings.defaultReviewMinutes = v; await saveSettings(); }, 'Duração padrão da revisão em minutos')),
     setRow('Primeiro dia da semana', 'Define o início da semana no plano e nas análises.',
@@ -10911,16 +11374,16 @@ function renderSettings(){
 
   /* ---------- REVISÕES ---------- */
   const revisoes = card('Revisões',
-    setRow(labelWithHelp('Estratégia padrão', 'estrategia'),
+    setRow(labelWithHelp('Quando revisar', 'estrategia'),
       'Decide quando o conteúdo volta. Disciplinas e tópicos podem usar outra.',
       selectControl(REVIEW_STRATEGIES.map(x => ({ value:x.v, label: x.v === 'adaptive' ? x.label + ' — recomendada' : x.label })),
-        state.settings.defaultReviewStrategy, async v => { state.settings.defaultReviewStrategy = v; await saveSettings(); renderSettings(); }, 'Estratégia padrão de revisão')),
+        state.settings.defaultReviewStrategy, async v => { state.settings.defaultReviewStrategy = v; await saveSettings(); renderSettings(); }, 'Quando revisar')),
     h('p', { class:'hint', style:'margin:-6px 0 10px',
       text: (REVIEW_STRATEGIES.find(x => x.v === state.settings.defaultReviewStrategy) || REVIEW_STRATEGIES[0]).short }),
-    setRow(labelWithHelp('Método padrão', 'metodo'),
-      'Decide como revisar. No Automático, o Ciclo sugere conforme a natureza da disciplina.',
+    setRow(labelWithHelp('Como revisar', 'metodo'),
+      'No Automático, o Ciclo sugere um jeito conforme o tipo de conteúdo da disciplina.',
       selectControl(REVIEW_METHODS.map(m => ({ value:m.v, label:m.label })),
-        state.settings.defaultReviewMethod, async v => { state.settings.defaultReviewMethod = v; await saveSettings(); }, 'Método padrão de revisão')),
+        state.settings.defaultReviewMethod, async v => { state.settings.defaultReviewMethod = v; await saveSettings(); }, 'Como revisar')),
     setRow(labelWithHelp('Incluir novos tópicos automaticamente', 'revisao'),
       'Ao criar um tópico, ele já entra no ciclo de revisão. Pode ser alterado tópico a tópico.',
       switchControl(s.autoReviewNewTopics, async v => { state.settings.autoReviewNewTopics = v; await saveSettings(); }, 'Incluir novos tópicos nas revisões')),
@@ -10952,7 +11415,7 @@ function renderSettings(){
     h('p', { class:'set-lead', text:'Tudo fica neste navegador: sem conta, sem servidor, sem sincronização e sem rastreamento.' }),
     h('div', { class:'facts' },
       fact(lastBackup ? (daysBackup === 0 ? 'Hoje' : `Há ${plural(daysBackup, 'dia', 'dias')}`) : 'Nunca', 'último backup'),
-      fact(String(state.sessions.length), 'sessões guardadas')),
+      fact(String(state.sessions.length), 'estudos guardados')),
     h('div', { class:'row auto' },
       h('button', { class:'btn primary sm', type:'button', text:'Fazer backup agora',
         onclick: once(exportBackupWithFeedback) }),
@@ -11113,7 +11576,7 @@ function renderDeadlineSuggestions(){
           disc.reviewStrategy = 'inherit';
           await persist('disciplines', disc);
           await refresh();
-          toast(`${disc.name} voltou a usar a estratégia padrão.`, 'ok');
+          toast(`${disc.name} voltou ao ritmo normal de revisão.`, 'ok');
         } }),
         h('button', { class:'linkbtn muted', type:'button', text:'Continuar intensiva', onclick: async () => {
           await setMeta('intensiveKeep_' + d.id, true);
