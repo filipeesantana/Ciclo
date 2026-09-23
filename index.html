@@ -30,6 +30,7 @@
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="i-next" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
   <symbol id="i-back" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M17 20V4M13.5 7.5 17 4l3.5 3.5"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol>
   <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.2a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4"/><path d="M12 17.4h.01"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
@@ -85,7 +86,7 @@
       <svg class="brand-mark" aria-hidden="true" focusable="false"><use href="#i-brand"></use></svg>
       <span class="brand-name" id="mobile-title">Hoje</span>
       <div class="mobile-head-actions">
-        <button class="icon-btn" id="open-palette-m" type="button" aria-label="Buscar ou executar uma ação" title="Buscar">
+        <button class="icon-btn" id="open-palette-m" type="button" aria-label="Buscar no Ciclo" title="Buscar no Ciclo">
           <svg class="nav-icon" aria-hidden="true"><use href="#i-search"></use></svg>
         </button>
         <button class="icon-btn" id="screen-help-m" type="button" aria-label="Ajuda desta tela" title="Ajuda desta tela">
@@ -99,9 +100,9 @@
 
     <main class="main" id="main">
       <div class="toolbar" id="toolbar">
-        <button class="toolbar-search" id="open-palette" type="button" aria-label="Buscar ou executar uma ação">
+        <button class="toolbar-search" id="open-palette" type="button" aria-label="Buscar no Ciclo: disciplinas, tópicos, prazos, ações e ajuda" title="Buscar em todo o Ciclo (Ctrl + K)">
           <svg class="btn-icon" aria-hidden="true"><use href="#i-search"></use></svg>
-          <span>Buscar ou navegar…</span>
+          <span>Buscar no Ciclo…</span>
           <kbd>Ctrl</kbd><kbd>K</kbd>
         </button>
         <button class="btn ghost sm toolbar-help" id="screen-help" type="button">
@@ -112,47 +113,47 @@
       <div id="timerbar-slot"></div>
 
       <section id="view-today" class="view active" aria-labelledby="h-today">
-        <div class="page-head"><h2 id="h-today">Hoje</h2><p class="sub"></p></div>
+        <div class="page-head"><h2 id="h-today" tabindex="-1">Hoje</h2><p class="sub"></p></div>
         <div id="today-body" class="view-body"></div>
       </section>
 
       <section id="view-plan" class="view" aria-labelledby="h-plan">
-        <div class="page-head"><h2 id="h-plan">Planejamento</h2><p class="sub">Quanto tempo você tem e como ele se divide.</p></div>
+        <div class="page-head"><h2 id="h-plan" tabindex="-1">Planejamento</h2><p class="sub">Quanto tempo você tem e como ele se divide.</p></div>
         <div id="plan-body" class="view-body"></div>
       </section>
 
       <section id="view-reviews" class="view" aria-labelledby="h-reviews">
-        <div class="page-head"><h2 id="h-reviews">Revisões</h2><p class="sub">O que precisa revisar?</p></div>
+        <div class="page-head"><h2 id="h-reviews" tabindex="-1">Revisões</h2><p class="sub">O que precisa revisar?</p></div>
         <div id="reviews-body" class="view-body"></div>
       </section>
 
       <section id="view-disciplines" class="view" aria-labelledby="h-disc">
-        <div class="page-head"><h2 id="h-disc">Disciplinas</h2><p class="sub">O que você está estudando e o que está chegando.</p></div>
+        <div class="page-head"><h2 id="h-disc" tabindex="-1">Disciplinas</h2><p class="sub">O que você está estudando e o que está chegando.</p></div>
         <div id="disciplines-body" class="view-body"></div>
       </section>
 
       <section id="view-analytics" class="view" aria-labelledby="h-an">
-        <div class="page-head"><h2 id="h-an">Análises</h2><p class="sub">O que você quer entender?</p></div>
+        <div class="page-head"><h2 id="h-an" tabindex="-1">Análises</h2><p class="sub">O que você quer entender?</p></div>
         <div id="analytics-body" class="view-body"></div>
       </section>
 
       <section id="view-history" class="view" aria-labelledby="h-hist">
-        <div class="page-head"><h2 id="h-hist">Histórico</h2><p class="sub">Tudo o que você já estudou.</p></div>
+        <div class="page-head"><h2 id="h-hist" tabindex="-1">Histórico</h2><p class="sub">Tudo o que você já estudou.</p></div>
         <div id="history-body" class="view-body"></div>
       </section>
 
       <section id="view-help" class="view" aria-labelledby="h-help">
-        <div class="page-head"><h2 id="h-help">Ajuda</h2><p class="sub">O que você precisa entender?</p></div>
+        <div class="page-head"><h2 id="h-help" tabindex="-1">Ajuda</h2><p class="sub">O que você precisa entender?</p></div>
         <div id="help-body" class="view-body"></div>
       </section>
 
       <section id="view-data" class="view" aria-labelledby="h-data">
-        <div class="page-head"><h2 id="h-data">Dados</h2><p class="sub">Como proteger ou levar seus dados.</p></div>
+        <div class="page-head"><h2 id="h-data" tabindex="-1">Dados</h2><p class="sub">Como proteger ou levar seus dados.</p></div>
         <div id="data-body" class="view-body"></div>
       </section>
 
       <section id="view-settings" class="view" aria-labelledby="h-set">
-        <div class="page-head"><h2 id="h-set">Configurações</h2><p class="sub">O que você quer personalizar.</p></div>
+        <div class="page-head"><h2 id="h-set" tabindex="-1">Configurações</h2><p class="sub">O que você quer personalizar.</p></div>
         <div id="settings-body" class="view-body"></div>
       </section>
     </main>
@@ -195,11 +196,11 @@
 </div>
 
 <div class="palette-overlay" id="palette-root" hidden>
-  <div class="palette" role="dialog" aria-modal="true" aria-label="Buscar ou executar uma ação">
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Buscar no Ciclo">
     <div class="palette-input">
       <svg class="btn-icon" aria-hidden="true"><use href="#i-search"></use></svg>
       <input type="text" id="palette-input" autocomplete="off" spellcheck="false"
-             placeholder="Buscar ou executar uma ação…" aria-controls="palette-list" aria-expanded="true" role="combobox">
+             placeholder="Buscar disciplinas, tópicos, prazos, ações…" aria-label="Buscar no Ciclo" aria-controls="palette-list" aria-expanded="true" aria-autocomplete="list" role="combobox">
     </div>
     <ul class="palette-list" id="palette-list" role="listbox" aria-label="Resultados"></ul>
     <div class="palette-foot">

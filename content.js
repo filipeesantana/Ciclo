@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — CONTEÚDO ESTÁTICO (v6.1.0)
+   CICLO — CONTEÚDO ESTÁTICO (v6.2.0)
    Textos, guias e frases. Nada aqui vai para o IndexedDB e nada vem da rede.
 
    Blocos: DAILY_QUOTES · REVIEW_METHOD_GUIDES · HELP_SECTIONS ·
@@ -1518,7 +1518,7 @@ const HELP_ARTICLES = [
   title:'Como o Ciclo está organizado',
   oneLine:'Nove telas, cada uma com um trabalho.',
   summary:'O que fica em cada tela.',
-  keywords:'navegacao telas menu organizacao onde encontrar mais celular',
+  keywords:'navegacao telas menu organizacao onde encontrar mais celular voltar buscar busca ordenar ordenacao filtro lista',
   content:[
     { ul:[
       'Hoje — o que estudar agora e o que vem a seguir.',
@@ -1531,7 +1531,15 @@ const HELP_ARTICLES = [
       'Dados — backup, restauração e privacidade.',
       'Configurações — aparência, preferências de estudo, revisões e ajuda.'
     ]},
-    { note:'No celular, Disciplinas, Histórico, Ajuda, Dados e Configurações ficam no botão "Mais".' }
+    { note:'No celular, Disciplinas, Histórico, Ajuda, Dados e Configurações ficam no botão "Mais".' },
+    { h:'Voltar e encontrar' },
+    { ul:[
+      'Dentro de Disciplinas, o botão no topo diz para onde volta — por exemplo, "← Tecnologia". O Voltar do navegador faz o mesmo caminho e só depois sai do Ciclo.',
+      'Ao voltar, a lista continua como você deixou: a mesma busca, a mesma ordem e a mesma posição.',
+      'Cada lista busca só nela mesma: dentro de Tecnologia, disciplinas de Tecnologia; dentro de uma disciplina, os tópicos dela; em Prazos, prazos.',
+      '"Ordenar por" reorganiza a lista (mais estudadas, prioridade, datas, nome) sem mudar nada nos seus dados. Em Prazos, o mesmo botão também filtra por situação.',
+      'A busca "Buscar no Ciclo" (Ctrl + K), também usada na tela Hoje, procura em tudo e agrupa por tipo: disciplinas, tópicos, prazos, ações e ajuda.'
+    ]}
   ],
   related:['atalhos','primeiros-passos']
 },
@@ -1540,11 +1548,13 @@ const HELP_ARTICLES = [
   title:'Atalhos de teclado',
   oneLine:'Ctrl + K abre a busca de comandos e chega a qualquer lugar.',
   summary:'Todos os atalhos disponíveis no computador.',
-  keywords:'atalho teclado tecla ctrl k esc comando busca navegar',
+  keywords:'atalho teclado tecla ctrl k esc comando busca navegar barra voltar',
   content:[
     { p:'Os atalhos funcionam quando você não está digitando em um campo de texto.' },
     { ul:[
-      'Ctrl + K (ou ⌘ + K) — busca de comandos: telas, disciplinas, tópicos, prazos, ações e ajuda.',
+      'Ctrl + K (ou ⌘ + K) — buscar no Ciclo inteiro: disciplinas, tópicos, prazos, ações, telas e ajuda.',
+      '/ — vai para a busca da tela atual (por exemplo, a busca de tópicos dentro de uma disciplina).',
+      'Alt + ← (ou o Voltar do navegador) — volta para o lugar anterior dentro do Ciclo.',
       'R — abre o registro de estudo. Com um cronômetro rodando, abre a finalização.',
       'H — vai para Hoje.',
       'P — vai para Planejamento.',
@@ -1553,7 +1563,7 @@ const HELP_ARTICLES = [
       '? — abre a Central de Ajuda.',
       'Esc — fecha o que estiver aberto: busca, painel lateral, janela ou modo foco.'
     ]},
-    { note:'Na busca de comandos e na busca da Ajuda, as setas navegam e Enter abre o item selecionado.' }
+    { note:'Em qualquer busca, ↓ entra nos resultados, as setas navegam, Enter abre e Esc limpa o que foi digitado.' }
   ],
   related:['modo-foco']
 },
@@ -2166,7 +2176,7 @@ const SCREEN_HELP = {
                 articles:['o-que-e-revisao','quando-revisar','metodos-revisao','fila-revisao'] },
   disciplines:{ title:'Disciplinas',
                 intro:'Seus estudos organizados como um índice: Área → Disciplina → Tópico. Na aba Prazos, o que está chegando.',
-                points:['Só a disciplina é obrigatória. A área é opcional e não tem prioridade.','Abra uma área para ver as disciplinas dela; abra uma disciplina para ver os tópicos. "Disciplinas", no caminho do topo, volta ao índice.','As barrinhas mostram a prioridade, de 1 a 5. Na página da disciplina ou do tópico, clique nelas para mudar.','Prazos próximos dão mais atenção à disciplina ou ao tópico ligado a eles.'],
+                points:['Só a disciplina é obrigatória. A área é opcional e não tem prioridade.','Abra uma área para ver as disciplinas dela; abra uma disciplina para ver os tópicos. O botão no topo ("← Tecnologia") volta um nível — o Voltar do navegador também.','A busca procura só na lista aberta, e "Ordenar por" reorganiza sem mudar nada. Ao voltar, tudo continua como você deixou.','As barrinhas mostram a prioridade, de 1 a 5. Na página da disciplina ou do tópico, clique nelas para mudar.','Prazos próximos dão mais atenção à disciplina ou ao tópico ligado a eles.'],
                 cta:{ action:'addDiscipline', label:'Adicionar uma disciplina' },
                 articles:['estrutura-conteudo','topicos','prioridades','prazos'] },
   analytics:  { title:'Análises',
@@ -2175,7 +2185,7 @@ const SCREEN_HELP = {
                 articles:['analises','analises-como-ler','calendario','relatorio'] },
   history:    { title:'Histórico',
                 intro:'Todos os estudos registrados, organizados por dia.',
-                points:['A busca procura em disciplina, área, tópico e comentário.','"Filtros" abre um painel; os filtros ativos aparecem abaixo da busca e saem com um clique.','Clique num estudo para editar ou remover. Editar recalcula os créditos pela regra da disciplina.'],
+                points:['A busca procura só nos estudos registrados: disciplina, área, tópico e comentário, com ou sem acento.','"Filtros" abre um painel; os filtros ativos aparecem abaixo da busca e saem com um clique.','Clique num estudo para editar ou remover. Editar recalcula os créditos pela regra da disciplina.'],
                 articles:['sessoes','registro-manual','creditos'] },
   data:       { title:'Dados',
                 intro:'Backup, restauração e informações de privacidade.',
@@ -2188,7 +2198,7 @@ const SCREEN_HELP = {
                 articles:['atalhos','telas'] },
   help:       { title:'Ajuda',
                 intro:'Pesquise uma dúvida, ou escolha um dos dois caminhos: usar o Ciclo, ou aprender a estudar.',
-                points:['A busca funciona sem acento e procura em artigos, perguntas e no glossário.','Use ↓ e ↑ para navegar nos resultados e Enter para abrir.','Termos com ponto de interrogação explicam o significado sem sair da página.'],
+                points:['A busca funciona sem acento e procura primeiro em artigos, perguntas e no glossário; depois mostra as funções do Ciclo relacionadas ("No Ciclo").','Use ↓ e ↑ para navegar nos resultados e Enter para abrir.','Termos com ponto de interrogação explicam o significado sem sair da página.'],
                 articles:['primeiros-passos','telas'] }
 };
 
@@ -2262,6 +2272,7 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 };
 
 const CHANGELOG = [
+  { v:'6.2', d:'Navigation & Findability. O Voltar do navegador passou a voltar dentro do Ciclo (tópico → disciplina → área → Disciplinas) e só depois sair; o Avançar também funciona, e recarregar a página mantém você no mesmo lugar. Toda página dentro de Disciplinas tem um "voltar" que diz o destino. A busca de cada tela procura só ali: áreas, disciplinas da área aberta, tópicos da disciplina, prazos, revisões ou estudos registrados; a busca geral (Ctrl + K e tela Hoje) agrupa os resultados por tipo, e a Ajuda mostra primeiro as respostas e depois as funções relacionadas. Listas ganharam "Ordenar por" (mais estudadas, prioridade, modificadas ou criadas recentemente, nome, ordem personalizada) e Prazos, um filtro por situação. Ao voltar, a busca, a ordem e a posição da lista continuam como estavam. Nenhum dado foi alterado.' },
   { v:'6.1', d:'Human Interface / Calm Structure. Disciplinas virou um índice navegável: Disciplinas → Área → Disciplina → Tópico, com caminho no topo (e "voltar" no celular). Uma área criada aparece mesmo vazia, com convite para adicionar a primeira disciplina; dá para criar a área no próprio formulário da disciplina, e renomear, arquivar ou excluir pela página da área. A prioridade ganhou um único símbolo para 1 a 5, em todo lugar, e pode ser mudada direto no detalhe. Linguagem mais simples em toda a interface ("Começar a estudar", "Registrar estudo", "Quando revisar", "Como revisar", "Consolidação"). Mais espaço, menos maiúsculas e movimento mais suave ao navegar. Nenhum dado foi alterado.' },
   { v:'6.0', d:'Zero Visual Noise. Nova linguagem visual, mais calma: menos caixas, bordas, cores e informação ao mesmo tempo, com mais hierarquia e espaço. Cada tela responde uma pergunta. Hoje mostra uma recomendação e o que vem a seguir; Revisões começa pelo que é para agora; Planejamento mostra a divisão da semana e guarda os detalhes em "Ajustar"; Disciplinas ganhou uma aba de Prazos; o Histórico virou uma leitura por dia, com filtros num painel; Configurações foi organizada em grupos. Análises foi reconstruída: primeiro você escolhe o que analisar, o período e o que quer ver; depois recebe um resumo, poucos números, um gráfico principal e os principais insights, com aprofundamento sob demanda em "Explorar mais". Nenhum dado foi alterado.' },
   { v:'5.3', d:'Central de Ajuda reconstruída: dois caminhos claros (Usar o Ciclo e Aprender a estudar), busca com navegação por teclado e resultados ranqueados, artigos com estrutura única e exemplos, glossário contextual que explica um termo sem tirar você da página, FAQ organizado por assunto e caminho de volta previsível em qualquer ponto.' },

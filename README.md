@@ -46,15 +46,21 @@ Cada tela responde a uma pergunta. O que importa aparece primeiro; o resto fica 
 
 **Revisões** — *o que preciso revisar?* Primeiro o que é para agora, começando pelo que corre mais risco de ser esquecido, com um botão para revisar por 20 minutos. As próximas revisões ficam recolhidas logo abaixo.
 
-**Disciplinas** — *o que estou estudando?* Tudo o que você estuda, navegado como o índice de um caderno: abra uma área, depois uma disciplina, depois um tópico. Um caminho no topo mostra onde você está (no celular, um botão de voltar). A aba **Prazos** responde *o que está chegando?*
+**Disciplinas** — *o que estou estudando?* Tudo o que você estuda, navegado como o índice de um caderno: abra uma área, depois uma disciplina, depois um tópico. No topo, um botão de voltar diz para onde volta (*← Tecnologia*), e o botão Voltar do navegador faz o mesmo caminho antes de sair do Ciclo. A aba **Prazos** responde *o que está chegando?*
 
 **Análises** — *o que quero entender?* Você escolhe o que analisar, o período e o que quer ver. Depois recebe um resumo, poucos números, um gráfico principal e os principais insights, com mais visões disponíveis quando quiser.
 
 **Histórico** — *o que já fiz?* Todos os estudos registrados, dia a dia, com busca e filtros num painel.
 
+### Encontrar e voltar
+
+- **Cada busca procura onde você está.** Na lista de áreas, só áreas; dentro de Tecnologia, só as disciplinas de Tecnologia; dentro de uma disciplina, só os tópicos dela. Prazos, Revisões e Histórico também buscam só no que mostram. A busca ignora acentos e maiúsculas.
+- **Ordenar por.** Listas que crescem podem ser organizadas por *mais estudadas*, *prioridade* (maior ou menor primeiro), *modificadas* ou *criadas recentemente* e *nome*. Tópicos mantêm a sua *ordem personalizada* como padrão. Ordenar é só uma forma de ver: não muda nada nos seus dados. Em Prazos, o mesmo botão também filtra por situação (pendentes, em andamento, concluídos).
+- **Voltar sem perder o lugar.** Ao voltar para uma lista, a busca, a ordem e a posição continuam como você deixou. Recarregar a página também mantém você na mesma tela.
+
 **Ajuda**: pesquise uma dúvida ou escolha um dos dois caminhos — *Usar o Ciclo* (como a ferramenta funciona) e *Aprender a estudar* (como estudar melhor). Os artigos seguem sempre o mesmo formato: a ideia em uma frase, como funciona, um exemplo e o que fazer depois. Termos como *consolidação* e *plano semanal* se explicam no próprio texto, sem tirar você da página. Cada tela tem também um botão **Ajuda desta tela**.
 
-No computador, **Ctrl + K** abre uma busca rápida para ir a qualquer tela, disciplina, tópico, prazo ou ação.
+No computador, **Ctrl + K** abre a busca em todo o Ciclo — telas, disciplinas, tópicos, prazos, ações e ajuda, agrupados por tipo — e **/** vai direto para a busca da tela atual. Na **Ajuda**, a busca mostra primeiro as respostas e, depois, as funções do Ciclo relacionadas à dúvida.
 
 ## Como organizar
 
@@ -182,18 +188,22 @@ O endereço também está no aplicativo, em **Ajuda** e em **Configurações →
 
 ## Versão atual
 
-**v6.1.0 — Human Interface / Calm Structure**
+**v6.2.0 — Navigation & Findability**
 
-O mesmo Ciclo, mais fácil de ler e de navegar.
+Ir, encontrar e voltar sem pensar.
 
-- **Organização mais natural entre Área, Disciplina e Tópico:** Disciplinas virou um índice — abra uma área, depois uma disciplina, depois um tópico. Áreas criadas aparecem mesmo vazias, e dá para criá-las sem sair do formulário da disciplina.
-- **Navegação hierárquica:** caminho no topo (*Disciplinas › Tecnologia › CCNA › OSPF*) no computador e botão de voltar no celular, sem perder o lugar.
-- **Prioridade visual consistente:** um único símbolo para os níveis 1 a 5, em todo lugar, com mudança direta no detalhe.
-- **Linguagem simplificada:** *Começar a estudar*, *Registrar estudo*, *O que precisa revisar?*, *Quando revisar*, *Como revisar*, *Consolidação*. O glossário virou exceção.
-- **Interface mais espaçosa e humana:** mais respiro, menos maiúsculas e menos negrito; linhas navegáveis no lugar de caixas.
-- **Motion refinado:** movimentos curtos ao entrar e voltar nos níveis, ao escolher a prioridade e ao abrir seções — sempre respeitando *reduzir animações*.
+- **Voltar de verdade:** o botão Voltar do navegador percorre o caminho feito dentro do Ciclo (*OSPF → Redes de Computadores → Tecnologia → Disciplinas*) e só depois sai; o Avançar também funciona. Na Ajuda, o mesmo vale entre artigos.
+- **Voltar interno em toda profundidade**, no computador e no celular, dizendo o destino: *← Redes de Computadores*.
+- **Busca no lugar certo:** cada lista busca só nela mesma, com placeholder que ensina o contexto (*Buscar tópico em CCNA…*). A busca geral (Ctrl + K, também usada na tela Hoje) agrupa por tipo; a da Ajuda mostra respostas primeiro e funções do Ciclo depois.
+- **Ordenar por:** mais estudadas, prioridade, modificadas ou criadas recentemente, nome — e a ordem personalizada dos tópicos continua sendo o padrão. Prazos ganharam filtro por situação.
+- **Nada se perde no caminho:** busca, ordem, posição da lista e foco do teclado são restaurados ao voltar.
+- **Mais rápido:** entrar e voltar levam menos de 0,2 s de movimento, reordenar não redesenha a tela inteira e o celular não dá zoom ao tocar na busca.
 
-Nada mudou nos seus dados: nenhum formato novo, nenhuma revisão reagendada, e backups de qualquer versão anterior continuam sendo aceitos.
+Nada mudou nos seus dados: nenhum formato novo, nenhuma revisão reagendada, e backups de qualquer versão anterior continuam sendo aceitos. Busca e ordenação ficam só nesta aba do navegador.
+
+### v6.1
+
+**Human Interface / Calm Structure.** Disciplinas virou um índice (área → disciplina → tópico), áreas aparecem mesmo vazias, prioridade com um único símbolo de 1 a 5, linguagem mais simples, mais respiro e movimento mais suave.
 
 ### v6.0
 

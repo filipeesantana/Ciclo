@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v6.1.0 · Human Interface / Calm Structure
+   CICLO — v6.2.0 · Navigation & Findability
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -8,6 +8,7 @@
      DOMAIN MODELS · PRIORITY ENGINE · DEADLINE ENGINE
      PLAN ENGINE · REVIEW ENGINE · RECOMMENDATION ENGINE
      ANALYTICS ENGINE · TIMER SERVICE · BACKUP · UI STATE · RENDERING
+     NAVEGAÇÃO & BUSCA CONTEXTUAL (v6.2: histórico, voltar, buscar, ordenar)
      HELP ENGINE (busca, rotas, glossário) · EVENT HANDLERS · INITIALIZATION
    ========================================================================= */
 'use strict';
@@ -15,7 +16,7 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '6.1.0';
+const APP_VERSION = '6.2.0';
 const APP_SCHEMA_VERSION = 5;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
@@ -23,7 +24,10 @@ const APP_SCHEMA_VERSION = 5;          // formato LÓGICO dos dados. A v5.2 mudo
                                        // anotações. A v5.2.1, a v5.3, a v6.0 e a v6.1
                                        // (interface e linguagem) não criam campo persistente
                                        // novo, por isso o formato continua em 5. A v6.1 passa
-                                       // a usar `archived` das áreas, campo que já existia. A v6 guarda só a
+                                       // a usar `archived` das áreas, campo que já existia. A v6.2
+                                       // (navegação e busca) também não toca no formato:
+                                       // busca, ordenação e rolagem vivem na memória, no
+                                       // history.state e no sessionStorage. A v6 guarda só a
                                        // última consulta de Análises em `meta`, que é uma
                                        // conveniência de interface (fora do backup).
 
@@ -966,6 +970,7 @@ const DerivedCache = {
 
 function rebuildIndexes(){
   const idx = state.idx;
+  idx.gen = (idx.gen || 0) + 1;     // v6.2: geração dos dados (StudyStats e buscas cacheiam por ela)
   DerivedCache.bump();
   if(typeof AnalyticsEngine !== 'undefined') AnalyticsEngine.invalidate();
   idx.areaById = new Map(state.areas.map(a => [a.id, a]));
@@ -2892,11 +2897,13 @@ const ui = {
   discFocus: null,            // data-fk que recebe o foco depois do próximo desenho
   discScroll: {},             // rolagem lembrada por nível (voltar não perde o lugar)
   areaJustCreated: null,      // área recém-criada e ainda vazia: convite contextual
+  justCreated: null,          // v6.2: data-fk da linha recém-criada (entra com um fade breve)
   showArchivedAreas: false,
   historyLimit: 150,          // v6: quantas sessões o Histórico desenha antes de "Mostrar mais"
   settingsGroup: 'appearance',// v6: grupo aberto em Configurações
   planEditing: false,         // v6: Planejamento em modo de ajuste
   reviewsShowAll: false,      // v6: lista completa de revisões pendentes
+  reviewsSearch: { q:'' },    // v6.2: busca só entre as revisões (tela Revisões)
   calMode: 'view',            // v5.2: 'view' (detalhes do dia) | 'select' (escolher intervalo)
   calSel: { start:null, end:null },
   calFocus: null,             // dia com foco de teclado no calendário
@@ -2975,6 +2982,9 @@ async function refresh(){
   await loadAll();
   await PlannerEngine.ensureWeeklyPlan();
   render();
+  // v6.2: dados mudaram (entidade excluída, disciplina movida de área…): a
+  // entrada atual do histórico passa a descrever o lugar válido, sem criar outra.
+  Nav.sync('replace');
 }
 
 /* =========================================================================
@@ -3370,7 +3380,15 @@ function statusMark(status){
 }
 
 /* ---------- NAVEGAÇÃO ---------- */
-function setView(view){
+/**
+ * Troca a tela principal. v6.2: cada troca vira uma entrada no histórico do
+ * navegador (Nav.sync), para o Voltar do navegador percorrer o caminho feito
+ * dentro do Ciclo antes de sair dele.
+ *   opts.noSync   — quem chama cuida do histórico (navDisc, popstate, início)
+ *   opts.noScroll — quem chama cuida da rolagem (restauração de posição)
+ */
+function setView(view, opts){
+  const o = (opts && typeof opts === 'object' && !(opts instanceof Event)) ? opts : {};
   if(!VIEW_TITLES[view]) view = 'today';
   if(view === 'analytics' && ui.view !== 'analytics') onEnterAnalytics();
   if(view === 'plan' && ui.view !== 'plan'){ ui.planEditing = false; }
@@ -3391,8 +3409,11 @@ function setView(view){
   const mt = $('#mobile-title'); if(mt) mt.textContent = VIEW_TITLES[view];
   Tooltip.hide();
   GlossaryPopover.close();       // nenhuma explicação flutuando sobre outra tela
-  window.scrollTo({ top:0, behavior: state.settings.reduceMotion ? 'auto' : 'smooth' });
+  // v6.2: a tela nova começa no topo na hora — rolar "suave" por um conteúdo
+  // que acabou de ser trocado só atrasava a leitura.
+  if(!o.noScroll) window.scrollTo({ top:0, behavior:'auto' });
   render();
+  if(!o.noSync) Nav.sync('push');
 }
 
 function updateBadges(){
@@ -4005,39 +4026,67 @@ function renderReviews(){
   const sugestoes = renderDeadlineSuggestions();
   if(sugestoes) parts.push(sugestoes);
 
-  if(n){
+  /* v6.2 — com muitas revisões, uma busca SÓ entre elas (agora e próximas).
+     A ordem da fila (risco de esquecer) é o sentido da tela: não há "ordenar". */
+  const holder = h('div', { class:'coll-results' });
+  const st = ui.reviewsSearch = ui.reviewsSearch || { q:'' };
+  if(n + upcoming.length >= 6){
+    const search = contextSearch({ id:'rv-q', fk:'rv-q', value:st.q, placeholder:'Buscar revisão…', label:'Buscar revisão', holder,
+      onInput:(v) => { st.q = v; drawReviewLists(holder, ranked, upcoming, st.q); } });
+    parts.push(h('div', { class:'coll-tools' }, search.node));
+  } else st.q = '';
+  parts.push(holder);
+  drawReviewLists(holder, ranked, upcoming, st.q);
+
+  const active = document.activeElement;
+  const keep = active && root.contains(active) && active.id === 'rv-q';
+  mount(root, h('div', { class:'narrow-screen' }, parts));
+  if(keep){ const i = $('#rv-q'); if(i){ i.focus(); const n2 = i.value.length; try { i.setSelectionRange(n2, n2); } catch(_){} } }
+}
+
+/** Listas de Revisões (agora + próximas), filtradas pela busca da própria tela. */
+function drawReviewLists(holder, ranked, upcoming, query){
+  const terms = normalizeText(query).split(' ').filter(Boolean);
+  const hit = t => !terms.length || matchesTerms(normalizeText(t.name + ' ' + disciplineName(t.disciplineId)), terms);
+  const now = ranked.filter(r => hit(r.topic));
+  const later = upcoming.filter(hit);
+  const q = terms.length ? query : '';
+  clear(holder);
+  if(terms.length && !now.length && !later.length){
+    holder.append(h('div', { class:'coll-empty' }, h('p', { text:'Nenhuma revisão encontrada.' }),
+      h('button', { class:'btn ghost sm', type:'button', text:'Limpar busca', onclick:() => { const i = $('#rv-q'); if(i){ i.value = ''; i.dispatchEvent(new Event('input')); i.focus(); } } })));
+    return;
+  }
+  if(now.length){
     const LIMIT = 8;
-    const shown = ui.reviewsShowAll ? ranked : ranked.slice(0, LIMIT);
-    parts.push(h('section', { class:'list-block', 'aria-labelledby':'rv-list' },
+    const shown = ui.reviewsShowAll || terms.length ? now : now.slice(0, LIMIT);
+    holder.append(h('section', { class:'list-block', 'aria-labelledby':'rv-list' },
       h('h3', { class:'block-label', id:'rv-list', text:'Para revisar agora' }),
-      h('ul', { class:'line-list' }, shown.map(reviewRow)),
-      n > LIMIT ? h('button', { class:'linkbtn', type:'button', text: ui.reviewsShowAll ? 'Mostrar menos' : `Mostrar todas (${n})`,
+      h('ul', { class:'line-list' }, shown.map(e => reviewRow(e, q))),
+      !terms.length && now.length > LIMIT ? h('button', { class:'linkbtn', type:'button', text: ui.reviewsShowAll ? 'Mostrar menos' : `Mostrar todas (${now.length})`,
         onclick:() => { ui.reviewsShowAll = !ui.reviewsShowAll; renderReviews(); } }) : null));
   }
-
-  if(upcoming.length){
+  if(later.length){
     const byDay = new Map();
-    upcoming.forEach(t => { if(!byDay.has(t.reviewDueDate)) byDay.set(t.reviewDueDate, []); byDay.get(t.reviewDueDate).push(t); });
+    later.forEach(t => { if(!byDay.has(t.reviewDueDate)) byDay.set(t.reviewDueDate, []); byDay.get(t.reviewDueDate).push(t); });
     const inner = h('div', { class:'disclosure-body' });
     Array.from(byDay.entries()).forEach(([date, list]) => {
       inner.append(h('div', { class:'day-group' },
         h('p', { class:'day-head' }, h('span', { text: capFirst(fmtRelativeFuture(date)) }), h('span', { class:'day-head-s', text: fmtDateBR(date) })),
         h('ul', { class:'line-list' }, list.map(t => h('li', { class:'line' },
           h('button', { class:'line-main', type:'button', onclick:() => openTopicDrawer(t.id) },
-            h('span', { class:'line-t', text:t.name }),
+            h('span', { class:'line-t' }, q ? highlightMatch(t.name, q) : t.name),
             h('span', { class:'line-s', text: disciplineName(t.disciplineId) })),
           h('button', { class:'linkbtn muted', type:'button', text:'antecipar', 'aria-label':'Antecipar revisão de ' + t.name, onclick:() => startReview(t.id) }))))));
     });
-    parts.push(h('details', { class:'disclosure' },
-      h('summary', null, h('span', { text:'Próximas revisões' }), h('span', { class:'disclosure-count', text: `${upcoming.length} nos próximos 14 dias` })),
+    holder.append(h('details', { class:'disclosure', open: !!terms.length },
+      h('summary', null, h('span', { text:'Próximas revisões' }), h('span', { class:'disclosure-count', text: terms.length ? plural(later.length, 'encontrada', 'encontradas') : `${later.length} nos próximos 14 dias` })),
       inner));
   }
-
-  mount(root, h('div', { class:'narrow-screen' }, parts));
 }
 
 /** Linha da fila: nome, contexto e o principal motivo. Revisar em um clique. */
-function reviewRow(entry){
+function reviewRow(entry, query){
   const t = entry.topic;
   const em = ReviewEngine.effectiveMethod(t);
   const minutes = ReviewEngine.estimateMinutes(t, em.method);
@@ -4045,7 +4094,7 @@ function reviewRow(entry){
   const why = entry.reasons.find(r => /^você/.test(r)) || entry.reasons.find(r => !/^(atrasada|prevista)/.test(r)) || null;
   return h('li', { class:'line' },
     h('button', { class:'line-main', type:'button', onclick:() => openTopicDrawer(t.id), 'aria-label': `${t.name}: ver tópico` },
-      h('span', { class:'line-t', text:t.name }),
+      h('span', { class:'line-t' }, typeof query === 'string' && query ? highlightMatch(t.name, query) : t.name),
       h('span', { class:'line-s' },
         `${disciplineName(t.disciplineId)} · ${minutes} min · `,
         h('span', { class: late ? 'is-late' : null, text: late ? `atrasada há ${plural(entry.daysLate, 'dia', 'dias')}` : 'para hoje' })),
@@ -4769,6 +4818,686 @@ function disciplinePath(disc){
 }
 
 /* =========================================================================
+   v6.2 — NAVIGATION & FINDABILITY
+   "Ir, encontrar e voltar sem pensar."
+
+   Quatro peças pequenas, sem roteador e sem dependência:
+
+     StudyStats   — minutos e estudos por área, disciplina e tópico, calculados
+                    uma vez por geração dos dados (ordenar por "Mais estudadas"
+                    não percorre as sessões a cada desenho).
+     Collections  — estado de cada lista: busca, ordenação e filtro. Vive na
+                    memória e no sessionStorage (nunca no IndexedDB), por
+                    instância: a busca de "Tecnologia" não é a de "Faculdade".
+     collectionView / contextSearch / choiceMenu — "buscar aqui" e "ordenar
+                    por", com o mesmo visual e o mesmo teclado em toda lista.
+     Nav          — o lugar atual vira uma entrada do history do navegador.
+                    Voltar (do Ciclo ou do navegador) percorre o caminho feito
+                    e só depois sai do Ciclo.
+
+   FILTRAR esconde itens que não atendem a uma condição; ORDENAR reorganiza os
+   mesmos itens. As duas coisas são separadas no código e na linguagem.
+   Ordenar é sempre uma VISÃO: nunca grava `sortOrder`, prioridade ou datas.
+   ========================================================================= */
+
+/* ---------- totais de estudo por entidade ---------- */
+const STUDY_ZERO = Object.freeze({ min:0, n:0 });
+const StudyStats = {
+  _key: null,
+  _disc: new Map(), _topic: new Map(), _area: new Map(),
+  _ensure(){
+    // a geração muda a cada rebuildIndexes; o tamanho protege contra mutações diretas
+    const key = (state.idx.gen || 0) + ':' + state.sessions.length + ':' + state.disciplines.length;
+    if(key === this._key) return;
+    this._key = key;
+    const disc = new Map(), topic = new Map(), area = new Map();
+    const total = list => ({ min: sum(list, s => Number(s.minutes) || 0), n: list.length });
+    state.idx.sessionsByDisc.forEach((list, id) => disc.set(id, total(list)));
+    state.idx.sessionsByTopic.forEach((list, id) => topic.set(id, total(list)));
+    // Área = soma das sessões das disciplinas que estão nela (arquivadas incluídas:
+    // o histórico continua sendo da área). Área vazia = 0 e continua aparecendo.
+    state.disciplines.forEach(d => {
+      const st = disc.get(d.id);
+      if(!st) return;
+      const k = areaKeyOf(d);
+      const a = area.get(k) || { min:0, n:0 };
+      a.min += st.min; a.n += st.n;
+      area.set(k, a);
+    });
+    this._disc = disc; this._topic = topic; this._area = area;
+  },
+  discipline(id){ this._ensure(); return this._disc.get(id) || STUDY_ZERO; },
+  topic(id){ this._ensure(); return this._topic.get(id) || STUDY_ZERO; },
+  area(key){ this._ensure(); return this._area.get(key) || STUDY_ZERO; }
+};
+
+/* ---------- ordenações ---------- */
+/* Rótulos no gênero da lista: "Mais estudadas" (áreas, disciplinas),
+   "Mais estudados" (tópicos). Nada de "Relevância". */
+const SORT_OPTIONS = {
+  custom:        { f:'Ordem personalizada',         m:'Ordem personalizada',        desc:'A ordem que você definiu com ↑ e ↓' },
+  most_studied:  { f:'Mais estudadas',              m:'Mais estudados',             desc:'Mais tempo registrado primeiro' },
+  priority_desc: { f:'Prioridade: maior primeiro',  m:'Prioridade: maior primeiro', desc:'Muito alta → Muito baixa' },
+  priority_asc:  { f:'Prioridade: menor primeiro',  m:'Prioridade: menor primeiro', desc:'Muito baixa → Muito alta' },
+  updated:       { f:'Modificadas recentemente',    m:'Modificados recentemente',   desc:null },
+  created:       { f:'Criadas recentemente',        m:'Criados recentemente',       desc:null },
+  name:          { f:'Nome A–Z',                    m:'Nome A–Z',                   desc:null },
+  nearest:       { f:'Mais próximas',               m:'Mais próximos',              desc:'A data mais próxima primeiro' }
+};
+
+/* Cada tipo de lista declara o que faz sentido para ELE. Área não tem
+   prioridade — então não oferece ordenar por prioridade. Os padrões mantêm a
+   ordem que cada lista já tinha: áreas e disciplinas por nome, tópicos na
+   ordem personalizada (↑ ↓), prazos pela data. */
+const COLLECTIONS = {
+  areas:       { fem:true,  noun:['área','áreas'],             sorts:['most_studied','updated','created','name'], def:'name' },
+  disciplines: { fem:true,  noun:['disciplina','disciplinas'], sorts:['most_studied','priority_desc','priority_asc','updated','created','name'], def:'name' },
+  topics:      { fem:false, noun:['tópico','tópicos'],         sorts:['custom','most_studied','priority_desc','priority_asc','updated','created','name'], def:'custom' },
+  deadlines:   { fem:false, noun:['prazo','prazos'],           sorts:['nearest','priority_desc','priority_asc','updated','created'], def:'nearest',
+                 filters:[ { v:'all', label:'Todos' }, { v:'pending', label:'Pendentes' }, { v:'in_progress', label:'Em andamento' }, { v:'completed', label:'Concluídos' } ] }
+};
+const SEARCH_MIN_ITEMS = 4;     // listas menores que isso não ganham campo de busca (ruído sem função)
+
+function sortLabel(kind, sort){
+  const cfg = COLLECTIONS[kind], o = SORT_OPTIONS[sort];
+  return o ? (cfg && cfg.fem ? o.f : o.m) : '';
+}
+function tsOf(v){ const t = Date.parse(v); return isFinite(t) ? t : 0; }   // data inválida/ausente = mais antiga, sem erro
+
+/**
+ * Comparador determinístico. Todo critério termina em nome e, por fim, no id:
+ * empates nunca trocam de lugar entre um desenho e outro.
+ *   Mais estudadas: minutos ↓ · nº de estudos ↓ · modificada mais recente · nome
+ */
+function collectionComparator(kind, sort){
+  const nameOf = x => str(x.name != null ? x.name : x.title);
+  const byName = (a, b) => nameOf(a).localeCompare(nameOf(b), 'pt-BR', { numeric:true, sensitivity:'base' });
+  const byId = (a, b) => (str(a.id) < str(b.id) ? -1 : str(a.id) > str(b.id) ? 1 : 0);
+  const tie = (a, b) => byName(a, b) || byId(a, b);
+  StudyStats._ensure();                              // uma verificação por ordenação, não por comparação
+  const statMap = kind === 'areas' ? StudyStats._area : kind === 'topics' ? StudyStats._topic : StudyStats._disc;
+  const stat = x => statMap.get(x.id) || STUDY_ZERO;
+  const prio = x => PriorityEngine.clamp(x.priority);
+  switch(sort){
+    case 'most_studied': return (a, b) => {
+      const sa = stat(a), sb = stat(b);
+      return (sb.min - sa.min) || (sb.n - sa.n) || (tsOf(b.updatedAt) - tsOf(a.updatedAt)) || tie(a, b);
+    };
+    case 'priority_desc': return (a, b) => (prio(b) - prio(a)) || tie(a, b);
+    case 'priority_asc':  return (a, b) => (prio(a) - prio(b)) || tie(a, b);
+    case 'updated':       return (a, b) => (tsOf(b.updatedAt) - tsOf(a.updatedAt)) || tie(a, b);
+    case 'created':       return (a, b) => (tsOf(b.createdAt) - tsOf(a.createdAt)) || tie(a, b);
+    case 'nearest':       return (a, b) => str(a.date).localeCompare(str(b.date)) || (prio(b) - prio(a)) || tie(a, b);
+    case 'custom':        return (a, b) => ((Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0)) || tie(a, b);
+    default:              return tie;
+  }
+}
+
+/* ---------- estado das listas (busca · ordenação · filtro) ---------- */
+const COLLECTIONS_SS_KEY = 'ciclo:v6.2:collections';   // sessionStorage: sobrevive ao recarregar a aba, some ao fechá-la
+const Collections = {
+  map: null,
+  _timer: null,
+  _load(){
+    if(this.map) return;
+    this.map = {};
+    try {
+      const raw = sessionStorage.getItem(COLLECTIONS_SS_KEY);
+      const o = raw ? JSON.parse(raw) : null;
+      if(o && typeof o === 'object'){
+        Object.keys(o).slice(0, 400).forEach(k => {
+          const v = o[k];
+          if(!v || typeof v !== 'object') return;
+          this.map[k] = { q: typeof v.q === 'string' ? v.q.slice(0, 120) : '', sort: typeof v.sort === 'string' ? v.sort : '', f: typeof v.f === 'string' ? v.f : 'all' };
+        });
+      }
+    } catch(_){ /* sessionStorage indisponível: fica só na memória */ }
+  },
+  /** Estado de UMA lista. Valores inválidos voltam ao padrão daquele tipo. */
+  get(key, kind){
+    this._load();
+    const cfg = COLLECTIONS[kind];
+    let st = this.map[key];
+    if(!st){ st = { q:'', sort:cfg.def, f:'all' }; this.map[key] = st; }
+    if(!cfg.sorts.includes(st.sort)) st.sort = cfg.def;
+    if(!cfg.filters || !cfg.filters.some(x => x.v === st.f)) st.f = 'all';
+    return st;
+  },
+  save(){
+    clearTimeout(this._timer);
+    this._timer = setTimeout(() => {
+      try { sessionStorage.setItem(COLLECTIONS_SS_KEY, JSON.stringify(this.map || {})); } catch(_){}
+    }, 250);
+  },
+  reset(){
+    this.map = {};
+    clearTimeout(this._timer);
+    try { sessionStorage.removeItem(COLLECTIONS_SS_KEY); } catch(_){}
+  }
+};
+
+/* ---------- destaque seguro do trecho encontrado (sem innerHTML) ---------- */
+/** Devolve um fragmento com <mark> nos trechos que casam com a busca, sem acento e sem caixa. */
+function highlightMatch(text, query){
+  const src = str(text);
+  const terms = normalizeText(query).split(' ').filter(Boolean);
+  if(!terms.length || !src) return src;
+  let norm = '';
+  const map = [];
+  for(let i = 0; i < src.length; i++){
+    const n = src[i].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    for(let j = 0; j < n.length; j++){ norm += n[j]; map.push(i); }
+  }
+  const marks = new Array(src.length).fill(false);
+  terms.forEach(t => {
+    let k = norm.indexOf(t);
+    while(k !== -1){
+      for(let j = k; j < k + t.length; j++) marks[map[j]] = true;
+      k = norm.indexOf(t, k + t.length);
+    }
+  });
+  if(!marks.some(Boolean)) return src;
+  const frag = document.createDocumentFragment();
+  let buf = '', on = marks[0];
+  const flush = () => { if(buf) frag.append(on ? h('mark', { class:'hl', text:buf }) : document.createTextNode(buf)); };
+  for(let i = 0; i < src.length; i++){
+    if(marks[i] !== on){ flush(); buf = ''; on = marks[i]; }
+    buf += src[i];
+  }
+  flush();
+  return frag;
+}
+
+/** Todos os termos aparecem no texto já normalizado? (busca "e", sem acento) */
+function matchesTerms(hay, terms){ return terms.every(t => hay.includes(t)); }
+
+/* ---------- navegação por teclado dentro de uma lista de resultados ---------- */
+const RESULT_ITEM_SELECTOR = '.ix-main,.dl-line,.line-main:not(.static)';
+
+/**
+ * Setas percorrem os itens; ↑ no primeiro volta para a busca; Esc volta para a
+ * busca sem apagar nada. O foco é a seleção: não há "selecionado" paralelo.
+ */
+function bindResultKeys(holder, input){
+  holder.addEventListener('keydown', (e) => {
+    if(!['ArrowDown','ArrowUp','Home','End','Escape'].includes(e.key)) return;
+    const items = $$(RESULT_ITEM_SELECTOR, holder).filter(el => el.offsetParent !== null);
+    const i = items.indexOf(document.activeElement);
+    if(i < 0) return;
+    if(e.key === 'Escape'){
+      if(!input) return;
+      e.preventDefault(); e.stopPropagation(); input.focus(); return;
+    }
+    e.preventDefault();
+    let j = i;
+    if(e.key === 'ArrowDown') j = Math.min(items.length - 1, i + 1);
+    else if(e.key === 'ArrowUp'){ if(i === 0 && input){ input.focus(); return; } j = Math.max(0, i - 1); }
+    else if(e.key === 'Home') j = 0;
+    else if(e.key === 'End') j = items.length - 1;
+    focusAndReveal(items[j]);
+  });
+}
+
+/** Foca sem salto e garante que o item fique visível (abaixo do cabeçalho fixo do celular). */
+function focusAndReveal(el){
+  if(!el) return;
+  try { el.focus({ preventScroll:true }); } catch(_){ el.focus(); }
+  revealElement(el);
+}
+function revealElement(el){
+  if(!el || !el.getBoundingClientRect) return;
+  const r = el.getBoundingClientRect();
+  const head = $('.mobile-head');
+  const top = head && head.offsetParent !== null ? head.getBoundingClientRect().bottom + 8 : 8;
+  const bottom = window.innerHeight - 96;          // o botão Registrar fica embaixo
+  if(r.top < top) window.scrollBy({ top: r.top - top, behavior:'auto' });
+  else if(r.bottom > bottom) window.scrollBy({ top: r.bottom - bottom, behavior:'auto' });
+}
+
+/**
+ * Campo "buscar aqui". Rótulo real para leitores de tela (o placeholder só
+ * ensina o contexto), botão × acessível, Esc limpa, ↓ entra nos resultados,
+ * Enter abre o primeiro resultado.
+ *   o = { id, value, placeholder, label, onInput(v), holder, fk }
+ */
+function contextSearch(o){
+  const input = h('input', { type:'search', id:o.id, value:o.value || '', placeholder:o.placeholder, autocomplete:'off', spellcheck:'false',
+    enterkeyhint:'search', 'aria-label':o.label, 'data-fk':o.fk || null, 'data-context-search':'' });
+  const clearBtn = h('button', { class:'ctx-clear', type:'button', 'aria-label':'Limpar busca', title:'Limpar busca', hidden: !o.value },
+    icon('i-close', 'btn-icon'));
+  const set = (v) => { input.value = v; clearBtn.hidden = !v; o.onInput(v); };
+  input.addEventListener('input', () => { clearBtn.hidden = !input.value; o.onInput(input.value); });
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape'){
+      if(input.value){ e.preventDefault(); e.stopPropagation(); set(''); }
+      return;
+    }
+    const first = () => o.holder ? $$(RESULT_ITEM_SELECTOR, o.holder).find(el => el.offsetParent !== null) : null;
+    if(e.key === 'ArrowDown'){ const f = first(); if(f){ e.preventDefault(); focusAndReveal(f); } }
+    else if(e.key === 'Enter'){ const f = input.value.trim() ? first() : null; if(f){ e.preventDefault(); f.click(); } }
+  });
+  clearBtn.addEventListener('click', () => { set(''); input.focus(); });
+  if(o.holder) bindResultKeys(o.holder, input);
+  const node = h('div', { class:'an-search ctx-search grow', role:'search' }, icon('i-search'), input, clearBtn);
+  return { node, input, set };
+}
+
+/**
+ * Menu de escolha única (ordenar por; mostrar). Um botão discreto que diz o
+ * estado atual — "Mais estudadas ▾" — e abre opções com ✓ na ativa.
+ *   o = { label, ariaLabel, title, fk, groups:[{ title, value, options:[{v,label,desc}], onPick(v) }] }
+ * Devolve { node, update(label, values[]) } para atualizar sem redesenhar a lista.
+ */
+function choiceMenu(o){
+  const wrap = h('div', { class:'menu-wrap choice-wrap' });
+  const labelEl = h('span', { class:'cm-label', text:o.label });
+  const btn = h('button', { class:'btn ghost sm choice-btn', type:'button', 'aria-haspopup':'menu', 'aria-expanded':'false',
+    'aria-label':o.ariaLabel, title:o.title || null, 'data-fk':o.fk || null },
+    icon('i-sort', 'btn-icon cm-icon'), labelEl, icon('i-chev', 'btn-icon menu-chev'));
+  const menu = h('div', { class:'menu choice-menu', role:'menu', 'aria-label':o.title || o.ariaLabel, hidden:true });
+  const values = o.groups.map(g => g.value);
+  const itemsByGroup = [];
+  o.groups.forEach((g, gi) => {
+    const grp = h('div', { class:'cm-group', role:'group', 'aria-label':g.title });
+    if(g.title) grp.append(h('p', { class:'cm-group-t', 'aria-hidden':'true', text:g.title }));
+    itemsByGroup[gi] = g.options.map(opt => {
+      const it = h('button', { class:'menu-item cm-item', type:'button', role:'menuitemradio', tabindex:'-1',
+        'aria-checked': opt.v === values[gi] ? 'true' : 'false', 'data-v':opt.v },
+        icon('i-check', 'cm-check'),
+        h('span', { class:'cm-text' }, h('span', { class:'cm-l', text:opt.label }), opt.desc ? h('span', { class:'cm-d', text:opt.desc }) : null));
+      it.addEventListener('click', () => {
+        close(true);
+        if(opt.v !== values[gi]) g.onPick(opt.v);
+      });
+      grp.append(it);
+      return it;
+    });
+    menu.append(grp);
+  });
+  const allItems = () => $$('[role="menuitemradio"]', menu);
+  function onDoc(e){
+    if(!wrap.isConnected){ document.removeEventListener('mousedown', onDoc, true); return; }
+    if(!wrap.contains(e.target)) close(false);
+  }
+  function close(refocus){
+    if(menu.hidden) return;
+    menu.hidden = true; btn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('mousedown', onDoc, true);
+    if(refocus) btn.focus();
+  }
+  function open(){
+    Tooltip.hide();
+    menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    document.addEventListener('mousedown', onDoc, true);
+    // no celular o menu pode nascer atrás da barra inferior: rola só o necessário, sem esconder o botão
+    const r = menu.getBoundingClientRect(), br = btn.getBoundingClientRect();
+    const limit = window.innerHeight - 96;
+    if(r.bottom > limit) window.scrollBy({ top: Math.max(0, Math.min(r.bottom - limit, br.top - 72)), behavior:'auto' });
+    const on = allItems().find(x => x.getAttribute('aria-checked') === 'true') || allItems()[0];
+    if(on){ try { on.focus({ preventScroll:true }); } catch(_){ on.focus(); } }
+  }
+  btn.addEventListener('click', () => { if(menu.hidden) open(); else close(true); });
+  btn.addEventListener('keydown', (e) => { if((e.key === 'ArrowDown' || e.key === 'ArrowUp') && menu.hidden){ e.preventDefault(); open(); } });
+  menu.addEventListener('keydown', (e) => {
+    const list = allItems();
+    const i = list.indexOf(document.activeElement);
+    if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); close(true); }
+    else if(e.key === 'ArrowDown'){ e.preventDefault(); list[(i + 1) % list.length].focus(); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
+    else if(e.key === 'Home'){ e.preventDefault(); list[0].focus(); }
+    else if(e.key === 'End'){ e.preventDefault(); list[list.length - 1].focus(); }
+    else if(e.key === 'Tab'){ close(false); }
+  });
+  wrap.append(btn, menu);
+  return {
+    node: wrap,
+    update(label, newValues, ariaLabel){
+      labelEl.textContent = label;
+      if(ariaLabel) btn.setAttribute('aria-label', ariaLabel);
+      (newValues || []).forEach((v, gi) => {
+        values[gi] = v;
+        (itemsByGroup[gi] || []).forEach(it => it.setAttribute('aria-checked', it.dataset.v === v ? 'true' : 'false'));
+      });
+    }
+  };
+}
+
+/**
+ * Uma lista com "buscar aqui" + "ordenar por" (+ "mostrar", quando a lista tem
+ * filtro real). Digitar ou reordenar redesenha SÓ a região da lista.
+ *   cfg = {
+ *     key, kind, items,                 // itens desta lista (já sem arquivados)
+ *     tail,                             // [{ text, render(query) }] — sempre no fim, fora da ordenação (ex.: "Sem área")
+ *     placeholder, label,               // "Buscar disciplina em Tecnologia…"
+ *     searchText(item),                 // campos pesquisáveis (só os relevantes)
+ *     noResults,                        // "Nenhuma disciplina encontrada em Tecnologia."
+ *     filterFn(item, f), emptyFiltered(f),
+ *     renderItems(list, ctx)            // ctx: { query, sort, filter, filtered, tail }
+ *   }
+ */
+function collectionView(cfg){
+  const kind = COLLECTIONS[cfg.kind];
+  const st = Collections.get(cfg.key, cfg.kind);
+  const items = cfg.items || [];
+  const tailAll = cfg.tail || [];
+  const hay = new Map(items.map(x => [x, normalizeText(cfg.searchText(x))]));
+  const tailHay = tailAll.map(t => normalizeText(t.text));
+  const showSearch = items.length + tailAll.length >= SEARCH_MIN_ITEMS || !!st.q;
+  const showMenu = items.length >= 2 || (kind.filters && st.f !== 'all');
+  if(!showSearch && st.q) st.q = '';
+
+  const holder = h('div', { class:'coll-results' });
+  const live = h('p', { class:'sr-only', role:'status', 'aria-live':'polite' });
+  let sorted = [];
+  const resort = () => {
+    const f = st.f;
+    const base = kind.filters && cfg.filterFn ? items.filter(x => cfg.filterFn(x, f)) : items;
+    sorted = base.slice().sort(collectionComparator(cfg.kind, st.sort));
+  };
+  const draw = (animate) => {
+    const terms = normalizeText(st.q).split(' ').filter(Boolean);
+    const list = terms.length ? sorted.filter(x => matchesTerms(hay.get(x), terms)) : sorted;
+    const tail = tailAll.filter((t, i) => !terms.length || matchesTerms(tailHay[i], terms));
+    clear(holder);
+    if(!list.length && !tail.length){
+      const msg = terms.length ? cfg.noResults : (cfg.emptyFiltered ? cfg.emptyFiltered(st.f) : '');
+      holder.append(h('div', { class:'coll-empty' },
+        h('p', { text: msg }),
+        terms.length ? h('button', { class:'btn ghost sm', type:'button', text:'Limpar busca', onclick:() => { search.set(''); search.input.focus(); } })
+          : (kind.filters && st.f !== 'all' ? h('button', { class:'btn ghost sm', type:'button', text:'Mostrar todos', onclick:() => pickFilter('all') }) : null)));
+    } else {
+      appendChildren(holder, [cfg.renderItems(list, { query: terms.length ? st.q : '', sort: st.sort, filter: st.f, filtered: terms.length > 0, tail })]);
+    }
+    live.textContent = terms.length
+      ? (list.length + tail.length ? plural(list.length + tail.length, 'resultado', 'resultados') : cfg.noResults)
+      : '';
+    // reorganizou: uma transição global curta. Web Animations evita forçar um
+    // reflow síncrono da página inteira (o truque de offsetWidth custava ~45ms com 450 linhas).
+    if(animate && !prefersReducedMotion() && typeof holder.animate === 'function'){
+      try { holder.animate([{ opacity:.35 }, { opacity:1 }], { duration:150, easing:'cubic-bezier(.2,.8,.2,1)' }); } catch(_){}
+    }
+  };
+
+  const search = contextSearch({
+    id:'cq-' + cfg.kind, fk:'coll-q', value: st.q, placeholder: cfg.placeholder, label: cfg.label, holder,
+    onInput:(v) => { st.q = v; Collections.save(); draw(false); }
+  });
+
+  const menuLabel = () => {
+    const s = sortLabel(cfg.kind, st.sort);
+    if(!kind.filters || st.f === 'all') return s;
+    return kind.filters.find(x => x.v === st.f).label + ' · ' + s;
+  };
+  const menuAria = () => (kind.filters ? `Mostrar e ordenar ${kind.noun[1]}: ` : `Ordenar ${kind.noun[1]}: `) + menuLabel();
+  let menu = null;
+  function pickSort(v){ st.sort = v; Collections.save(); resort(); draw(true); if(menu) menu.update(menuLabel(), kind.filters ? [st.f, v] : [v], menuAria()); }
+  function pickFilter(v){ st.f = v; Collections.save(); resort(); draw(true); if(menu) menu.update(menuLabel(), [v, st.sort], menuAria()); }
+  if(showMenu){
+    const sortGroup = { title:'Ordenar por', value:st.sort, onPick:pickSort,
+      options: kind.sorts.map(v => ({ v, label: sortLabel(cfg.kind, v), desc: SORT_OPTIONS[v].desc })) };
+    const groups = kind.filters ? [{ title:'Mostrar', value:st.f, onPick:pickFilter, options: kind.filters }, sortGroup] : [sortGroup];
+    menu = choiceMenu({ label: menuLabel(), ariaLabel: menuAria(), title: kind.filters ? `Mostrar e ordenar ${kind.noun[1]}` : `Ordenar ${kind.noun[1]}`, fk:'coll-sort', groups });
+  }
+
+  resort();
+  draw(false);
+  const tools = (showSearch || menu) ? h('div', { class:'coll-tools' + (showSearch ? '' : ' no-search') }, showSearch ? search.node : null, menu ? menu.node : null) : null;
+  return h('div', { class:'coll', 'data-coll':cfg.key }, tools, live, holder);
+}
+
+/* =========================================================================
+   Nav — histórico do navegador integrado ao Ciclo (sem roteador).
+
+   Cada lugar é descrito por uma LOCALIZAÇÃO pequena e canônica:
+     { v:'disciplines', tab:'disciplines', l:'topic', a:areaKey, d:discId, t:topicId }
+     { v:'help', hr:{ kind, id, group } }       { v:'today' } …
+   Mudar de lugar → pushState. Corrigir o lugar (dados mudaram, aba irmã) →
+   replaceState. Restaurar (Voltar/Avançar do navegador) → nunca cria entrada,
+   o que evita o laço popstate → pushState → popstate.
+
+   O estado de cada entrada guarda também a entrada anterior (`p`) e a rolagem
+   (`sy`), para o "voltar" interno usar o próprio histórico quando o destino é
+   exatamente a página anterior — assim o Avançar continua funcionando.
+   ========================================================================= */
+function normHelpRoute(r){
+  const x = r && typeof r === 'object' ? r : {};
+  const kind = ['home','section','article','faq','glossary'].includes(x.kind) ? x.kind : 'home';
+  return { kind, id: x.id ? String(x.id) : null, group: x.group ? String(x.group) : null };
+}
+/** Localização de um nível do índice de Disciplinas (para comparar com o histórico). */
+function discLoc(n){
+  const lvl = n && n.level ? n.level : 'root';
+  const loc = { v:'disciplines', tab:'disciplines', l:lvl, a:null, d:null, t:null };
+  if(lvl === 'area') loc.a = n.areaId || null;
+  if(lvl === 'discipline' || lvl === 'topic'){
+    const d = getDiscipline(n.disciplineId);
+    loc.a = d ? areaKeyOf(d) : (n.areaId || null);
+    loc.d = n.disciplineId || null;
+  }
+  if(lvl === 'topic') loc.t = n.topicId || null;
+  return loc;
+}
+/** `target` é o próprio `loc` ou um nível acima dele no índice? */
+function discLocContains(target, loc){
+  if(!target || !loc || target.v !== 'disciplines' || loc.v !== 'disciplines') return false;
+  if(target.tab === 'deadlines' || loc.tab === 'deadlines') return false;
+  if(target.l === 'root') return true;
+  if(target.l === 'area') return loc.l !== 'root' && loc.a === target.a;
+  if(target.l === 'discipline') return (loc.l === 'discipline' || loc.l === 'topic') && loc.d === target.d;
+  return loc.l === 'topic' && loc.t === target.t;
+}
+/** Ao voltar, o foco cai na linha (no nível de destino) que leva ao lugar de onde a pessoa veio. */
+function discBackFocus(from, to){
+  if(!from || from.v !== 'disciplines' || from.l === 'root') return null;
+  const lvl = to && to.level ? to.level : 'root';
+  if(lvl === 'root') return usesAreas() ? (from.a ? 'area-' + from.a : null) : (from.d ? 'disc-' + from.d : null);
+  if(lvl === 'area') return from.d ? 'disc-' + from.d : null;
+  if(lvl === 'discipline') return from.t ? 'topic-' + from.t : null;
+  return null;
+}
+
+const Nav = {
+  i: 0,              // índice da entrada atual (contado a partir da primeira entrada do Ciclo)
+  entries: [],       // localizações conhecidas, por índice
+  scrollAt: [],      // rolagem de cada entrada, atualizada enquanto a pessoa rola
+  restoring: false,
+  started: false,
+
+  /** Onde a pessoa está AGORA, já validado contra os dados. */
+  location(){
+    const v = VIEW_TITLES[ui.view] ? ui.view : 'today';
+    const loc = { v };
+    if(v === 'disciplines'){
+      loc.tab = ui.discTab === 'deadlines' ? 'deadlines' : 'disciplines';
+      if(loc.tab === 'disciplines'){
+        const r = resolveDiscNav();
+        loc.l = r.level; loc.a = r.areaKey || null; loc.d = r.disc ? r.disc.id : null; loc.t = r.topic ? r.topic.id : null;
+      }
+    } else if(v === 'help'){
+      loc.hr = normHelpRoute(helpUi.route);
+    }
+    return loc;
+  },
+  equals(a, b){
+    if(!a || !b || a.v !== b.v) return false;
+    if(a.v === 'disciplines'){
+      const ta = a.tab === 'deadlines' ? 'deadlines' : 'disciplines', tb = b.tab === 'deadlines' ? 'deadlines' : 'disciplines';
+      if(ta !== tb) return false;
+      if(ta === 'deadlines') return true;
+      return (a.l || 'root') === (b.l || 'root') && (a.a || null) === (b.a || null) && (a.d || null) === (b.d || null) && (a.t || null) === (b.t || null);
+    }
+    if(a.v === 'help') return helpRouteEquals(normHelpRoute(a.hr), normHelpRoute(b.hr));
+    return true;
+  },
+  _stateFor(loc, sy){
+    return { c:'ciclo', i:this.i, loc, p:this.entries[this.i - 1] || null,
+             hs: loc.v === 'help' ? helpUi.stack.slice(-20).map(normHelpRoute) : null, sy: sy || 0 };
+  },
+  _replace(loc){
+    try { history.replaceState(this._stateFor(loc, this.scrollAt[this.i] || 0), ''); }
+    catch(err){ console.warn('Ciclo: não foi possível atualizar o histórico.', err); }
+  },
+  _push(loc){
+    // grava a rolagem da entrada que está sendo deixada (para Voltar reencontrá-la)
+    try {
+      const cur = history.state;
+      if(cur && cur.c === 'ciclo') history.replaceState(Object.assign({}, cur, { sy: this.scrollAt[this.i] || 0 }), '');
+    } catch(_){}
+    this.i++;
+    this.entries.length = this.i;          // um caminho novo apaga o "Avançar" antigo, como no navegador
+    this.scrollAt.length = this.i;
+    this.entries[this.i] = loc;
+    this.scrollAt[this.i] = 0;
+    try { history.pushState(this._stateFor(loc, 0), ''); }
+    catch(err){ console.warn('Ciclo: não foi possível registrar a navegação.', err); }
+  },
+
+  /** Primeira entrada: SUBSTITUI a atual (nada de uma entrada extra ao abrir). */
+  start(){
+    if('scrollRestoration' in history){ try { history.scrollRestoration = 'manual'; } catch(_){} }
+    const s = history.state && history.state.c === 'ciclo' ? history.state : null;
+    this.i = s && isNum(s.i) && s.i >= 0 ? s.i : 0;
+    if(s && s.p) this.entries[this.i - 1] = s.p;
+    this.entries[this.i] = this.location();
+    this.scrollAt[this.i] = window.scrollY;
+    this._replace(this.entries[this.i]);
+    this.started = true;
+    window.addEventListener('popstate', (e) => this._onPop(e));
+    window.addEventListener('scroll', () => { this.scrollAt[this.i] = window.scrollY; }, { passive:true });
+    // ao sair/recarregar, a rolagem atual fica guardada na própria entrada
+    window.addEventListener('pagehide', () => {
+      try { const cur = history.state; if(cur && cur.c === 'ciclo') history.replaceState(Object.assign({}, cur, { sy: window.scrollY }), ''); } catch(_){}
+    });
+  },
+
+  /** Registra o lugar atual: 'push' cria entrada (se mudou), 'replace' só corrige. */
+  sync(mode){
+    if(!this.started || this.restoring) return;
+    const loc = this.location();
+    const cur = this.entries[this.i];
+    if(mode !== 'push' || (cur && this.equals(cur, loc))){
+      this.entries[this.i] = loc;
+      this._replace(loc);
+      return;
+    }
+    this._push(loc);
+  },
+  /** Antes de um salto direto (busca global → tópico), a página-pai entra no caminho. */
+  pushParent(parentLoc){
+    if(!this.started || this.restoring || !parentLoc) return;
+    const cur = this.entries[this.i];
+    if(cur && this.equals(cur, parentLoc)) return;
+    this._push(parentLoc);
+  },
+  prev(){ return this.entries[this.i - 1] || null; },
+
+  /**
+   * "Voltar" interno para `target`. Se o destino já está logo atrás no
+   * histórico (só com descendentes dele no meio), usa history.go — o Avançar
+   * continua levando de volta. Senão, `fallback()` troca a página atual pelo
+   * destino, sem empilhar (o Voltar do navegador não volta para o filho).
+   */
+  up(target, fallback, contains){
+    const inside = contains || discLocContains;
+    if(this.started){
+      for(let j = this.i - 1; j >= 0 && j >= this.i - 16; j--){
+        const e = this.entries[j];
+        if(!e) break;
+        if(this.equals(e, target)){ history.go(j - this.i); return; }
+        if(!inside(target, e)) break;
+      }
+    }
+    fallback();
+  },
+
+  _onPop(e){
+    const s = e.state;
+    if(!s || s.c !== 'ciclo' || !state.ready) return;     // entrada que não é do Ciclo: não mexe
+    const dir = isNum(s.i) && s.i < this.i ? 'back' : 'forward';
+    const from = this.entries[this.i] || this.location();
+    this.i = isNum(s.i) ? s.i : this.i;
+    this.entries[this.i] = s.loc;
+    if(s.p && !this.entries[this.i - 1]) this.entries[this.i - 1] = s.p;
+    const y = isNum(this.scrollAt[this.i]) ? this.scrollAt[this.i] : (isNum(s.sy) ? s.sy : 0);
+    closeTransientLayers();
+    this.restoring = true;
+    try { applyLocation(s.loc, { dir, from, scrollY:y, helpStack:s.hs }); }
+    catch(err){ console.error('Ciclo: falha ao restaurar a navegação.', err); }
+    finally { this.restoring = false; }
+    // o lugar guardado pode não existir mais (item excluído): a entrada passa a apontar para o pai válido
+    const now = this.location();
+    if(!this.equals(now, s.loc)){ this.entries[this.i] = now; this._replace(now); }
+  },
+
+  /** Depois de restaurar backup ou apagar tudo: nada temporário aponta para dados que sumiram. */
+  resetForNewData(){
+    Collections.reset();
+    ui.discScroll = {};
+    ui.discNav = { level:'root', areaId:null, disciplineId:null, topicId:null };
+    ui.discFocus = null; ui.discNavDir = null;
+    ui.areaJustCreated = null; ui.justCreated = null;
+    ui.openDisciplineId = null; ui.openDeadlineId = null;
+    ui.history.search = '';
+    clearHistoryFilters();
+  }
+};
+
+/** Voltar/Avançar do navegador fecham o que é passageiro; janelas com formulário ficam (nada digitado se perde). */
+function closeTransientLayers(){
+  Tooltip.hide();
+  GlossaryPopover.close();
+  if(Palette.isOpen) Palette.close();
+  if(Drawer.isOpen) Drawer.close();
+}
+
+/** Aplica uma localização (vinda do histórico ou da recarga) sem criar entrada nova. */
+function applyLocation(loc, ctx){
+  const c = ctx || {};
+  const l = loc && typeof loc === 'object' ? loc : { v:'today' };
+  const view = VIEW_TITLES[l.v] ? l.v : 'today';
+  const sameView = ui.view === view;
+  // uma janela com formulário continua aberta por cima: o foco não pode sair dela
+  const keepFocus = !!c.initial || Overlay.isOpen;
+  if(view === 'disciplines'){
+    ui.discTab = l.tab === 'deadlines' ? 'deadlines' : 'disciplines';
+    if(ui.discTab === 'disciplines'){
+      const target = { level: ['root','area','discipline','topic'].includes(l.l) ? l.l : 'root',
+        areaId: l.a || null, disciplineId: l.d || null, topicId: l.t || null };
+      const fromDisc = c.from && c.from.v === 'disciplines' && c.from.tab !== 'deadlines' ? c.from : null;
+      ui.discNav = target;
+      ui.discNavDir = sameView && fromDisc && !c.initial ? c.dir : null;
+      ui.discFocus = keepFocus ? null
+        : (c.dir === 'back' && fromDisc ? (discBackFocus(fromDisc, target) || 'level-title') : (target.level !== 'root' ? 'level-title' : null));
+      if(target.level !== 'area' || target.areaId !== ui.areaJustCreated) ui.areaJustCreated = null;
+    }
+  } else if(view === 'help'){
+    helpUi.route = normHelpRoute(l.hr);
+    helpUi.stack = Array.isArray(c.helpStack) ? c.helpStack.slice(-20).map(normHelpRoute) : [];
+    helpClearSearch();
+  }
+  if(!sameView) setView(view, { noSync:true, noScroll:true });
+  else render();
+  window.scrollTo({ top: Math.max(0, c.scrollY || 0), behavior:'auto' });
+  if(keepFocus) return;
+  // foco: nunca fica num elemento que saiu da tela; troca de tela → título da tela
+  const ae = document.activeElement;
+  const lost = !ae || ae === document.body || !document.contains(ae);
+  if(!sameView || lost){
+    if(!(view === 'disciplines' && ui.discTab === 'disciplines' && document.activeElement && $('#view-disciplines').contains(document.activeElement) && document.activeElement !== document.body)){
+      focusViewHeading(view);
+    }
+  } else if(ae) revealElement(ae);
+}
+
+/** Foco no título da tela (ou do nível, dentro de Disciplinas), sem saltar a rolagem. */
+function focusViewHeading(view){
+  const sec = $('#view-' + view);
+  if(!sec) return;
+  const el = (sec.classList.contains('is-deep') && $('.level-title', sec)) || $('.page-head h2', sec);
+  if(el){ try { el.focus({ preventScroll:true }); } catch(_){ el.focus(); } }
+}
+
+/* =========================================================================
    TELA: DISCIPLINAS — v6.1 · Calm Structure
    A aba é a entrada de toda a hierarquia, navegada como um caderno indexado:
 
@@ -4799,14 +5528,6 @@ function discLevelKey(n){
   if(n.level === 'area') return 'area:' + n.areaId;
   if(n.level === 'discipline') return 'disc:' + n.disciplineId;
   return 'topic:' + n.topicId;
-}
-/** Ao voltar, o foco cai na linha de onde a pessoa veio. */
-function discChildFocus(n){
-  if(!n) return null;
-  if(n.level === 'topic') return 'topic-' + n.topicId;
-  if(n.level === 'discipline') return 'disc-' + n.disciplineId;
-  if(n.level === 'area') return 'area-' + n.areaId;
-  return null;
 }
 
 /** Valida a posição guardada contra os dados atuais. Entidade removida → sobe um nível. */
@@ -4839,22 +5560,40 @@ function resolveDiscNav(){
  * Navega dentro da hierarquia. `dir` define o movimento ('forward' | 'back')
  * e para onde o foco vai: título do novo nível ao entrar; linha de origem ao
  * voltar. A rolagem de cada nível é lembrada para o voltar não perder o lugar.
+ * v6.2: cada nível vira uma entrada do histórico do navegador.
+ *   opts.replace   — corrige o lugar atual (item excluído/arquivado) sem empilhar
+ *   opts.parentLoc — salto direto: a página-pai entra antes no caminho
  */
-function navDisc(target, dir){
+function navDisc(target, dir, opts){
+  const o = (opts && typeof opts === 'object' && !(opts instanceof Event)) ? opts : {};
   const prev = ui.discNav || { level:'root' };
-  if(ui.view === 'disciplines') ui.discScroll[discLevelKey(prev)] = window.scrollY;
+  const inIndex = ui.view === 'disciplines' && ui.discTab !== 'deadlines';
+  const fromLoc = inIndex ? Nav.location() : null;
+  if(inIndex) ui.discScroll[discLevelKey(prev)] = window.scrollY;
   const next = Object.assign({ level:'root', areaId:null, disciplineId:null, topicId:null }, target || {});
+  // salto direto para dentro: a página-pai entra antes no caminho (a não ser que já estejamos no próprio destino)
+  if(o.parentLoc && !(Nav.started && Nav.equals(Nav.entries[Nav.i], discLoc(next)))) Nav.pushParent(o.parentLoc);
   ui.discNav = next;
   ui.discTab = 'disciplines';
   ui.discNavDir = dir || null;
-  ui.discFocus = dir === 'back' ? (discChildFocus(prev) || 'level-title') : 'level-title';
+  ui.discFocus = dir === 'back' ? (discBackFocus(fromLoc, next) || 'level-title') : 'level-title';
   if(next.level !== 'area' || next.areaId !== ui.areaJustCreated) ui.areaJustCreated = null;
   Tooltip.hide();
   if(Drawer.isOpen) Drawer.close();
-  if(ui.view !== 'disciplines') setView('disciplines');
+  if(ui.view !== 'disciplines') setView('disciplines', { noSync:true, noScroll:true });
   else renderDisciplines();
+  Nav.sync(o.replace ? 'replace' : 'push');
   const y = dir === 'back' ? (ui.discScroll[discLevelKey(next)] || 0) : 0;
   window.scrollTo({ top:y, behavior:'auto' });
+  if(dir === 'back' && document.activeElement) revealElement(document.activeElement);
+}
+/**
+ * "← Destino": sobe um (ou mais) níveis. Quando o destino é exatamente a
+ * página anterior do histórico, usa o próprio histórico — busca, ordenação,
+ * rolagem e o Avançar do navegador continuam valendo.
+ */
+function navDiscUp(target){
+  Nav.up(discLoc(target), () => navDisc(target, 'back', { replace:true }));
 }
 function openArea(areaKey){ navDisc({ level:'area', areaId:areaKey }, 'forward'); }
 /** Abre a disciplina no seu lugar da hierarquia (de qualquer tela). */
@@ -4864,12 +5603,14 @@ function openDisciplineDetail(discId){
   ui.openDisciplineId = discId;
   navDisc({ level:'discipline', disciplineId:d.id, areaId:areaKeyOf(d) }, 'forward');
 }
-/** Abre o tópico como página própria dentro de Disciplinas. */
+/** Abre o tópico como página própria dentro de Disciplinas. De fora da disciplina
+ *  (busca global, painel), a disciplina-pai entra antes no caminho: Voltar leva a ela. */
 function openTopicPage(topicId){
   const t = getTopic(topicId);
   if(!t) return;
   const d = getDiscipline(t.disciplineId);
-  navDisc({ level:'topic', topicId:t.id, disciplineId:t.disciplineId, areaId:areaKeyOf(d) }, 'forward');
+  const parent = { level:'discipline', disciplineId:t.disciplineId, areaId:areaKeyOf(d) };
+  navDisc({ level:'topic', topicId:t.id, disciplineId:t.disciplineId, areaId:areaKeyOf(d) }, 'forward', { parentLoc: d ? discLoc(parent) : null });
 }
 
 function renderDisciplines(){
@@ -4894,7 +5635,7 @@ function renderDisciplines(){
       const on = tab === v;
       tabs.append(h('button', { class:'tab', type:'button', role:'tab', id:'dtab-' + v, 'aria-selected': on ? 'true' : 'false',
         'aria-controls':'dpanel', tabindex: on ? '0' : '-1',
-        onclick:() => { if(ui.discTab !== v){ ui.discTab = v; if(v === 'disciplines') ui.discNav = { level:'root' }; renderDisciplines(); const t = $('#dtab-' + v); if(t) t.focus(); } } },
+        onclick:() => { if(ui.discTab !== v){ ui.discTab = v; if(v === 'disciplines') ui.discNav = { level:'root' }; renderDisciplines(); Nav.sync('replace'); const t = $('#dtab-' + v); if(t) t.focus(); } } },
         label, count ? h('span', { class:'tab-count', text:String(count) }) : null));
     });
     tabs.addEventListener('keydown', (e) => {
@@ -4903,6 +5644,7 @@ function renderDisciplines(){
       ui.discTab = tab === 'deadlines' ? 'disciplines' : 'deadlines';
       if(ui.discTab === 'disciplines') ui.discNav = { level:'root' };
       renderDisciplines();
+      Nav.sync('replace');          // abas irmãs: trocam o lugar, não empilham histórico
       const t = $('#dtab-' + ui.discTab); if(t) t.focus();
     });
     body = [tabs, h('div', { class:'tab-panel', id:'dpanel', role:'tabpanel', 'aria-labelledby':'dtab-' + tab },
@@ -4915,10 +5657,15 @@ function renderDisciplines(){
 
   const wanted = ui.discFocus || keepFk;
   ui.discFocus = null;
+  ui.justCreated = null;
   if(wanted){
     const sel = '[data-fk="' + (window.CSS && CSS.escape ? CSS.escape(wanted) : wanted) + '"]';
     const el = root.querySelector(sel) || (dir ? root.querySelector('[data-fk="level-title"]') : null);
-    if(el){ try { el.focus({ preventScroll:true }); } catch(_){ el.focus(); } }
+    if(el){
+      try { el.focus({ preventScroll:true }); } catch(_){ el.focus(); }
+      // campo de busca redesenhado: o cursor volta para o fim do texto digitado
+      if(el.tagName === 'INPUT' && typeof el.setSelectionRange === 'function'){ const n = el.value.length; try { el.setSelectionRange(n, n); } catch(_){} }
+    }
   }
 }
 
@@ -4927,42 +5674,49 @@ function renderDisciplines(){
 /** Linha navegável do índice: título, uma linha de contexto, um sinal à direita e ›. */
 function indexRow(o){
   const sub = (o.sub || []).filter(Boolean).map(s => typeof s === 'string' ? { text:s } : s);
-  return h('li', { class:'ix-row' + (o.cls ? ' ' + o.cls : '') },
+  const isNew = o.fk && ui.justCreated === o.fk;
+  return h('li', { class:'ix-row' + (o.cls ? ' ' + o.cls : '') + (isNew ? ' is-new' : '') },
     h('button', { class:'ix-main', type:'button', 'data-fk':o.fk, onclick:o.onOpen, 'aria-label':o.ariaLabel || null },
       o.lead || null,
       h('span', { class:'ix-text' },
-        h('span', { class:'ix-t' }, h('span', { class:'ix-name', text:o.title }), o.tag ? h('span', { class:'state-tag', text:o.tag }) : null),
+        h('span', { class:'ix-t' }, h('span', { class:'ix-name' }, o.query ? highlightMatch(o.title, o.query) : o.title), o.tag ? h('span', { class:'state-tag', text:o.tag }) : null),
         sub.length ? h('span', { class:'ix-s' }, sub.map(s => h('span', { class:s.cls || null, text:s.text }))) : null),
       o.side || null,
       icon('i-next', 'ix-go')),
     o.after || null);
 }
 
-/** Cabeçalho de nível: caminho (desktop), voltar (celular), título e contexto. */
+/**
+ * Cabeçalho de nível. v6.2: o "voltar" existe em toda profundidade, no
+ * computador e no celular, sempre no mesmo lugar e dizendo o DESTINO
+ * ("← Tecnologia"). O caminho completo aparece no computador só quando
+ * acrescenta algo ao voltar (três níveis ou mais) — nunca os dois repetindo o mesmo.
+ */
 function levelHead(trail, title, sub, tag){
   const parent = trail[trail.length - 2];
-  const crumbs = h('nav', { class:'crumbs', 'aria-label':'Você está em' },
+  const crumbs = trail.length >= 3 ? h('nav', { class:'crumbs', 'aria-label':'Você está em' },
     h('ol', null, trail.map((c, i) => h('li', null, i === trail.length - 1
       ? h('span', { 'aria-current':'page', text:c.label })
-      : h('button', { class:'crumb-link', type:'button', onclick:c.go, text:c.label })))));
-  const back = parent ? h('button', { class:'crumb-back', type:'button', onclick:parent.go, 'aria-label':'Voltar para ' + parent.label },
-    icon('i-back', 'btn-icon'), h('span', { text:parent.label })) : null;
+      : h('button', { class:'crumb-link', type:'button', onclick:c.go, text:c.label }))))) : null;
+  const back = parent ? h('button', { class:'crumb-back', type:'button', onclick:parent.go, 'data-fk':'level-back',
+      'aria-label':'Voltar para ' + parent.label, title:'Voltar para ' + parent.label },
+    icon('i-back', 'btn-icon'), h('span', { class:'crumb-back-l', text:parent.label })) : null;
   return h('header', { class:'level-head' },
-    h('div', { class:'level-nav' }, back, crumbs),
+    h('div', { class:'level-nav' + (crumbs ? ' has-crumbs' : '') }, back, crumbs),
     h('h2', { class:'level-title', tabindex:'-1', 'data-fk':'level-title' }, h('span', { text:title }), tag ? h('span', { class:'state-tag', text:tag }) : null),
     sub ? h('p', { class:'level-sub', text:sub }) : null);
 }
 
 function discTrail(r){
-  const t = [{ label:'Disciplinas', go:() => navDisc({ level:'root' }, 'back') }];
+  const t = [{ label:'Disciplinas', go:() => navDiscUp({ level:'root' }) }];
   if(r.level === 'root') return t;
   if(r.areaKey && (r.areaKey !== NO_AREA || r.areaMode)){
     const key = r.areaKey;
-    t.push({ label: r.area ? r.area.name : NO_AREA_LABEL, go:() => navDisc({ level:'area', areaId:key }, 'back') });
+    t.push({ label: r.area ? r.area.name : NO_AREA_LABEL, go:() => navDiscUp({ level:'area', areaId:key }) });
   }
   if(r.disc && r.level !== 'area'){
     const d = r.disc, key = r.areaKey;
-    t.push({ label:d.name, go:() => navDisc({ level:'discipline', disciplineId:d.id, areaId:key }, 'back') });
+    t.push({ label:d.name, go:() => navDiscUp({ level:'discipline', disciplineId:d.id, areaId:key }) });
   }
   if(r.topic) t.push({ label:r.topic.name });
   else t[t.length - 1] = { label:t[t.length - 1].label };   // o nível atual não é link
@@ -4992,12 +5746,25 @@ function discRootLevel(r){
   const hiddenAreas = state.areas.filter(a => !areaIsListed(a)).sort(sortByName);
 
   if(r.areaMode){
-    const rows = state.areas.filter(areaIsListed).sort(sortByName).map(areaRow);
+    /* v6.2 — aqui a lista é de ÁREAS: a busca procura só áreas. "Sem área"
+       não é uma área: fica sempre no fim, fora da ordenação. */
     const looseAll = disciplinesIn(NO_AREA, true);
-    if(looseAll.length) rows.push(noAreaRow(looseAll));
-    parts.push(h('ul', { class:'ix-list' }, rows));
+    parts.push(collectionView({
+      key:'areas', kind:'areas', items: state.areas.filter(areaIsListed),
+      tail: looseAll.length ? [{ text:NO_AREA_LABEL, render:(q) => noAreaRow(looseAll, q) }] : [],
+      placeholder:'Buscar uma área…', label:'Buscar uma área',
+      searchText: a => a.name,
+      noResults:'Nenhuma área encontrada.',
+      renderItems:(list, ctx) => h('ul', { class:'ix-list' }, list.map(a => areaRow(a, ctx.query)), ctx.tail.map(t => t.render(ctx.query)))
+    }));
   } else if(active.length){
-    parts.push(h('ul', { class:'ix-list' }, active.slice().sort(sortByName).map(disciplineRow)));
+    parts.push(collectionView({
+      key:'disc-root', kind:'disciplines', items: active,
+      placeholder:'Buscar uma disciplina…', label:'Buscar uma disciplina',
+      searchText: d => d.name,
+      noResults:'Nenhuma disciplina encontrada.',
+      renderItems:(list, ctx) => h('ul', { class:'ix-list' }, list.map(d => disciplineRow(d, ctx.query)))
+    }));
   } else {
     parts.push(h('section', { class:'quiet-empty' }, emptyState('O que você está estudando?',
       'Comece com uma disciplina — por exemplo Matemática, Inglês, Anatomia ou Redes de Computadores. Áreas e tópicos podem vir depois.',
@@ -5021,16 +5788,16 @@ function discRootLevel(r){
   if(foot.length) parts.push(h('div', { class:'panel-foot' }, foot));
   if(!r.areaMode && ui.showArchivedDisciplines && archivedDiscs.length){
     parts.push(h('section', { class:'ix-archived', 'aria-label':'Disciplinas arquivadas' },
-      h('ul', { class:'ix-list' }, archivedDiscs.slice().sort(sortByName).map(disciplineRow))));
+      h('ul', { class:'ix-list' }, archivedDiscs.slice().sort(sortByName).map(d => disciplineRow(d)))));
   }
   if(ui.showArchivedAreas && hiddenAreas.length){
     parts.push(h('section', { class:'ix-archived', 'aria-label':'Áreas arquivadas' },
-      h('ul', { class:'ix-list' }, hiddenAreas.map(areaRow))));
+      h('ul', { class:'ix-list' }, hiddenAreas.map(a => areaRow(a)))));
   }
   return parts;
 }
 
-function areaRow(a){
+function areaRow(a, query){
   const list = disciplinesIn(a.id, false);
   const due = sum(list, d => ReviewEngine.dueCountFor(d.id));
   const sub = [
@@ -5038,27 +5805,27 @@ function areaRow(a){
     due ? { text:`${plural(due, 'revisão', 'revisões')} hoje`, cls:'is-due' } : null
   ];
   return indexRow({
-    fk:'area-' + a.id, title:a.name, tag: a.archived ? 'arquivada' : null, sub,
+    fk:'area-' + a.id, title:a.name, query, tag: a.archived ? 'arquivada' : null, sub,
     cls: a.archived ? 'is-archived' : null,
     ariaLabel: `${a.name}${a.archived ? ' (arquivada)' : ''}. ${sub.filter(Boolean).map(s => s.text || s).join(', ')}. Abrir área`,
     onOpen:() => openArea(a.id)
   });
 }
 
-function noAreaRow(all){
+function noAreaRow(all, query){
   const active = all.filter(d => !d.archived).length;
   const sub = active
     ? [plural(active, 'disciplina', 'disciplinas'), active === 1 ? 'ainda não organizada' : 'ainda não organizadas']
     : [plural(all.length, 'disciplina arquivada', 'disciplinas arquivadas')];
   return indexRow({
-    fk:'area-' + NO_AREA, title:NO_AREA_LABEL, sub, cls:'is-loose',
+    fk:'area-' + NO_AREA, title:NO_AREA_LABEL, query, sub, cls:'is-loose',
     ariaLabel:`${NO_AREA_LABEL}: ${sub.join(', ')}. Abrir`,
     onOpen:() => openArea(NO_AREA)
   });
 }
 
 /** Linha de disciplina: nome, contexto curto e a prioridade — sempre, de 1 a 5. */
-function disciplineRow(d){
+function disciplineRow(d, query){
   const prog = disciplineProgress(d.id);
   const last = lastStudyISO(d.id);
   const due = d.archived ? 0 : ReviewEngine.dueCountFor(d.id);
@@ -5069,7 +5836,7 @@ function disciplineRow(d){
   ];
   const p = PriorityEngine.clamp(d.priority);
   return indexRow({
-    fk:'disc-' + d.id, title:d.name, tag: d.archived ? 'arquivada' : null, sub,
+    fk:'disc-' + d.id, title:d.name, query: typeof query === 'string' ? query : '', tag: d.archived ? 'arquivada' : null, sub,
     cls: d.archived ? 'is-archived' : null,
     side: priorityMark(p, { compact:true }),
     ariaLabel: `${d.name}${d.archived ? ' (arquivada)' : ''}. ${sub.filter(Boolean).map(s => s.text || s).join(', ')}. Prioridade ${priorityText(p)}. Abrir`,
@@ -5113,7 +5880,16 @@ function discAreaLevel(r){
   }
 
   if(active.length){
-    parts.push(h('ul', { class:'ix-list' }, active.map(disciplineRow)));
+    /* v6.2 — dentro de uma área, a busca procura só as disciplinas DESTA área */
+    const where = isNone ? 'sem área' : 'em ' + a.name;
+    parts.push(collectionView({
+      key:'area:' + r.areaKey, kind:'disciplines', items: active,
+      placeholder: isNone ? 'Buscar disciplina sem área…' : `Buscar disciplina em ${a.name}…`,
+      label: isNone ? 'Buscar disciplina sem área' : `Buscar disciplina em ${a.name}`,
+      searchText: d => d.name,
+      noResults:`Nenhuma disciplina encontrada ${where}.`,
+      renderItems:(list, ctx) => h('ul', { class:'ix-list' }, list.map(d => disciplineRow(d, ctx.query)))
+    }));
   } else if(a && ui.areaJustCreated === a.id){
     parts.push(h('div', { class:'invite', role:'status' },
       h('p', { class:'invite-t', text:`${a.name} criada.` }),
@@ -5133,7 +5909,7 @@ function discAreaLevel(r){
       h('button', { class:'linkbtn muted', type:'button', 'aria-pressed': ui.showArchivedDisciplines ? 'true' : 'false',
         text: ui.showArchivedDisciplines ? 'Ocultar arquivadas' : `Arquivadas (${archived.length})`,
         onclick:() => { ui.showArchivedDisciplines = !ui.showArchivedDisciplines; renderDisciplines(); } })));
-    if(ui.showArchivedDisciplines) parts.push(h('ul', { class:'ix-list ix-archived' }, archived.map(disciplineRow)));
+    if(ui.showArchivedDisciplines) parts.push(h('ul', { class:'ix-list ix-archived' }, archived.map(d => disciplineRow(d))));
   }
   return parts;
 }
@@ -5185,7 +5961,18 @@ function discDisciplineLevel(r){
   if(!visible.length){
     topicSection.append(h('p', { class:'ix-empty-s', text:'Tópicos são as partes da disciplina — por exemplo, em Redes de Computadores: Subnetting, VLAN, OSPF. Eles entram nas revisões.' }));
   } else {
-    topicSection.append(h('ul', { class:'ix-list is-topics' }, visible.map((t, i) => topicRow(t, i, visible.length))));
+    /* v6.2 — busca só nos tópicos desta disciplina. A ordem personalizada (↑ ↓)
+       continua sendo o padrão; as outras ordenações são só visões. */
+    topicSection.append(collectionView({
+      key:'topics:' + d.id, kind:'topics', items: visible,
+      placeholder:`Buscar tópico em ${d.name}…`, label:`Buscar tópico em ${d.name}`,
+      searchText: t => t.name,
+      noResults:`Nenhum tópico encontrado em ${d.name}.`,
+      renderItems:(list, ctx) => {
+        const manual = ctx.sort === 'custom' && !ctx.filtered;     // reordenar só faz sentido na ordem manual completa
+        return h('ul', { class:'ix-list is-topics' }, list.map((t, i) => topicRow(t, i, list.length, { query:ctx.query, reorder:manual })));
+      }
+    }));
   }
   if(!d.archived){
     topicSection.append(
@@ -5214,16 +6001,17 @@ function discDisciplineLevel(r){
   return parts;
 }
 
-function topicRow(t, i, count){
+function topicRow(t, i, count, opts){
+  const o = opts || { reorder:true };
   const st = topicStatus(t);
   const meta = t.reviewEnabled && t.reviewDueDate ? `revisão ${fmtRelativeFuture(t.reviewDueDate)}` : TOPIC_STATUS_LABEL[st];
   const p = PriorityEngine.clamp(t.priority);
   return indexRow({
-    fk:'topic-' + t.id, lead: statusMark(st), title:t.name, sub:[meta],
+    fk:'topic-' + t.id, lead: statusMark(st), title:t.name, query:o.query || '', sub:[meta],
     side: priorityMark(p, { compact:true }),
     ariaLabel:`${t.name}. ${TOPIC_STATUS_LABEL[st]}${meta !== TOPIC_STATUS_LABEL[st] ? ', ' + meta : ''}. Prioridade ${priorityText(p)}. Abrir`,
     onOpen:() => openTopicPage(t.id),
-    after: h('span', { class:'row-actions' },
+    after: !o.reorder ? null : h('span', { class:'row-actions' },
       h('button', { class:'icon-btn mini', type:'button', text:'↑', title:'Subir', 'aria-label':`Subir ${t.name}`, 'data-fk':'up-' + t.id, disabled: i === 0,
         onclick: once(() => moveTopic(t.id, -1)) }),
       h('button', { class:'icon-btn mini', type:'button', text:'↓', title:'Descer', 'aria-label':`Descer ${t.name}`, 'data-fk':'down-' + t.id, disabled: i === count - 1,
@@ -5478,7 +6266,8 @@ async function deleteArea(id){
     });
     ui.planDraft = null;
     await refresh();
-    if(ui.view === 'disciplines') navDisc(inside.length && usesAreas() ? { level:'area', areaId:NO_AREA } : { level:'root' }, 'back');
+    // a área não existe mais: o lugar atual é corrigido (sem deixar um "voltar" para ela)
+    if(ui.view === 'disciplines') navDisc(inside.length && usesAreas() ? { level:'area', areaId:NO_AREA } : { level:'root' }, 'back', { replace:true });
     toast(inside.length ? `As disciplinas continuam disponíveis em "${NO_AREA_LABEL}".` : area.name, 'info', { title:'Área excluída' });
   } catch(err){
     console.error('Falha ao excluir a área:', err);
@@ -5507,7 +6296,7 @@ async function archiveArea(id){
     });
     ui.planDraft = null;
     await refresh();
-    if(ui.view === 'disciplines') navDisc({ level:'root' }, 'back');
+    if(ui.view === 'disciplines') navDisc({ level:'root' }, 'back', { replace:true });
     toast(inside.length ? `${plural(inside.length, 'disciplina arquivada', 'disciplinas arquivadas')} junto. Nada foi apagado.` : area.name, 'ok', { title:'Área arquivada' });
   } catch(err){
     console.error('Falha ao arquivar a área:', err);
@@ -5652,6 +6441,7 @@ function openDisciplineModal(disc, opts){
           api.put('disciplines', entity);
         });
         ui.planDraft = null;
+        if(!disc) ui.justCreated = 'disc-' + entity.id;     // a linha nova entra com um fade breve
         await refresh();
         const areaName = areaId && getArea(areaId) ? getArea(areaId).name : null;
         if(disc){
@@ -5814,7 +6604,7 @@ function openTopicModal(disciplineId, topic, opts){
           const t = newTopic(disciplineId, name, order);
           Object.assign(t, { priority, reviewEnabled: rev.chk.checked, reviewStrategy: advanced.strategy, preferredReviewMethod: advanced.method });
           await DB.put('topics', t);
-          if(ui.view === 'disciplines') ui.discFocus = 'topic-' + t.id;
+          if(ui.view === 'disciplines'){ ui.discFocus = 'topic-' + t.id; ui.justCreated = 'topic-' + t.id; }
           await refresh();
           toast(`${disc.name} › ${name} · prioridade ${priorityText(priority)}`, 'ok', { title:'Tópico adicionado' });
         }
@@ -5894,9 +6684,6 @@ function openBulkTopicModal(disciplineId){
    ========================================================================= */
 /** Aba Prazos: "O que está chegando?" — título, tipo, data e proximidade. */
 function deadlinesPanel(){
-  const open = DeadlineEngine.open();
-  const done = state.deadlines.filter(d => DeadlineEngine.isDone(d))
-    .sort((a,b) => str(b.completedAt || b.updatedAt).localeCompare(str(a.completedAt || a.updatedAt)));
   const parts = [h('div', { class:'panel-bar' },
     h('p', { class:'panel-help' }, 'Provas, trabalhos, projetos e entregas. Quanto mais perto e mais prioritário, mais pesa nas sugestões.', helpDot('prazo')),
     h('div', { class:'panel-actions' },
@@ -5911,21 +6698,49 @@ function deadlinesPanel(){
   }
   const conclude = dl => h('button', { class:'icon-btn dl-check', type:'button', title:'Concluir', 'aria-label':`Concluir ${dl.title}`,
     onclick: once(() => setDeadlineStatus(dl.id, 'completed')) }, icon('i-check', 'btn-icon'));
-  const overdue = open.filter(dl => DeadlineEngine.isOverdue(dl));
-  const next = open.filter(dl => !DeadlineEngine.isOverdue(dl));
-  if(overdue.length) parts.push(h('section', { class:'list-block' },
-    h('h3', { class:'block-label', text:'A data passou' }),
-    h('ul', { class:'dl-line-list' }, overdue.map(dl => deadlineLine(dl, null, false, { action: conclude(dl) })))));
-  if(next.length) parts.push(h('section', { class:'list-block' },
-    h('h3', { class:'block-label', text:'Próximos' }),
-    h('ul', { class:'dl-line-list' }, next.map(dl => deadlineLine(dl, null, false, { action: conclude(dl) })))));
-  if(!open.length) parts.push(h('p', { class:'hint', text:'Nenhum prazo em aberto. Os concluídos continuam guardados abaixo.' }));
-  if(done.length){
-    parts.push(h('details', { class:'disclosure' },
-      h('summary', null, h('span', { text:'Concluídos' }), h('span', { class:'disclosure-count', text:String(done.length) })),
-      h('div', { class:'disclosure-body' }, h('ul', { class:'dl-line-list' }, done.slice(0, 40).map(dl => deadlineLine(dl, null, true, {
-        action: h('button', { class:'linkbtn muted', type:'button', text:'reabrir', 'aria-label':`Reabrir ${dl.title}`, onclick: once(() => setDeadlineStatus(dl.id, 'pending')) }) }))))));
-  }
+  const reopen = dl => h('button', { class:'linkbtn muted', type:'button', text:'reabrir', 'aria-label':`Reabrir ${dl.title}`, onclick: once(() => setDeadlineStatus(dl.id, 'pending')) });
+
+  /* v6.2 — Prazos: FILTRO real (status) + ORDENAÇÃO, num único controle discreto,
+     e busca só entre os prazos (título, tipo, disciplina, tópico). */
+  parts.push(collectionView({
+    key:'deadlines', kind:'deadlines', items: state.deadlines.slice(),
+    placeholder:'Buscar prazo…', label:'Buscar prazo',
+    searchText: dl => {
+      const disc = dl.disciplineId ? getDiscipline(dl.disciplineId) : null;
+      const topic = dl.topicId ? getTopic(dl.topicId) : null;
+      return [dl.title, deadlineTypeInfo(dl.type).label, disc ? disc.name : '', topic ? topic.name : ''].join(' ');
+    },
+    filterFn:(dl, f) => f === 'all' ? true : f === 'completed' ? DeadlineEngine.isDone(dl) : (!DeadlineEngine.isDone(dl) && (dl.status || 'pending') === f),
+    emptyFiltered:(f) => ({ pending:'Nenhum prazo pendente.', in_progress:'Nenhum prazo em andamento.', completed:'Nenhum prazo concluído ainda.' }[f] || 'Nenhum prazo aqui.'),
+    noResults:'Nenhum prazo encontrado.',
+    renderItems:(list, ctx) => {
+      const q = ctx.query;
+      const openL = list.filter(dl => !DeadlineEngine.isDone(dl));
+      let doneL = list.filter(dl => DeadlineEngine.isDone(dl));
+      // "mais próximos" não diz nada sobre o que já terminou: concluídos mais recentes primeiro
+      if(ctx.sort === 'nearest') doneL = doneL.slice().sort((a,b) => str(b.completedAt || b.updatedAt).localeCompare(str(a.completedAt || a.updatedAt)));
+      const out = [];
+      const overdue = openL.filter(dl => DeadlineEngine.isOverdue(dl));
+      const next = openL.filter(dl => !DeadlineEngine.isOverdue(dl));
+      if(overdue.length) out.push(h('section', { class:'list-block' },
+        h('h3', { class:'block-label', text:'A data passou' }),
+        h('ul', { class:'dl-line-list' }, overdue.map(dl => deadlineLine(dl, null, false, { action: conclude(dl), query:q })))));
+      if(next.length) out.push(h('section', { class:'list-block' },
+        h('h3', { class:'block-label', text:'Próximos' }),
+        h('ul', { class:'dl-line-list' }, next.map(dl => deadlineLine(dl, null, false, { action: conclude(dl), query:q })))));
+      if(ctx.filter === 'all' && !openL.length && !q) out.push(h('p', { class:'hint', text:'Nenhum prazo em aberto. Os concluídos continuam guardados abaixo.' }));
+      if(doneL.length){
+        const lines = h('ul', { class:'dl-line-list' }, doneL.slice(0, q || ctx.filter === 'completed' ? 200 : 40).map(dl => deadlineLine(dl, null, true, { action: reopen(dl), query:q })));
+        // com busca ou com o filtro "Concluídos", o que foi encontrado aparece aberto
+        out.push(ctx.filter === 'completed'
+          ? h('section', { class:'list-block' }, h('h3', { class:'block-label', text:'Concluídos' }), lines)
+          : h('details', { class:'disclosure', open: !!q },
+              h('summary', null, h('span', { text:'Concluídos' }), h('span', { class:'disclosure-count', text:String(doneL.length) })),
+              h('div', { class:'disclosure-body' }, lines)));
+      }
+      return out;
+    }
+  }));
   return parts;
 }
 
@@ -6637,8 +7452,8 @@ function scopePicker(d, pick, rerender){
     if(shown.length) listBox.append(rovingInit(h('div', { class:'an-pick-list is-scroll', role:'radiogroup', 'aria-label': labels[kind] }, shown.map(itemBtn))));
     if(heading) listBox.append(h('p', { class:'an-pick-empty', text:heading }));
   };
-  const input = h('input', { type:'search', class:'an-pick-search', value: pick.search, autocomplete:'off', spellcheck:'false',
-    placeholder: kind === 'topic' ? 'Buscar tópico… ex.: OSPF' : 'Buscar…', 'aria-label': labels[kind] });
+  const input = h('input', { type:'search', class:'an-pick-search', value: pick.search, autocomplete:'off', spellcheck:'false', 'data-context-search':'',
+    placeholder: kind === 'topic' ? 'Buscar um tópico… ex.: OSPF' : kind === 'area' ? 'Buscar uma área…' : 'Buscar uma disciplina…', 'aria-label': labels[kind] });
   input.addEventListener('input', () => { pick.search = input.value; drawList(); });
   input.addEventListener('keydown', (e) => {
     if(e.key === 'ArrowDown'){ const f = listBox.querySelector('[role="radio"]'); if(f){ e.preventDefault(); f.focus(); } }
@@ -7136,7 +7951,7 @@ function deadlineLine(dl, extra, done, opts){
       h('span', { class:'dl-date-d', text: d ? String(d.getDate()) : '—' }),
       h('span', { class:'dl-date-m', text: d ? MONTHS_ABBR[d.getMonth()] : '' })),
     h('span', { class:'dl-line-main' },
-      h('span', { class:'dl-line-t', text:dl.title }),
+      h('span', { class:'dl-line-t' }, o.query ? highlightMatch(dl.title, o.query) : dl.title),
       h('span', { class:'dl-line-s', text: ctx + (extra && extra.relation === 'discipline' ? ' · prazo da disciplina' : '') })),
     h('span', { class:'dl-line-when' + (overdue ? ' is-late' : ''), text: done ? 'concluído' : DeadlineEngine.dueText(dl) })),
     o.action || null);
@@ -8423,20 +9238,23 @@ function renderHistory(){
       h('button', { class:'btn primary', type:'button', text:'Registrar estudo', onclick:() => openRegisterModal() }))));
     return;
   }
-  const searchIn = h('input', { type:'search', id:'hf-search', value:f.search, placeholder:'Buscar por disciplina, tópico ou comentário…',
-    'aria-label':'Buscar no histórico', autocomplete:'off' });
+  /* v6.2 — busca só nos estudos registrados (disciplina, área, tópico,
+     comentário), sem acento; os filtros continuam no painel. */
+  const tableHolder = h('div', { id:'history-table-card' });
   let t = null;
-  searchIn.addEventListener('input', () => { f.search = searchIn.value; ui.historyLimit = 150; clearTimeout(t); t = setTimeout(renderHistoryTable, 120); });
+  const search = contextSearch({ id:'hf-search', fk:'hf-search', value:f.search, holder:tableHolder,
+    placeholder:'Buscar nos estudos feitos…', label:'Buscar nos estudos feitos',
+    onInput:(v) => { f.search = v; ui.historyLimit = 150; clearTimeout(t); t = setTimeout(renderHistoryTable, 60); } });
   const active = historyActiveFilters();
   const filterBtn = h('button', { class:'btn ghost', type:'button', 'aria-haspopup':'dialog', onclick:openHistoryFilters },
     'Filtros', active.length ? h('span', { class:'btn-count', text:String(active.length) }) : null);
   mount(root, h('div', { class:'narrow-screen' },
-    h('div', { class:'search-bar' }, h('div', { class:'an-search grow' }, icon('i-search'), searchIn), filterBtn),
+    h('div', { class:'search-bar' }, search.node, filterBtn),
     active.length ? h('div', { class:'filter-chips', role:'group', 'aria-label':'Filtros ativos' },
       active.map(x => h('button', { class:'filter-chip', type:'button', 'aria-label':`Remover filtro ${x.label}`,
         onclick:() => { x.clear(); ui.historyLimit = 150; renderHistory(); } }, h('span', { text:x.label }), icon('i-close', 'btn-icon'))),
       h('button', { class:'linkbtn muted', type:'button', text:'limpar tudo', onclick:() => { clearHistoryFilters(); renderHistory(); } })) : null,
-    h('div', { id:'history-table-card' })));
+    tableHolder));
   renderHistoryTable();
 }
 
@@ -8509,18 +9327,28 @@ function filteredSessions(){
   else if(f.period === 'analises' && ui.period){ const a = dateToISO(ui.period.start), b = dateToISO(ui.period.end); list = list.filter(s => s.date >= a && s.date <= b); }
   if(f.type) list = list.filter(s => s.type === f.type);
   if(f.difficulty) list = list.filter(s => String(s.difficulty) === f.difficulty);
-  if(f.search){
-    const q = f.search.trim().toLowerCase();
-    list = list.filter(s => {
-      const d = getDiscipline(s.disciplineId);
-      const area = d && d.areaId ? getArea(d.areaId) : null;
-      return (d && d.name.toLowerCase().includes(q)) ||
-             (area && area.name.toLowerCase().includes(q)) ||
-             topicLabelOf(s).toLowerCase().includes(q) ||
-             str(s.comment).toLowerCase().includes(q);
-    });
+  const terms = normalizeText(f.search).split(' ').filter(Boolean);
+  if(terms.length){
+    const hay = historySearchIndex();
+    list = list.filter(s => matchesTerms(hay.get(s.id) || '', terms));
   }
   return list.sort((a,b) => b.date.localeCompare(a.date) || str(b.createdAt).localeCompare(str(a.createdAt)));
+}
+
+/* v6.2 — texto pesquisável de cada estudo, normalizado UMA vez por geração dos
+   dados (digitar não renormaliza milhares de registros a cada tecla). */
+let historyHay = { key:null, map:new Map() };
+function historySearchIndex(){
+  const key = (state.idx.gen || 0) + ':' + state.sessions.length;
+  if(historyHay.key === key) return historyHay.map;
+  const map = new Map();
+  state.sessions.forEach(s => {
+    const d = getDiscipline(s.disciplineId);
+    const area = d && d.areaId ? getArea(d.areaId) : null;
+    map.set(s.id, normalizeText([d ? d.name : '', area ? area.name : '', topicLabelOf(s), str(s.comment)].join(' ')));
+  });
+  historyHay = { key, map };
+  return map;
 }
 
 /** Leitura cronológica: dia → sessões. Clique numa sessão para editar. */
@@ -8532,7 +9360,11 @@ function renderHistoryTable(){
   holder.append(h('p', { class:'list-summary', role:'status', 'aria-live':'polite' },
     h('strong', { text: plural(list.length, 'estudo', 'estudos') }), ` · ${fmtDuration(sum(list, s => s.minutes))}`));
   if(!list.length){
-    holder.append(h('p', { class:'hint', text:'Nenhum estudo corresponde a esta busca ou a estes filtros.' }));
+    const f = ui.history;
+    holder.append(h('div', { class:'coll-empty' },
+      h('p', { text: f.search.trim() ? 'Nenhum estudo encontrado com esta busca' + (historyActiveFilters().length ? ' e estes filtros.' : '.') : 'Nenhum estudo corresponde a estes filtros.' }),
+      f.search.trim() ? h('button', { class:'btn ghost sm', type:'button', text:'Limpar busca', onclick:() => {
+        const i = $('#hf-search'); if(i){ i.value = ''; i.dispatchEvent(new Event('input')); i.focus(); } } }) : null));
     return;
   }
   const shown = list.slice(0, ui.historyLimit);
@@ -8736,6 +9568,7 @@ function onImportFile(e){
           try {
             await Backup.restoreInto(d);
             ui.planDraft = null;
+            Nav.resetForNewData();        // v6.2: buscas, rolagens e níveis abertos apontavam para os dados antigos
             await refresh();
             // v5.2.1 — antes só tema e animações eram reaplicados; a densidade
             // vinda do backup só valia depois de recarregar a página.
@@ -8759,6 +9592,7 @@ async function wipeAll(){
   await DB.clearStores(['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines']);
   TimerService.discard();
   ui.planDraft = null;
+  Nav.resetForNewData();
   await refresh();
   renderTimerBar();
   toast('Todos os dados foram apagados. A cópia antiga da V2, se existir, não foi tocada.');
@@ -8784,6 +9618,7 @@ function render(){
     case 'settings':    renderSettings(); break;
     default:            renderToday();
   }
+  ui.justCreated = null;          // o fade de "item novo" acontece uma vez só
 }
 
 /* =========================================================================
@@ -8856,6 +9691,15 @@ function bindEvents(){
     if(e.ctrlKey || e.metaKey || e.altKey) return;
     if(typing) return;
     if(Overlay.isOpen) return;                 // nenhum atalho global sob uma camada
+
+    // v6.2 — "/" busca AQUI: foca a busca da tela atual; sem busca na tela, abre a busca do Ciclo
+    if(e.key === '/'){
+      e.preventDefault();
+      const here = $('.view.active [data-context-search]') || $('.view.active #help-q');
+      if(here){ here.focus(); try { here.select(); } catch(_){} revealElement(here); }
+      else Palette.open();
+      return;
+    }
 
     const k = e.key.toLowerCase();
     if(k === 'r'){ e.preventDefault(); TimerService.isActive ? openFinishModal() : openRegisterModal(); }
@@ -8955,7 +9799,17 @@ async function init(){
 
   // v5: o primeiro acesso depende só de existir algo cadastrado. Plano não é pré-requisito.
   const needsSetup = !state.meta.onboardingCompleted && !activeDisciplines().length && !state.sessions.length;
-  setView(needsSetup ? 'today' : (state.settings.startView || 'today'));
+  /* v6.2 — recarregar a página volta para o lugar onde a pessoa estava (se ele
+     ainda existir; senão, para o nível válido mais próximo). A primeira entrada
+     do histórico é SUBSTITUÍDA, nunca empilhada. */
+  const saved = history.state && history.state.c === 'ciclo' && history.state.loc ? history.state : null;
+  if(!needsSetup && saved){
+    try { applyLocation(saved.loc, { initial:true, scrollY: isNum(saved.sy) ? saved.sy : 0, helpStack: saved.hs }); }
+    catch(err){ console.error('Ciclo: não foi possível restaurar a última tela.', err); setView(state.settings.startView || 'today', { noSync:true }); }
+  } else {
+    setView(needsSetup ? 'today' : (state.settings.startView || 'today'), { noSync:true });
+  }
+  Nav.start();
 
   if(TimerService.isActive) offerStaleSession();
 
@@ -9416,8 +10270,14 @@ const Drawer = {
 };
 
 /* =========================================================================
-   COMMAND PALETTE — navegação, disciplinas, tópicos, ajuda e ações.
+   COMMAND PALETTE — "encontre algo NO CICLO" (Ctrl + K).
+   v6.2: continua global, mas NÃO substitui a busca de cada tela ("encontre
+   algo AQUI"). Resultados agrupados por tipo — Disciplinas, Tópicos, Áreas,
+   Prazos, Ações, Telas e, por último, a Ajuda — com o grupo mais relevante
+   primeiro. É também a busca ampla da tela Hoje.
    ========================================================================= */
+const PALETTE_GROUPS = ['Disciplinas','Tópicos','Áreas','Prazos','Ações','Telas','Ajuda','Aprender a estudar','Perguntas comuns','Glossário'];
+const PALETTE_GROUP_CAP = { 'Disciplinas':5, 'Tópicos':6, 'Áreas':4, 'Prazos':4, 'Ações':5, 'Telas':4, 'Ajuda':4, 'Aprender a estudar':3, 'Perguntas comuns':3, 'Glossário':3 };
 const Palette = {
   items: [],
   filtered: [],
@@ -9426,35 +10286,27 @@ const Palette = {
 
   buildIndex(){
     const items = [];
-    const push = (group, label, sub, icon, run, searchExtra) => items.push({ group, label, sub, icon, run, n: normalizeText(label + ' ' + (sub||'') + ' ' + (searchExtra||'')) });
+    const push = (group, label, sub, icon, run, searchExtra) => items.push({ group, label, sub, icon, run, nl: normalizeText(label), n: normalizeText(label + ' ' + (sub||'') + ' ' + (searchExtra||'')) });
 
     Object.keys(VIEW_TITLES).forEach(v => {
-      push('Navegação', VIEW_TITLES[v], null, NAV_ICONS[v] || 'i-arrow', () => setView(v));
+      push('Telas', VIEW_TITLES[v], null, NAV_ICONS[v] || 'i-arrow', () => setView(v), 'tela ir abrir');
     });
 
-    push('Ações', 'Registrar estudo', 'com cronômetro ou um estudo que já aconteceu', 'i-plus', () => openRegisterModal(), 'estudar iniciar timer sessao registrar');
-    push('Ações', 'Adicionar prazo', 'prova, trabalho, projeto, tarefa ou entrega', 'i-plan', () => openDeadlineModal(null), 'prazo prova trabalho entrega projeto tarefa data');
-    push('Ações', 'Nova área de estudo', 'um grupo para disciplinas relacionadas', 'i-disc', () => openAreaModal(null), 'area organizar agrupar');
-    push('Ações', 'Nova disciplina', null, 'i-disc', () => openDisciplineModal(null), 'disciplina materia adicionar');
-    push('Ações', 'Fazer backup agora', 'exporta o arquivo .json', 'i-data', () => exportBackupWithFeedback(), 'exportar salvar copia');
-    push('Ações', 'Exportar histórico (.csv)', 'para planilha', 'i-data', () => exportCSVWithFeedback(), 'planilha excel sessoes');
-    push('Ações', 'Abrir revisões pendentes', null, 'i-review', () => setView('reviews'), 'revisar fila');
-    push('Ações', 'Abrir configurações', null, 'i-settings', () => setView('settings'), 'preferencias tema');
-    push('Ações', 'Alternar tema', null, 'i-sun', () => toggleTheme(), 'escuro claro dark light');
-    if(TimerService.isActive){
-      push('Ações', 'Finalizar o estudo em andamento', null, 'i-play', () => openFinishModal(), 'parar terminar sessao');
-      push('Ações', 'Entrar no modo foco', null, 'i-focus', () => FocusMode.enter(), 'concentrar');
-    }
+    appFunctions().forEach(f => push('Ações', f.label, f.sub, f.icon || 'i-arrow', f.run, f.kw));
 
     state.areas.filter(a => !a.archived).slice().sort(sortByName).forEach(a => {
       push('Áreas', a.name, plural(disciplinesIn(a.id, false).length, 'disciplina', 'disciplinas'), 'i-disc', () => openArea(a.id), 'area de estudo grupo');
     });
     activeDisciplines().slice().sort(sortByName).forEach(d => {
-      push('Disciplinas', d.name, areaNameOf(d), 'i-disc', () => openDisciplineDetail(d.id), 'disciplina ' + areaNameOf(d));
+      // os tópicos entram só como contexto de busca: "ospf" também encontra a disciplina que tem OSPF
+      push('Disciplinas', d.name, areaNameOf(d), 'i-disc', () => openDisciplineDetail(d.id), 'disciplina ' + areaNameOf(d) + ' ' + topicsOf(d.id).map(t => t.name).join(' '));
     });
 
     DeadlineEngine.open().forEach(dl => {
-      push('Prazos', dl.title, DeadlineEngine.dueText(dl), 'i-plan', () => openDeadlineDrawer(dl.id), 'prazo ' + deadlineTypeInfo(dl.type).label);
+      const disc = dl.disciplineId ? getDiscipline(dl.disciplineId) : null;
+      const topic = dl.topicId ? getTopic(dl.topicId) : null;
+      push('Prazos', dl.title, DeadlineEngine.dueText(dl) + (disc ? ' · ' + disc.name : ''), 'i-plan', () => openDeadlineDrawer(dl.id),
+        'prazo ' + deadlineTypeInfo(dl.type).label + ' ' + (disc ? disc.name : '') + ' ' + (topic ? topic.name : ''));
     });
 
     state.topics.filter(t => !t.archived).forEach(t => {
@@ -9481,11 +10333,9 @@ const Palette = {
            () => { helpUi.stack = [{ kind:'home' }]; helpUi.route = { kind:'faq', id:f.id }; helpClearSearch(); setView('help'); },
            f.a);
     });
-    push('Ações', 'Começar a estudar', 'escolha o que estudar e o tempo', 'i-play', () => openQuickStart(), 'sessao rapida iniciar');
-    push('Ações', 'Revisar com o tempo que tenho', 'escolha quantos minutos', 'i-review', () => openSessionBuilder(), 'revisar fila tempo sessao');
-    push('Ações', 'Como funcionam as revisões', null, 'i-help', () => openReviewPrimer(), 'revisao entender explicacao');
-    push('Ações', 'Entrar em contato', CONTACT_EMAIL, 'i-mail', () => openContactDrawer(), 'contato email suporte duvida sugestao');
-    push('Ações', 'Relatar um problema', 'copie o relato ou abra no e-mail', 'i-flag', () => openReportProblemDrawer(), 'bug erro problema suporte');
+    push('Ajuda', 'Como funcionam as revisões', 'explicação curta', 'i-help', () => openReviewPrimer(), 'revisao entender explicacao');
+    push('Ajuda', 'Entrar em contato', CONTACT_EMAIL, 'i-mail', () => openContactDrawer(), 'contato email suporte duvida sugestao');
+    push('Ajuda', 'Relatar um problema', 'copie o relato ou abra no e-mail', 'i-flag', () => openReportProblemDrawer(), 'bug erro problema suporte');
 
     this.items = items;
   },
@@ -9502,7 +10352,9 @@ const Palette = {
     root.addEventListener('mousedown', this._onBackdrop);
     // Esc, Tab e rolagem de fundo ficam com a pilha; setas e Enter continuam aqui.
     this._layer = Overlay.open(root, root.querySelector('.palette'), () => Palette.close());
-    setTimeout(() => input.focus(), 30);
+    // v6.2: foco imediato — quem digita logo depois do Ctrl + K não perde as primeiras letras
+    try { input.focus({ preventScroll:true }); } catch(_){ input.focus(); }
+    setTimeout(() => { if(this.isOpen && document.activeElement !== input) input.focus(); }, 30);
   },
 
   close(){
@@ -9520,24 +10372,26 @@ const Palette = {
   filter(query){
     const q = normalizeText(query);
     if(!q){
-      const order = ['Navegação','Ações'];
-      this.filtered = this.items.filter(i => order.includes(i.group)).slice(0, 12);
+      // sem texto: as telas e as ações mais comuns, nessa ordem
+      this.filtered = this.items.filter(i => i.group === 'Telas').concat(this.items.filter(i => i.group === 'Ações').slice(0, 5));
     } else {
       const terms = q.split(' ').filter(Boolean);
-      this.filtered = this.items
-        .map(i => {
-          if(!terms.every(t => i.n.includes(t))) return null;
-          const nl = normalizeText(i.label);
-          let s = 0;
-          if(nl === q) s += 30; else if(nl.startsWith(q)) s += 15; else if(nl.includes(q)) s += 8;
-          if(i.group === 'Navegação') s += 3;
-          if(i.group === 'Ações') s += 2;
-          return { i, s };
-        })
-        .filter(Boolean)
-        .sort((a,b) => b.s - a.s)
-        .slice(0, 24)
-        .map(x => x.i);
+      const groups = new Map();
+      this.items.forEach(i => {
+        if(!matchesTerms(i.n, terms)) return;
+        let s = 0;
+        if(i.nl === q) s += 30; else if(i.nl.startsWith(q)) s += 15; else if(i.nl.includes(q)) s += 8;
+        s += terms.filter(t => i.nl.includes(t)).length * 2;     // termo no nome vale mais que termo no contexto
+        if(!groups.has(i.group)) groups.set(i.group, []);
+        groups.get(i.group).push({ i, s });
+      });
+      /* Agrupado por TIPO. Dentro do grupo, o melhor primeiro; entre grupos, o
+         grupo com o melhor resultado primeiro (empate: dados do usuário antes da Ajuda). */
+      const ordered = Array.from(groups.entries()).map(([g, list]) => {
+        list.sort((a, b) => b.s - a.s || a.i.label.localeCompare(b.i.label, 'pt-BR', { numeric:true }));
+        return { g, list: list.slice(0, PALETTE_GROUP_CAP[g] || 4), best: list[0].s };
+      }).sort((a, b) => b.best - a.best || PALETTE_GROUPS.indexOf(a.g) - PALETTE_GROUPS.indexOf(b.g));
+      this.filtered = [].concat(...ordered.map(x => x.list.map(y => y.i)));
     }
     this.index = 0;
     this.render();
@@ -9547,7 +10401,7 @@ const Palette = {
     const list = document.getElementById('palette-list');
     clear(list);
     if(!this.filtered.length){
-      list.appendChild(h('li', { class:'palette-empty', text:'Nada encontrado. Tente outra palavra.' }));
+      list.appendChild(h('li', { class:'palette-empty', text:'Nada encontrado no Ciclo. Tente outra palavra.' }));
       return;
     }
     let lastGroup = null;
@@ -9556,22 +10410,25 @@ const Palette = {
         lastGroup = item.group;
         list.appendChild(h('li', { class:'palette-group', text:item.group, role:'presentation' }));
       }
-      const btn = h('button', { class:'palette-item', type:'button', role:'option',
+      const q = $('#palette-input') ? $('#palette-input').value : '';
+      const btn = h('button', { class:'palette-item', type:'button', role:'option', id:'pal-opt-' + i, tabindex:'-1',
         'aria-selected': i === this.index ? 'true' : 'false',
         onclick:() => this.run(i) },
         icon(item.icon, 'nav-icon'),
-        h('span', { class:'pi-main', text:item.label }),
+        h('span', { class:'pi-main' }, q.trim() ? highlightMatch(item.label, q) : item.label),
         item.sub ? h('span', { class:'pi-sub', text:item.sub }) : null);
       btn.addEventListener('mousemove', () => { if(this.index !== i){ this.index = i; this.syncSelection(); } });
       const li = h('li', { role:'presentation' }, btn);
       list.appendChild(li);
     });
-    this.scrollToSelected();
+    this.syncSelection();
   },
 
   syncSelection(){
     const btns = $$('#palette-list .palette-item');
     btns.forEach((b, i) => b.setAttribute('aria-selected', i === this.index ? 'true' : 'false'));
+    const inp = $('#palette-input');
+    if(inp){ if(btns[this.index]) inp.setAttribute('aria-activedescendant', btns[this.index].id); else inp.removeAttribute('aria-activedescendant'); }
     this.scrollToSelected();
   },
 
@@ -9678,6 +10535,7 @@ const helpUi = {
   stack: [],                 // rotas anteriores — o "voltar" nunca chuta
   query: '',                 // texto digitado na busca
   results: [],               // resultado atual (estado, não DOM)
+  appResults: [],            // v6.2: funções do Ciclo relacionadas (depois das respostas)
   resultIndex: -1,           // resultado selecionado pelo teclado
   showAllResults: false,
   glossaryQuery: '',
@@ -9688,7 +10546,7 @@ const HELP_RESULTS_PREVIEW = 8;   // quantos resultados antes de "ver todos"
 
 /* ---------- rotas ---------- */
 function helpRouteEquals(a, b){
-  return !!a && !!b && a.kind === b.kind && a.id === b.id && a.group === b.group;
+  return !!a && !!b && a.kind === b.kind && (a.id || null) === (b.id || null) && (a.group || null) === (b.group || null);
 }
 
 /** Navega para uma rota guardando a atual na pilha. */
@@ -9703,25 +10561,33 @@ function helpGo(route, opts){
   helpClearSearch();
   renderHelp();
   helpScrollTop();
+  // v6.2: cada página da Ajuda é uma entrada do histórico — o Voltar do navegador volta dentro da Ajuda
+  if(ui.view === 'help') Nav.sync(o.replace ? 'replace' : 'push');
 }
 
 /** Volta um nível. Sem pilha, sobe para a Home — nunca para um lugar aleatório. */
 function helpBack(){
+  const target = helpUi.stack.length ? helpUi.stack[helpUi.stack.length - 1] : { kind:'home' };
+  const prev = Nav.prev();
+  // o destino é exatamente a página anterior do histórico: volta por ele (o Avançar continua valendo)
+  if(prev && prev.v === 'help' && helpRouteEquals(normHelpRoute(prev.hr), normHelpRoute(target))){ history.back(); return; }
   helpUi.route = helpUi.stack.length ? helpUi.stack.pop() : { kind:'home' };
   helpClearSearch();
   renderHelp();
   helpScrollTop();
+  Nav.sync('replace');
 }
 
 function helpClearSearch(){
   helpUi.query = '';
   helpUi.results = [];
+  helpUi.appResults = [];
   helpUi.resultIndex = -1;
   helpUi.showAllResults = false;
 }
 
 function helpScrollTop(){
-  window.scrollTo({ top:0, behavior: state.settings.reduceMotion ? 'auto' : 'smooth' });
+  window.scrollTo({ top:0, behavior:'auto' });     // v6.2: página nova começa no topo, sem esperar
 }
 
 /** Abre um artigo dentro da Central (com trilha) ou em painel, fora dela. */
@@ -9744,9 +10610,71 @@ function openInteractiveGuide(id){ openHelpArticle(LEGACY_GUIDE_TO_ARTICLE[id] |
    AÇÕES DE "PRÓXIMO PASSO"
    Cada botão diz o destino e leva de fato até lá. Nenhum "saiba mais".
    ========================================================================= */
+/* =========================================================================
+   v6.2 — FUNÇÕES DO CICLO: uma lista única de "o que dá para fazer", usada
+   pela busca de comandos (grupo Ações) e pela busca da Ajuda ("No Ciclo").
+   ========================================================================= */
+function appFunctions(){
+  const list = [
+    { id:'register',   label:'Registrar estudo', sub:'com cronômetro ou um estudo que já aconteceu', icon:'i-plus', kw:'estudar iniciar timer cronometro sessao registrar lancar', run:() => openRegisterModal() },
+    { id:'quick',      label:'Começar a estudar', sub:'escolha o que estudar e o tempo', icon:'i-play', kw:'sessao rapida iniciar comecar estudar agora', run:() => openQuickStart() },
+    { id:'addDisc',    label:'Adicionar disciplina', sub:'o que você está estudando', icon:'i-disc', kw:'disciplina materia nova criar adicionar', run:() => openDisciplineModal(null) },
+    { id:'addArea',    label:'Nova área de estudo', sub:'um grupo para disciplinas relacionadas', icon:'i-disc', kw:'area organizar agrupar criar nova', run:() => openAreaModal(null) },
+    { id:'addTopic',   label:'Adicionar tópico', sub:'uma parte de uma disciplina', icon:'i-disc', kw:'topico assunto novo criar adicionar', run:() => HELP_ACTIONS.addTopic() },
+    { id:'addDeadline',label:'Adicionar prazo', sub:'prova, trabalho, projeto, tarefa ou entrega', icon:'i-plan', kw:'prazo prova trabalho entrega projeto tarefa data novo', run:() => openDeadlineModal(null) },
+    { id:'discPrio',   label:'Editar prioridade de uma disciplina', sub:'de 1 (muito baixa) a 5 (muito alta)', icon:'i-disc', kw:'prioridade importancia disciplina mudar alterar editar', run:() => pickDisciplineForPriority() },
+    { id:'topicPrio',  label:'Editar prioridade de um tópico', sub:'abre a disciplina; cada tópico tem a sua', icon:'i-disc', kw:'prioridade importancia topico mudar alterar editar', run:() => pickDisciplineThen('Em qual disciplina está o tópico?', d => openDisciplineDetail(d.id)) },
+    { id:'reviewTime', label:'Revisar com o tempo que tenho', sub:'escolha quantos minutos', icon:'i-review', kw:'revisar revisao fila tempo sessao minutos', run:() => openSessionBuilder() },
+    { id:'reviews',    label:'Abrir revisões pendentes', sub:null, icon:'i-review', kw:'revisar revisao fila pendentes hoje', run:() => setView('reviews') },
+    { id:'deadlines',  label:'Ver prazos', sub:'em Disciplinas', icon:'i-plan', kw:'prazos provas entregas datas lista', run:() => { ui.discTab = 'deadlines'; setView('disciplines'); } },
+    { id:'plan',       label:'Definir o tempo da semana', sub:'em Planejamento', icon:'i-plan', kw:'plano planejamento semana horas tempo semanal distribuir', run:() => setView('plan') },
+    { id:'analyze',    label:'Analisar meus estudos', sub:'em Análises', icon:'i-chart', kw:'analise analisar relatorio progresso grafico', run:() => setView('analytics') },
+    { id:'backup',     label:'Fazer backup agora', sub:'exporta o arquivo .json', icon:'i-data', kw:'backup exportar salvar copia dados', run:() => exportBackupWithFeedback() },
+    { id:'restore',    label:'Restaurar um backup', sub:'em Dados', icon:'i-data', kw:'importar restaurar backup arquivo json recuperar', run:() => setView('data') },
+    { id:'csv',        label:'Exportar histórico (.csv)', sub:'para planilha', icon:'i-data', kw:'planilha excel sessoes csv exportar', run:() => exportCSVWithFeedback() },
+    { id:'theme',      label:'Alternar tema', sub:'claro ou escuro', icon:'i-sun', kw:'escuro claro dark light tema aparencia cor', run:() => toggleTheme() },
+    { id:'settings',   label:'Abrir configurações', sub:null, icon:'i-settings', kw:'preferencias configuracoes animacoes densidade reduzir', run:() => setView('settings') }
+  ];
+  if(TimerService.isActive){
+    list.unshift({ id:'finish', label:'Finalizar o estudo em andamento', sub:null, icon:'i-play', kw:'parar terminar sessao finalizar', run:() => openFinishModal() },
+                 { id:'focus', label:'Entrar no modo foco', sub:null, icon:'i-focus', kw:'concentrar foco', run:() => FocusMode.enter() });
+  }
+  return list;
+}
+/** Funções cujo nome/descrição/palavras-chave contêm todos os termos. Nome começando pelo termo vem antes. */
+function searchAppFunctions(query){
+  const q = normalizeText(query);
+  const terms = q.split(' ').filter(Boolean);
+  if(!terms.length) return [];
+  return appFunctions()
+    .map(f => {
+      const nl = normalizeText(f.label);
+      if(!matchesTerms(normalizeText(f.label + ' ' + (f.sub || '') + ' ' + f.kw), terms)) return null;
+      const score = (nl.startsWith(q) ? 20 : 0) + terms.filter(t => nl.includes(t)).length * 5;
+      return { f, score };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score || a.f.label.localeCompare(b.f.label, 'pt-BR'))
+    .map(x => ({ kind:'app', id:x.f.id, title:x.f.label, path:'Função do Ciclo', snippet:x.f.sub || '', run:x.f.run }));
+}
+
+/** Escolher uma disciplina e seguir (uma só: segue direto). */
+function pickDisciplineThen(title, fn){
+  const list = activeDisciplines().slice().sort(sortByName);
+  if(!list.length){ openDisciplineModal(null); return; }
+  if(list.length === 1){ fn(list[0]); return; }
+  openModal(close => ({
+    title,
+    content: h('div', { class:'ob-list pick-list' },
+      list.slice(0, 60).map(d => h('button', { class:'btn ghost block', type:'button', onclick:() => { close(); fn(d); } },
+        h('span', { text:d.name }), h('span', { class:'pick-sub', text: areaNameOf(d) })))),
+    actions:[ h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }) ]
+  }), { size:'narrow' });
+}
+
 const HELP_ACTIONS = {
   addDiscipline:   () => openDisciplineModal(null),
-  addTopic:        () => { const d = activeDisciplines()[0]; if(d) openTopicModal(d.id, null); else openDisciplineModal(null); },
+  addTopic:        () => { if(!activeDisciplines().length){ openDisciplineModal(null); return; } pickDisciplineThen('Em qual disciplina?', d => openTopicModal(d.id, null)); },
   addArea:         () => openAreaModal(null),
   addDeadline:     () => openDeadlineModal(null),
   quickStart:      () => openQuickStart(),
@@ -9968,7 +10896,7 @@ function helpSearchCard(compact){
     helpUi.query = input.value;
     helpUi.resultIndex = -1;
     helpUi.showAllResults = false;
-    helpUi.results = searchHelp(helpUi.query);
+    helpSearchAll(helpUi.query);
     renderHelpPanel();
   });
   input.addEventListener('keydown', (e) => {
@@ -10009,14 +10937,22 @@ function helpRunSearch(text){
   helpUi.query = text;
   helpUi.resultIndex = -1;
   helpUi.showAllResults = false;
-  helpUi.results = searchHelp(text);
+  helpSearchAll(text);
   if(helpInputEl) helpInputEl.value = text;
   renderHelpPanel();
   if(helpInputEl) helpInputEl.focus();
 }
 
+/* v6.2 — busca HÍBRIDA da Ajuda: primeiro as respostas (artigos, perguntas,
+   glossário); depois, separadas, as funções do Ciclo relacionadas à dúvida
+   ("Editar prioridade de uma disciplina"). Nunca dados do usuário aqui. */
+function helpSearchAll(query){
+  helpUi.results = searchHelp(query);
+  helpUi.appResults = normalizeText(query).length >= 2 ? searchAppFunctions(query).slice(0, 5) : [];
+}
 function helpVisibleResults(){
-  return helpUi.showAllResults ? helpUi.results : helpUi.results.slice(0, HELP_RESULTS_PREVIEW);
+  const helpList = helpUi.showAllResults ? helpUi.results : helpUi.results.slice(0, HELP_RESULTS_PREVIEW);
+  return helpList.concat(helpUi.appResults || []);
 }
 
 function helpMoveResult(delta){
@@ -10046,6 +10982,7 @@ function helpOpenResult(entry){
   if(entry.kind === 'article'){ helpGo({ kind:'article', id:entry.id }); return; }
   if(entry.kind === 'term'){ helpGo({ kind:'glossary', id:entry.id }); return; }
   if(entry.kind === 'faq'){ helpGo({ kind:'faq', id:entry.id }); return; }
+  if(entry.kind === 'app'){ try { entry.run(); } catch(err){ console.error(err); toast('Não foi possível abrir esta função.', 'err'); } }
 }
 
 function helpResultsPanel(){
@@ -10061,15 +10998,16 @@ function helpResultsPanel(){
   }
 
   const all = helpUi.results;
+  const apps = helpUi.appResults || [];
   const list = helpVisibleResults();
 
   const head = h('div', { class:'help-results-head' },
     h('p', { class:'help-results-title', text:'Resultados para “' + q + '”' }),
     h('p', { class:'hint', text: all.length
-      ? (all.length === 1 ? '1 resultado' : all.length + ' resultados')
-      : 'nenhum resultado' }));
+      ? (all.length === 1 ? '1 resultado na Ajuda' : all.length + ' resultados na Ajuda')
+      : (apps.length ? 'nada na Ajuda · ' + plural(apps.length, 'função do Ciclo', 'funções do Ciclo') : 'nenhum resultado') }));
 
-  if(!all.length){
+  if(!all.length && !apps.length){
     box.append(h('div', { class:'card' }, head,
       h('p', { class:'prose', style:'margin-top:8px', text:'Não encontramos “' + q + '”. Tente pesquisar com menos palavras ou pelo nome da função.' }),
       h('p', { class:'card-title', style:'margin-top:16px', text:'Sugestões' }),
@@ -10082,17 +11020,22 @@ function helpResultsPanel(){
 
   const ul = h('ul', { class:'help-results-list', id:'help-results-list', role:'listbox',
                        'aria-label':'Resultados da busca' });
+  let appHeadDone = false;
   list.forEach((e, i) => {
+    if(e.kind === 'app' && !appHeadDone){
+      appHeadDone = true;
+      ul.append(h('li', { class:'help-results-group', role:'presentation', text:'No Ciclo' }));
+    }
     const id = 'help-result-' + i;
     const btn = h('button', {
-      class:'help-result' + (i === helpUi.resultIndex ? ' is-selected' : ''),
+      class:'help-result' + (e.kind === 'app' ? ' is-app' : '') + (i === helpUi.resultIndex ? ' is-selected' : ''),
       id, type:'button', role:'option', 'aria-selected': i === helpUi.resultIndex ? 'true' : 'false',
       onclick:() => helpOpenResult(e)
     },
       h('span', { class:'hr-main' },
         h('span', { class:'hr-path', text: e.path }),
         h('span', { class:'hr-title', text:e.title }),
-        h('span', { class:'hr-snippet', text:e.snippet })));
+        e.snippet ? h('span', { class:'hr-snippet', text:e.snippet }) : null));
     btn.addEventListener('mousemove', () => {
       if(helpUi.resultIndex !== i){ helpUi.resultIndex = i; helpSyncResultSelection(); }
     });
@@ -10100,7 +11043,7 @@ function helpResultsPanel(){
   });
 
   const card = h('div', { class:'card' }, head, ul);
-  if(all.length > list.length){
+  if(all.length > list.length - apps.length){
     card.append(h('button', { class:'btn ghost sm', type:'button', style:'margin-top:12px',
       text:'Ver todos os ' + all.length + ' resultados',
       onclick:() => { helpUi.showAllResults = true; renderHelpPanel(); if(helpInputEl) helpInputEl.focus(); } }));
@@ -10805,17 +11748,19 @@ function maybeShowWhatsNew(){
     : null;
 
   const cameFrom6 = /^6\./.test(seen);             // já viu a interface nova da v6
+  const saw61 = /^6\.[1-9]/.test(seen);           // já viu o índice de Disciplinas da 6.1
   const items = [
-    'Disciplinas virou um índice: abra uma área, depois uma disciplina, depois um tópico. Áreas criadas continuam aparecendo mesmo vazias.',
-    'A prioridade tem um só símbolo, de 1 a 5, em todo lugar — e dá para mudar direto no detalhe da disciplina ou do tópico.',
-    'Palavras mais simples: "Começar a estudar", "Registrar estudo", "Quando revisar", "Como revisar".',
-    'Mais espaço entre as coisas, menos letras maiúsculas e movimentos mais suaves ao navegar.'
+    'O botão Voltar do navegador agora volta dentro do Ciclo: do tópico para a disciplina, dela para a área, e só depois sai.',
+    'Toda página dentro de Disciplinas tem um "voltar" que diz para onde vai — por exemplo, "← Tecnologia".',
+    'A busca de cada lista procura só ali: dentro de Tecnologia, disciplinas de Tecnologia; dentro de uma disciplina, os tópicos dela.',
+    'Listas podem ser ordenadas por mais estudadas, prioridade ou data. Ao voltar, a busca, a ordem e a posição continuam onde você deixou.'
   ];
-  if(!cameFrom6) items.push('Também da 6.0: visual mais calmo, Análises que começam por uma pergunta e Prazos numa aba própria em Disciplinas.');
+  if(cameFrom6 && !saw61) items.push('Também da 6.1: Disciplinas como um índice (área → disciplina → tópico) e prioridade com um único símbolo, de 1 a 5.');
+  if(!cameFrom6) items.push('Também da 6.0 e 6.1: visual mais calmo, Disciplinas como um índice, Análises que começam por uma pergunta e Prazos numa aba própria.');
   const cfg = {
-    title: 'Ciclo 6.1',
+    title: 'Ciclo 6.2',
     sub: cameFrom5 || cameFrom6
-      ? 'O mesmo Ciclo, mais fácil de ler e de navegar. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
+      ? 'Ir, encontrar e voltar sem pensar. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
       : 'O Diário de Estudos agora se chama Ciclo — e ganhou uma interface nova. Seus dados, revisões e planos continuam como estavam.',
     items, note: converted, cta:'Abrir Disciplinas'
   };
