@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v6.2.0 · Navigation & Findability
+   CICLO — v6.3.0 · Editorial Polish / Smart Capture / Reliability
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -9,6 +9,7 @@
      PLAN ENGINE · REVIEW ENGINE · RECOMMENDATION ENGINE
      ANALYTICS ENGINE · TIMER SERVICE · BACKUP · UI STATE · RENDERING
      NAVEGAÇÃO & BUSCA CONTEXTUAL (v6.2: histórico, voltar, buscar, ordenar)
+     REGISTRO COM TÓPICO (v6.3: editor canônico em subtela, virada do dia)
      HELP ENGINE (busca, rotas, glossário) · EVENT HANDLERS · INITIALIZATION
    ========================================================================= */
 'use strict';
@@ -16,7 +17,7 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '6.2.0';
+const APP_VERSION = '6.3.0';
 const APP_SCHEMA_VERSION = 5;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
@@ -30,6 +31,10 @@ const APP_SCHEMA_VERSION = 5;          // formato LÓGICO dos dados. A v5.2 mudo
                                        // history.state e no sessionStorage. A v6 guarda só a
                                        // última consulta de Análises em `meta`, que é uma
                                        // conveniência de interface (fora do backup).
+                                       // A v6.3 também não muda o formato: a duração
+                                       // sugerida do cronômetro é um campo opcional no
+                                       // localStorage do cronômetro, e `lastReviewMethod`
+                                       // (já gravado antes) passa a voltar na importação.
 
 /* Identificadores técnicos LEGADOS. O produto passou a se chamar "Ciclo" na v5.1,
    mas estes nomes ficam como estão: renomeá-los faria o navegador procurar um
@@ -2350,7 +2355,7 @@ const AnalyticsEngine = {
     if(t.count === 0){
       out.push(`Nenhum estudo registrado${where} neste período.`);
     } else {
-      out.push(`Você estudou ${fmtDuration(t.minutes)}${where} em ${plural(t.count, 'sessão de estudo', 'sessões de estudo')}, com estudo em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')}.`);
+      out.push(`Você estudou ${fmtDuration(t.minutes)}${where} em ${plural(t.count, 'estudo registrado', 'estudos registrados')}, com estudo em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')}.`);
     }
     const pa = a.planAdherence;
     if(pa.hasPlan) out.push(`Cumpriu ${safePct(pa.pct)} do plano: ${fmtDuration(pa.realized)} de ${fmtDuration(pa.planned)} planejadas.`);
@@ -2519,7 +2524,7 @@ const AnalyticsEngine = {
    Estado persistido para sobreviver a reload / fechar aba.
    ========================================================================= */
 const TimerService = {
-  data: null,          // { disciplineId, topicId, presetType, startedAt, accumulatedMs, running }
+  data: null,          // { disciplineId, topicId, presetType, startedAt, accumulatedMs, running, targetMinutes? }
   _tick: null,
 
   restore(){
@@ -2537,7 +2542,9 @@ const TimerService = {
         startedAt: isNum(d.startedAt) ? d.startedAt : Date.now(),
         accumulatedMs: isNum(d.accumulatedMs) ? d.accumulatedMs : 0,
         running: !!d.running,
-        openedAt: isNum(d.openedAt) ? d.openedAt : (isNum(d.startedAt) ? d.startedAt : Date.now())
+        openedAt: isNum(d.openedAt) ? d.openedAt : (isNum(d.startedAt) ? d.startedAt : Date.now()),
+        // v6.3 — duração sugerida escolhida no "Começar a estudar" (opcional; cronômetros antigos não têm)
+        targetMinutes: (isNum(d.targetMinutes) && d.targetMinutes > 0 && d.targetMinutes <= 1440) ? Math.round(d.targetMinutes) : null
       };
       return this.data;
     } catch(_){ this.clear(); return null; }
@@ -2548,10 +2555,11 @@ const TimerService = {
       else localStorage.removeItem(TIMER_LS_KEY);
     } catch(_){ /* storage cheio ou bloqueado: o timer segue em memória */ }
   },
-  start(disciplineId, topicId, presetType, presetMethod){
+  start(disciplineId, topicId, presetType, presetMethod, targetMinutes){
     this.data = { disciplineId, topicId: topicId || null, presetType: presetType || null,
                   presetMethod: presetMethod || null,
-                  startedAt: Date.now(), accumulatedMs: 0, running: true, openedAt: Date.now() };
+                  startedAt: Date.now(), accumulatedMs: 0, running: true, openedAt: Date.now(),
+                  targetMinutes: (isNum(targetMinutes) && targetMinutes > 0) ? Math.round(targetMinutes) : null };
     this._persist();
     return this.data;
   },
@@ -2717,6 +2725,8 @@ const Backup = {
       reviewCycleStep: isNum(t.reviewCycleStep) ? clamp(t.reviewCycleStep, 0, 10) : 0,
       reviewFailures: isNum(t.reviewFailures) ? Math.max(0, t.reviewFailures) : 0,
       lastReviewOutcome: REVIEW_OUTCOMES.some(o => o.v === t.lastReviewOutcome) ? t.lastReviewOutcome : null,
+      // v6.3: o último jeito de revisar (gravado pelo motor de revisão) também volta no backup
+      ...(CONCRETE_METHODS.includes(t.lastReviewMethod) ? { lastReviewMethod: t.lastReviewMethod } : {}),
       createdAt:str(t.createdAt) || nowISO(), updatedAt:str(t.updatedAt) || nowISO()
     }));
     if(droppedTopics) warnings.push(`${droppedTopics} tópico(s) sem disciplina correspondente foram ignorados.`);
@@ -3189,18 +3199,61 @@ function openModal(build, opts){
 
   const opener = document.activeElement;
   let layer = null, closed = false;
+  /* v6.3 — subtelas: uma segunda tela DENTRO do mesmo modal (ex.: criar um
+     tópico no meio do registro de um estudo). Os nós da tela de baixo são
+     guardados intactos — valores digitados, seleção e rolagem voltam
+     exatamente como estavam — e nunca existe modal sobre modal. */
+  const views = [];
+  const titleEl = $('#modal-title'), contentEl = $('#modal-content'), actionsEl = $('#modal-actions');
 
   const close = (result) => {
     if(closed) return;                      // fechar duas vezes não desfaz o foco
     closed = true;
+    views.length = 0;
     root.hidden = true;
-    clear($('#modal-content')); clear($('#modal-actions'));
+    clear(contentEl); clear(actionsEl);
     root.removeEventListener('mousedown', onBackdrop);
     Overlay.close(layer);
     if(modalCloser === close) modalCloser = null;
     if(options.onClose) options.onClose(result);
   };
-  const onBackdrop = (e) => { if(e.target === root && options.dismissible !== false) close(null); };
+  // Com uma subtela aberta, clicar fora não fecha nada: perderia o que foi digitado nas duas telas.
+  const onBackdrop = (e) => { if(e.target === root && !views.length && options.dismissible !== false) close(null); };
+
+  /** Abre uma subtela: { title, content, actions, onEsc, focus }. */
+  close.push = (sub) => {
+    if(closed || !sub) return;
+    views.push({
+      title: titleEl.textContent,
+      content: Array.from(contentEl.childNodes),
+      actions: Array.from(actionsEl.childNodes),
+      scroll: box.scrollTop,
+      focus: document.activeElement,
+      onEsc: sub.onEsc || null
+    });
+    titleEl.textContent = sub.title || '';
+    mount(contentEl, sub.content || null);
+    mount(actionsEl, ...(sub.actions || []));
+    guardModalActions(actionsEl);
+    box.scrollTop = 0;
+    const target = sub.focus || box.querySelector('#modal-content input,#modal-content select,#modal-content textarea,#modal-content button');
+    if(target) setTimeout(() => { if(!closed && document.contains(target)) target.focus(); }, 30);
+  };
+  /** Volta para a tela de baixo, exatamente como estava. `focusEl` escolhe onde o foco cai. */
+  close.pop = (focusEl) => {
+    if(closed || !views.length) return;
+    const v = views.pop();
+    titleEl.textContent = v.title;
+    mount(contentEl, v.content);
+    mount(actionsEl, v.actions);
+    box.scrollTop = v.scroll;
+    const target = (focusEl && document.contains(focusEl)) ? focusEl : v.focus;
+    if(target && document.contains(target) && typeof target.focus === 'function'){
+      try { target.focus({ preventScroll:true }); } catch(_){ target.focus(); }
+    }
+  };
+  close.depth = () => views.length;
+  close.isClosed = () => closed;
 
   const cfg = build(close) || {};
   box.className = 'modal' + (options.size ? ' ' + options.size : '');
@@ -3216,7 +3269,15 @@ function openModal(build, opts){
   root.hidden = false;
   root.addEventListener('mousedown', onBackdrop);
   modalCloser = close;
-  layer = Overlay.open(root, box, () => { if(options.dismissible !== false) close(null); }, { opener });
+  layer = Overlay.open(root, box, () => {
+    // Esc numa subtela volta para a tela de baixo; só na tela principal ele fecha o modal.
+    if(views.length){
+      const top = views[views.length - 1];
+      if(typeof top.onEsc === 'function') top.onEsc(); else close.pop();
+      return;
+    }
+    if(options.dismissible !== false) close(null);
+  }, { opener });
 
   const focusTarget = box.querySelector('input,select,textarea,button');
   if(focusTarget) setTimeout(() => { if(!closed) focusTarget.focus(); }, 30);
@@ -3427,21 +3488,31 @@ function updateBadges(){
 /* ---------- BARRA DO CRONÔMETRO ---------- */
 function renderTimerBar(){
   const slot = $('#timerbar-slot');
+  // v6.3 — o botão global diz o que vai acontecer: com cronômetro ligado, ele finaliza.
+  const fab = $('#fab'), fabVerb = $('#fab .fab-verb');
+  if(fab && fabVerb){
+    const verb = TimerService.isActive ? 'Finalizar' : 'Registrar';
+    if(fabVerb.textContent !== verb){ fabVerb.textContent = verb; fab.setAttribute('aria-label', verb + ' estudo'); }
+  }
   if(!TimerService.isActive){ clear(slot); TimerService.stopTicking(); return; }
   const d = TimerService.data;
   const disc = getDiscipline(d.disciplineId);
   const topic = d.topicId ? getTopic(d.topicId) : null;
 
   const clock = h('span', { class:'tb-clock' + (TimerService.isRunning ? '' : ' paused'), text: fmtClock(TimerService.getElapsed()), 'aria-live':'off' });
+  const target = d.targetMinutes || null;
+  const reached = () => !!target && TimerService.getElapsed() >= target * 60000;
+  const labelText = () => !TimerService.isRunning ? 'Pausado' : (reached() ? 'Tempo sugerido atingido' : 'Estudando');
   // anima só quando a barra aparece; re-renderizações não repetem a entrada
   const isNew = !slot.querySelector('.timerbar');
   const state_ = TimerService.isRunning ? 'running' : 'paused';
   const bar = h('div', { class:'timerbar' + (isNew ? ' is-entering' : ''), role:'region', 'aria-label':'Estudo em andamento', 'data-state': state_ },
     h('span', { class:'tb-status', 'aria-hidden':'true' }),
     h('div', { class:'tb-what' },
-      h('div', { class:'tb-label', text: TimerService.isRunning ? 'Estudando' : 'Pausado' }),
+      h('div', { class:'tb-label', text: labelText() }),
       h('div', { class:'tb-disc', text: disc ? disc.name : '(disciplina removida)' }),
-      h('div', { class:'tb-topic', text: (topic ? topic.name : 'Sem tópico') + (d.presetType ? ' · ' + sessionTypeLabel(d.presetType) : '') }
+      h('div', { class:'tb-topic', text: (topic ? topic.name : 'Sem tópico') + (d.presetType ? ' · ' + sessionTypeLabel(d.presetType) : '')
+        + (target ? ` · sugestão de ${fmtDuration(target)}` : '') }
     )),
     clock,
     h('div', { class:'row auto' },
@@ -3454,11 +3525,14 @@ function renderTimerBar(){
   );
   mount(slot, bar);
 
+  const labelEl = bar.querySelector('.tb-label');
   TimerService.startTicking(() => {
     if(!TimerService.isActive){ TimerService.stopTicking(); return; }
     clock.textContent = fmtClock(TimerService.getElapsed());
     clock.classList.toggle('paused', !TimerService.isRunning);
     bar.setAttribute('data-state', TimerService.isRunning ? 'running' : 'paused');
+    const lt = labelText();
+    if(labelEl && labelEl.textContent !== lt) labelEl.textContent = lt;   // só escreve quando muda
   });
 }
 
@@ -3471,21 +3545,147 @@ async function discardTimer(){
 }
 
 /* ---------- INICIAR SESSÃO ---------- */
-function startTimer(disciplineId, topicId, presetType, presetMethod){
+function startTimer(disciplineId, topicId, presetType, presetMethod, targetMinutes){
   if(TimerService.isActive){
     toast('Termine o estudo atual antes de começar outro.', 'err', { title:'Você já está estudando' });
     return;
   }
-  TimerService.start(disciplineId, topicId, presetType, presetMethod);
+  TimerService.start(disciplineId, topicId, presetType, presetMethod, targetMinutes);
   renderTimerBar();
   const d = getDiscipline(disciplineId), t = topicId ? getTopic(topicId) : null;
   toast((d ? d.name : '') + (t ? ' · ' + t.name : '') + ' — o tempo já está contando.', 'ok',
     { title: presetType === 'revisao' ? 'Revisão iniciada' : 'Estudo iniciado' });
 }
 
-/** Modal do botão global "+ Registrar": cronômetro ou registro manual. */
+/* =========================================================================
+   v6.3 — DISCIPLINA + TÓPICO NO REGISTRO DE UM ESTUDO
+   Os mesmos dois campos servem ao registro manual e ao fim do cronômetro.
+   O último item da lista de tópicos é "+ Criar novo tópico…": ele abre o
+   EDITOR CANÔNICO de tópico (topicEditor) numa subtela do mesmo modal — sem
+   modal sobre modal — e, ao salvar, disciplina e tópico mudam JUNTOS. O
+   registro nunca fica com um tópico de outra disciplina.
+   ========================================================================= */
+const NEW_TOPIC_VALUE = '__new_topic__';
+const KEY_NAV_KEYS = ['ArrowUp','ArrowDown','Home','End','PageUp','PageDown'];
+
+/**
+ *   o.close     função de fechar do modal (com push/pop de subtela)
+ *   o.idPrefix  prefixo dos ids ('rm', 'fin')
+ *   o.discId / o.topicId   valores iniciais
+ *   o.onChange({ discId, topicId, reason })   reason: 'discipline' | 'topic' | 'created'
+ */
+function studyTargetFields(o){
+  let discId = o.discId || '';
+  let topicId = o.topicId || '';
+  const discSel = h('select', { id:o.idPrefix + '-disc' });
+  const topicSel = h('select', { id:o.idPrefix + '-topic' });
+  const keyHint = h('p', { class:'hint', id:o.idPrefix + '-topic-hint', 'aria-live':'polite', hidden:true });
+
+  function fillDisciplines(){
+    const list = disciplineOptions(false);
+    // Um cronômetro antigo pode apontar para uma disciplina arquivada depois:
+    // ela continua visível para o registro não trocar de disciplina sozinho.
+    if(discId && !list.some(x => x.value === discId)){
+      const d = getDiscipline(discId);
+      if(d) list.unshift({ value:d.id, label:d.name + ' (arquivada)' });
+      else discId = list.length ? list[0].value : '';
+    }
+    mount(discSel, list.map(x => h('option', { value:x.value }, x.label)));
+    discSel.value = discId;
+  }
+  function fillTopics(){
+    const opts = [{ value:'', label:'— Sem tópico específico —' }]
+      .concat(topicsOf(discId).map(t => ({ value:t.id, label:t.name })));
+    if(topicId && !opts.some(x => x.value === topicId)){
+      const t = getTopic(topicId);
+      if(t && t.disciplineId === discId) opts.push({ value:t.id, label:t.name + ' (arquivado)' });
+      else topicId = '';                                   // coerência acima de tudo
+    }
+    opts.push({ value:NEW_TOPIC_VALUE, label:'+ Criar novo tópico…' });
+    mount(topicSel, opts.map(x => h('option', { value:x.value }, x.label)));
+    topicSel.value = topicId;
+  }
+  fillDisciplines();
+  fillTopics();
+
+  discSel.addEventListener('change', () => {
+    discId = discSel.value;
+    topicId = '';
+    fillTopics();
+    keyHint.hidden = true;
+    if(o.onChange) o.onChange({ discId, topicId, reason:'discipline' });
+  });
+
+  /* Teclado: no Windows, as setas mudam o valor de um <select> fechado e
+     disparam "change" a cada toque. Chegar a "+ Criar novo tópico…" com as
+     setas não abre nada sozinho — pede um Enter. Mouse e toque abrem direto. */
+  let lastKeyNav = 0;
+  topicSel.addEventListener('keydown', (e) => {
+    if(KEY_NAV_KEYS.includes(e.key) || (e.key.length === 1 && e.key !== ' ' && !e.ctrlKey && !e.metaKey && !e.altKey)) lastKeyNav = Date.now();
+    if((e.key === 'Enter' || e.key === ' ') && topicSel.value === NEW_TOPIC_VALUE){ e.preventDefault(); openCreate(); }
+  });
+  topicSel.addEventListener('change', () => {
+    if(topicSel.value === NEW_TOPIC_VALUE){
+      if(Date.now() - lastKeyNav < 700){
+        keyHint.textContent = 'Pressione Enter para criar um novo tópico.';
+        keyHint.hidden = false;
+        return;
+      }
+      openCreate();
+      return;
+    }
+    keyHint.hidden = true;
+    topicId = topicSel.value;
+    if(o.onChange) o.onChange({ discId, topicId, reason:'topic' });
+  });
+  // Saiu do campo parado em "+ Criar…" sem confirmar: volta ao tópico de antes.
+  topicSel.addEventListener('blur', () => {
+    if(topicSel.value === NEW_TOPIC_VALUE){ topicSel.value = topicId; keyHint.hidden = true; }
+  });
+
+  function openCreate(){
+    topicSel.value = topicId;                 // se cancelar, a tela volta exatamente como estava
+    keyHint.hidden = true;
+    const back = () => o.close.pop(topicSel);
+    const ed = topicEditor({
+      disciplineId: discId,
+      chooseDiscipline: true,
+      inRegistration: true,
+      close: o.close,
+      onCancel: back,
+      onSaved: adopt,
+      onUseExisting: adopt
+    });
+    o.close.push({ title: ed.title, content: ed.content, actions: ed.actions, focus: ed.focus, onEsc: back });
+  }
+  function adopt(t){
+    const fresh = getTopic(t.id) || t;
+    discId = fresh.disciplineId;
+    topicId = fresh.id;
+    fillDisciplines();
+    fillTopics();
+    o.close.pop(topicSel);
+    if(o.onChange) o.onChange({ discId, topicId, reason:'created' });
+  }
+
+  const node = h('div', { class:'study-target' },
+    h('div', { class:'field' }, h('label', { for:discSel.id, text:'Disciplina' }), discSel),
+    h('div', { class:'field' }, h('label', { for:topicSel.id, text:'Tópico (opcional)' }), topicSel, keyHint));
+
+  return {
+    node, discSelect: discSel, topicSelect: topicSel,
+    get discId(){ return discId; },
+    /** Só devolve o tópico se ele pertence à disciplina escolhida. */
+    get topicId(){
+      const t = topicId ? getTopic(topicId) : null;
+      return (t && t.disciplineId === discId) ? t.id : null;
+    }
+  };
+}
+
+/** Modal do botão global "Registrar estudo": cronômetro ou registro manual. */
 function openRegisterModal(preset){
-  const p = preset || {};
+  const p = (preset && !(preset instanceof Event)) ? preset : {};
   if(!activeDisciplines().length){
     openModal(close => ({
       title:'Primeiro, o que você está estudando?',
@@ -3497,98 +3697,101 @@ function openRegisterModal(preset){
     return;
   }
 
-  let mode = p.mode || 'timer';
-  let discId = p.disciplineId || (activeDisciplines().slice().sort(sortByName)[0] || {}).id || '';
-  let topicId = p.topicId || '';
+  let mode = p.mode === 'manual' ? 'manual' : 'timer';
+  const presetDisc = p.disciplineId ? getDiscipline(p.disciplineId) : null;
+  const discId0 = (presetDisc && !presetDisc.archived) ? presetDisc.id : (activeDisciplines().slice().sort(sortByName)[0] || {}).id || '';
+  const presetTopic = p.topicId ? getTopic(p.topicId) : null;
+  const topicId0 = (presetTopic && !presetTopic.archived && presetTopic.disciplineId === discId0) ? presetTopic.id : '';
   let difficulty = null, type = p.type || null, outcome = null;
+  let saving = false;
 
   openModal(close => {
-    const content = h('div');
+    const tabs = h('div', { class:'chips', role:'group', 'aria-label':'Como registrar', style:'margin-bottom:14px' },
+      h('button', { class:'chip', type:'button', 'aria-pressed': mode === 'timer' ? 'true':'false', text:'Estudar agora', onclick:() => setMode('timer') }),
+      h('button', { class:'chip', type:'button', 'aria-pressed': mode === 'manual' ? 'true':'false', text:'Já estudei', onclick:() => setMode('manual') }));
 
-    const tabs = h('div', { class:'chips', style:'margin-bottom:14px' },
-      h('button', { class:'chip', type:'button', 'aria-pressed': mode === 'timer' ? 'true':'false', text:'Estudar agora',
-        onclick:() => { mode = 'timer'; rebuild(); } }),
-      h('button', { class:'chip', type:'button', 'aria-pressed': mode === 'manual' ? 'true':'false', text:'Já estudei',
-        onclick:() => { mode = 'manual'; rebuild(); } })
-    );
+    /* Todos os campos são criados UMA vez. Trocar de aba ou de disciplina só
+       mostra, esconde ou atualiza opções — nada do que foi digitado se perde. */
+    const target = studyTargetFields({ close, idPrefix:'rm', discId:discId0, topicId:topicId0,
+      onChange: () => { updatePreview(); renderOutcome(); } });
 
-    const body = h('div');
-    content.append(tabs, body);
+    const timerNote = h('p', { class:'hint', text:'O Ciclo conta o tempo por você — mesmo se você recarregar ou fechar a aba.' });
 
-    function rebuild(){
-      $$('.chip', tabs).forEach((c,i) => c.setAttribute('aria-pressed', (i === 0) === (mode === 'timer') ? 'true' : 'false'));
-      clear(body);
+    const dateInput = h('input', { type:'date', id:'rm-date', value: (p.date && p.date <= todayISO()) ? p.date : todayISO(), max: todayISO() });
+    const minInput = h('input', { type:'number', id:'rm-min', min:'1', step:'1', value:String(state.settings.defaultSessionMinutes), inputmode:'numeric' });
+    const preview = h('p', { class:'hint', 'aria-live':'polite' });
+    function updatePreview(){
+      const mins = Number(minInput.value);
+      const d = target.discId;
+      preview.textContent = (mins > 0 && d) ? `${mins} minutos = ${fmtNumber(creditsFor(d, mins))} crédito(s)` : '';
+    }
+    minInput.addEventListener('input', () => { minInput.removeAttribute('aria-invalid'); updatePreview(); });
+    dateInput.addEventListener('input', () => dateInput.removeAttribute('aria-invalid'));
 
-      const discSel = selectField('rm-disc', 'Disciplina', disciplineOptions(false), discId, (e) => {
-        discId = e.target.value; topicId = ''; rebuild();
-      });
-      const topicSel = selectField('rm-topic', 'Tópico (opcional)', topicOptions(discId, true), topicId, (e) => { topicId = e.target.value; });
-      body.append(discSel, topicSel);
+    const quick = h('div', { class:'chips', style:'margin-bottom:8px' },
+      [20,30,40,60].map(v => h('button', { class:'chip', type:'button', text:v + ' min',
+        onclick:() => { minInput.value = String(v); minInput.removeAttribute('aria-invalid'); updatePreview(); } })));
 
-      if(mode === 'timer'){
-        body.append(h('p', { class:'hint', text:'O Ciclo conta o tempo por você — mesmo se você recarregar ou fechar a aba.' }));
-      } else {
-        const dateInput = h('input', { type:'date', id:'rm-date', value: (p.date && p.date <= todayISO()) ? p.date : todayISO(), max: todayISO() });
-        const minInput = h('input', { type:'number', id:'rm-min', min:'1', step:'1', value:String(state.settings.defaultSessionMinutes), inputmode:'numeric' });
-        const preview = h('p', { class:'hint', text:'' });
-        const updatePreview = () => {
-          const mins = Number(minInput.value);
-          preview.textContent = (mins > 0 && discId) ? `${mins} minutos = ${fmtNumber(creditsFor(discId, mins))} crédito(s)` : '';
-        };
-        minInput.addEventListener('input', updatePreview);
-
-        const quick = h('div', { class:'chips', style:'margin-bottom:8px' },
-          [20,30,40,60].map(v => h('button', { class:'chip', type:'button', text:v + ' min',
-            onclick:() => { minInput.value = String(v); updatePreview(); } })));
-
-        const outcomeField = h('div', { class:'field' });
-        const renderOutcome = () => {
-          clear(outcomeField);
-          if(type === 'revisao' && topicId){
-            outcomeField.append(
-              h('label', { text:'Como você se saiu?' }),
-              pillGroup(REVIEW_OUTCOMES.map(o => ({ value:o.v, label:o.label })), outcome, v => { outcome = v; }));
-          }
-        };
-
-        body.append(
-          h('div', { class:'row' },
-            h('div', { class:'field' }, h('label', { for:'rm-date', text:'Data' }), dateInput),
-            h('div', { class:'field' }, h('label', { for:'rm-min', text:'Minutos' }), quick, minInput, preview)
-          ),
-          selectField('rm-type', 'Tipo de estudo', [{value:'',label:'— Não informado —'}].concat(SESSION_TYPES.map(t => ({ value:t.v, label:t.label }))), type,
-            (e) => { type = e.target.value || null; renderOutcome(); }),
-          h('div', { class:'field' }, h('label', { text:'Dificuldade percebida (opcional)' }),
-            pillGroup(DIFFICULTIES.map(d => ({ value:d.v, label:d.label, color:d.color })), difficulty, v => { difficulty = v ? Number(v) : null; })),
-          outcomeField,
-          h('div', { class:'field' }, h('label', { for:'rm-comment', text:'Comentário (opcional)' }), h('textarea', { id:'rm-comment' }))
-        );
-        renderOutcome();
-        topicSel.addEventListener('change', renderOutcome);
-        updatePreview();
+    const outcomeField = h('div', { class:'field' });
+    function renderOutcome(){
+      clear(outcomeField);
+      if(type === 'revisao' && target.topicId){
+        outcomeField.append(
+          h('label', { text:'Como você se saiu?' }),
+          pillGroup(REVIEW_OUTCOMES.map(o => ({ value:o.v, label:o.label })), outcome, v => { outcome = v; }));
       }
-      // o rótulo da ação principal acompanha a aba escolhida: o botão precisa
-      // dizer o que vai acontecer, não o que aconteceria na abertura do modal.
+    }
+    const commentIn = h('textarea', { id:'rm-comment' });
+
+    const manual = h('div', { class:'rm-manual' },
+      h('div', { class:'row' },
+        h('div', { class:'field' }, h('label', { for:'rm-date', text:'Data' }), dateInput),
+        h('div', { class:'field' }, h('label', { for:'rm-min', text:'Minutos' }), quick, minInput, preview)),
+      selectField('rm-type', 'Tipo de estudo', [{value:'',label:'— Não informado —'}].concat(SESSION_TYPES.map(t => ({ value:t.v, label:t.label }))), type,
+        (e) => { type = e.target.value || null; renderOutcome(); }),
+      h('div', { class:'field' }, h('label', { text:'Dificuldade percebida (opcional)' }),
+        pillGroup(DIFFICULTIES.map(d => ({ value:d.v, label:d.label, color:d.color })), difficulty, v => { difficulty = v ? Number(v) : null; })),
+      outcomeField,
+      h('div', { class:'field' }, h('label', { for:'rm-comment', text:'Comentário (opcional)' }), commentIn));
+
+    const primaryBtn = h('button', { class:'btn primary', type:'button', text:'Começar a estudar', onclick: async () => {
+      if(saving) return;
+      const discId = target.discId;
+      if(!discId || !getDiscipline(discId)){ toast('Escolha uma disciplina.', 'err'); return; }
+      const topicId = target.topicId;
+      if(mode === 'timer'){ close(); startTimer(discId, topicId, type); return; }
+
+      const minutes = Number(minInput.value);
+      if(!(minutes > 0)){ minInput.setAttribute('aria-invalid','true'); minInput.focus(); toast('Informe os minutos estudados.', 'err'); return; }
+      const date = dateInput.value || todayISO();
+      if(date > todayISO()){ dateInput.setAttribute('aria-invalid','true'); dateInput.focus(); toast('Escolha hoje ou um dia que já passou.', 'err', { title:'Data no futuro' }); return; }
+
+      saving = true;
+      primaryBtn.disabled = true; primaryBtn.setAttribute('aria-busy','true'); primaryBtn.textContent = 'Salvando…';
+      const ok = await saveSession({ disciplineId:discId, topicId, date, minutes, type, difficulty,
+        comment: commentIn.value.trim(), reviewOutcome: (type === 'revisao' && topicId) ? outcome : null });
+      saving = false;
+      if(ok){ close(); return; }
+      // Falhou: o modal continua aberto com tudo o que foi preenchido.
+      primaryBtn.disabled = false; primaryBtn.removeAttribute('aria-busy'); primaryBtn.textContent = 'Salvar estudo';
+    } });
+
+    function setMode(m){
+      mode = m;
+      $$('.chip', tabs).forEach((c, i) => c.setAttribute('aria-pressed', (i === 0) === (mode === 'timer') ? 'true' : 'false'));
+      timerNote.hidden = mode !== 'timer';
+      manual.hidden = mode !== 'manual';
+      // o rótulo da ação principal diz o que vai acontecer agora
       primaryBtn.textContent = mode === 'timer' ? 'Começar a estudar' : 'Salvar estudo';
     }
 
-    const primaryBtn = h('button', { class:'btn primary', type:'button', text:'Começar a estudar',
-      onclick: async () => {
-        if(!discId){ toast('Escolha uma disciplina.', 'err'); return; }
-        if(mode === 'timer'){ close(); startTimer(discId, topicId || null, type); return; }
-        const minutes = Number(($('#rm-min') || {}).value);
-        if(!(minutes > 0)){ toast('Informe os minutos estudados.', 'err'); return; }
-        const date = ($('#rm-date') || {}).value || todayISO();
-        const comment = (($('#rm-comment') || {}).value || '').trim();
-        close();
-        await saveSession({ disciplineId:discId, topicId: topicId || null, date, minutes, type, difficulty, comment, reviewOutcome: (type === 'revisao' ? outcome : null) });
-      } });
-
-    rebuild();
+    setMode(mode);
+    updatePreview();
+    renderOutcome();
 
     return {
       title:'Registrar estudo',
-      content,
+      content: h('div', tabs, target.node, timerNote, manual),
       actions:[
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
         primaryBtn
@@ -3604,76 +3807,96 @@ function openFinishModal(){
   const elapsedMin = Math.max(1, Math.round(TimerService.getElapsed() / 60000));
   let type = d.presetType || null;
   let difficulty = null, outcome = null;
-  const topic = d.topicId ? getTopic(d.topicId) : null;
-  let method = d.presetMethod || (topic ? ReviewEngine.effectiveMethod(topic).method : null);
+  let method = d.presetMethod || null;
+  let methodTouched = !!d.presetMethod;
+  let saving = false;
 
   openModal(close => {
     const minInput = h('input', { type:'number', id:'fin-min', min:'1', step:'1', value:String(elapsedMin), inputmode:'numeric' });
-    const preview = h('p', { class:'hint' });
-    const update = () => {
+    const preview = h('p', { class:'hint', 'aria-live':'polite' });
+    const target = studyTargetFields({ close, idPrefix:'fin', discId:d.disciplineId, topicId:d.topicId || '',
+      onChange: () => { update(); renderOutcome(); } });
+    function update(){
       const m = Number(minInput.value);
-      preview.textContent = m > 0 ? `${m} minutos = ${fmtNumber(creditsFor(d.disciplineId, m))} crédito(s)` : '';
-    };
-    minInput.addEventListener('input', update);
+      preview.textContent = (m > 0 && target.discId) ? `${m} minutos = ${fmtNumber(creditsFor(target.discId, m))} crédito(s)` : '';
+    }
+    minInput.addEventListener('input', () => { minInput.removeAttribute('aria-invalid'); update(); });
 
     const outcomeField = h('div', { class:'field' });
-    const renderOutcome = () => {
+    function renderOutcome(){
       clear(outcomeField);
-      if(type === 'revisao' && topic){
-        outcomeField.append(
-          h('label', { text:'Como você se saiu?' }),
-          pillGroup(REVIEW_OUTCOMES.map(o => ({ value:o.v, label:o.label })), outcome, v => { outcome = v; }),
-          h('p', { class:'hint', text:'Isso ajusta quando este tópico volta para revisão.' }),
-          h('label', { style:'margin-top:10px', text:'Como você revisou' }),
-          (() => {
-            const sel = h('select', { 'aria-label':'Como você revisou' });
-            CONCRETE_METHODS.forEach(mv => sel.appendChild(h('option', { value:mv, selected: mv === method }, methodLabel(mv))));
-            sel.addEventListener('change', () => { method = sel.value; });
-            return sel;
-          })()
-        );
-      }
-    };
+      const topic = target.topicId ? getTopic(target.topicId) : null;
+      if(!(type === 'revisao' && topic)) return;
+      if(!methodTouched) method = ReviewEngine.effectiveMethod(topic).method;
+      const sel = h('select', { id:'fin-method' });
+      CONCRETE_METHODS.forEach(mv => sel.appendChild(h('option', { value:mv, selected: mv === method }, methodLabel(mv))));
+      sel.addEventListener('change', () => { method = sel.value; methodTouched = true; });
+      outcomeField.append(
+        h('label', { text:'Como você se saiu?' }),
+        pillGroup(REVIEW_OUTCOMES.map(o => ({ value:o.v, label:o.label })), outcome, v => { outcome = v; }),
+        h('p', { class:'hint', text:'Isso ajusta quando este tópico volta para revisão.' }),
+        h('label', { for:'fin-method', style:'margin-top:10px', text:'Como você revisou' }),
+        sel);
+    }
 
     const typeSel = selectField('fin-type', 'Tipo de estudo',
       [{value:'',label:'— Não informado —'}].concat(SESSION_TYPES.map(t => ({ value:t.v, label:t.label }))), type,
       (e) => { type = e.target.value || null; renderOutcome(); });
+    const commentIn = h('textarea', { id:'fin-comment' });
 
     const content = h('div',
-      h('p', { class:'modal-sub', text: (getDiscipline(d.disciplineId) || {}).name + (topic ? ' · ' + topic.name : '') }),
       h('div', { class:'field' }, h('label', { for:'fin-min', text:'Tempo (minutos)' }), minInput, preview),
+      target.node,
       typeSel,
       h('div', { class:'field' }, h('label', { text:'Dificuldade percebida (opcional)' }),
         pillGroup(DIFFICULTIES.map(x => ({ value:x.v, label:x.label, color:x.color })), difficulty, v => { difficulty = v ? Number(v) : null; })),
       outcomeField,
-      h('div', { class:'field' }, h('label', { for:'fin-comment', text:'Comentário (opcional)' }), h('textarea', { id:'fin-comment' }))
-    );
+      h('div', { class:'field' }, h('label', { for:'fin-comment', text:'Comentário (opcional)' }), commentIn));
     renderOutcome();
     update();
+
+    const saveBtn = h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: async () => {
+      if(saving) return;
+      const minutes = Number(minInput.value);
+      if(!(minutes > 0)){ minInput.setAttribute('aria-invalid','true'); minInput.focus(); toast('Informe um tempo válido.', 'err'); return; }
+      const discId = target.discId;
+      if(!discId || !getDiscipline(discId)){ toast('Escolha uma disciplina.', 'err'); return; }
+      // Outra aba pode ter finalizado este estudo (o evento "storage" mantém a memória em dia).
+      if(!TimerService.isActive){
+        close(); renderTimerBar();
+        toast('Ele já foi finalizado em outra aba — nada foi gravado de novo.', 'info', { title:'Este estudo já foi registrado' });
+        return;
+      }
+      const topicId = target.topicId;
+      // openedAt é o início real; startedAt muda a cada "Retomar".
+      const started = TimerService.data.openedAt || TimerService.data.startedAt;
+
+      saving = true;
+      saveBtn.disabled = true; saveBtn.setAttribute('aria-busy','true'); saveBtn.textContent = 'Salvando…';
+      /* v6.3 — grava ANTES de encerrar o cronômetro. Se a gravação falhar, o
+         cronômetro continua e o modal fica aberto: nenhum minuto se perde. */
+      const ok = await saveSession({
+        disciplineId: discId, topicId, date: todayISO(),
+        minutes, type, difficulty, comment: commentIn.value.trim(),
+        reviewOutcome: (type === 'revisao' && topicId) ? outcome : null,
+        reviewMethod: (type === 'revisao' && topicId) ? method : null,
+        startedAt: new Date(started).toISOString(), endedAt: nowISO()
+      });
+      saving = false;
+      if(!ok){ saveBtn.disabled = false; saveBtn.removeAttribute('aria-busy'); saveBtn.textContent = 'Salvar'; return; }
+      TimerService.finish();
+      close();
+      renderTimerBar();
+      // se veio de uma sessão de revisão montada, segue para o próximo item
+      if(ui.reviewQueue && ui.reviewQueue.length) setTimeout(runNextQueuedReview, 400);
+    } });
 
     return {
       title:'Como foi o estudo?',
       content,
       actions:[
         h('button', { class:'btn ghost', type:'button', text:'Continuar estudando', onclick:() => close() }),
-        h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: async () => {
-          const minutes = Number(minInput.value);
-          if(!(minutes > 0)){ toast('Informe um tempo válido.', 'err'); return; }
-          const comment = (($('#fin-comment') || {}).value || '').trim();
-          const started = d.startedAt;
-          const fin = TimerService.finish();
-          close();
-          renderTimerBar();
-          await saveSession({
-            disciplineId: fin.data.disciplineId, topicId: fin.data.topicId, date: todayISO(),
-            minutes, type, difficulty, comment,
-            reviewOutcome: (type === 'revisao' ? outcome : null),
-            reviewMethod: (type === 'revisao' ? method : null),
-            startedAt: new Date(started).toISOString(), endedAt: nowISO()
-          });
-          // se veio de uma sessão de revisão montada, segue para o próximo item
-          if(ui.reviewQueue && ui.reviewQueue.length) setTimeout(runNextQueuedReview, 400);
-        } })
+        saveBtn
       ]
     };
   }, { size:'wide', dismissible:false });
@@ -3704,10 +3927,12 @@ function offerStaleSession(){
 /**
  * Salva uma sessão. Quando há tópico envolvido, atualiza revisão/domínio
  * na MESMA transação — ou tudo grava, ou nada.
+ * v6.3: devolve true quando gravou e false quando não — quem chama só fecha
+ * o formulário depois de gravar, para nada do que foi digitado se perder.
  */
 async function saveSession(input){
   const disc = getDiscipline(input.disciplineId);
-  if(!disc){ toast('Disciplina não encontrada.', 'err'); return; }
+  if(!disc){ toast('Escolha outra disciplina e tente de novo.', 'err', { title:'Disciplina não encontrada' }); return false; }
 
   const minutes = Math.max(0, Math.round(Number(input.minutes) || 0));
   const session = newSession({
@@ -3747,10 +3972,11 @@ async function saveSession(input){
   } catch(err){
     console.error(err);
     toast('Tente novamente. Nada foi perdido.', 'err', { title:'Não foi possível salvar o estudo' });
-    return;
+    return false;
   }
 
-  await refresh();
+  // Gravado. Se redesenhar falhar, o estudo já está salvo: não pedir para repetir.
+  try { await refresh(); } catch(err){ console.error('Falha ao atualizar a tela depois de salvar:', err); }
 
   const topicName = topicCopy ? topicCopy.name : '';
   const prog = PlannerEngine.getCurrentWeekProgress();
@@ -3771,23 +3997,36 @@ async function saveSession(input){
     if(topicCopy && topicCopy.reviewDueDate) rows.push(['Próxima revisão', fmtRelativeFuture(topicCopy.reviewDueDate)]);
     toastRich('Estudo registrado', rows);
   }
+  return true;
 }
 
 async function updateSession(id, changes){
   const s = state.sessions.find(x => x.id === id);
-  if(!s) return;
+  if(!s){ toast('Ele pode ter sido removido em outra aba.', 'err', { title:'Estudo não encontrado' }); return false; }
   const updated = Object.assign({}, s, changes, { updatedAt: nowISO() });
   updated.minutes = Math.max(0, Math.round(Number(updated.minutes) || 0));
   updated.credits = creditsFor(updated.disciplineId, updated.minutes);
-  await DB.put('sessions', updated);
-  await refresh();
+  try { await DB.put('sessions', updated); }
+  catch(err){
+    console.error('Falha ao atualizar o estudo:', err);
+    toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a edição' });
+    return false;
+  }
+  try { await refresh(); } catch(err){ console.error(err); }
   toast('Estudo atualizado.', 'ok');
+  return true;
 }
 
 async function deleteSession(id){
-  await DB.delete('sessions', id);
-  await refresh();
+  try { await DB.delete('sessions', id); }
+  catch(err){
+    console.error('Falha ao remover o estudo:', err);
+    toast('Tente novamente. O estudo continua no histórico.', 'err', { title:'Não foi possível remover' });
+    return false;
+  }
+  try { await refresh(); } catch(err){ console.error(err); }
   toast('Estudo removido do histórico.');
+  return true;
 }
 
 /* =========================================================================
@@ -3835,17 +4074,17 @@ function renderToday(){
         h('div', { class:'tf-actions' },
           h('button', { class:'btn primary lg', type:'button', onclick:() => openQuickStart() }, icon('i-play'), 'Começar a estudar'),
           h('button', { class:'linkbtn muted', type:'button', text:'Como funciona?', onclick:() => openInteractiveGuide('ig-sessao') }))),
-      startGuideCard(),
-      dailyQuoteCard()));
+      dailyQuoteCard(),
+      startGuideCard()));
     return;
   }
 
   const actions = RecommendationEngine.getNextActions(3);
   mount(root, h('div', { class:'today' },
     todayFocus(actions[0], actions.slice(1)),
+    dailyQuoteCard(),       // v6.3: logo abaixo da ação principal, sem competir com ela
     todayNext(),
-    startGuideCard(),
-    dailyQuoteCard()));
+    startGuideCard()));
 }
 
 /** A recomendação principal: o quê, por quê (uma frase) e uma ação. */
@@ -4281,7 +4520,7 @@ function openReviewPrimer(){
         h('p', { class:'hint', text:'Tentar lembrar, resolver exercícios, explicar em voz alta, escrever de memória… O Ciclo sugere um jeito, e você pode trocar.' }))),
     h('p', { class:'card-title', style:'margin-top:18px', text:'O que significa cada resposta' }),
     h('div', { class:'outcome-grid' },
-      h('div', null, h('strong', { text:'Esqueci boa parte' }), h('span', { text:'O conteúdo volta amanhã.' })),
+      h('div', null, h('strong', { text:'Esqueci' }), h('span', { text:'O conteúdo volta amanhã.' })),
       h('div', null, h('strong', { text:'Lembrei com dificuldade' }), h('span', { text:'Volta em poucos dias.' })),
       h('div', null, h('strong', { text:'Lembrei bem' }), h('span', { text:'O tempo até a próxima revisão cresce.' })),
       h('div', null, h('strong', { text:'Dominei' }), h('span', { text:'O tempo até a próxima revisão cresce bastante.' }))),
@@ -4439,8 +4678,9 @@ function renderPlan(){
     h('div', null, h('p', { class:'card-title', text:'Total planejado', style:'margin:0 0 2px' }), totalEl),
     diffEl));
   allocCard.append(h('div', { class:'row auto', style:'margin-top:14px' },
-    h('button', { class:'btn primary', type:'button', text:'Salvar plano', onclick:() => savePlanDraft(false) }),
-    h('button', { class:'btn ghost', type:'button', text:'Salvar e aplicar nesta semana', onclick:() => savePlanDraft(true) })
+    // v6.3: once() — um duplo clique não grava duas vezes (antes podia criar dois planos ativos)
+    h('button', { class:'btn primary', type:'button', text:'Salvar plano', onclick: once(() => savePlanDraft(false)) }),
+    h('button', { class:'btn ghost', type:'button', text:'Salvar e aplicar nesta semana', onclick: once(() => savePlanDraft(true)) })
   ));
   updateTotals();
   const ph = planHints(draft);
@@ -4557,46 +4797,65 @@ function createSimplePlan(minutes){
   }), { size:'wide' });
 }
 
+let planSaveRunning = false;
 async function savePlanDraft(applyToCurrentWeek){
+  // Os dois botões de salvar compartilham esta trava: clicar em um e depois no
+  // outro, rápido, não produz duas gravações concorrentes.
+  if(planSaveRunning) return;
   const draft = ui.planDraft;
   if(!draft) return;
-  const total = sum(draft.allocations, a => Number(a.targetMinutes) || 0);
-  if(total > draft.availableMinutes){
-    const ok = await confirmModal(
-      `O total planejado (${fmtDuration(total)}) passa da sua disponibilidade (${fmtDuration(draft.availableMinutes)}). Salvar assim mesmo?`,
-      { confirmLabel:'Salvar assim mesmo', danger:false });
-    if(!ok) return;
-  }
+  planSaveRunning = true;
+  try {
+    const total = sum(draft.allocations, a => Number(a.targetMinutes) || 0);
+    if(total > draft.availableMinutes){
+      const ok = await confirmModal(
+        `O total planejado (${fmtDuration(total)}) passa da sua disponibilidade (${fmtDuration(draft.availableMinutes)}). Salvar assim mesmo?`,
+        { confirmLabel:'Salvar assim mesmo', danger:false });
+      if(!ok) return;
+    }
 
-  let plan = PlannerEngine.activePlan();
-  if(!plan){
-    plan = newPlan(draft.name, draft.availableMinutes);
-    state.plans.forEach(p => { p.active = false; });
-    await DB.putMany('plans', state.plans);
-  }
-  plan.name = str(draft.name).trim() || 'Meu plano';
-  plan.weeklyAvailableMinutes = draft.availableMinutes;
-  plan.allocations = draft.allocations.map(a => ({ ...a }));
-  plan.active = true;
-  plan.updatedAt = nowISO();
-  await DB.put('plans', plan);
+    /* v6.3 — tudo numa transação e sobre CÓPIAS: se a gravação falhar, nem o
+       banco nem a memória ficam com um plano desativado pela metade. */
+    const current = PlannerEngine.activePlan();
+    const plan = current ? Object.assign({}, current) : newPlan(draft.name, draft.availableMinutes);
+    const others = current ? [] : state.plans.filter(p => p.active).map(p => Object.assign({}, p, { active:false, updatedAt: nowISO() }));
+    plan.name = str(draft.name).trim() || 'Meu plano';
+    plan.weeklyAvailableMinutes = draft.availableMinutes;
+    plan.allocations = draft.allocations.map(a => ({ ...a }));
+    plan.active = true;
+    plan.updatedAt = nowISO();
 
-  if(applyToCurrentWeek){
-    const ws = dateToISO(startOfWeek(today()));
-    const wp = {
-      id: ws, weekStart: ws, weekEnd: dateToISO(endOfWeek(today())),
-      basePlanId: plan.id, availableMinutes: plan.weeklyAvailableMinutes,
-      allocations: plan.allocations.map(a => ({ ...a })),
-      createdAt: nowISO(), updatedAt: nowISO()
-    };
-    await DB.put('weeklyPlans', wp);
-  }
+    let wp = null;
+    if(applyToCurrentWeek){
+      const ws = dateToISO(startOfWeek(today()));
+      wp = {
+        id: ws, weekStart: ws, weekEnd: dateToISO(endOfWeek(today())),
+        basePlanId: plan.id, availableMinutes: plan.weeklyAvailableMinutes,
+        allocations: plan.allocations.map(a => ({ ...a })),
+        createdAt: nowISO(), updatedAt: nowISO()
+      };
+    }
 
-  ui.planDraft = null;
-  ui.planEditing = false;
-  await refresh();
-  toast(applyToCurrentWeek ? 'Já vale para esta semana.' : 'Vale a partir da próxima semana. Para usar agora, escolha "Salvar e aplicar nesta semana".', 'ok',
-    { title:'Plano salvo' });
+    try {
+      await DB.transactional(wp ? ['plans','weeklyPlans'] : ['plans'], api => {
+        others.forEach(p => api.put('plans', p));
+        api.put('plans', plan);
+        if(wp) api.put('weeklyPlans', wp);
+      });
+    } catch(err){
+      console.error('Falha ao salvar o plano:', err);
+      toast('Tente novamente. Seu plano anterior continua valendo.', 'err', { title:'Não foi possível salvar o plano' });
+      return;
+    }
+
+    ui.planDraft = null;
+    ui.planEditing = false;
+    try { await refresh(); } catch(err){ console.error(err); }
+    toast(applyToCurrentWeek ? 'Já vale para esta semana.' : 'Vale a partir da próxima semana. Para usar agora, escolha "Salvar e aplicar nesta semana".', 'ok',
+      { title:'Plano salvo' });
+  } finally {
+    planSaveRunning = false;
+  }
 }
 
 function openNewPlanModal(){
@@ -6552,80 +6811,208 @@ function reviewToggle(checked){
     h('p', { class:'hint', style:'margin-left:26px', text:'O Ciclo avisa quando for hora de revisar este tópico.' })) };
 }
 
+/** Chave de comparação de nomes de tópico: sem acento, caixa ou espaços extras. */
+function topicNameKey(name){ return normalizeText(name); }
+
+/** Tópico da disciplina com o mesmo nome (ativo tem preferência sobre arquivado). */
+function findTopicByName(disciplineId, name, exceptId){
+  const key = topicNameKey(name);
+  if(!key || !disciplineId) return null;
+  const same = topicsOf(disciplineId, true).filter(t => t.id !== exceptId && topicNameKey(t.name) === key);
+  return same.find(t => !t.archived) || same[0] || null;
+}
+
 /**
- * Adicionar ou editar UM tópico. opts.name pré-preenche o nome digitado na
- * página da disciplina. Ao salvar, a tela atual se redesenha sozinha — quem
- * estava na disciplina continua nela.
+ * EDITOR CANÔNICO DE TÓPICO (v6.3).
+ * UM formulário para: adicionar/editar pela disciplina (openTopicModal) e
+ * criar um tópico no meio do registro de um estudo (subtela do registro).
+ * Não existe versão simplificada paralela: nome, prioridade, revisões e
+ * opções de revisão são sempre os mesmos campos, com os mesmos padrões.
+ *
+ *   o.disciplineId        disciplina inicial
+ *   o.topic               tópico em edição (null = novo)
+ *   o.name                nome pré-preenchido
+ *   o.chooseDiscipline    mostra o seletor de disciplina (no registro)
+ *   o.inRegistration      textos e botões pensados para quem está registrando
+ *   o.close               fechar do modal (usado por "vários de uma vez" e Arquivar)
+ *   o.onSaved(topic)      chamado DEPOIS de gravar com sucesso
+ *   o.onCancel()          Cancelar / Voltar
+ *   o.onUseExisting(t)    "Usar este tópico" diante de um nome repetido
+ * Devolve { title, content, actions, focus }.
+ */
+function topicEditor(o){
+  const topic = (o.topic && typeof o.topic.id === 'string') ? o.topic : null;
+  let discId = o.disciplineId;
+  let saving = false;
+  let acceptedArchivedTwin = null;    // id do arquivado homônimo que o usuário decidiu ignorar
+
+  const nameIn = h('input', { type:'text', id:'tm-name', value: topic ? topic.name : (o.name || ''), placeholder:'Ex.: Derivadas',
+    maxlength:'80', autocomplete:'off', 'aria-describedby':'tm-name-msg' });
+  const msg = h('div', { class:'tm-msg', id:'tm-name-msg', 'aria-live':'polite' });
+  const clearMsg = () => { nameIn.removeAttribute('aria-invalid'); clear(msg); acceptedArchivedTwin = null; };
+  nameIn.addEventListener('input', clearMsg);
+
+  let priority = topic ? PriorityEngine.clamp(topic.priority) : PRIORITY_DEFAULT;
+  const prio = priorityPicker({ value:priority, context:'topic', id:'tm-prio', label:'Prioridade', helpKey:'prioridadeTopico',
+    onChange: v => { priority = v; } });
+  const rev = reviewToggle(topic ? topic.reviewEnabled : !!state.settings.autoReviewNewTopics);
+
+  // As opções de revisão mostram a estratégia da disciplina: trocam junto com ela.
+  const advWrap = h('div');
+  let advanced = topicReviewOptions(discId, topic);
+  advWrap.append(advanced.node);
+  function rebuildAdvanced(){
+    const wasOpen = advanced.node.open;
+    advanced = topicReviewOptions(discId, { reviewStrategy: advanced.strategy, preferredReviewMethod: advanced.method });
+    advanced.node.open = wasOpen;
+    mount(advWrap, advanced.node);
+  }
+
+  let where;
+  if(o.chooseDiscipline){
+    where = selectField('tm-disc', 'Disciplina', disciplineOptions(false), discId, (e) => {
+      discId = e.target.value;
+      clearMsg();
+      rebuildAdvanced();
+    });
+  } else {
+    where = h('p', { class:'modal-sub' }, h('span', { class:'muted-text', text:'Em ' }), disciplinePath(getDiscipline(discId)));
+  }
+
+  const content = h('div', { class:'topic-editor' },
+    o.inRegistration ? h('p', { class:'modal-sub', text:'O estudo que você está registrando continua guardado. Ao salvar, o tópico já volta selecionado.' }) : null,
+    where,
+    h('div', { class:'field' }, h('label', { for:'tm-name', text:'Nome do tópico' }), nameIn,
+      topic ? null : h('p', { class:'hint', text:'Uma parte específica da disciplina. Ex.: Derivadas em Cálculo, Present Perfect em Inglês.' }),
+      msg),
+    h('div', { class:'field' }, prio),
+    rev.node,
+    advWrap,
+    topic && topic.reviewDueDate ? h('p', { class:'hint', style:'margin-top:12px',
+      text:`Próxima revisão ${fmtRelativeFuture(topic.reviewDueDate)} · consolidação ${topic.masteryLevel || '—'} de 5` }) : null,
+    (!topic && !o.inRegistration && o.close) ? h('button', { class:'linkbtn muted', type:'button', style:'margin-top:12px', text:'Prefere adicionar vários tópicos de uma vez?',
+      onclick:() => { o.close(); openBulkTopicModal(discId); } }) : null
+  );
+  nameIn.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); save(); } });
+
+  function setBusy(on, label){
+    saveBtn.disabled = on;
+    if(on){ saveBtn.setAttribute('aria-busy','true'); saveBtn.textContent = label || 'Salvando…'; }
+    else { saveBtn.removeAttribute('aria-busy'); saveBtn.textContent = saveLabel; }
+  }
+
+  /** Nome repetido: explica e oferece o caminho certo — nunca cria em silêncio. */
+  function showTwin(t){
+    nameIn.setAttribute('aria-invalid','true');
+    if(!t.archived){
+      mount(msg,
+        h('p', { class:'err', text:`Já existe um tópico chamado “${t.name}” nesta disciplina.` }),
+        o.onUseExisting ? h('button', { class:'linkbtn', type:'button', text:'Usar este tópico', onclick:() => o.onUseExisting(t) }) : null);
+    } else {
+      mount(msg,
+        h('p', { class:'warn', text:`“${t.name}” já existe nesta disciplina, mas está arquivado.` }),
+        h('div', { class:'tm-msg-actions' },
+          topic ? null : h('button', { class:'linkbtn', type:'button', text: o.onUseExisting ? 'Reativar e usar' : 'Reativar', onclick:() => reactivate(t) }),
+          h('button', { class:'linkbtn muted', type:'button', text: topic ? 'Salvar mesmo assim' : 'Criar outro com o mesmo nome',
+            onclick:() => { acceptedArchivedTwin = t.id; save(); } })));
+    }
+    nameIn.focus();
+  }
+
+  async function reactivate(t){
+    if(saving) return;
+    saving = true; setBusy(true, 'Reativando…');
+    try {
+      await persist('topics', Object.assign({}, t, { archived:false }));
+    } catch(err){
+      console.error('Falha ao reativar o tópico:', err);
+      saving = false; setBusy(false);
+      toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível reativar o tópico' });
+      return;
+    }
+    try { await refresh(); } catch(err){ console.error(err); }
+    saving = false; setBusy(false);
+    toast(t.name, 'ok', { title:'Tópico reativado' });
+    const fresh = getTopic(t.id) || t;
+    if(o.onUseExisting) o.onUseExisting(fresh); else if(o.onSaved) o.onSaved(fresh);
+  }
+
+  async function save(){
+    if(saving) return;
+    const name = nameIn.value.trim();
+    const disc = getDiscipline(discId);
+    if(!name){
+      nameIn.setAttribute('aria-invalid','true'); nameIn.focus();
+      mount(msg, h('p', { class:'err', text:'Escreva o nome do tópico.' }));
+      return;
+    }
+    if(!disc){ toast('Escolha uma disciplina.', 'err'); return; }
+    const twin = findTopicByName(discId, name, topic ? topic.id : null);
+    if(twin && !(twin.archived && twin.id === acceptedArchivedTwin)){ showTwin(twin); return; }
+
+    saving = true; setBusy(true);
+    let saved;
+    try {
+      if(topic){
+        saved = Object.assign({}, topic, { name, priority, reviewEnabled: rev.chk.checked,
+          reviewStrategy: advanced.strategy, preferredReviewMethod: advanced.method, updatedAt: nowISO() });
+        delete saved.importance;
+        await DB.put('topics', saved);
+      } else {
+        const existing = topicsOf(discId, true);
+        const order = existing.length ? Math.max(...existing.map(t => t.sortOrder || 0)) + 10 : 10;
+        saved = newTopic(discId, name, order);
+        Object.assign(saved, { priority, reviewEnabled: rev.chk.checked, reviewStrategy: advanced.strategy, preferredReviewMethod: advanced.method });
+        await DB.put('topics', saved);
+      }
+    } catch(err){
+      // O editor continua aberto com tudo o que foi preenchido.
+      console.error('Falha ao salvar o tópico:', err);
+      saving = false; setBusy(false);
+      toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar o tópico' });
+      return;
+    }
+    if(!topic && !o.inRegistration && ui.view === 'disciplines'){ ui.discFocus = 'topic-' + saved.id; ui.justCreated = 'topic-' + saved.id; }
+    try { await refresh(); } catch(err){ console.error('Falha ao atualizar a tela:', err); }
+    saving = false; setBusy(false);
+    if(topic) toast(`${name} · prioridade ${priorityText(priority)}`, 'ok', { title:'Tópico atualizado' });
+    else if(o.inRegistration) toast(`${disc.name} › ${name}`, 'ok', { title:'Tópico criado e selecionado' });
+    else toast(`${disc.name} › ${name} · prioridade ${priorityText(priority)}`, 'ok', { title:'Tópico adicionado' });
+    if(o.onSaved) o.onSaved(getTopic(saved.id) || saved);
+  }
+
+  const saveLabel = topic ? 'Salvar' : (o.inRegistration ? 'Criar e selecionar' : 'Adicionar tópico');
+  const saveBtn = h('button', { class:'btn primary', type:'button', text:saveLabel, onclick:() => save() });
+  const actions = [
+    h('button', { class:'btn ghost', type:'button', text: o.inRegistration ? 'Voltar ao registro' : 'Cancelar', onclick:() => { if(o.onCancel) o.onCancel(); } }),
+    saveBtn
+  ];
+  if(topic && o.close){
+    actions.unshift(h('button', { class:'btn ghost', type:'button', text:'Arquivar', onclick: async () => {
+      o.close();
+      const ok = await confirmModal('Arquivar este tópico? Ele sai das opções ativas e a revisão fica pausada — o histórico é preservado.', { confirmLabel:'Arquivar', danger:false });
+      if(!ok) return;
+      await persist('topics', Object.assign(topic, { archived:true }));
+      await refresh();
+      toast(topic.name, 'info', { title:'Tópico arquivado' });
+    } }));
+  }
+  return { title: topic ? 'Editar tópico' : (o.inRegistration ? 'Novo tópico' : 'Adicionar tópico'), content, actions, focus: nameIn };
+}
+
+/**
+ * Adicionar ou editar UM tópico pela disciplina. opts.name pré-preenche o
+ * nome digitado na página da disciplina. Ao salvar, a tela atual se
+ * redesenha sozinha — quem estava na disciplina continua nela.
  */
 function openTopicModal(disciplineId, topic, opts){
   if(topic && typeof topic.id !== 'string') topic = null;
   const o = (opts && !(opts instanceof Event)) ? opts : {};
-  const disc = getDiscipline(disciplineId);
-  if(!disc){ toast('Escolha uma disciplina primeiro.', 'err'); return; }
+  if(!disciplineId || disciplineId instanceof Event || !getDiscipline(disciplineId)){ toast('Escolha uma disciplina primeiro.', 'err'); return; }
   openModal(close => {
-    const nameIn = h('input', { type:'text', id:'tm-name', value: topic ? topic.name : (o.name || ''), placeholder:'Ex.: OSPF', maxlength:'80', autocomplete:'off' });
-    let priority = topic ? PriorityEngine.clamp(topic.priority) : PRIORITY_DEFAULT;
-    const prio = priorityPicker({ value:priority, context:'topic', id:'tm-prio', label:'Prioridade', helpKey:'prioridadeTopico',
-      onChange: v => { priority = v; } });
-    const rev = reviewToggle(topic ? topic.reviewEnabled : !!state.settings.autoReviewNewTopics);
-    const advanced = topicReviewOptions(disciplineId, topic);
-
-    const content = h('div',
-      h('p', { class:'modal-sub' }, h('span', { class:'muted-text', text:'Em ' }), disciplinePath(disc)),
-      h('div', { class:'field' }, h('label', { for:'tm-name', text:'Nome do tópico' }), nameIn,
-        topic ? null : h('p', { class:'hint', text:'Uma parte específica da disciplina. Ex.: Subnetting, VLAN, OSPF.' })),
-      h('div', { class:'field' }, prio),
-      rev.node,
-      advanced.node,
-      topic && topic.reviewDueDate ? h('p', { class:'hint', style:'margin-top:12px',
-        text:`Próxima revisão ${fmtRelativeFuture(topic.reviewDueDate)} · consolidação ${topic.masteryLevel || '—'} de 5` }) : null,
-      topic ? null : h('button', { class:'linkbtn muted', type:'button', style:'margin-top:12px', text:'Prefere adicionar vários tópicos de uma vez?',
-        onclick:() => { close(); openBulkTopicModal(disciplineId); } })
-    );
-    nameIn.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); saveBtn.click(); } });
-
-    const saveBtn = h('button', { class:'btn primary', type:'button', text: topic ? 'Salvar' : 'Adicionar tópico', onclick: async () => {
-      const name = nameIn.value.trim();
-      if(!name){ nameIn.setAttribute('aria-invalid','true'); nameIn.focus(); toast('Escreva o nome do tópico.', 'err'); return; }
-      const dup = topicsOf(disciplineId).find(x => x.name.toLowerCase() === name.toLowerCase() && (!topic || x.id !== topic.id));
-      if(dup){ nameIn.setAttribute('aria-invalid','true'); toast(`"${dup.name}" já existe em ${disc.name}.`, 'err'); return; }
-      close();
-      try {
-        if(topic){
-          const updated = Object.assign({}, topic, { name, priority, reviewEnabled: rev.chk.checked,
-            reviewStrategy: advanced.strategy, preferredReviewMethod: advanced.method, updatedAt: nowISO() });
-          delete updated.importance;
-          await DB.put('topics', updated);
-          await refresh();
-          toast(`${name} · prioridade ${priorityText(priority)}`, 'ok', { title:'Tópico atualizado' });
-        } else {
-          const existing = topicsOf(disciplineId, true);
-          const order = existing.length ? Math.max(...existing.map(t => t.sortOrder || 0)) + 10 : 10;
-          const t = newTopic(disciplineId, name, order);
-          Object.assign(t, { priority, reviewEnabled: rev.chk.checked, reviewStrategy: advanced.strategy, preferredReviewMethod: advanced.method });
-          await DB.put('topics', t);
-          if(ui.view === 'disciplines'){ ui.discFocus = 'topic-' + t.id; ui.justCreated = 'topic-' + t.id; }
-          await refresh();
-          toast(`${disc.name} › ${name} · prioridade ${priorityText(priority)}`, 'ok', { title:'Tópico adicionado' });
-        }
-      } catch(err){
-        console.error('Falha ao salvar o tópico:', err);
-        toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar o tópico' });
-      }
-    } });
-
-    const actions = [ h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }), saveBtn ];
-    if(topic){
-      actions.unshift(h('button', { class:'btn ghost', type:'button', text:'Arquivar', onclick: async () => {
-        close();
-        const ok = await confirmModal('Arquivar este tópico? Ele sai das opções ativas e a revisão fica pausada — o histórico é preservado.', { confirmLabel:'Arquivar', danger:false });
-        if(!ok) return;
-        await persist('topics', Object.assign(topic, { archived:true }));
-        await refresh();
-        toast(topic.name, 'info', { title:'Tópico arquivado' });
-      } }));
-    }
-    return { title: topic ? 'Editar tópico' : 'Adicionar tópico', content, actions };
+    const ed = topicEditor({ disciplineId, topic, name:o.name, close,
+      onSaved: () => close(), onCancel: () => close() });
+    return { title: ed.title, content: ed.content, actions: ed.actions };
   });
 }
 
@@ -6864,14 +7251,21 @@ function openDeadlineModal(dl, preset){
 
     const discSel = h('select', { id:'dl-disc' });
     discSel.appendChild(h('option', { value:'' }, 'Nenhuma'));
-    disciplineOptions(false).forEach(x => discSel.appendChild(h('option', { value:x.value, selected: x.value === discId }, x.label)));
     if(discId && !getDiscipline(discId)) discId = '';
+    // v6.3: disciplina e tópico atuais aparecem mesmo arquivados — antes a tela
+    // mostrava "Nenhuma" e salvar podia desligar o prazo do tópico sem aviso.
+    const discOpts = disciplineOptions(false);
+    if(discId && !discOpts.some(x => x.value === discId)) discOpts.push({ value:discId, label:getDiscipline(discId).name + ' (arquivada)' });
+    discOpts.forEach(x => discSel.appendChild(h('option', { value:x.value, selected: x.value === discId }, x.label)));
     const topicSel = h('select', { id:'dl-topic' });
+    const keepTopic = topicId ? getTopic(topicId) : null;
     const fillTopics = () => {
       clear(topicSel);
       topicSel.appendChild(h('option', { value:'' }, discId ? 'Toda a disciplina' : 'Escolha uma disciplina primeiro'));
-      if(discId) topicsOf(discId).forEach(t => topicSel.appendChild(h('option', { value:t.id, selected: t.id === topicId }, t.name)));
-      if(topicId && !topicsOf(discId).some(t => t.id === topicId)) topicId = '';
+      const list = discId ? topicsOf(discId).slice() : [];
+      if(keepTopic && keepTopic.archived && keepTopic.disciplineId === discId) list.push(keepTopic);
+      list.forEach(t => topicSel.appendChild(h('option', { value:t.id, selected: t.id === topicId }, t.name + (t.archived ? ' (arquivado)' : ''))));
+      if(topicId && !list.some(t => t.id === topicId)) topicId = '';
       topicSel.disabled = !discId;
     };
     fillTopics();
@@ -7428,12 +7822,14 @@ function scopePicker(d, pick, rerender){
   }
 
   const listBox = h('div', { class:'an-pick-results' });
+  // v6.3: texto de busca normalizado uma vez por abertura, não a cada tecla
+  const keys = new Map(items.map(i => [i.id, normalizeText(i.name + ' ' + (i.sub || ''))]));
   const drawList = () => {
     clear(listBox);
     const q = normalizeText(pick.search);
     let shown, heading = null;
     if(q){
-      shown = items.filter(i => normalizeText(i.name + ' ' + i.sub).includes(q)).slice(0, 30);
+      shown = items.filter(i => keys.get(i.id).includes(q)).slice(0, 30);
       heading = shown.length ? null : `Nada encontrado para “${pick.search}”.`;
     } else {
       const recent = analyticsRecentIds(kind).slice(0, kind === 'topic' ? 6 : 4).map(id => byId.get(id)).filter(Boolean);
@@ -7667,7 +8063,7 @@ function analyticsFocusSummary(a, focus){
   const where = sc.type === 'all' ? '' : ` em ${sc.label}`;
   if(focus === 'time'){
     out.push(`Você estudou ${fmtDuration(t.minutes)}${where} em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')}.`);
-    out.push(`Foram ${plural(t.count, 'sessão de estudo', 'sessões de estudo')}, com média de ${fmtDuration(t.avgSession)} cada.`);
+    out.push(`Foram ${plural(t.count, 'estudo registrado', 'estudos registrados')}, com média de ${fmtDuration(t.avgSession)} cada.`);
     if(t.activeDays > 1) out.push(`Nos dias com estudo, a média foi ${fmtDuration(t.avgPerActiveDay)}.`);
     const best = a.byWeekday.slice().sort((x,y) => y.minutes - x.minutes)[0];
     if(a.days >= 7 && t.count >= 3 && best && best.minutes > 0) out.push(`${best.label} foi o dia da semana com mais tempo (${fmtDuration(best.minutes)}).`);
@@ -7754,7 +8150,7 @@ function analyticsFocusMetrics(a, focus){
   const M = {
     time:     () => ({ key:'time', label:'Tempo estudado', value:fmtDuration(t.minutes), sub: t.activeDays ? `${fmtDuration(t.avgPerActiveDay)} por dia de estudo` : null, delta: delta(cmp.minutesDelta), onOpen:open('time') }),
     days:     () => ({ key:'days', label:'Dias com estudo', value:String(t.activeDays), sub:`de ${plural(a.days, 'dia', 'dias')}`, delta: delta(cmp.activeDaysDelta), onOpen:open('sessions') }),
-    sessions: () => ({ key:'sessions', label:'Sessões de estudo', value:String(t.count), sub: t.count ? `média de ${fmtDuration(t.avgSession)}` : null, delta: focus === 'time' ? delta(cmp.sessionsDelta) : null, onOpen:open('sessions') }),
+    sessions: () => ({ key:'sessions', label:'Estudos registrados', value:String(t.count), sub: t.count ? `média de ${fmtDuration(t.avgSession)}` : null, delta: focus === 'time' ? delta(cmp.sessionsDelta) : null, onOpen:open('sessions') }),
     avgDay:   () => ({ key:'avgday', label:'Média por dia de estudo', value:fmtDuration(t.avgPerActiveDay), sub:`${fmtDuration(t.avgPerDay)} por dia do período`, onOpen:open('time') }),
     plan:     () => ({ key:'plan', label:METRIC_WORDS.adherence.title, value:safePct(a.planAdherence.pct), sub:`${fmtDuration(a.planAdherence.realized)} de ${fmtDuration(a.planAdherence.planned)}`, onOpen:open('plan') }),
     reviews:  () => ({ key:'reviews', label:'Revisões concluídas', value:String(a.reviews.completed), sub: a.reviews.overdueNow ? `${plural(a.reviews.overdueNow, 'atrasada', 'atrasadas')} agora` : 'nenhuma atrasada agora', onOpen:open('reviews') }),
@@ -7788,7 +8184,7 @@ function analyticsFocusMetrics(a, focus){
       return [
         { key:'tstatus', label:'Situação', value:TOPIC_STATUS_LABEL[topicStatus(topicObj)], onOpen:open('content') },
         masteryMetric(),
-        { key:'tsess', label:'Sessões de estudo', value:String(s.length), sub:fmtDuration(sum(s, x => x.minutes || 0)) },
+        { key:'tsess', label:'Estudos registrados', value:String(s.length), sub:fmtDuration(sum(s, x => x.minutes || 0)) },
         { key:'tnext', label:'Próxima revisão', value: topicObj.reviewEnabled && topicObj.reviewDueDate ? fmtRelativeFuture(topicObj.reviewDueDate) : '—', sub: topicObj.reviewEnabled && topicObj.reviewDueDate ? fmtDateBR(topicObj.reviewDueDate) : null }
       ];
     }
@@ -8234,7 +8630,7 @@ function openAnalyticsDrawer(kind, a){
   }
 
   else if(kind === 'sessions'){
-    title = 'Sessões de estudo';
+    title = 'Estudos registrados';
     body.append(drawerIntro(`Cada vez que você estudou e registrou ${scopeWords(a)} no período.`));
     body.append(h('div', { class:'stat-grid compact' },
       statBox(String(t.count), t.count === 1 ? 'vez' : 'vezes'),
@@ -8994,7 +9390,7 @@ function buildSummaryText(a){
   L.push(...reportHeaderLines(a), '');
   analyticsFocusSummary(a, reportFocus(a).v).forEach(s => L.push(`• ${s}`));
   L.push('');
-  L.push(`Tempo: ${fmtDuration(a.totals.minutes)} · Sessões de estudo: ${a.totals.count} · Dias com estudo: ${a.totals.activeDays} de ${a.days}`);
+  L.push(`Tempo: ${fmtDuration(a.totals.minutes)} · Estudos registrados: ${a.totals.count} · Dias com estudo: ${a.totals.activeDays} de ${a.days}`);
   if(a.planAdherence.hasPlan) L.push(`Plano cumprido: ${safePct(a.planAdherence.pct)} (${fmtDuration(a.planAdherence.realized)} de ${fmtDuration(a.planAdherence.planned)})`);
   if(a.reviews.completed || a.reviews.overdueNow) L.push(`Revisões: ${a.reviews.completed} concluídas · ${a.reviews.overdueNow} atrasadas agora`);
   if(a.deadlines.upcoming.length) L.push(`Próximos prazos: ${a.deadlines.upcoming.slice(0, 3).map(x => DeadlineEngine.phrase(x.dl)).join('; ')}`);
@@ -9075,7 +9471,7 @@ function buildStudyReportText(a){
   section('TEMPO');
   const t = a.totals;
   L.push(`Tempo total: ${fmtDuration(t.minutes)}`);
-  L.push(`Sessões de estudo: ${t.count}`);
+  L.push(`Estudos registrados: ${t.count}`);
   L.push(`Dias com estudo: ${t.activeDays} de ${a.days}`);
   L.push(`Média por dia do período: ${fmtDuration(t.avgPerDay)}`);
   L.push(`Média por dia com estudo: ${fmtDuration(t.avgPerActiveDay)}`);
@@ -9234,7 +9630,7 @@ function renderHistory(){
   const f = ui.history;
   if(!state.sessions.length){
     mount(root, h('section', { class:'quiet-empty' }, emptyState('Nenhum estudo registrado ainda',
-      'Use o botão "Registrar" para começar a estudar com o cronômetro ou para lançar um estudo que já aconteceu.',
+      'Use o botão "Registrar estudo" para começar a estudar com o cronômetro ou para lançar um estudo que já aconteceu.',
       h('button', { class:'btn primary', type:'button', text:'Registrar estudo', onclick:() => openRegisterModal() }))));
     return;
   }
@@ -9407,7 +9803,7 @@ function openEditSessionModal(id){
   openModal(close => {
     let discId = s.disciplineId, topicId = s.topicId || '', type = s.type, difficulty = s.difficulty, outcome = s.reviewOutcome;
     const body = h('div');
-    const dateIn = h('input', { type:'date', id:'es-date', value:s.date });
+    const dateIn = h('input', { type:'date', id:'es-date', value:s.date, max: todayISO() > s.date ? todayISO() : s.date });
     const minIn = h('input', { type:'number', id:'es-min', min:'1', step:'1', value:String(s.minutes), inputmode:'numeric' });
     const commentIn = h('textarea', { id:'es-comment' });
     commentIn.value = str(s.comment);
@@ -9416,7 +9812,14 @@ function openEditSessionModal(id){
       clear(body);
       body.append(
         selectField('es-disc', 'Disciplina', disciplineOptions(false, true), discId, e => { discId = e.target.value; topicId = ''; build(); }),
-        selectField('es-topic', 'Tópico', topicOptions(discId, true), topicId, e => { topicId = e.target.value; }),
+        // v6.3: o tópico atual aparece mesmo se foi arquivado — antes ele sumia da
+        // lista e salvar a edição desligava o estudo do tópico sem aviso.
+        selectField('es-topic', 'Tópico', (() => {
+          const opts = topicOptions(discId, true);
+          const cur = topicId ? getTopic(topicId) : null;
+          if(cur && cur.disciplineId === discId && !opts.some(o => o.value === cur.id)) opts.push({ value:cur.id, label:cur.name + ' (arquivado)' });
+          return opts;
+        })(), topicId, e => { topicId = e.target.value; }),
         h('div', { class:'row' },
           h('div', { class:'field' }, h('label', { for:'es-date', text:'Data' }), dateIn),
           h('div', { class:'field' }, h('label', { for:'es-min', text:'Minutos' }), minIn)),
@@ -9441,16 +9844,17 @@ function openEditSessionModal(id){
           if(ok) await deleteSession(id);
         } }),
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
-        h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: async () => {
+        h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: once(async () => {
           const minutes = Number(minIn.value);
-          if(!(minutes > 0)){ toast('Informe um tempo válido.', 'err'); return; }
-          close();
-          await updateSession(id, {
-            disciplineId: discId, topicId: topicId || null, date: dateIn.value || s.date,
+          if(!(minutes > 0)){ minIn.setAttribute('aria-invalid','true'); minIn.focus(); toast('Informe um tempo válido.', 'err'); return; }
+          const t = topicId ? getTopic(topicId) : null;
+          const ok = await updateSession(id, {
+            disciplineId: discId, topicId: (t && t.disciplineId === discId) ? t.id : null, date: dateIn.value || s.date,
             minutes, type, difficulty, comment: commentIn.value.trim(),
             reviewOutcome: type === 'revisao' ? outcome : null
           });
-        } })
+          if(ok) close();          // falhou: a edição continua aberta, com tudo preenchido
+        }) })
       ]
     };
   }, { size:'wide' });
@@ -9721,10 +10125,77 @@ function bindEvents(){
     if(document.visibilityState !== 'visible') return;
     renderTimerBar();
     updateBadges();
+    DayWatch.check();
+  });
+  window.addEventListener('focus', () => DayWatch.check());
+  DayWatch.arm();
+
+  /* v6.3 — cronômetro em duas abas: se uma aba finaliza, descarta ou inicia
+     um estudo, as outras acompanham. Antes, finalizar de novo na segunda aba
+     gravava o mesmo estudo duas vezes. */
+  window.addEventListener('storage', async (e) => {
+    if(e.key !== TIMER_LS_KEY) return;
+    const wasActive = TimerService.isActive;
+    if(e.newValue === null){
+      // Só a memória desta aba: nada é escrito de volta no armazenamento.
+      TimerService.data = null;
+      TimerService.stopTicking();
+      if(wasActive && ui.reviewQueue) ui.reviewQueue = null;
+    } else {
+      // A outra aba pode ter criado a disciplina agora: recarrega os dados antes,
+      // para esta aba não descartar um cronômetro válido por não conhecê-la.
+      try { await refresh(); } catch(err){ console.error(err); }
+      TimerService.restore();
+    }
+    renderTimerBar();
+    if(wasActive && !TimerService.isActive) toast('Ele foi finalizado ou descartado em outra aba.', 'info', { title:'Cronômetro atualizado' });
   });
 
   window.addEventListener('beforeunload', () => { TimerService.stopTicking(); });
 }
+
+/* =========================================================================
+   v6.3 — VIRADA DO DIA
+   Quem deixa o Ciclo aberto de um dia para o outro via "Hoje" com a data, a
+   frase, as revisões e a semana de ontem. Agora, na virada do dia local (ou
+   ao voltar para a aba num dia novo), os dados são recarregados e a tela
+   redesenhada — a semana nova é criada pelo mesmo caminho de sempre.
+   Não interrompe ninguém: com uma janela aberta ou digitando, espera.
+   ========================================================================= */
+const DayWatch = {
+  day: null,
+  timer: null,
+  running: false,
+  arm(){
+    if(!this.day) this.day = todayISO();
+    clearTimeout(this.timer);
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+    // setTimeout longo pode atrasar com a aba em segundo plano: o foco/visibilidade cobre isso.
+    this.timer = setTimeout(() => this.check(), Math.min(next - now, 6 * 3600000));
+  },
+  busy(){
+    const a = document.activeElement;
+    const typing = a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable);
+    return Overlay.isOpen || typing;
+  },
+  async check(){
+    const today_ = todayISO();
+    if(this.day === today_ || !state.ready){ this.arm(); return; }
+    if(this.running) return;
+    if(this.busy()){ clearTimeout(this.timer); this.timer = setTimeout(() => this.check(), 60000); return; }
+    this.running = true;
+    try {
+      await refresh();
+      this.day = today_;
+    } catch(err){
+      console.error('Falha ao atualizar para o novo dia:', err);
+    } finally {
+      this.running = false;
+      this.arm();
+    }
+  }
+};
 
 /* =========================================================================
    INITIALIZATION
@@ -10405,12 +10876,14 @@ const Palette = {
       return;
     }
     let lastGroup = null;
+    const inputEl = $('#palette-input');
+    const q = inputEl ? inputEl.value : '';          // v6.3: lido uma vez, não a cada item
+    const frag = document.createDocumentFragment();  // um único anexo ao DOM
     this.filtered.forEach((item, i) => {
       if(item.group !== lastGroup){
         lastGroup = item.group;
-        list.appendChild(h('li', { class:'palette-group', text:item.group, role:'presentation' }));
+        frag.appendChild(h('li', { class:'palette-group', text:item.group, role:'presentation' }));
       }
-      const q = $('#palette-input') ? $('#palette-input').value : '';
       const btn = h('button', { class:'palette-item', type:'button', role:'option', id:'pal-opt-' + i, tabindex:'-1',
         'aria-selected': i === this.index ? 'true' : 'false',
         onclick:() => this.run(i) },
@@ -10418,9 +10891,9 @@ const Palette = {
         h('span', { class:'pi-main' }, q.trim() ? highlightMatch(item.label, q) : item.label),
         item.sub ? h('span', { class:'pi-sub', text:item.sub }) : null);
       btn.addEventListener('mousemove', () => { if(this.index !== i){ this.index = i; this.syncSelection(); } });
-      const li = h('li', { role:'presentation' }, btn);
-      list.appendChild(li);
+      frag.appendChild(h('li', { role:'presentation' }, btn));
     });
+    list.appendChild(frag);
     this.syncSelection();
   },
 
@@ -11624,14 +12097,20 @@ function signalGrid(action){
 
 
 /* =========================================================================
-   FRASE DO DIA — rotação determinística, sem rede.
-   A ordem é embaralhada com uma semente derivada do ano; o dia do ano
-   escolhe a posição. Recarregar a página não troca a frase; amanhã troca;
-   e cada ano produz uma ordem diferente.
+   FRASE DO DIA — v6.3: rotação determinística, sem rede.
+   · A frase depende só do DIA LOCAL do calendário: recarregar a página ou
+     re-renderizar não troca; à meia-noite local, troca.
+   · As frases são percorridas em ciclos: dentro de um ciclo nenhuma se
+     repete. Cada ciclo tem uma ordem própria (embaralhamento com semente).
+   · Na virada de um ciclo para o outro, as primeiras posições do novo
+     ciclo não podem repetir as últimas do anterior — evita ver a mesma
+     frase de novo poucos dias depois.
    ========================================================================= */
-function dayOfYear(d){
-  const start = new Date(d.getFullYear(), 0, 1);
-  return Math.floor((d - start) / 86400000);   // 0-based
+
+/** Número do dia local (dias desde 1970-01-01 no calendário do usuário).
+ *  Usa Date.UTC com os campos LOCAIS: imune a horário de verão. */
+function localDayNumber(d){
+  return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
 }
 
 /** Gerador pseudoaleatório determinístico (mulberry32). */
@@ -11645,42 +12124,62 @@ function seededRandom(seed){
   };
 }
 
-/** Ordem embaralhada das frases para um ano — sempre a mesma para o mesmo ano. */
-function quoteOrderForYear(year){
-  const rnd = seededRandom(year * 2654435761);
-  const order = DAILY_QUOTES.map((_, i) => i);
-  for(let i = order.length - 1; i > 0; i--){          // Fisher–Yates determinístico
+/** Ordem "crua" de um ciclo: Fisher–Yates com semente do número do ciclo. */
+function rawQuoteOrder(cycle, n){
+  const rnd = seededRandom((cycle + 1) * 2654435761);
+  const order = Array.from({ length:n }, (_, i) => i);
+  for(let i = n - 1; i > 0; i--){
     const j = Math.floor(rnd() * (i + 1));
     const tmp = order[i]; order[i] = order[j]; order[j] = tmp;
   }
   return order;
 }
 
-let _quoteCache = { year:null, order:null };
-function quoteOfTheDay(date){
-  const d = date || new Date();
-  const year = d.getFullYear();
-  if(_quoteCache.year !== year) _quoteCache = { year, order: quoteOrderForYear(year) };
-  const idx = _quoteCache.order[dayOfYear(d) % _quoteCache.order.length];
-  return DAILY_QUOTES[idx];
-}
+/** Tamanho da "zona de proteção" entre ciclos: com 65 frases, 13 dias. */
+function quoteGuardSize(n){ return n >= 5 ? Math.min(14, Math.floor(n / 5)) : 0; }
 
-/** Assinatura conforme o tipo de atribuição, sem inventar autoria. */
-function quoteAttribution(q){
-  switch(q.attributionStatus){
-    case 'verified':   return '— ' + q.author;
-    case 'attributed': return q.author.startsWith('atribuída') ? '— ' + q.author : '— atribuída a ' + q.author;
-    case 'proverb':    return '— ' + (q.author || 'provérbio');
-    default:           return '— Ciclo';
+/** Ordem final de um ciclo. A proteção só troca itens da CABEÇA com itens
+ *  do MEIO, então a CAUDA de qualquer ciclo é sempre igual à ordem crua —
+ *  por isso basta consultar a ordem crua do ciclo anterior (sem recursão). */
+function quoteOrderForCycle(cycle, n){
+  const order = rawQuoteOrder(cycle, n);
+  const k = quoteGuardSize(n);
+  if(!k) return order;
+  const prevTail = new Set(rawQuoteOrder(cycle - 1, n).slice(n - k));
+  let j = k;                                   // cursor no meio: [k, n-k)
+  for(let i = 0; i < k; i++){
+    if(!prevTail.has(order[i])) continue;
+    while(j < n - k && prevTail.has(order[j])) j++;
+    if(j >= n - k) break;                      // não acontece com n >= 5
+    const tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+    j++;
   }
+  return order;
 }
 
+let _quoteCache = { cycle:null, n:0, order:null };
+function quoteOfTheDay(date){
+  const n = Array.isArray(DAILY_QUOTES) ? DAILY_QUOTES.length : 0;
+  if(!n) return null;
+  const day = localDayNumber(date || new Date());
+  const cycle = Math.floor(day / n);
+  if(_quoteCache.cycle !== cycle || _quoteCache.n !== n){
+    _quoteCache = { cycle, n, order: quoteOrderForCycle(cycle, n) };
+  }
+  return DAILY_QUOTES[_quoteCache.order[day - cycle * n]];
+}
+
+/** Frase do dia: bloco editorial discreto, abaixo da ação principal.
+ *  Não é card nem banner. O texto é dado (textContent), nunca HTML. */
 function dailyQuoteCard(){
   if(!state.settings.showDailyQuote) return null;
   const q = quoteOfTheDay();
-  return h('div', { class:'card quote-card' },
-    h('p', { class:'quote-text', text: '“' + q.text + '”' }),
-    h('p', { class:'quote-author', text: quoteAttribution(q) }));
+  if(!q || !q.text || !q.author) return null;
+  return h('figure', { class:'daily-quote', 'aria-label':'Frase do dia' },
+    h('blockquote', { class:'dq-text' }, h('p', { text: '“' + q.text + '”' })),
+    h('figcaption', { class:'dq-cite' },
+      h('span', { class:'dq-author', text: '— ' + q.author }),
+      q.work ? h('span', { class:'dq-work', text: q.work }) : null));
 }
 
 /* =========================================================================
@@ -11747,22 +12246,22 @@ function maybeShowWhatsNew(){
     ? `A importância de ${mig.topics} ${mig.topics === 1 ? 'tópico foi convertida' : 'tópicos foi convertida'} para a escala de prioridade 1–5. Nenhuma revisão foi reagendada.`
     : null;
 
-  const cameFrom6 = /^6\./.test(seen);             // já viu a interface nova da v6
-  const saw61 = /^6\.[1-9]/.test(seen);           // já viu o índice de Disciplinas da 6.1
+  const cameFrom6 = /^6\./.test(seen);             // já usava alguma versão 6.x
+  const saw62 = /^6\.[2-9]/.test(seen);           // já viu a navegação da 6.2
   const items = [
-    'O botão Voltar do navegador agora volta dentro do Ciclo: do tópico para a disciplina, dela para a área, e só depois sai.',
-    'Toda página dentro de Disciplinas tem um "voltar" que diz para onde vai — por exemplo, "← Tecnologia".',
-    'A busca de cada lista procura só ali: dentro de Tecnologia, disciplinas de Tecnologia; dentro de uma disciplina, os tópicos dela.',
-    'Listas podem ser ordenadas por mais estudadas, prioridade ou data. Ao voltar, a busca, a ordem e a posição continuam onde você deixou.'
+    'Criar um tópico sem sair do registro: no campo Tópico, escolha "+ Criar novo tópico…". O que você já preencheu continua lá, e o tópico novo volta selecionado.',
+    'Ao finalizar o cronômetro, dá para escolher ou criar o tópico. Se algo falhar ao salvar, o cronômetro continua — nenhum minuto se perde.',
+    'A frase do dia foi refeita: só frases reais, com autor e obra, conferidas na fonte. Ela aparece logo abaixo da recomendação e muda uma vez por dia.',
+    'Textos e números mais fáceis de ler, com as fontes do seu próprio sistema. Se o Ciclo ficar aberto de um dia para o outro, "Hoje" se atualiza sozinho.'
   ];
-  if(cameFrom6 && !saw61) items.push('Também da 6.1: Disciplinas como um índice (área → disciplina → tópico) e prioridade com um único símbolo, de 1 a 5.');
-  if(!cameFrom6) items.push('Também da 6.0 e 6.1: visual mais calmo, Disciplinas como um índice, Análises que começam por uma pergunta e Prazos numa aba própria.');
+  if(cameFrom6 && !saw62) items.push('Também da 6.2: o Voltar do navegador volta dentro do Ciclo, e cada lista tem busca e ordenação próprias.');
+  if(!cameFrom6) items.push('Também da 6.0 à 6.2: visual mais calmo, Disciplinas como um índice, Análises que começam por uma pergunta, Prazos numa aba própria e o Voltar do navegador funcionando dentro do Ciclo.');
   const cfg = {
-    title: 'Ciclo 6.2',
+    title: 'Ciclo 6.3',
     sub: cameFrom5 || cameFrom6
-      ? 'Ir, encontrar e voltar sem pensar. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
+      ? 'Mais fácil de ler, mais rápido de registrar e mais difícil de perder algo. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
       : 'O Diário de Estudos agora se chama Ciclo — e ganhou uma interface nova. Seus dados, revisões e planos continuam como estavam.',
-    items, note: converted, cta:'Abrir Disciplinas'
+    items, note: converted
   };
 
   openModal(close => ({
@@ -11775,10 +12274,6 @@ function maybeShowWhatsNew(){
     actions:[
       h('button', { class:'btn ghost', type:'button', text:'Ver o histórico de versões', onclick: async () => {
         close(); await markSeen(); openChangelog();
-      } }),
-      h('button', { class:'btn ghost', type:'button', text: cfg.cta, onclick: async () => {
-        close(); await markSeen();
-        navDisc({ level:'root' }, null);
       } }),
       h('button', { class:'btn primary', type:'button', text:'Continuar', onclick: async () => {
         close(); await markSeen();
@@ -11985,40 +12480,60 @@ function openQuickStart(preset){
         }
       }
 
+      disciplineId = disc.id;                // voltar para esta tela não cria a disciplina de novo
+      const target = free ? null : minutes;
+      const go = (topicId) => { close(); startTimer(disc.id, topicId || null, null, null, target); };
+
       const topicName = str(topicText).trim();
-      if(!topicName){ close(); startTimer(disc.id, null, null); return; }
+      if(!topicName){ go(null); return; }
 
-      const match = topicsOf(disc.id).find(t => t.name.toLowerCase() === topicName.toLowerCase());
-      if(match){ close(); startTimer(disc.id, match.id, null); return; }
+      const twin = findTopicByName(disc.id, topicName);
+      if(twin && !twin.archived){ go(twin.id); return; }
 
-      // assunto novo: pergunta uma vez, sem bloquear quem não quiser cadastrar
-      close();
-      openModal(close2 => ({
-        title:'Adicionar como tópico?',
+      /* Assunto novo (ou arquivado): pergunta uma vez, numa subtela deste mesmo
+         modal. Esc ou "Voltar" devolvem o formulário exatamente como estava. */
+      const back = () => close.pop(startBtn);
+      let working = false;
+      const addBtn = h('button', { class:'btn primary', type:'button', text: twin ? 'Reativar e começar' : 'Adicionar e começar', onclick: async () => {
+        if(working) return;
+        working = true; addBtn.disabled = true;
+        try {
+          let t;
+          if(twin){
+            t = Object.assign({}, twin, { archived:false });
+            await persist('topics', t);
+          } else {
+            const existing = topicsOf(disc.id, true);
+            const order = existing.length ? Math.max(...existing.map(x => x.sortOrder || 0)) + 10 : 10;
+            t = newTopic(disc.id, topicName, order);
+            await DB.put('topics', t);
+          }
+          try { await refresh(); } catch(err){ console.error(err); }
+          toast(`${t.name} · ${disc.name}`, 'ok', { title: twin ? 'Tópico reativado' : 'Tópico adicionado' });
+          go(t.id);
+        } catch(err){
+          console.error(err);
+          working = false; addBtn.disabled = false;
+          toast('Tente de novo ou comece sem adicionar o tópico.', 'err', { title:'Não foi possível salvar o tópico' });
+        }
+      } });
+      close.push({
+        title: twin ? 'Reativar este tópico?' : 'Adicionar como tópico?',
         content: h('div',
-          h('p', { class:'modal-sub', text:`"${topicName}" ainda não está em ${disc.name}.` }),
-          h('p', { class:'hint', text:'Adicionar permite que o Ciclo acompanhe suas revisões e seu progresso nesse tópico. Também dá para seguir sem adicionar.' })),
+          h('p', { class:'modal-sub', text: twin
+            ? `“${twin.name}” já existe em ${disc.name}, mas está arquivado.`
+            : `“${topicName}” ainda não está em ${disc.name}.` }),
+          h('p', { class:'hint', text: twin
+            ? 'Reativar mantém o histórico e as revisões dele. Também dá para estudar sem tópico.'
+            : 'Adicionar permite que o Ciclo acompanhe suas revisões e seu progresso nesse tópico. Também dá para seguir sem adicionar.' })),
         actions:[
-          h('button', { class:'btn ghost', type:'button', text:'Continuar sem adicionar',
-            onclick:() => { close2(); startTimer(disc.id, null, null); } }),
-          h('button', { class:'btn primary', type:'button', text:'Adicionar', onclick: async () => {
-            close2();
-            try {
-              const existing = topicsOf(disc.id, true);
-              const order = existing.length ? Math.max(...existing.map(t => t.sortOrder || 0)) + 10 : 10;
-              const t = newTopic(disc.id, topicName, order);
-              await DB.put('topics', t);
-              await refresh();
-              toast(`${topicName} · ${disc.name}`, 'ok', { title:'Tópico adicionado' });
-              startTimer(disc.id, t.id, null);
-            } catch(err){
-              console.error(err);
-              toast('Não foi possível adicionar o tópico. O estudo continua.', 'err');
-              startTimer(disc.id, null, null);
-            }
-          } })
-        ]
-      }), { size:'narrow' });
+          h('button', { class:'linkbtn muted', type:'button', text:'Voltar', onclick: back }),
+          h('button', { class:'btn ghost', type:'button', text:'Começar sem tópico', onclick:() => go(null) }),
+          addBtn
+        ],
+        focus: addBtn,
+        onEsc: back
+      });
     }
 
     return {
@@ -12346,7 +12861,7 @@ function renderSettings(){
         s.helpMode, async v => { state.settings.helpMode = v; await saveSettings(); renderSettings(); }, 'Ajuda contextual')),
     setRow('Explicações ao passar o mouse', 'Mostra detalhes em gráficos, barras e termos do glossário. Mesmo desligado, clicar ou tocar no termo continua explicando.',
       switchControl(s.hoverHints, async v => { state.settings.hoverHints = v; await saveSettings(); }, 'Explicações ao passar o mouse')),
-    setRow('Mostrar frase do dia', 'Uma frase curta sobre estudo na tela Hoje. Muda a cada dia, sem usar internet.',
+    setRow('Mostrar frase do dia', 'Uma frase real sobre aprender, com autor e obra, na tela Hoje. Muda uma vez por dia, sem usar internet.',
       switchControl(state.settings.showDailyQuote, async v => { state.settings.showDailyQuote = v; await saveSettings(); if(ui.view === 'today') renderToday(); }, 'Mostrar frase do dia')),
     setRow('Dicas de primeira visita', 'Reexibe as dicas que aparecem uma única vez em cada tela.',
       h('button', { class:'btn ghost sm', type:'button', text:'Mostrar novamente',
@@ -12450,7 +12965,8 @@ function reviewHints(){
   const due = ReviewEngine.getDueReviews();
   const overdue = due.filter(t => (daysUntilISO(t.reviewDueDate) || 0) < 0);
   if(overdue.length >= 5){
-    out.push(`Existem ${overdue.length} revisões atrasadas. Revisá-las antes de adicionar muito conteúdo novo pode ajudar a reduzir o acúmulo.`);
+    // v6.3: o número de atrasadas já aparece logo acima; aqui só o conselho.
+    out.push('Com tantas atrasadas, vale colocar as revisões em dia antes de adicionar muito conteúdo novo — o acúmulo diminui mais rápido.');
   }
   return out;
 }
@@ -12480,9 +12996,8 @@ function renderDeadlineSuggestions(){
   /* v6 — uma sugestão de cada tipo por vez, como nota discreta: a ação
      principal da tela continua sendo revisar. */
   candidatas.slice(0, 1).forEach(({ d, x }) => {
-    const info = deadlineTypeInfo(x.dl.type);
     box.append(h('div', { class:'inline-note suggestion-note', role:'note' },
-      h('span', { class:'in-text', text:`${info.label}: ${DeadlineEngine.phrase(x.dl)}, em ${d.name}. Quer revisões mais próximas nesta disciplina até lá? Nada muda sem a sua confirmação.` }),
+      h('span', { class:'in-text', text:`Prazo de ${d.name}: ${DeadlineEngine.phrase(x.dl)}. Quer revisões mais próximas nessa disciplina até lá? Nada muda sem a sua confirmação.` }),
       h('span', { class:'in-actions' },
         h('button', { class:'linkbtn', type:'button', text:'Usar revisão intensiva', onclick: async () => {
           const disc = getDiscipline(d.id);

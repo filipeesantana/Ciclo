@@ -30,7 +30,7 @@ Serve para qualquer pessoa e qualquer área: escola, faculdade, concursos, idiom
 
 1. **Adicione algo que você estuda.** Uma matéria, um idioma, uma certificação, um instrumento.
 2. **Comece a estudar.** Escolha quanto tempo quer estudar e o Ciclo conta o tempo para você.
-3. **Adicione tópicos conforme precisar.** Por exemplo, *Matemática → Derivadas*. Não precisa cadastrar tudo de uma vez.
+3. **Adicione tópicos conforme precisar.** Por exemplo, *Matemática → Derivadas*. Não precisa cadastrar tudo de uma vez — dá para criar um tópico na hora de registrar o estudo.
 4. **O Ciclo avisa quando revisar.** Cada tópico estudado volta sozinho no momento certo.
 5. **Organize sua semana quando quiser.** Dizer quantas horas você tem por semana é opcional e melhora as sugestões.
 
@@ -40,7 +40,9 @@ Você não precisa criar Área de Estudo, definir prioridade, montar um plano ou
 
 Cada tela responde a uma pergunta. O que importa aparece primeiro; o resto fica a um clique.
 
-**Hoje** — *o que devo fazer agora?* Uma recomendação em destaque, com o motivo em uma frase e um botão para começar. Abaixo, só o que vem a seguir: as revisões do dia, como está a semana e o próximo prazo.
+**Hoje** — *o que devo fazer agora?* Uma recomendação em destaque, com o motivo em uma frase e um botão para começar. Logo abaixo, discretamente, a frase do dia — sempre real, com autor e obra. Depois, só o que vem a seguir: as revisões do dia, como está a semana e o próximo prazo.
+
+**Registrar estudo** — o botão que acompanha todas as telas. Você começa o cronômetro ou lança um estudo que já aconteceu; se o tópico ainda não existe, escolha *+ Criar novo tópico…* no próprio campo, sem perder o que já preencheu.
 
 **Planejamento** — *como vou distribuir meu tempo?* Você diz quantas horas tem por semana e o Ciclo sugere a divisão entre as matérias. A tela mostra a divisão da semana e quanto já foi feito; os detalhes ficam em *Ajustar*. Cada semana guarda o próprio registro.
 
@@ -188,18 +190,22 @@ O endereço também está no aplicativo, em **Ajuda** e em **Configurações →
 
 ## Versão atual
 
-**v6.2.0 — Navigation & Findability**
+**v6.3.0 — Editorial Polish / Smart Capture / Reliability**
 
-Ir, encontrar e voltar sem pensar.
+Mais fácil de ler, mais rápido de registrar, mais difícil de perder algo.
 
-- **Voltar de verdade:** o botão Voltar do navegador percorre o caminho feito dentro do Ciclo (*OSPF → Redes de Computadores → Tecnologia → Disciplinas*) e só depois sai; o Avançar também funciona. Na Ajuda, o mesmo vale entre artigos.
-- **Voltar interno em toda profundidade**, no computador e no celular, dizendo o destino: *← Redes de Computadores*.
-- **Busca no lugar certo:** cada lista busca só nela mesma, com placeholder que ensina o contexto (*Buscar tópico em CCNA…*). A busca geral (Ctrl + K, também usada na tela Hoje) agrupa por tipo; a da Ajuda mostra respostas primeiro e funções do Ciclo depois.
-- **Ordenar por:** mais estudadas, prioridade, modificadas ou criadas recentemente, nome — e a ordem personalizada dos tópicos continua sendo o padrão. Prazos ganharam filtro por situação.
-- **Nada se perde no caminho:** busca, ordem, posição da lista e foco do teclado são restaurados ao voltar.
-- **Mais rápido:** entrar e voltar levam menos de 0,2 s de movimento, reordenar não redesenha a tela inteira e o celular não dá zoom ao tocar na busca.
+- **Criar tópico sem sair do registro:** no campo Tópico, *+ Criar novo tópico…* abre o mesmo formulário de tópico de sempre, dentro do registro, com a disciplina já escolhida (e editável). Ao salvar, disciplina e tópico voltam selecionados juntos — nunca um tópico de outra disciplina — e tudo o que você já tinha preenchido continua lá. Nome repetido não vira um segundo tópico: o Ciclo oferece usar o existente ou reativar o arquivado.
+- **Cronômetro mais seguro:** ao finalizar, dá para escolher ou criar o tópico; o estudo só é encerrado depois de gravado. Com o Ciclo aberto em duas abas, o mesmo estudo não é gravado duas vezes.
+- **Frase do dia refeita:** só frases reais — de Sêneca, Leonardo da Vinci, Montaigne, Goethe, Ramón y Cajal e outros —, com autor e obra, conferidas na fonte original. Nada de frase inventada, provérbio sem autor ou atribuição duvidosa. Ela aparece logo abaixo da recomendação e muda uma vez por dia.
+- **Tipografia revista:** escala de tamanhos coerente, pesos mais consistentes e números com algarismos alinhados, usando só as fontes do seu próprio sistema (nada é baixado da internet).
+- **Estabilidade:** trocar de disciplina no registro não apaga mais minutos e comentário; salvar o plano duas vezes seguidas não cria dois planos; editar um estudo ou prazo ligado a um tópico arquivado não desfaz o vínculo; a tela *Hoje* se atualiza sozinha na virada do dia.
+- **Movimento mais curto** e menos trabalho escondido para o navegador, principalmente no modo foco.
 
-Nada mudou nos seus dados: nenhum formato novo, nenhuma revisão reagendada, e backups de qualquer versão anterior continuam sendo aceitos. Busca e ordenação ficam só nesta aba do navegador.
+Nada mudou no formato dos seus dados: nenhuma revisão reagendada, e backups de qualquer versão anterior continuam sendo aceitos.
+
+### v6.2
+
+**Navigation & Findability.** O Voltar do navegador percorre o caminho feito dentro do Ciclo; cada lista busca só nela mesma e pode ser ordenada; busca, ordem e posição são restauradas ao voltar.
 
 ### v6.1
 
