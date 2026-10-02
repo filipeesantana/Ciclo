@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — CONTEÚDO ESTÁTICO (v6.3.0)
+   CICLO — CONTEÚDO ESTÁTICO (v6.4.0)
    Textos, guias e frases. Nada aqui vai para o IndexedDB e nada vem da rede.
 
    Blocos: DAILY_QUOTES · REVIEW_METHOD_GUIDES · HELP_SECTIONS ·
@@ -353,9 +353,11 @@ const HELP_GLOSSARY = {
   dominio: { term:'Consolidação', article:'dominio', alias:'dominio domínio retencao retenção consolidado dominar memoria',
     short:'Uma estimativa, de 1 a 5, de quanto um tópico já está firme na memória, com base nos resultados das suas revisões.' },
   dificuldade: { term:'Dificuldade', article:'dificuldade', alias:'esforco esforço percepcao percebida',
-    short:'De 1 a 5, quanto aquele estudo pareceu difícil para você. É só para análise: não altera créditos nem revisões.' },
-  credito: { term:'Crédito', article:'creditos', alias:'creditos unidade conversao minutos',
-    short:'Uma unidade de acompanhamento. Cada disciplina define quantos minutos valem 1 crédito (o padrão é 20).' },
+    short:'De 1 a 5, quanto aquele estudo pareceu difícil para você. É só para análise: não altera o planejamento nem as revisões.' },
+  descanso: { term:'Descanso', article:'descansos', alias:'descansar pausa intervalo parar voltar a estudar',
+    short:'Um intervalo durante um estudo. É guardado à parte: não entra no tempo estudado nem no plano da semana.' },
+  constancia: { term:'Constância', article:'constancia', alias:'dias com estudo dias ativos assiduidade frequencia ritmo regularidade',
+    short:'Em quantos dias você estudou. Um dia conta quando tem pelo menos um estudo registrado.' },
   prazo: { term:'Prazo', article:'prazos', alias:'prova trabalho entrega projeto data tarefa',
     short:'Uma data que importa: prova, trabalho, entrega. Pesa mais conforme a data chega e conforme a prioridade dele.' },
   escopo: { term:'Escopo', article:'analises', alias:'o que analisar filtro recorte',
@@ -441,21 +443,22 @@ const HELP_ARTICLES = [
 {
   id:'comecar-sessao', section:'usar', group:'comecando',
   title:'Como começar a estudar',
-  oneLine:'Clique em Registrar estudo, escolha o que vai estudar e o tempo começa a contar.',
-  summary:'Pelo botão Registrar estudo, pelo cronômetro ou pela sugestão da tela Hoje.',
-  keywords:'comecar estudar comecar a estudar iniciar sessao registrar estudo botao cronometro agora',
+  oneLine:'Clique em Começar a estudar, escolha a disciplina e o tempo começa a contar.',
+  summary:'"Começar a estudar" liga o cronômetro; "Registrar estudo" guarda algo que você já estudou.',
+  keywords:'comecar estudar comecar a estudar iniciar sessao registrar estudo botao cronometro agora ja estudei',
   content:[
     { h:'Como funciona' },
-    { p:'O botão Registrar estudo fica sempre visível no canto inferior direito e também responde à tecla R. Ele abre duas opções: "Estudar agora", com o cronômetro, ou "Já estudei", para lançar um estudo que já aconteceu.' },
-    { h:'Três caminhos' },
+    { p:'São duas ações, cada uma com um nome que diz o que faz. "Começar a estudar" é para agora: o Ciclo conta o tempo enquanto você estuda. "Registrar estudo" é para o que já aconteceu: você diz quando foi e o Ciclo guarda.' },
+    { p:'As duas levam ao mesmo lugar — o seu histórico — e ficam na mesma janela: dá para trocar de uma para a outra em "Estudar agora" e "Já estudei".' },
+    { h:'Onde ficam' },
     { ul:[
-      'Pela tela Hoje — a sugestão já vem com disciplina e tópico preenchidos.',
-      'Pelo botão Registrar estudo — você escolhe livremente a disciplina e o tópico.',
-      'Pela tela Revisões — começar uma revisão já abre o cronômetro com um jeito de revisar sugerido.'
+      'Começar a estudar — na tela Hoje (a sugestão já vem com disciplina e tópico), na página de cada disciplina e de cada tópico.',
+      'Registrar estudo — o botão no canto inferior direito, em qualquer tela, e a tecla R. Ele abre por cima do que você está vendo: ao registrar ou cancelar, você continua no mesmo lugar.',
+      'Revisões — começar uma revisão já abre o cronômetro com um jeito de revisar sugerido.'
     ]},
     { h:'No Ciclo' },
-    { p:'Só a disciplina e o tempo são obrigatórios. Tópico, tipo de estudo, [[dificuldade|dificuldade]] e comentário são opcionais e podem ser informados no fim.' },
-    { p:'O tópico ainda não existe? No campo Tópico, escolha "+ Criar novo tópico…". O mesmo formulário de tópico abre ali mesmo, com a disciplina já escolhida; ao salvar, você volta ao registro com tudo preenchido e o tópico novo selecionado.' }
+    { p:'Só a disciplina é obrigatória. Tópico, tipo de estudo, [[dificuldade|dificuldade]] e comentário são opcionais. Dentro de uma disciplina ou de um tópico, o registro já vem com eles escolhidos — e você pode trocar.' },
+    { p:'O tópico ainda não existe? No campo Tópico, escolha "Criar novo tópico…". O mesmo formulário de tópico abre ali mesmo, com a disciplina já escolhida; ao salvar, você volta ao registro com tudo preenchido e o tópico novo selecionado.' }
   ],
   cta:{ action:'quickStart', label:'Começar a estudar agora' },
   related:['cronometro','sessoes','registro-manual']
@@ -492,7 +495,7 @@ const HELP_ARTICLES = [
   title:'Disciplinas',
   oneLine:'A principal coisa que você estuda. Tudo o que você registra fica ligado a uma.',
   summary:'Criar, editar, arquivar e o que cada campo significa.',
-  keywords:'disciplina materia criar adicionar editar arquivar excluir nome creditos natureza tipo de conteudo',
+  keywords:'disciplina materia criar adicionar editar arquivar excluir nome natureza tipo de conteudo',
   content:[
     { h:'Como funciona' },
     { p:'Uma [[disciplina|disciplina]] é o que você estuda: uma matéria, um idioma, um instrumento, uma certificação. Só o nome é obrigatório.' },
@@ -507,7 +510,6 @@ const HELP_ARTICLES = [
     ]},
     { details:{ title:'Mais opções da disciplina', content:[
       { ul:[
-        'Minutos por crédito — quantos minutos valem 1 [[credito|crédito]] nessa disciplina. O padrão é 20.',
         'Tipo de conteúdo — se a disciplina é mais conceitual, de memorização, de resolução de problemas ou prática. Ajuda o Ciclo a sugerir como revisar.',
         'Quando revisar — o ritmo das revisões. Vale para os tópicos da disciplina, a menos que um tópico tenha o seu próprio.'
       ]}
@@ -516,7 +518,7 @@ const HELP_ARTICLES = [
     { p:'Arquivar tira a disciplina do uso ativo — planejamento, recomendações e revisões — e preserva todo o histórico. A exclusão definitiva apaga junto os estudos registrados e por isso fica como ação secundária.' }
   ],
   cta:{ action:'addDiscipline', label:'Adicionar uma disciplina' },
-  related:['topicos','prioridades','creditos']
+  related:['topicos','prioridades']
 },
 {
   id:'topicos', section:'usar', group:'organizando',
@@ -662,7 +664,7 @@ const HELP_ARTICLES = [
   keywords:'sessao sessoes bloco estudo registro registrar tempo minutos comentario o que e uma sessao',
   content:[
     { h:'Como funciona' },
-    { p:'Um [[sessao|estudo registrado]] é qualquer período em que você estudou algo e anotou no Ciclo. Pode ter 10 minutos ou duas horas. Ele guarda a disciplina, o tempo e — se você quiser — o tópico, o tipo, a dificuldade e um comentário.' },
+    { p:'Um [[sessao|estudo registrado]] é qualquer período em que você estudou algo e anotou no Ciclo. Pode ter 10 minutos ou duas horas. Ele guarda a disciplina, o tempo estudado e — se você quiser — o tópico, o tipo, a dificuldade, um comentário e os [[descanso|descansos]] que você fez.' },
     { h:'Exemplo' },
     { ul:['Inglês · 20 min','Cálculo · Derivadas · 40 min · exercícios · difícil','Redes de Computadores · VLAN · 1h · laboratório'] },
     { h:'Por que registrar' },
@@ -670,34 +672,64 @@ const HELP_ARTICLES = [
     { details:{ title:'Tipos de estudo', content:[
       { p:'Classificar é opcional, mas alimenta uma análise útil: a proporção entre teoria e prática.' },
       { ul:[
-        'Teoria — leitura, videoaula, explicação.',
-        'Exercícios — questões, listas, simulados.',
-        'Laboratório — prática aplicada, experimentos, montagem.',
-        'Revisão — retomar conteúdo já estudado.',
-        'Projeto — trabalho maior e contínuo.',
-        'Outro — o que não se encaixa acima.'
+        'Teoria — ler, assistir ou entender um conceito.',
+        'Exercícios — praticar questões e problemas.',
+        'Laboratório — colocar em prática, de verdade ou em simulação.',
+        'Revisão — rever algo que você já estudou.',
+        'Projeto — construir ou desenvolver algo.',
+        'Outro — qualquer outro tipo de estudo.'
       ]},
       { p:'Se você marcar o tipo como Revisão e o estudo tiver um tópico, o Ciclo pergunta como você se saiu e ajusta o intervalo da próxima revisão.' }
     ]}}
   ],
   cta:{ action:'openHistory', label:'Ver meus estudos' },
-  related:['cronometro','registro-manual','dificuldade']
+  related:['cronometro','registro-manual','descansos']
 },
 {
   id:'cronometro', section:'usar', group:'estudando',
   title:'Cronômetro',
-  oneLine:'Ele continua correndo mesmo se você recarregar ou fechar a aba.',
-  summary:'Pausar, retomar, entrar no modo foco e finalizar.',
-  keywords:'cronometro timer tempo pausar retomar finalizar contador aba fechou',
+  oneLine:'Ele continua contando mesmo se você recarregar ou fechar a aba.',
+  summary:'Estudar, descansar, voltar a estudar, entrar no modo foco e finalizar.',
+  keywords:'cronometro timer tempo descansar descanso pausar pausa voltar retomar finalizar contador aba fechou',
   content:[
     { h:'Como funciona' },
-    { p:'Com um cronômetro ativo, aparece uma barra no topo com a disciplina, o tópico e o tempo. Dali você pode pausar, retomar, entrar no [[modoFoco|modo foco]] ou finalizar.' },
+    { p:'Com um cronômetro ativo, aparece uma barra no topo com a disciplina, o tópico e o tempo de estudo. Dali você pode descansar, entrar no [[modoFoco|modo foco]] ou finalizar.' },
+    { h:'Descansar e voltar' },
+    { p:'"Descansar" para o tempo de estudo e começa a contar o [[descanso|descanso]]. "Voltar a estudar" encerra o descanso e o estudo continua de onde parou. Você pode descansar quantas vezes quiser — o cronômetro nunca para sozinho.' },
     { h:'Ele sobrevive a fechar a aba' },
-    { p:'O tempo é calculado por marcação de horário, não por um contador que roda na tela. Se você recarregar a página, fechar e reabrir o navegador, o cronômetro volta com o tempo correto.' },
+    { p:'O tempo é calculado por marcação de horário, não por um contador que roda na tela. Se você recarregar a página, fechar e reabrir o navegador, o cronômetro volta com o tempo correto — inclusive no meio de um descanso.' },
+    { h:'Ao finalizar' },
+    { p:'O Ciclo mostra o tempo de estudo e o tempo de descanso, lado a lado e sem somar. Em "Corrigir o tempo" você ajusta os dois antes de registrar.' },
     { h:'Cronômetro esquecido' },
-    { p:'Se você voltar e o cronômetro estiver ligado há muitas horas, o Ciclo pergunta o que fazer em vez de registrar tudo automaticamente. Ao finalizar, a duração pode ser corrigida antes de salvar.' }
+    { p:'Se você voltar e o cronômetro estiver ligado há muitas horas, o Ciclo pergunta o que fazer em vez de registrar tudo automaticamente.' }
   ],
-  related:['modo-foco','registro-manual']
+  related:['descansos','modo-foco','registro-manual']
+},
+{
+  id:'descansos', section:'usar', group:'estudando',
+  title:'Descansos',
+  oneLine:'Descanso é parte do estudo — e é contado à parte.',
+  summary:'Como descansar no cronômetro, como registrar um descanso depois e o que ele não altera.',
+  keywords:'descanso descansar pausa intervalo voltar a estudar tempo de descanso nao conta plano',
+  content:[
+    { h:'Como funciona' },
+    { p:'Durante um estudo no cronômetro, clique em "Descansar". O tempo de estudo para e o descanso começa a ser contado. Em "Voltar a estudar", o descanso é guardado e o estudo segue de onde estava.' },
+    { h:'Exemplo' },
+    { ul:['45 min de estudo','10 min de descanso','35 min de estudo','8 min de descanso','40 min de estudo'] },
+    { p:'Resultado: 2h estudadas e 18 min de descanso. No histórico, no plano e nas análises, esse estudo vale 2h.' },
+    { h:'O que o descanso não altera' },
+    { ul:[
+      'O tempo estudado da disciplina e do tópico.',
+      'O plano da semana: 5 horas planejadas são 5 horas de estudo.',
+      'A ordem "Mais estudadas" e as médias de estudo.',
+      'Os dias com estudo: um dia só com descanso não conta.'
+    ]},
+    { h:'Num estudo que já aconteceu' },
+    { p:'Em "Registrar estudo", depois de informar os horários, use "+ Adicionar descanso". O descanso precisa estar dentro do horário do estudo; o Ciclo desconta sozinho.' },
+    { h:'Nas Análises' },
+    { p:'No foco "Tempo e constância" aparecem o tempo de descanso, quantos descansos você fez e a média de cada um. São só números: o Ciclo não diz se foi muito ou pouco.' }
+  ],
+  related:['cronometro','registro-manual','descanso-guia']
 },
 {
   id:'modo-foco', section:'usar', group:'estudando',
@@ -712,26 +744,33 @@ const HELP_ARTICLES = [
     { ul:[
       'Você entra pela barra do cronômetro ou pela busca de comandos (Ctrl + K).',
       'Esc sai do foco sem encerrar o estudo.',
-      'Pausar, retomar e finalizar continuam disponíveis dentro do foco.'
+      'Descansar, voltar a estudar e finalizar continuam disponíveis dentro do foco.'
     ]}
   ],
   related:['pomodoro-guia','sessoes-longas']
 },
 {
   id:'registro-manual', section:'usar', group:'estudando',
-  title:'Registro manual',
-  oneLine:'Para lançar um estudo que já aconteceu.',
-  summary:'Data e minutos, inclusive de dias anteriores.',
-  keywords:'manual retroativo passado esqueci lancar data minutos ontem',
+  title:'Registrar um estudo que já aconteceu',
+  oneLine:'Diga a que horas começou e terminou: a duração sai sozinha.',
+  summary:'Data, horário de início e fim — ou só a duração, se você não lembrar.',
+  keywords:'manual retroativo passado esqueci lancar data minutos ontem ja estudei horario comecei terminei meia-noite duracao',
   content:[
     { h:'Como funciona' },
-    { p:'No botão Registrar estudo, escolha "Já estudei". Você informa disciplina, tópico, data e minutos. Se o tópico ainda não existe, crie ali mesmo em "+ Criar novo tópico…".' },
+    { p:'Clique em "Registrar estudo" (ou aperte R). Em "Já estudei", informe a data, a hora em que começou e a hora em que terminou. O Ciclo calcula a duração e mostra na hora.' },
+    { h:'Exemplo' },
+    { ul:['Comecei 14:10 · Terminei 15:25 → 1h15 de estudo','Comecei 23:50 · Terminei 00:12 → 22 min de estudo · terminou no dia seguinte'] },
+    { h:'Depois da meia-noite' },
+    { p:'A data é sempre o dia em que o estudo começou. Se o horário de término é "menor" que o de início, o Ciclo entende que o estudo terminou no dia seguinte.' },
+    { h:'Durações muito longas' },
+    { p:'Se o intervalo passar de 8 horas, o Ciclo pergunta se está certo antes de registrar — uma troca de horários é um engano comum. Ele só pergunta: estudos longos continuam sendo aceitos.' },
+    { h:'Não lembra os horários?' },
+    { p:'Use "Não lembro os horários" e informe só quanto tempo estudou.' },
     { h:'No Ciclo' },
-    { p:'A data pode ser anterior a hoje, o que é útil para recuperar estudos que não foram lançados na hora. Os [[credito|créditos]] são calculados a partir dos minutos, usando a regra da disciplina.' },
-    { note:'Editar um estudo no Histórico recalcula os créditos pela regra atual da disciplina.' }
+    { p:'Se houve [[descanso|descanso]], use "+ Adicionar descanso": ele é descontado do tempo estudado e guardado à parte. A data pode ser anterior a hoje, o que é útil para recuperar estudos que não foram lançados na hora.' }
   ],
   cta:{ action:'openHistory', label:'Abrir Histórico' },
-  related:['dificuldade','creditos']
+  related:['descansos','cronometro','dificuldade']
 },
 {
   id:'dificuldade', section:'usar', group:'estudando',
@@ -743,7 +782,7 @@ const HELP_ARTICLES = [
     { h:'Como funciona' },
     { p:'A [[dificuldade|dificuldade]] vai de "Muito fácil" (1) a "Muito difícil" (5) e registra como aquele estudo pareceu para você, na hora. É opcional.' },
     { h:'O que ela não faz' },
-    { p:'Ela é puramente analítica: não altera créditos, não altera o planejamento e não altera o intervalo das revisões. Serve para você enxergar depois quais conteúdos estão custando mais esforço.' },
+    { p:'Ela é puramente analítica: não altera o planejamento nem o intervalo das revisões. Serve para você enxergar depois quais conteúdos estão custando mais esforço.' },
     { h:'Dificuldade não é consolidação' },
     { p:'Dificuldade é a sua percepção no momento do estudo. [[dominio|Consolidação]] vem do resultado das revisões ao longo do tempo. Um conteúdo pode ser difícil e mesmo assim estar bem consolidado — e o contrário também acontece.' }
   ],
@@ -1067,19 +1106,27 @@ const HELP_ARTICLES = [
   related:['analises-observacoes','relatorio']
 },
 {
-  id:'creditos', section:'usar', group:'progresso',
-  title:'O que são créditos',
-  oneLine:'Uma unidade de acompanhamento definida por disciplina.',
-  summary:'Cada disciplina decide quantos minutos valem 1 crédito.',
-  keywords:'credito creditos minutos conversao unidade regra disciplina',
+  id:'constancia', section:'usar', group:'progresso',
+  title:'Constância',
+  oneLine:'Em quantos dias você estudou.',
+  summary:'O que conta como dia com estudo, onde aparece e o que ela não é.',
+  keywords:'constancia dias com estudo dias ativos assiduidade frequencia ritmo regularidade sequencia',
   content:[
     { h:'Como funciona' },
-    { p:'Cada disciplina define quantos minutos valem 1 [[credito|crédito]] (o padrão é 20). Ao registrar 40 minutos numa disciplina de 20 min/crédito, o estudo vale 2 créditos.' },
-    { h:'No Ciclo' },
-    { p:'Você altera essa regra em Disciplinas → a disciplina → Editar → Mais opções. Créditos já registrados não mudam retroativamente: o valor histórico de cada estudo é preservado.' },
-    { note:'Como a regra varia entre disciplinas, o planejamento e as comparações gerais trabalham em minutos.' }
+    { p:'Um dia com estudo é um dia em que você registrou pelo menos um estudo. Não importa se foram 10 minutos ou 3 horas. Um dia só com descanso não conta.' },
+    { h:'Exemplo' },
+    { p:'Estudou na segunda, na terça, na quinta e na sexta: "Você estudou em 4 dos últimos 7 dias."' },
+    { h:'Onde aparece' },
+    { ul:[
+      'Hoje — "Seu ritmo" olha para os últimos 7 dias, contando hoje.',
+      'Análises — "Dias com estudo" respeita o período e o que você escolheu analisar: numa disciplina, só os dias em que ela foi estudada.',
+      'Análises → Explorar mais — os dias com estudo de cada semana e o calendário.'
+    ]},
+    { h:'O que ela não é' },
+    { p:'Constância não é [[aderencia|plano cumprido]]: uma mede em quantos dias houve estudo; o outro, quanto do tempo planejado foi feito. E não é uma nota — não existe sequência a perder. Um dia sem estudo é só um dia sem registro.' }
   ],
-  related:['analises-observacoes','relatorio']
+  cta:{ action:'openAnalytics', label:'Abrir Análises' },
+  related:['consistencia-guia','calendario','planejado-realizado']
 },
 {
   id:'analises-observacoes', section:'usar', group:'progresso',
@@ -1584,7 +1631,7 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Em vez de "estudar Anatomia por 3 horas", marque "Sistema cardiovascular · 40 min" e termine explicando o trajeto do sangue sem olhar.' },
     { h:'No Ciclo' },
-    { p:'O cronômetro não obriga nenhum formato: você escolhe o tempo e pode pausar quando precisar.' }
+    { p:'O cronômetro não obriga nenhum formato: você escolhe o tempo e descansa quando precisar.' }
   ],
   related:['pomodoro-guia','descanso-guia']
 },
@@ -1604,7 +1651,7 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Três blocos de 25 minutos com pausas curtas podem render mais que duas horas com o celular ao lado.' },
     { h:'No Ciclo' },
-    { p:'Use o cronômetro com blocos de 25 minutos se isso ajudar sua concentração. O [[modoFoco|modo foco]] ajuda a sustentar o bloco.' },
+    { p:'Use o cronômetro com blocos de 25 minutos se isso ajudar sua concentração, e "Descansar" entre um bloco e outro. O [[modoFoco|modo foco]] ajuda a sustentar o bloco. O Ciclo não interrompe nada sozinho: quem decide a hora de parar é você.' },
     { note:'Pomodoro organiza a atenção. Ele não substitui recordação ativa nem espaçamento — o que você faz dentro do bloco continua sendo o que determina o aprendizado.' }
   ],
   related:['consistencia-guia','descanso-guia']
@@ -1629,9 +1676,9 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Trinta minutos por dia somam mais de 180 horas em um ano.' },
     { h:'No Ciclo' },
-    { p:'O calendário nas Análises mostra seus dias ativos, e o plano é semanal justamente para não punir um dia perdido.' }
+    { p:'A tela Hoje mostra em quantos dos últimos 7 dias você estudou, e o calendário nas Análises mostra seus dias com estudo. O plano é semanal justamente para não punir um dia sem estudo.' }
   ],
-  related:['descanso-guia']
+  related:['constancia','descanso-guia']
 },
 {
   id:'descanso-guia', section:'aprender', group:'tempo',
@@ -1653,9 +1700,9 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Duas horas descansado costumam render mais que quatro horas arrastadas de madrugada.' },
     { h:'No Ciclo' },
-    { p:'Se os seus estudos estão ficando longos e a [[dificuldade|dificuldade]] percebida subindo, isso costuma aparecer nas Análises.' }
+    { p:'No cronômetro, "Descansar" pausa o estudo e conta o [[descanso|descanso]] à parte; "Voltar a estudar" continua de onde você parou. Se os seus estudos estão ficando longos e a [[dificuldade|dificuldade]] percebida subindo, isso costuma aparecer nas Análises.' }
   ],
-  related:[]
+  related:['descansos']
 }
 ];
 
@@ -1697,6 +1744,12 @@ const HELP_FAQ = [
   { id:'faq-como-escolhe', g:'estudando', article:'como-o-ciclo-sugere',
     q:'Como o Ciclo escolhe o que devo estudar?',
     a:'Por uma pontuação calculada no seu navegador: o que falta no plano da semana, a prioridade, há quanto tempo você não estuda, prazos próximos e revisões pendentes. Os motivos sempre aparecem no card.' },
+  { id:'faq-descanso-conta', g:'estudando', article:'descansos',
+    q:'O descanso conta como tempo de estudo?',
+    a:'Não. Descanso é guardado à parte: não entra no tempo estudado, no plano da semana nem na ordem "Mais estudadas". Nas Análises ele aparece separado, só como informação.' },
+  { id:'faq-meia-noite', g:'estudando', article:'registro-manual',
+    q:'Estudei das 23:50 à 00:12. Como registro?',
+    a:'Em Registrar estudo, escolha o dia em que começou e informe Comecei 23:50 e Terminei 00:12. O Ciclo entende que terminou no dia seguinte e registra 22 minutos.' },
   { id:'faq-aba-fechada', g:'estudando', article:'cronometro',
     q:'O cronômetro continua se eu fechar ou atualizar a página?',
     a:'Sim. O tempo é calculado por marcação de horário, não por um contador na tela. Se ficar aberto muitas horas, o Ciclo pergunta o que fazer em vez de registrar tudo sozinho.' },
@@ -1760,9 +1813,9 @@ const HELP_FAQ = [
     a:'Em Disciplinas, na aba Prazos, use "+ Prazo". Informe o tipo, o título e a data; ligar a uma disciplina e a um tópico é opcional, mas é o que faz o prazo influenciar as sugestões.' },
 
   /* ---- análises ---- */
-  { id:'faq-creditos', g:'analises', article:'creditos',
-    q:'O que são créditos?',
-    a:'Uma unidade de acompanhamento por disciplina: cada uma define quantos minutos valem 1 crédito (padrão 20). Como a regra varia, o planejamento usa minutos.' },
+  { id:'faq-constancia', g:'analises', article:'constancia',
+    q:'O que conta como dia com estudo?',
+    a:'Um dia com pelo menos um estudo registrado, de qualquer duração. Descanso sozinho não conta. Não é uma nota nem uma sequência: é só em quantos dias houve estudo.' },
   { id:'faq-analise-disciplina', g:'analises', article:'analises',
     q:'Como vejo as análises de uma só disciplina?',
     a:'Em Análises, escolha "Uma disciplina" na primeira pergunta. Também dá para clicar numa disciplina em qualquer gráfico e usar "Analisar só esta disciplina".' },
@@ -1866,7 +1919,6 @@ const CONTEXT_HELP = {
   cobertura:        { title:'Conteúdo estudado', article:'cobertura-dominio',
                       tip:'A parte dos tópicos que você já estudou pelo menos uma vez.' },
   dominio:          { term:'dominio' },
-  creditos:         { term:'credito' },
   revisao:          { title:'Revisão espaçada', article:'quando-revisar',
                       tip:'Tópicos estudados voltam para revisão em intervalos que se adaptam ao seu resultado.' },
   dificuldade:      { term:'dificuldade' },
@@ -1890,7 +1942,7 @@ const CONTEXT_HELP = {
 const SCREEN_HELP = {
   today:      { title:'Hoje',
                 intro:'Esta tela responde a uma pergunta: o que faz sentido estudar agora.',
-                points:['A sugestão principal vem com um motivo em uma frase. "Por quê?" mostra todos os sinais usados.','"Outras opções" lista a 2ª e a 3ª sugestão.','"A seguir" reúne as revisões do dia, o andamento da semana e o próximo prazo.'],
+                points:['A sugestão principal vem com um motivo em uma frase. "Por quê?" mostra todos os sinais usados.','"Outras opções" lista a 2ª e a 3ª sugestão.','"A seguir" reúne as revisões do dia, o andamento da semana e o próximo prazo.','"Seu ritmo" mostra em quantos dos últimos 7 dias você estudou. É só informação: não existe sequência a perder.'],
                 cta:{ action:'quickStart', label:'Começar a estudar agora' },
                 articles:['como-o-ciclo-sugere','comecar-sessao','cronometro'] },
   plan:       { title:'Planejamento',
@@ -1913,8 +1965,8 @@ const SCREEN_HELP = {
                 articles:['analises','analises-como-ler','calendario','relatorio'] },
   history:    { title:'Histórico',
                 intro:'Todos os estudos registrados, organizados por dia.',
-                points:['A busca procura só nos estudos registrados: disciplina, área, tópico e comentário, com ou sem acento.','"Filtros" abre um painel; os filtros ativos aparecem abaixo da busca e saem com um clique.','Clique num estudo para editar ou remover. Editar recalcula os créditos pela regra da disciplina.'],
-                articles:['sessoes','registro-manual','creditos'] },
+                points:['A busca procura só nos estudos registrados: disciplina, área, tópico e comentário, com ou sem acento.','"Filtros" abre um painel; os filtros ativos aparecem abaixo da busca e saem com um clique.','Clique num estudo para ver o horário, o tempo estudado e os descansos — e para editar ou remover.'],
+                articles:['sessoes','registro-manual','descansos'] },
   data:       { title:'Dados',
                 intro:'Backup, restauração e informações de privacidade.',
                 points:['O backup (.json) restaura tudo; o CSV serve para planilha.','Restaurar substitui os dados atuais e pede confirmação.','Backups das versões anteriores continuam sendo aceitos.'],
@@ -1965,7 +2017,7 @@ const HOW_TO_START = [
     example:'Matemática · Inglês · Anatomia · CCNA · Violão',
     action:'addDiscipline', actionLabel:'Adicionar agora' },
   { id:'session', title:'Comece a estudar',
-    text:'Escolha o que vai estudar e quanto tempo. O Ciclo conta o tempo para você.',
+    text:'Escolha o que vai estudar. O Ciclo conta o tempo para você — e o descanso, à parte.',
     example:'Inglês · 20 minutos',
     action:'quickStart', actionLabel:'Começar a estudar' },
   { id:'topic', title:'Adicione tópicos aos poucos',
@@ -2000,6 +2052,7 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 };
 
 const CHANGELOG = [
+  { v:'6.4', d:'Study Flow / Rest / Rhythm. "Registrar estudo" passou a dizer o que faz — guardar algo que você já estudou — e funciona em qualquer tela, sem tirar você de onde está; "Começar a estudar" liga o cronômetro. As duas ficam na mesma janela, em "Estudar agora" e "Já estudei". No registro de um estudo que já aconteceu, você informa a hora em que começou e terminou e a duração sai sozinha, inclusive quando o estudo atravessa a meia-noite (23:50 → 00:12 são 22 minutos); intervalos muito longos pedem confirmação. Disciplina e tópico ganharam seletores com busca que mostram o que foi escolhido, e os tipos de estudo vêm com ícone e uma linha de explicação. O cronômetro agora tem descansos: "Descansar" pausa o estudo e conta o descanso à parte, quantas vezes você quiser, e nada disso entra no tempo estudado, no plano ou em "Mais estudadas". A tela Hoje mostra seu ritmo (em quantos dos últimos 7 dias você estudou) e Análises ganhou dias com estudo por semana e descansos, sem nota e sem cobrança. Créditos deixaram de existir: o Ciclo trabalha só com tempo. Seus estudos e minutos continuam como estavam, e backups antigos continuam sendo aceitos.' },
   { v:'6.3', d:'Editorial Polish / Smart Capture / Reliability. Criar um tópico sem sair do registro: no campo Tópico, "+ Criar novo tópico…" abre o mesmo formulário de tópico de sempre dentro do registro, com a disciplina já escolhida (e editável); ao salvar, disciplina e tópico voltam selecionados juntos, e nada do que foi preenchido se perde. Nomes repetidos não criam um segundo tópico — o Ciclo oferece usar o existente ou reativar o arquivado. O fim do cronômetro também permite escolher ou criar o tópico, e o estudo só é encerrado depois de gravado. A frase do dia foi reconstruída só com frases reais, com autor e obra, conferidas na fonte, e passou a aparecer logo abaixo da recomendação. Tipografia revista com fontes do próprio sistema, números mais legíveis e movimentos mais curtos. Correções: trocar a disciplina no registro não apaga mais os minutos e o comentário; salvar o plano duas vezes seguidas não cria dois planos; o cronômetro em duas abas não grava o mesmo estudo duas vezes; editar um estudo ou prazo ligado a um tópico arquivado não desfaz mais esse vínculo; "Hoje" se atualiza sozinho na virada do dia. Nenhum dado foi alterado.' },
   { v:'6.2', d:'Navigation & Findability. O Voltar do navegador passou a voltar dentro do Ciclo (tópico → disciplina → área → Disciplinas) e só depois sair; o Avançar também funciona, e recarregar a página mantém você no mesmo lugar. Toda página dentro de Disciplinas tem um "voltar" que diz o destino. A busca de cada tela procura só ali: áreas, disciplinas da área aberta, tópicos da disciplina, prazos, revisões ou estudos registrados; a busca geral (Ctrl + K e tela Hoje) agrupa os resultados por tipo, e a Ajuda mostra primeiro as respostas e depois as funções relacionadas. Listas ganharam "Ordenar por" (mais estudadas, prioridade, modificadas ou criadas recentemente, nome, ordem personalizada) e Prazos, um filtro por situação. Ao voltar, a busca, a ordem e a posição da lista continuam como estavam. Nenhum dado foi alterado.' },
   { v:'6.1', d:'Human Interface / Calm Structure. Disciplinas virou um índice navegável: Disciplinas → Área → Disciplina → Tópico, com caminho no topo (e "voltar" no celular). Uma área criada aparece mesmo vazia, com convite para adicionar a primeira disciplina; dá para criar a área no próprio formulário da disciplina, e renomear, arquivar ou excluir pela página da área. A prioridade ganhou um único símbolo para 1 a 5, em todo lugar, e pode ser mudada direto no detalhe. Linguagem mais simples em toda a interface ("Começar a estudar", "Registrar estudo", "Quando revisar", "Como revisar", "Consolidação"). Mais espaço, menos maiúsculas e movimento mais suave ao navegar. Nenhum dado foi alterado.' },

@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v6.3.0 · Editorial Polish / Smart Capture / Reliability
+   CICLO — v6.4.0 · Study Flow / Rest / Rhythm
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -10,6 +10,7 @@
      ANALYTICS ENGINE · TIMER SERVICE · BACKUP · UI STATE · RENDERING
      NAVEGAÇÃO & BUSCA CONTEXTUAL (v6.2: histórico, voltar, buscar, ordenar)
      REGISTRO COM TÓPICO (v6.3: editor canônico em subtela, virada do dia)
+     FLUXO DE ESTUDO (v6.4: estudar agora / já estudei, descansos, constância)
      HELP ENGINE (busca, rotas, glossário) · EVENT HANDLERS · INITIALIZATION
    ========================================================================= */
 'use strict';
@@ -17,8 +18,8 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '6.3.0';
-const APP_SCHEMA_VERSION = 5;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
+const APP_VERSION = '6.4.0';
+const APP_SCHEMA_VERSION = 6;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
                                        // ganham tipo, status, data de início, orientações e
@@ -35,6 +36,14 @@ const APP_SCHEMA_VERSION = 5;          // formato LÓGICO dos dados. A v5.2 mudo
                                        // sugerida do cronômetro é um campo opcional no
                                        // localStorage do cronômetro, e `lastReviewMethod`
                                        // (já gravado antes) passa a voltar na importação.
+                                       // A v6.4 muda o formato (5 → 6): cada estudo ganha
+                                       // `breaks` (os descansos dele) e `minutes` passa a
+                                       // significar, sem ambiguidade, TEMPO DE ESTUDO —
+                                       // nunca o tempo com descanso. Estudos antigos recebem
+                                       // `breaks: []` e os minutos deles não mudam. Créditos
+                                       // deixaram de existir no produto: os campos antigos
+                                       // (`credits`, `minutesPerCredit`, `legacyWeeklyMinutes`)
+                                       // não são mais lidos nem gravados em registros novos.
 
 /* Identificadores técnicos LEGADOS. O produto passou a se chamar "Ciclo" na v5.1,
    mas estes nomes ficam como estão: renomeá-los faria o navegador procurar um
@@ -50,14 +59,20 @@ const THEME_LS_KEY = 'diarioEstudos:v3:theme';
 
 const STORES = ['meta','areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings'];
 
+/* v6.4 — `hint` e `icon` são só apresentação; os valores (`v`) não mudaram.
+   Descanso NÃO é um tipo de estudo: ele vive em `session.breaks`. */
 const SESSION_TYPES = [
-  { v:'teoria',      label:'Teoria' },
-  { v:'exercicios',  label:'Exercícios' },
-  { v:'laboratorio', label:'Laboratório' },
-  { v:'revisao',     label:'Revisão' },
-  { v:'projeto',     label:'Projeto' },
-  { v:'outro',       label:'Outro' }
+  { v:'teoria',      label:'Teoria',      icon:'i-t-theory',   hint:'Ler, assistir, entender.' },
+  { v:'exercicios',  label:'Exercícios',  icon:'i-t-exercise', hint:'Questões e problemas.' },
+  { v:'laboratorio', label:'Laboratório', icon:'i-t-lab',      hint:'Prática real ou simulada.' },
+  { v:'revisao',     label:'Revisão',     icon:'i-review',     hint:'Rever o que já estudou.' },
+  { v:'projeto',     label:'Projeto',     icon:'i-t-project',  hint:'Construir algo.' },
+  { v:'outro',       label:'Outro',       icon:'i-t-other',    hint:'Qualquer outro estudo.' }
 ];
+
+/* v6.4 — limites do registro por horário e dos descansos. */
+const LONG_STUDY_CONFIRM_MIN = 480;    // acima de 8h o Ciclo pergunta antes de registrar (não bloqueia)
+const MAX_BREAKS_PER_STUDY = 60;       // teto defensivo para dados importados
 
 const DIFFICULTIES = [
   { v:1, label:'Muito fácil',  color:'#4C8C7D' },
@@ -150,8 +165,7 @@ const LEGACY_IMPORTANCE_TO_PRIORITY = { low:2, baixa:2, normal:3, high:4, alta:4
 const METRIC_WORDS = {
   adherence: { title:'Plano cumprido',        canonical:'aderência ao plano' },
   coverage:  { title:'Conteúdo estudado',     canonical:'cobertura' },
-  mastery:   { title:'Conteúdos consolidados',canonical:'domínio' },
-  credits:   { title:'Créditos',              canonical:'créditos' }
+  mastery:   { title:'Conteúdos consolidados',canonical:'domínio' }
 };
 
 /* ---------- v4: natureza do conteúdo da disciplina ---------- */
@@ -404,10 +418,17 @@ function fmtDuration(minutes){
   if(mm === 0) return hh + 'h';
   return hh + 'h' + String(mm).padStart(2,'0');
 }
-function fmtClock(ms){
+/** Cronômetro: "42:18" e, a partir de uma hora, "1:02:18". */
+function fmtTimer(ms){
   const total = Math.max(0, Math.floor(ms / 1000));
   const hh = Math.floor(total/3600), mm = Math.floor((total%3600)/60), ss = total%60;
-  return [hh,mm,ss].map(x => String(x).padStart(2,'0')).join(':');
+  const tail = String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
+  return hh > 0 ? hh + ':' + tail : tail;
+}
+/** Duração em frase: "22 min", "1h", "1h22". */
+function fmtDurationWords(minutes){
+  const m = Math.max(0, Math.round(minutes || 0));
+  return m < 60 ? m + ' min' : fmtDuration(m);
 }
 function fmtPct(n){ return fmtNumber(n, 0) + '%'; }
 
@@ -472,6 +493,29 @@ function fmtRelativeFuture(iso){
   if(n === 1) return 'amanhã';
   return `em ${n} dias`;
 }
+/* v6.4 — horários informados à mão são sempre LOCAIS. `new Date(ano, mês, dia,
+   hora, minuto)` monta o instante no fuso do usuário; só então ele vira ISO
+   (UTC) para ser guardado. 23:50 → 00:12 nunca "anda" por causa de fuso. */
+function parseClock(v){
+  const m = /^(\d{1,2}):(\d{2})/.exec(str(v));
+  if(!m) return null;
+  const hh = Number(m[1]), mm = Number(m[2]);
+  return (hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59) ? hh * 60 + mm : null;
+}
+/** Data civil local + minutos desde a meia-noite → instante (Date). Aceita minutos ≥ 1440 (dia seguinte). */
+function localDateTime(iso, minutesOfDay){
+  const d = parseISO(iso);
+  if(!d || !isNum(minutesOfDay)) return null;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, minutesOfDay, 0, 0);
+}
+/** "23:50" a partir de um instante gravado (ISO ou ms), no fuso local. */
+function fmtClockOfDay(value){
+  const d = (value instanceof Date) ? value : new Date(value);
+  if(!value || isNaN(d.getTime())) return '';
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function validInstant(v){ if(!v || typeof v !== 'string') return null; const t = Date.parse(v); return isFinite(t) ? t : null; }
+
 /** Número ISO-8601 aproximado da semana, usado nos relatórios semanais. */
 function isoWeekNumber(d){
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -626,15 +670,12 @@ function convertV2(raw){
     if(!s || !s.id) return;
     if(discIds.has(s.id)) return;
     discIds.add(s.id);
-    const mpc = (isNum(s.minutosPorCredito) && s.minutosPorCredito > 0) ? s.minutosPorCredito : 20;
-    const goalCredits = isNum(s.metaSemanalCreditos) ? s.metaSemanalCreditos : 0;
+    // v6.4: `minutosPorCredito` e `metaSemanalCreditos` da V2 são ignorados — o Ciclo trabalha com tempo.
     disciplines.push({
       id: String(s.id),
       areaId: (s.areaId && areaIds.has(s.areaId)) ? String(s.areaId) : null,
       name: str(s.nome) || 'Disciplina',
       priority: 3,                                   // prioridade padrão para dados migrados
-      minutesPerCredit: mpc,
-      legacyWeeklyMinutes: Math.round(goalCredits * mpc),  // meta antiga convertida p/ minutos
       archived: !!s.archived,
       createdAt: ts, updatedAt: ts
     });
@@ -655,7 +696,7 @@ function convertV2(raw){
       date,
       startedAt: null, endedAt: null,
       minutes: isNum(l.minutos) ? l.minutos : 0,
-      credits: isNum(l.credits) ? l.credits : 0,     // crédito histórico preservado exatamente
+      breaks: [],
       type: SESSION_TYPES.some(t => t.v === l.tipo) ? l.tipo : null,
       difficulty: (isNum(l.dificuldade) && l.dificuldade >= 1 && l.dificuldade <= 5) ? l.dificuldade : null,
       comment: str(l.comentario),
@@ -879,6 +920,71 @@ async function runV52Migration(){
 }
 
 /* =========================================================================
+   MIGRATION V6.3 → V6.4 (schema 5 → 6) — DESCANSOS
+   Cada estudo ganha `breaks`: a lista dos descansos que aconteceram nele.
+   Estudos antigos recebem `breaks: []`. `minutes` NÃO é tocado: ele já era o
+   tempo de estudo e continua sendo.
+
+   Créditos saíram do produto. Os campos antigos (`credits` nos estudos,
+   `minutesPerCredit` e `legacyWeeklyMinutes` nas disciplinas) ficam onde
+   estão no banco — nada é apagado —, mas o Ciclo não lê, não calcula e não
+   grava mais nenhum deles.
+   Idempotente: rodar de novo não muda nada.
+   ========================================================================= */
+
+/**
+ * Saneia uma lista de descansos vinda do banco, de um backup ou de um formulário.
+ * Cada descanso: { id, startedAt (ISO|null), endedAt (ISO|null), minutes > 0 }.
+ * Entradas sem duração positiva são descartadas; nunca lança.
+ */
+function sanitizeBreaks(list){
+  if(!Array.isArray(list)) return [];
+  const out = [];
+  const seen = new Set();
+  for(const b of list){
+    if(!b || typeof b !== 'object') continue;
+    const a = validInstant(b.startedAt), z = validInstant(b.endedAt);
+    let minutes = isNum(b.minutes) ? Math.round(b.minutes) : null;
+    if(!(minutes > 0) && a !== null && z !== null && z > a) minutes = Math.round((z - a) / 60000);
+    if(!(minutes > 0) || minutes > 1440) continue;
+    let id = str(b.id) || uid();
+    if(seen.has(id)) id = uid();
+    seen.add(id);
+    const timed = a !== null && z !== null && z > a;
+    out.push({ id, startedAt: timed ? new Date(a).toISOString() : null, endedAt: timed ? new Date(z).toISOString() : null, minutes });
+    if(out.length >= MAX_BREAKS_PER_STUDY) break;
+  }
+  // com horário primeiro, em ordem; os informados só por duração ficam no fim, na ordem em que vieram
+  return out.map((b, i) => ({ b, i })).sort((x, y) => {
+    if(x.b.startedAt && y.b.startedAt) return x.b.startedAt < y.b.startedAt ? -1 : x.b.startedAt > y.b.startedAt ? 1 : x.i - y.i;
+    if(x.b.startedAt) return -1;
+    if(y.b.startedAt) return 1;
+    return x.i - y.i;
+  }).map(x => x.b);
+}
+
+function upgradeSessionToV64(x){
+  if(!Array.isArray(x.breaks)) x.breaks = [];
+  return x;
+}
+
+async function runV64Migration(){
+  const done = await DB.get('meta', 'v64MigrationCompleted');
+  if(done && done.value) return { migrated:false, reason:'already' };
+
+  const sessions = await DB.getAll('sessions');
+  const changed = (sessions || []).filter(x => x && !Array.isArray(x.breaks)).map(upgradeSessionToV64);
+
+  await DB.transactional(changed.length ? ['meta','sessions'] : ['meta'], api => {
+    changed.forEach(x => api.put('sessions', x));
+    api.put('meta', { key:'v64MigrationCompleted', value:true });
+    api.put('meta', { key:'v64MigrationDate', value: nowISO() });
+    api.put('meta', { key:'v64MigrationSummary', value:{ sessions: changed.length } });
+  });
+  return { migrated:true, counts:{ sessions: changed.length } };
+}
+
+/* =========================================================================
    DOMAIN MODELS — fábricas e derivações. Estado em memória (`state`).
    ========================================================================= */
 const state = {
@@ -899,7 +1005,6 @@ function newDiscipline(name, areaId, priority){
   return {
     id:uid(), areaId: areaId || null, name:str(name).trim(),
     priority: clamp(Number(priority) || 3, 1, 5),
-    minutesPerCredit: 20, legacyWeeklyMinutes: 0,
     /* v4 — tudo opcional, com padrões que funcionam sem configuração */
     contentNature: 'mixed',
     reviewStrategy: 'inherit',      // herda da configuração global
@@ -931,7 +1036,9 @@ function newSession(data){
   return Object.assign({
     id:uid(), disciplineId:null, topicId:null, legacyTopicText:'',
     date: todayISO(), startedAt:null, endedAt:null,
-    minutes:0, credits:0, type:null, difficulty:null, comment:'', reviewOutcome:null,
+    /* `minutes` = tempo de ESTUDO. Descanso nunca entra aqui: fica em `breaks`,
+       um registro por descanso — { id, startedAt, endedAt, minutes }. */
+    minutes:0, breaks:[], type:null, difficulty:null, comment:'', reviewOutcome:null,
     /* v4 — guarda o contexto da revisão para as análises continuarem legíveis
        mesmo se o usuário trocar a estratégia depois */
     reviewMethod:null, reviewStrategyAtTime:null,
@@ -1018,10 +1125,40 @@ function sessionTypeLabel(v){ const t = SESSION_TYPES.find(x => x.v === v); retu
 function difficultyInfo(v){ return DIFFICULTIES.find(d => d.v === v) || null; }
 function reviewOutcomeLabel(v){ const o = REVIEW_OUTCOMES.find(x => x.v === v); return o ? o.label : null; }
 
-function creditsFor(disciplineId, minutes){
-  const d = getDiscipline(disciplineId);
-  const mpc = d && d.minutesPerCredit > 0 ? d.minutesPerCredit : 20;
-  return Math.round((minutes / mpc) * 100) / 100;
+/* ---------- v6.4: descansos e constância ---------- */
+/** Descansos de um estudo (sempre uma lista; estudos antigos não têm nenhum). */
+function breaksOf(session){ return session && Array.isArray(session.breaks) ? session.breaks : []; }
+/** Minutos de descanso de um estudo. Nunca entram em `minutes`. */
+function breakMinutesOf(session){ return sum(breaksOf(session), b => (isNum(b.minutes) && b.minutes > 0) ? b.minutes : 0); }
+/** "23:50 → 00:12", quando o estudo tem horário de início e fim gravados. */
+function sessionClockRange(session){
+  const a = validInstant(session.startedAt), z = validInstant(session.endedAt);
+  if(a === null || z === null || z <= a) return null;
+  const nextDay = dateToISO(new Date(a)) !== dateToISO(new Date(z));
+  return { text: `${fmtClockOfDay(a)} → ${fmtClockOfDay(z)}`, nextDay, start:a, end:z };
+}
+/** Dias (YYYY-MM-DD) com pelo menos um estudo de duração positiva. Descanso sozinho não cria dia ativo. */
+function activeDaySet(sessions){
+  const set = new Set();
+  sessions.forEach(s => { if((Number(s.minutes) || 0) > 0) set.add(s.date); });
+  return set;
+}
+/**
+ * Ritmo recente — janela corrida de `days` dias terminando hoje.
+ * Informa, não julga: só conta em quantos dias houve estudo.
+ */
+function recentRhythm(days){
+  const n = days || 7;
+  return DerivedCache.get('rhythm:' + n + ':' + todayISO(), () => {
+    const end = today(), start = addDays(end, -(n - 1));
+    const a = dateToISO(start), b = dateToISO(end);
+    const active = activeDaySet(state.sessions.filter(s => s.date >= a && s.date <= b));
+    let last = null;
+    state.sessions.forEach(s => { if((Number(s.minutes) || 0) > 0 && s.date <= b && (!last || s.date > last)) last = s.date; });
+    const strip = [];
+    for(let i = 0; i < n; i++){ const iso = dateToISO(addDays(start, i)); strip.push({ iso, active: active.has(iso) }); }
+    return { days:n, activeDays: active.size, strip, lastStudy:last, daysSinceLast: last ? daysSinceISO(last) : null };
+  });
 }
 function lastStudyISO(disciplineId){
   const list = sessionsOf(disciplineId);
@@ -1981,6 +2118,8 @@ const AnalyticsEngine = {
     const prevSessions = AnalyticsScope.sessions(scope, prevRange);
 
     const totals = this.totals(sessions, days);
+    const rest = this.restStats(sessions, totals);
+    const weeklyRhythm = this.weeklyRhythm(range, sessions);
     const previousComparison = this.compare(totals, this.totals(prevSessions, rangeDays(prevRange)), prevRange);
 
     const topicKey = s => s.topicId || '__none__';
@@ -2004,7 +2143,7 @@ const AnalyticsEngine = {
     const attention = this.attentionTopics(scope, range);
     const projection = this.projection(scope);
 
-    const a = { range, days, scope, sessions, totals, previousComparison, byDiscipline, byArea, byTopic,
+    const a = { range, days, scope, sessions, totals, rest, weeklyRhythm, previousComparison, byDiscipline, byArea, byTopic,
                 byType, byWeekday, difficulty, planAdherence, reviews, content, deadlines, priorities,
                 attention, projection };
     a.summary = this.summary(a);
@@ -2019,17 +2158,65 @@ const AnalyticsEngine = {
     return a;
   },
 
+  /** `minutes` é sempre tempo de ESTUDO (session.minutes). Descanso é somado à parte, em restStats. */
   totals(sessions, days){
     const minutes = sum(sessions, s => s.minutes || 0);
-    const credits = sum(sessions, s => s.credits || 0);
-    const activeDays = new Set(sessions.map(s => s.date)).size;
+    const activeDays = activeDaySet(sessions).size;      // dia ativo = dia com estudo de duração positiva
     return {
-      minutes, credits, count: sessions.length, activeDays, days,
+      minutes, count: sessions.length, activeDays, days,
       avgSession: sessions.length ? minutes / sessions.length : 0,
       avgPerDay: days > 0 ? minutes / days : 0,
       avgPerActiveDay: activeDays > 0 ? minutes / activeDays : 0,
       consistency: days > 0 ? (activeDays / days) * 100 : 0
     };
+  },
+
+  /**
+   * v6.4 — descansos do período, sempre separados do tempo de estudo.
+   * Só descreve: quanto, quantos, média e a relação com o tempo estudado.
+   */
+  restStats(sessions, totals){
+    let minutes = 0, count = 0, withBreaks = 0;
+    sessions.forEach(s => {
+      const list = breaksOf(s);
+      if(!list.length) return;
+      const m = breakMinutesOf(s);
+      if(m <= 0) return;
+      minutes += m; count += list.filter(b => b.minutes > 0).length; withBreaks++;
+    });
+    // Entre os estudos mais longos do período, em quantos houve descanso (só com amostra mínima).
+    let longest = null;
+    if(count > 0 && sessions.length >= 5){
+      const top = sessions.slice().sort((x, y) => (y.minutes || 0) - (x.minutes || 0)).slice(0, Math.min(10, sessions.length));
+      longest = { of: top.length, withBreaks: top.filter(s => breakMinutesOf(s) > 0).length };
+    }
+    return {
+      minutes, count, sessionsWithBreaks: withBreaks,
+      avg: count > 0 ? minutes / count : 0,
+      // minutos de estudo para cada hora de descanso (null sem descanso)
+      studyPerRestHour: minutes > 0 ? (totals.minutes / minutes) * 60 : null,
+      longest
+    };
+  },
+
+  /** Dias com estudo em cada semana tocada pelo período (semana parcial conta só os dias incluídos). */
+  weeklyRhythm(range, sessions){
+    const active = activeDaySet(sessions);
+    const out = [];
+    let cursor = startOfWeek(range.start);
+    const last = startOfWeek(range.end);
+    let guard = 0;
+    while(cursor <= last && guard++ < 520){
+      const clipStart = cursor < range.start ? range.start : cursor;
+      const wEnd = addDays(cursor, 6);
+      const clipEnd = wEnd > range.end ? range.end : wEnd;
+      const covered = diffDays(clipEnd, clipStart) + 1;
+      let n = 0;
+      for(let i = 0; i < covered; i++) if(active.has(dateToISO(addDays(clipStart, i)))) n++;
+      out.push({ weekStart: dateToISO(cursor), weekNumber: isoWeekNumber(cursor), start: clipStart, end: clipEnd, days: covered, activeDays: n });
+      cursor = addDays(cursor, 7);
+    }
+    return out;
   },
 
   previousRange(range){
@@ -2045,8 +2232,7 @@ const AnalyticsEngine = {
       available:true, prevRange, prev,
       minutesDelta: delta(cur.minutes, prev.minutes),
       sessionsDelta: delta(cur.count, prev.count),
-      activeDaysDelta: delta(cur.activeDays, prev.activeDays),
-      creditsDelta: delta(cur.credits, prev.credits)
+      activeDaysDelta: delta(cur.activeDays, prev.activeDays)
     };
   },
 
@@ -2055,8 +2241,8 @@ const AnalyticsEngine = {
     sessions.forEach(s => {
       const k = keyFn(s);
       if(k === null || k === undefined) return;
-      const cur = map.get(k) || { key:k, minutes:0, credits:0, count:0 };
-      cur.minutes += s.minutes || 0; cur.credits += s.credits || 0; cur.count++;
+      const cur = map.get(k) || { key:k, minutes:0, count:0 };
+      cur.minutes += s.minutes || 0; cur.count++;
       map.set(k, cur);
     });
     const total = sum(Array.from(map.values()), x => x.minutes);
@@ -2375,6 +2561,7 @@ const AnalyticsEngine = {
     }
     const next = a.deadlines.next;
     if(next) out.push(`Próximo prazo: ${DeadlineEngine.phrase(next.dl)}.`);
+    if(a.rest.count > 0) out.push(`Descansos: ${fmtDuration(a.rest.minutes)} em ${plural(a.rest.count, 'descanso', 'descansos')} — fora do tempo estudado.`);
     if(a.previousComparison.available && isNum(a.previousComparison.minutesDelta) && t.count > 0){
       const d = a.previousComparison.minutesDelta;
       if(Math.abs(d) >= 5) out.push(`Você estudou ${fmtNumber(Math.abs(d), 0)}% ${d >= 0 ? 'mais' : 'menos'} que no período anterior equivalente.`);
@@ -2396,11 +2583,16 @@ const AnalyticsEngine = {
 
     // tempo e constância
     if(t.count > 0 && a.days >= 7){
-      add('time', `Houve estudo em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')} (${fmtPct(t.consistency)} dos dias).`);
+      add('time', `Houve estudo em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')}.`);
       const byDay = new Map();
       a.sessions.forEach(s => byDay.set(s.date, (byDay.get(s.date) || 0) + (s.minutes || 0)));
       const top = Array.from(byDay.entries()).sort((x,y) => y[1] - x[1])[0];
       if(top && t.activeDays > 1) add('time', `O dia com mais estudo foi ${fmtDateBR(top[0])}, com ${fmtDuration(top[1])}.`);
+    }
+    // descansos: só o fato, sem dizer se foi muito ou pouco
+    const rs = a.rest;
+    if(rs.longest && rs.longest.withBreaks > 0){
+      add('rest', `Você fez descansos em ${rs.longest.withBreaks} dos ${rs.longest.of} estudos mais longos do período.`);
     }
 
     // plano
@@ -2489,9 +2681,7 @@ const AnalyticsEngine = {
   positiveItems(a){
     const out = [];
     const add = (tag, text) => out.push({ tag, text });
-    const t = a.totals;
     if(a.planAdherence.hasPlan && a.planAdherence.pct >= 90) add('plan', `Plano cumprido em ${safePct(a.planAdherence.pct)}.`);
-    if(a.days >= 3 && t.consistency >= 50) add('time', `Estudo em ${t.activeDays} de ${a.days} dias.`);
     if(a.reviews.completed > 0 && a.reviews.overdueNow === 0) add('reviews', `${plural(a.reviews.completed, 'revisão concluída', 'revisões concluídas')} e nenhuma atrasada.`);
     if(a.previousComparison.available && isNum(a.previousComparison.minutesDelta) && a.previousComparison.minutesDelta >= 10)
       add('time', `${fmtNumber(a.previousComparison.minutesDelta, 0)}% mais tempo que no período anterior.`);
@@ -2522,9 +2712,20 @@ const AnalyticsEngine = {
 /* =========================================================================
    TIMER SERVICE — tempo sempre calculado por timestamps, nunca por setInterval.
    Estado persistido para sobreviver a reload / fechar aba.
+
+   v6.4 — DESCANSOS. O cronômetro tem dois estados: estudando ou descansando.
+     · estudando:   running = true;  o tempo de estudo é accumulatedMs + (agora − startedAt)
+     · descansando: running = false; o tempo de estudo fica CONGELADO em accumulatedMs
+                    e o descanso em curso é (agora − breakStartedAt)
+   Cada descanso encerrado vira { id, startedAt, endedAt } em `breaks`. Nada é
+   contado por setInterval nem gravado a cada segundo: só as transições
+   (começar, descansar, voltar, finalizar) escrevem no localStorage. Recarregar
+   a página, dormir o computador ou deixar a aba em segundo plano não muda as
+   contas — e o tempo de estudo nunca corre escondido durante um descanso.
    ========================================================================= */
 const TimerService = {
-  data: null,          // { disciplineId, topicId, presetType, startedAt, accumulatedMs, running, targetMinutes? }
+  data: null,          // { disciplineId, topicId, presetType, presetMethod, openedAt, startedAt, accumulatedMs,
+                       //   running, breaks:[{id,startedAt,endedAt}], breakStartedAt, targetMinutes? }
   _tick: null,
 
   restore(){
@@ -2534,18 +2735,30 @@ const TimerService = {
       const d = JSON.parse(raw);
       if(!d || typeof d !== 'object' || !d.disciplineId) { this.clear(); return null; }
       if(!getDiscipline(d.disciplineId)) { this.clear(); return null; }   // disciplina sumiu
+      const now = Date.now();
+      const running = !!d.running;
+      const breaks = (Array.isArray(d.breaks) ? d.breaks : [])
+        .filter(b => b && isNum(b.startedAt) && isNum(b.endedAt) && b.endedAt > b.startedAt)
+        .slice(0, MAX_BREAKS_PER_STUDY)
+        .map(b => ({ id: str(b.id) || uid(), startedAt: b.startedAt, endedAt: b.endedAt }));
       this.data = {
         disciplineId: str(d.disciplineId),
         topicId: d.topicId ? str(d.topicId) : null,
         presetType: SESSION_TYPES.some(t => t.v === d.presetType) ? d.presetType : null,
         presetMethod: CONCRETE_METHODS.includes(d.presetMethod) ? d.presetMethod : null,
-        startedAt: isNum(d.startedAt) ? d.startedAt : Date.now(),
-        accumulatedMs: isNum(d.accumulatedMs) ? d.accumulatedMs : 0,
-        running: !!d.running,
-        openedAt: isNum(d.openedAt) ? d.openedAt : (isNum(d.startedAt) ? d.startedAt : Date.now()),
+        startedAt: isNum(d.startedAt) ? d.startedAt : now,
+        accumulatedMs: (isNum(d.accumulatedMs) && d.accumulatedMs > 0) ? d.accumulatedMs : 0,
+        running,
+        openedAt: isNum(d.openedAt) ? d.openedAt : (isNum(d.startedAt) ? d.startedAt : now),
+        breaks,
+        /* Descanso em curso. Um cronômetro "pausado" gravado pela v6.3 não sabe
+           quando a pausa começou: o descanso passa a contar de agora, sem inventar tempo. */
+        breakStartedAt: running ? null : ((isNum(d.breakStartedAt) && d.breakStartedAt <= now) ? d.breakStartedAt : now),
         // v6.3 — duração sugerida escolhida no "Começar a estudar" (opcional; cronômetros antigos não têm)
         targetMinutes: (isNum(d.targetMinutes) && d.targetMinutes > 0 && d.targetMinutes <= 1440) ? Math.round(d.targetMinutes) : null
       };
+      // cronômetro vindo da v6.3 em pausa: grava o início do descanso uma única vez
+      if(!running && !isNum(d.breakStartedAt)) this._persist();
       return this.data;
     } catch(_){ this.clear(); return null; }
   },
@@ -2556,34 +2769,76 @@ const TimerService = {
     } catch(_){ /* storage cheio ou bloqueado: o timer segue em memória */ }
   },
   start(disciplineId, topicId, presetType, presetMethod, targetMinutes){
+    const now = Date.now();
     this.data = { disciplineId, topicId: topicId || null, presetType: presetType || null,
                   presetMethod: presetMethod || null,
-                  startedAt: Date.now(), accumulatedMs: 0, running: true, openedAt: Date.now(),
+                  startedAt: now, accumulatedMs: 0, running: true, openedAt: now,
+                  breaks: [], breakStartedAt: null,
                   targetMinutes: (isNum(targetMinutes) && targetMinutes > 0) ? Math.round(targetMinutes) : null };
     this._persist();
     return this.data;
   },
-  pause(){
-    if(!this.data || !this.data.running) return;
-    this.data.accumulatedMs = this.getElapsed();
+  /** Estudando → descansando. O tempo de estudo para de acumular neste instante. */
+  startBreak(){
+    if(!this.data || !this.data.running) return false;
+    const now = Date.now();
+    this.data.accumulatedMs = this.getElapsed(now);
     this.data.running = false;
+    this.data.breakStartedAt = now;
     this._persist();
+    return true;
   },
-  resume(){
-    if(!this.data || this.data.running) return;
-    this.data.startedAt = Date.now();
+  /** Descansando → estudando. O descanso é fechado e guardado; o estudo retoma de onde parou. */
+  endBreak(){
+    if(!this.data || this.data.running) return false;
+    const now = Date.now();
+    const from = isNum(this.data.breakStartedAt) ? this.data.breakStartedAt : now;
+    if(now > from && this.data.breaks.length < MAX_BREAKS_PER_STUDY) this.data.breaks.push({ id: uid(), startedAt: from, endedAt: now });
+    this.data.breakStartedAt = null;
+    this.data.startedAt = now;
     this.data.running = true;
     this._persist();
+    return true;
   },
-  getElapsed(){
+  /** Tempo de ESTUDO, em ms. Durante um descanso ele não anda. */
+  getElapsed(at){
     if(!this.data) return 0;
     const base = this.data.accumulatedMs || 0;
-    return this.data.running ? base + (Date.now() - this.data.startedAt) : base;
+    const now = isNum(at) ? at : Date.now();
+    return this.data.running ? base + Math.max(0, now - this.data.startedAt) : base;
+  },
+  /** Descanso em curso, em ms (0 quando se está estudando). */
+  getBreakElapsed(at){
+    if(!this.data || this.data.running || !isNum(this.data.breakStartedAt)) return 0;
+    return Math.max(0, (isNum(at) ? at : Date.now()) - this.data.breakStartedAt);
+  },
+  /** Soma de todos os descansos (fechados + o que estiver em curso), em ms. */
+  getBreakTotal(at){
+    if(!this.data) return 0;
+    return sum(this.data.breaks, b => b.endedAt - b.startedAt) + this.getBreakElapsed(at);
   },
   get isActive(){ return !!this.data; },
   get isRunning(){ return !!(this.data && this.data.running); },
+  get isOnBreak(){ return !!(this.data && !this.data.running); },
   /** Tempo total desde que a sessão foi aberta (para detectar sessão esquecida). */
   getOpenAgeMs(){ return this.data ? Date.now() - (this.data.openedAt || this.data.startedAt) : 0; },
+  /**
+   * Retrato do estudo "se ele terminasse agora". NÃO altera o cronômetro: se a
+   * pessoa desistir de finalizar, tudo continua como estava (inclusive o
+   * descanso em curso). O descanso aberto entra no retrato fechado em `at`.
+   */
+  snapshot(at){
+    if(!this.data) return null;
+    const now = isNum(at) ? at : Date.now();
+    const d = this.data;
+    const breaks = d.breaks.map(b => ({ id:b.id, startedAt:b.startedAt, endedAt:b.endedAt }));
+    if(!d.running && isNum(d.breakStartedAt) && now > d.breakStartedAt) breaks.push({ id: uid(), startedAt: d.breakStartedAt, endedAt: now });
+    return {
+      studyMs: this.getElapsed(now),
+      breakMs: sum(breaks, b => b.endedAt - b.startedAt),
+      breaks, startedAt: d.openedAt || d.startedAt, endedAt: now, onBreak: !d.running
+    };
+  },
   finish(){ const d = this.data; const ms = this.getElapsed(); this.clear(); return { data:d, elapsedMs:ms }; },
   discard(){ this.clear(); },
   clear(){ this.data = null; this._persist(); this.stopTicking(); },
@@ -2591,10 +2846,30 @@ const TimerService = {
   stopTicking(){ if(this._tick){ clearInterval(this._tick); this._tick = null; } }
 };
 
+/** Descansos do cronômetro (ms) → descansos do estudo (ISO + minutos). Menos de meio minuto não vira registro. */
+function timerBreaksToSession(breaks){
+  return sanitizeBreaks((breaks || []).map(b => ({
+    id: b.id, startedAt: new Date(b.startedAt).toISOString(), endedAt: new Date(b.endedAt).toISOString(),
+    minutes: Math.round((b.endedAt - b.startedAt) / 60000)
+  })).filter(b => b.minutes > 0));
+}
+
 /* =========================================================================
    BACKUP / IMPORT / EXPORT
    ========================================================================= */
 const Backup = {
+  /**
+   * v6.4 — créditos não fazem mais parte do Ciclo. Registros antigos ainda podem
+   * carregar `credits`, `minutesPerCredit` e `legacyWeeklyMinutes` no banco
+   * (nada foi apagado), mas o backup novo sai sem eles. Backups antigos COM
+   * esses campos continuam sendo aceitos: a importação apenas os ignora.
+   */
+  _withoutLegacy(obj, keys){
+    if(!keys.some(k => k in obj)) return obj;
+    const copy = Object.assign({}, obj);
+    keys.forEach(k => { delete copy[k]; });
+    return copy;
+  },
   buildExport(){
     return {
       schemaVersion: APP_SCHEMA_VERSION,
@@ -2602,9 +2877,9 @@ const Backup = {
       appVersion: APP_VERSION,
       exportedAt: nowISO(),
       areas: state.areas,
-      disciplines: state.disciplines,
+      disciplines: state.disciplines.map(d => this._withoutLegacy(d, ['minutesPerCredit','legacyWeeklyMinutes'])),
       topics: state.topics,
-      sessions: state.sessions,
+      sessions: state.sessions.map(s => this._withoutLegacy(s, ['credits'])),
       plans: state.plans,
       weeklyPlans: state.weeklyPlans,
       deadlines: state.deadlines,
@@ -2627,7 +2902,8 @@ const Backup = {
   },
 
   exportCSV(){
-    const head = ['data','area','disciplina','topico','tipo','dificuldade','minutos','creditos','resultado_revisao','metodo_revisao','comentario'];
+    // `minutos` é o tempo de estudo; o descanso sai numa coluna própria e nunca é somado a ele.
+    const head = ['data','area','disciplina','topico','tipo','dificuldade','minutos','descanso_minutos','resultado_revisao','metodo_revisao','comentario'];
     const esc = v => '"' + str(v).replace(/"/g,'""') + '"';
     const rows = state.sessions.slice().sort((a,b) => a.date.localeCompare(b.date)).map(s => {
       const d = getDiscipline(s.disciplineId);
@@ -2635,7 +2911,7 @@ const Backup = {
       return [
         s.date, d ? areaNameOf(d) : '', d ? d.name : '', topicLabelOf(s),
         s.type ? sessionTypeLabel(s.type) : '', diff ? diff.label : '',
-        s.minutes, s.credits, reviewOutcomeLabel(s.reviewOutcome) || '',
+        s.minutes, breakMinutesOf(s), reviewOutcomeLabel(s.reviewOutcome) || '',
         s.reviewMethod ? methodLabel(s.reviewMethod) : '', s.comment
       ].map(esc).join(',');
     });
@@ -2692,8 +2968,7 @@ const Backup = {
       id:str(d.id), areaId: (d.areaId && areaIds.has(d.areaId)) ? str(d.areaId) : null,
       name:str(d.name) || 'Disciplina',
       priority: clamp(Number(d.priority) || 3, 1, 5),
-      minutesPerCredit: (isNum(d.minutesPerCredit) && d.minutesPerCredit > 0) ? d.minutesPerCredit : 20,
-      legacyWeeklyMinutes: isNum(d.legacyWeeklyMinutes) ? d.legacyWeeklyMinutes : 0,
+      // v6.4: `minutesPerCredit` e `legacyWeeklyMinutes` de backups antigos são aceitos e ignorados
       contentNature: CONTENT_NATURES.some(n => n.v === d.contentNature) ? d.contentNature : 'mixed',
       reviewStrategy: ['inherit'].concat(REVIEW_STRATEGIES.map(x => x.v)).includes(d.reviewStrategy) ? d.reviewStrategy : 'inherit',
       preferredReviewMethod: ['inherit'].concat(REVIEW_METHODS.map(x => x.v)).includes(d.preferredReviewMethod) ? d.preferredReviewMethod : 'inherit',
@@ -2743,8 +3018,9 @@ const Backup = {
       legacyTopicText: str(s.legacyTopicText),
       date: parseISO(str(s.date)) ? str(s.date).slice(0,10) : todayISO(),
       startedAt: str(s.startedAt) || null, endedAt: str(s.endedAt) || null,
-      minutes: isNum(s.minutes) ? Math.max(0, s.minutes) : 0,
-      credits: isNum(s.credits) ? s.credits : 0,
+      minutes: isNum(s.minutes) ? Math.max(0, s.minutes) : 0,       // tempo de estudo: nunca recalculado na importação
+      // v6.4: descansos do estudo. Backups anteriores não têm o campo → []. `credits` antigo é ignorado.
+      breaks: sanitizeBreaks(s.breaks),
       type: SESSION_TYPES.some(t => t.v === s.type) ? s.type : null,
       difficulty: (isNum(s.difficulty) && s.difficulty >= 1 && s.difficulty <= 5) ? s.difficulty : null,
       comment: str(s.comment),
@@ -2936,6 +3212,8 @@ async function loadAll(){
   state.disciplines = disciplines || [];
   state.topics = topics || [];
   state.sessions = sessions || [];
+  // v6.4: se a migração não tiver rodado (falha de gravação), a memória ainda fica coerente
+  state.sessions.forEach(s => { if(!Array.isArray(s.breaks)) s.breaks = []; });
   state.plans = plans || [];
   state.weeklyPlans = weeklyPlans || [];
   state.deadlines = deadlines || [];
@@ -3098,6 +3376,14 @@ const FOCUSABLE_SELECTOR =
 
 const Overlay = {
   stack: [],
+  /* v6.4 — algo aberto DENTRO de uma camada (um seletor no meio de um formulário)
+     fecha primeiro: o Esc não pode derrubar a janela inteira com tudo preenchido. */
+  escStack: [],
+  pushEsc(fn, owner){
+    const entry = { fn, owner: owner || null };
+    this.escStack.push(entry);
+    return () => { const i = this.escStack.indexOf(entry); if(i >= 0) this.escStack.splice(i, 1); };
+  },
 
   _lockScroll(){
     if(this.stack.length !== 1) return;                 // só na primeira camada
@@ -3154,6 +3440,17 @@ const Overlay = {
   /** Um único ouvinte, em captura: roda antes dos atalhos globais. */
   bind(){
     document.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape' && this.escStack.length){
+        // descarta donos que já saíram da tela (a janela foi fechada por outro caminho)
+        this.escStack = this.escStack.filter(x => !x.owner || x.owner.isConnected);
+        const inner = this.escStack[this.escStack.length - 1];
+        if(inner){
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          inner.fn();
+          return;
+        }
+      }
       const top = this.top;
       if(!top) return;
 
@@ -3182,7 +3479,7 @@ const Overlay = {
 
 let modalCloser = null;
 /**
- * Abre um modal. `build(close)` devolve { title, content, actions }.
+ * Abre um modal. `build(close)` devolve { title, content, actions, focus? }.
  * Fecha com ESC, clique fora ou chamando close().
  */
 function openModal(build, opts){
@@ -3279,7 +3576,7 @@ function openModal(build, opts){
     if(options.dismissible !== false) close(null);
   }, { opener });
 
-  const focusTarget = box.querySelector('input,select,textarea,button');
+  const focusTarget = (cfg.focus && box.contains(cfg.focus)) ? cfg.focus : box.querySelector('input,select,textarea,button');
   if(focusTarget) setTimeout(() => { if(!closed) focusTarget.focus(); }, 30);
   return close;
 }
@@ -3413,11 +3710,6 @@ function disciplineOptions(includeEmpty, includeArchived){
   list.forEach(d => opts.push({ value:d.id, label: d.name + (d.archived ? ' (arquivada)' : '') + ' · ' + areaNameOf(d) }));
   return opts;
 }
-function topicOptions(disciplineId, includeEmpty){
-  const opts = includeEmpty ? [{ value:'', label:'— Sem tópico específico —' }] : [];
-  topicsOf(disciplineId).forEach(t => opts.push({ value:t.id, label:t.name }));
-  return opts;
-}
 function pillGroup(items, value, onPick, nameAttr){
   const wrap = h('div', { class:'chips', role:'group', 'aria-label':nameAttr || '' });
   items.forEach(it => {
@@ -3485,8 +3777,33 @@ function updateBadges(){
   });
 }
 
-/* ---------- BARRA DO CRONÔMETRO ---------- */
-function renderTimerBar(){
+/* ---------- BARRA DO CRONÔMETRO ----------
+   v6.4 — dois estados, um de cada vez:
+     Estudando    → o relógio grande é o tempo de ESTUDO;  ação: Descansar
+     Descansando  → o relógio grande é o tempo de DESCANSO; ação: Voltar a estudar
+   A cada segundo só o texto do relógio muda. A barra só é redesenhada nas
+   transições (começar, descansar, voltar, finalizar). */
+
+/** Avisos para leitores de tela: só mudanças importantes, nunca o relógio. */
+function announce(text){
+  const el = $('#sr-live');
+  if(!el) return;
+  el.textContent = '';
+  setTimeout(() => { el.textContent = text; }, 40);
+}
+
+/** Estudando ↔ descansando. Descanso é parte normal do estudo — não é interrupção nem falha. */
+function toggleBreak(){
+  if(!TimerService.isActive) return;
+  const wasResting = TimerService.isOnBreak;
+  if(wasResting) TimerService.endBreak(); else TimerService.startBreak();
+  renderTimerBar({ switched:true });
+  if(FocusMode.isOpen) FocusMode.render({ switched:true });
+  announce(wasResting ? 'Estudo retomado.' : 'Descanso iniciado.');
+}
+
+function renderTimerBar(opts){
+  const o = (opts && !(opts instanceof Event)) ? opts : {};
   const slot = $('#timerbar-slot');
   // v6.3 — o botão global diz o que vai acontecer: com cronômetro ligado, ele finaliza.
   const fab = $('#fab'), fabVerb = $('#fab .fab-verb');
@@ -3498,41 +3815,52 @@ function renderTimerBar(){
   const d = TimerService.data;
   const disc = getDiscipline(d.disciplineId);
   const topic = d.topicId ? getTopic(d.topicId) : null;
+  const resting = TimerService.isOnBreak;
 
-  const clock = h('span', { class:'tb-clock' + (TimerService.isRunning ? '' : ' paused'), text: fmtClock(TimerService.getElapsed()), 'aria-live':'off' });
   const target = d.targetMinutes || null;
   const reached = () => !!target && TimerService.getElapsed() >= target * 60000;
-  const labelText = () => !TimerService.isRunning ? 'Pausado' : (reached() ? 'Tempo sugerido atingido' : 'Estudando');
-  // anima só quando a barra aparece; re-renderizações não repetem a entrada
+  const labelText = () => resting ? 'Descansando' : (reached() ? 'Tempo sugerido atingido' : 'Estudando');
+  const clockText = () => fmtTimer(resting ? TimerService.getBreakElapsed() : TimerService.getElapsed());
+  // Linha de apoio sob o relógio: durante o descanso, onde o estudo parou; estudando, quanto já se descansou.
+  const restDone = Math.round(sum(d.breaks, b => b.endedAt - b.startedAt) / 60000);
+  const subText = resting ? `Estudo pausado em ${fmtTimer(TimerService.getElapsed())}`
+    : (restDone > 0 ? `${fmtDurationWords(restDone)} de descanso` : '');
+
+  // anima só quando a barra aparece ou muda de estado; re-renderizações não repetem a entrada
   const isNew = !slot.querySelector('.timerbar');
-  const state_ = TimerService.isRunning ? 'running' : 'paused';
-  const bar = h('div', { class:'timerbar' + (isNew ? ' is-entering' : ''), role:'region', 'aria-label':'Estudo em andamento', 'data-state': state_ },
+  const hadFocus = !isNew && slot.contains(document.activeElement);
+  const clock = h('span', { class:'tb-clock num', text: clockText(), 'aria-live':'off' });
+  const labelEl = h('div', { class:'tb-label', text: labelText() });
+  const meta = [topic ? topic.name : null, d.presetType ? sessionTypeLabel(d.presetType) : null,
+    target ? `sugestão de ${fmtDuration(target)}` : null].filter(Boolean).join(' · ');
+  const bar = h('div', { class:'timerbar' + (isNew ? ' is-entering' : '') + (o.switched && !isNew ? ' is-switching' : ''), role:'region',
+      'aria-label': resting ? 'Descanso em andamento' : 'Estudo em andamento', 'data-state': resting ? 'rest' : 'study' },
     h('span', { class:'tb-status', 'aria-hidden':'true' }),
     h('div', { class:'tb-what' },
-      h('div', { class:'tb-label', text: labelText() }),
+      labelEl,
       h('div', { class:'tb-disc', text: disc ? disc.name : '(disciplina removida)' }),
-      h('div', { class:'tb-topic', text: (topic ? topic.name : 'Sem tópico') + (d.presetType ? ' · ' + sessionTypeLabel(d.presetType) : '')
-        + (target ? ` · sugestão de ${fmtDuration(target)}` : '') }
-    )),
-    clock,
-    h('div', { class:'row auto' },
-      h('button', { class:'btn ghost sm', type:'button', text: TimerService.isRunning ? 'Pausar' : 'Retomar',
-        onclick:() => { TimerService.isRunning ? TimerService.pause() : TimerService.resume(); renderTimerBar(); } }),
+      meta ? h('div', { class:'tb-topic', text: meta }) : null),
+    h('div', { class:'tb-time' },
+      clock,
+      subText ? h('span', { class:'tb-sub num', text: subText }) : null),
+    h('div', { class:'tb-actions' },
+      h('button', { class:'btn sm ' + (resting ? 'primary' : 'ghost'), type:'button', 'data-fk':'tb-toggle',
+        text: resting ? 'Voltar a estudar' : 'Descansar', onclick:toggleBreak }),
       h('button', { class:'btn ghost sm', type:'button', text:'Foco', onclick:() => FocusMode.enter() }),
-      h('button', { class:'btn primary sm', type:'button', text:'Finalizar', onclick:openFinishModal }),
+      h('button', { class:'btn sm ' + (resting ? 'ghost' : 'primary'), type:'button', text:'Finalizar estudo', onclick:openFinishModal }),
       h('button', { class:'linkbtn muted', type:'button', text:'descartar', onclick:discardTimer })
     )
   );
   mount(slot, bar);
+  if(hadFocus){ const b = bar.querySelector('[data-fk="tb-toggle"]'); if(b) b.focus({ preventScroll:true }); }
 
-  const labelEl = bar.querySelector('.tb-label');
   TimerService.startTicking(() => {
     if(!TimerService.isActive){ TimerService.stopTicking(); return; }
-    clock.textContent = fmtClock(TimerService.getElapsed());
-    clock.classList.toggle('paused', !TimerService.isRunning);
-    bar.setAttribute('data-state', TimerService.isRunning ? 'running' : 'paused');
-    const lt = labelText();
-    if(labelEl && labelEl.textContent !== lt) labelEl.textContent = lt;   // só escreve quando muda
+    // outra aba pode ter trocado o estado: o desenho acompanha, sem esperar um clique aqui
+    if(TimerService.isOnBreak !== resting){ renderTimerBar({ switched:true }); return; }
+    const ct = clockText();
+    if(clock.textContent !== ct) clock.textContent = ct;
+    if(!resting){ const lt = labelText(); if(labelEl.textContent !== lt) labelEl.textContent = lt; }   // só escreve quando muda
   });
 }
 
@@ -3558,103 +3886,415 @@ function startTimer(disciplineId, topicId, presetType, presetMethod, targetMinut
 }
 
 /* =========================================================================
-   v6.3 — DISCIPLINA + TÓPICO NO REGISTRO DE UM ESTUDO
-   Os mesmos dois campos servem ao registro manual e ao fim do cronômetro.
-   O último item da lista de tópicos é "+ Criar novo tópico…": ele abre o
-   EDITOR CANÔNICO de tópico (topicEditor) numa subtela do mesmo modal — sem
-   modal sobre modal — e, ao salvar, disciplina e tópico mudam JUNTOS. O
-   registro nunca fica com um tópico de outra disciplina.
+   v6.4 — FLUXO DE ESTUDO: ESTUDAR AGORA · JÁ ESTUDEI
+
+   Duas formas de alimentar o MESMO histórico:
+     · Estudar agora — "vou começar neste momento": o cronômetro acompanha.
+     · Já estudei    — "esse estudo já aconteceu": data + horário de início e
+                       fim (a duração sai sozinha) ou, se a pessoa não lembra
+                       os horários, só a duração.
+
+   Peças compartilhadas pelo registro, pelo fim do cronômetro e pela edição:
+     entityPicker       seletor com busca dentro do próprio formulário
+     studyTargetFields  Disciplina + Tópico (com criação pelo editor canônico)
+     studyTypePicker    tipos de estudo com ícone e uma linha de explicação
+     breaksEditor       descansos do estudo (por horário ou por minutos)
+     studyWhenFields    data + horários → duração, com virada do dia
+
+   Regras que valem em todos eles:
+     · `minutes` é sempre tempo de ESTUDO; descanso fica em `breaks`;
+     · o tópico é sempre da disciplina escolhida;
+     · nada do que foi preenchido se perde ao trocar de modo ou abrir a
+       criação de um tópico.
    ========================================================================= */
-const NEW_TOPIC_VALUE = '__new_topic__';
-const KEY_NAV_KEYS = ['ArrowUp','ArrowDown','Home','End','PageUp','PageDown'];
+const PICK_RENDER_LIMIT = 80;   // linhas desenhadas por vez (a busca refina o resto)
+const PICK_SEARCH_MIN = 6;      // listas menores não precisam de campo de busca
+
+/** Entrada curta de um bloco que apareceu (troca de modo, de estado). */
+function swapIn(el){
+  if(!el || prefersReducedMotion() || typeof el.animate !== 'function') return;
+  try { el.animate([{ opacity:.25, transform:'translateY(4px)' }, { opacity:1, transform:'none' }], { duration:170, easing:'cubic-bezier(.2,.8,.2,1)' }); } catch(_){}
+}
 
 /**
- *   o.close     função de fechar do modal (com push/pop de subtela)
- *   o.idPrefix  prefixo dos ids ('rm', 'fin')
- *   o.discId / o.topicId   valores iniciais
- *   o.onChange({ discId, topicId, reason })   reason: 'discipline' | 'topic' | 'created'
+ * Seletor de UMA opção, com busca, que abre dentro do próprio formulário
+ * (nunca uma janela sobre outra). O valor escolhido aparece como uma pequena
+ * composição — nome, contexto e "Alterar" —, não como texto num campo.
+ *
+ *   o = { id, label, optional, placeholder, searchPlaceholder, noResults,
+ *         value, count(), describe(value) → { title, sub, side, muted } | null,
+ *         options(query) → { rows:[{ kind:'group', label } |
+ *                                   { kind:'opt', value, title, sub, tag, side, muted } |
+ *                                   { kind:'create', title, run(query) }], total },
+ *         onChange(value) }
+ *
+ * Teclado: Enter/Espaço/↓ abrem; ↑ ↓ percorrem; Enter escolhe; Esc fecha só o
+ * seletor (a janela continua aberta); Tab fecha e segue adiante.
  */
-function studyTargetFields(o){
-  let discId = o.discId || '';
-  let topicId = o.topicId || '';
-  const discSel = h('select', { id:o.idPrefix + '-disc' });
-  const topicSel = h('select', { id:o.idPrefix + '-topic' });
-  const keyHint = h('p', { class:'hint', id:o.idPrefix + '-topic-hint', 'aria-live':'polite', hidden:true });
+function entityPicker(o){
+  let value = o.value || '';
+  let open = false, act = -1, rows = [], removeEsc = null, searchVisible = false;
+  const lid = o.id + '-l', vid = o.id + '-v', listId = o.id + '-list';
 
-  function fillDisciplines(){
-    const list = disciplineOptions(false);
-    // Um cronômetro antigo pode apontar para uma disciplina arquivada depois:
-    // ela continua visível para o registro não trocar de disciplina sozinho.
-    if(discId && !list.some(x => x.value === discId)){
-      const d = getDiscipline(discId);
-      if(d) list.unshift({ value:d.id, label:d.name + ' (arquivada)' });
-      else discId = list.length ? list[0].value : '';
+  const labelEl = h('span', { class:'pick-label', id:lid }, o.label, o.optional ? h('span', { class:'optional', text:'opcional' }) : null);
+  const main = h('span', { class:'pick-main', id:vid });
+  const side = h('span', { class:'pick-side' });
+  const change = h('span', { class:'pick-change', 'aria-hidden':'true' });
+  const btn = h('button', { class:'pick-value', type:'button', id:o.id, 'aria-haspopup':'listbox', 'aria-expanded':'false',
+    'aria-controls':listId, 'aria-labelledby': lid + ' ' + vid }, main, side, change);
+  const input = h('input', { type:'search', class:'pick-q', id:o.id + '-q', autocomplete:'off', spellcheck:'false', enterkeyhint:'search',
+    placeholder:o.searchPlaceholder || 'Buscar…', role:'combobox', 'aria-expanded':'true', 'aria-controls':listId, 'aria-autocomplete':'list',
+    'aria-label':o.searchPlaceholder || 'Buscar' });
+  const searchBox = h('div', { class:'an-search pick-search' }, icon('i-search'), input);
+  const list = h('ul', { class:'pick-list', id:listId, role:'listbox', 'aria-labelledby':lid, tabindex:'-1' });
+  const more = h('p', { class:'pick-more', hidden:true });
+  const panel = h('div', { class:'pick-panel', hidden:true }, searchBox, list, more);
+  const node = h('div', { class:'field pick' }, labelEl, btn, panel);
+
+  function drawValue(animate){
+    const sel = o.describe(value);
+    clear(main); clear(side);
+    if(sel){
+      main.append(h('span', { class:'pick-t' + (sel.muted ? ' is-muted' : ''), text:sel.title }));
+      if(sel.sub) main.append(h('span', { class:'pick-s', text:sel.sub }));
+      if(sel.side) side.append(sel.side);
+    } else {
+      main.append(h('span', { class:'pick-t is-placeholder', text:o.placeholder }));
     }
-    mount(discSel, list.map(x => h('option', { value:x.value }, x.label)));
-    discSel.value = discId;
+    const chosen = !!sel && !sel.muted;
+    change.textContent = chosen ? 'Alterar' : 'Escolher';
+    btn.classList.toggle('has-value', chosen);
+    if(animate) swapIn(main);
   }
-  function fillTopics(){
-    const opts = [{ value:'', label:'— Sem tópico específico —' }]
-      .concat(topicsOf(discId).map(t => ({ value:t.id, label:t.name })));
-    if(topicId && !opts.some(x => x.value === topicId)){
-      const t = getTopic(topicId);
-      if(t && t.disciplineId === discId) opts.push({ value:t.id, label:t.name + ' (arquivado)' });
-      else topicId = '';                                   // coerência acima de tudo
-    }
-    opts.push({ value:NEW_TOPIC_VALUE, label:'+ Criar novo tópico…' });
-    mount(topicSel, opts.map(x => h('option', { value:x.value }, x.label)));
-    topicSel.value = topicId;
+
+  function setActive(i, scroll){
+    if(act === i && !scroll) return;
+    const prev = rows[act];
+    if(prev){ prev.li.classList.remove('is-active'); prev.li.setAttribute('aria-selected', 'false'); }
+    act = i;
+    const cur = rows[act];
+    const holder = searchVisible ? input : list;
+    if(cur){
+      cur.li.classList.add('is-active'); cur.li.setAttribute('aria-selected', 'true');
+      holder.setAttribute('aria-activedescendant', cur.li.id);
+      if(scroll) cur.li.scrollIntoView({ block:'nearest' });
+    } else holder.removeAttribute('aria-activedescendant');
   }
-  fillDisciplines();
-  fillTopics();
 
-  discSel.addEventListener('change', () => {
-    discId = discSel.value;
-    topicId = '';
-    fillTopics();
-    keyHint.hidden = true;
-    if(o.onChange) o.onChange({ discId, topicId, reason:'discipline' });
-  });
+  function drawList(){
+    const q = input.value;
+    const res = o.options(q) || { rows:[], total:0 };
+    rows = []; act = -1;
+    clear(list);
+    let shown = 0;
+    res.rows.forEach(r => {
+      if(r.kind === 'group'){ list.append(h('li', { class:'pick-group', role:'presentation', text:r.label })); return; }
+      if(r.kind === 'opt'){ if(shown >= PICK_RENDER_LIMIT) return; shown++; }
+      const i = rows.length;
+      const current = r.kind === 'opt' && r.value === value;
+      const li = h('li', { class:'pick-opt' + (r.kind === 'create' ? ' is-create' : '') + (current ? ' is-current' : ''),
+          role:'option', id: listId + '-' + i, 'aria-selected':'false' },
+        r.kind === 'create' ? icon('i-plus', 'btn-icon pick-plus') : null,
+        h('span', { class:'pick-main' },
+          h('span', { class:'pick-t' + (r.muted ? ' is-muted' : '') }, r.kind === 'opt' && q.trim() ? highlightMatch(r.title, q) : r.title),
+          r.sub ? h('span', { class:'pick-s', text:r.sub }) : null),
+        r.tag ? h('span', { class:'pick-tag', text:r.tag }) : null,
+        r.side ? h('span', { class:'pick-side' }, r.side) : null,
+        current ? icon('i-check', 'btn-icon pick-check') : null);
+      li.addEventListener('mousedown', (e) => e.preventDefault());      // o foco continua no campo de busca
+      li.addEventListener('click', () => choose(i));
+      li.addEventListener('mousemove', () => setActive(i, false));
+      list.append(li);
+      rows.push({ r, li });
+    });
+    if(!rows.length) list.append(h('li', { class:'pick-none', role:'presentation', text:o.noResults || 'Nada encontrado.' }));
+    const total = res.total || 0;
+    more.hidden = !(total > shown);
+    more.textContent = total > shown ? `Mostrando ${shown} de ${total}. Digite para refinar.` : '';
+    let start = q.trim() ? -1 : rows.findIndex(x => x.r.kind === 'opt' && x.r.value === value);
+    if(start < 0) start = rows.length ? 0 : -1;
+    setActive(start, true);
+  }
 
-  /* Teclado: no Windows, as setas mudam o valor de um <select> fechado e
-     disparam "change" a cada toque. Chegar a "+ Criar novo tópico…" com as
-     setas não abre nada sozinho — pede um Enter. Mouse e toque abrem direto. */
-  let lastKeyNav = 0;
-  topicSel.addEventListener('keydown', (e) => {
-    if(KEY_NAV_KEYS.includes(e.key) || (e.key.length === 1 && e.key !== ' ' && !e.ctrlKey && !e.metaKey && !e.altKey)) lastKeyNav = Date.now();
-    if((e.key === 'Enter' || e.key === ' ') && topicSel.value === NEW_TOPIC_VALUE){ e.preventDefault(); openCreate(); }
-  });
-  topicSel.addEventListener('change', () => {
-    if(topicSel.value === NEW_TOPIC_VALUE){
-      if(Date.now() - lastKeyNav < 700){
-        keyHint.textContent = 'Pressione Enter para criar um novo tópico.';
-        keyHint.hidden = false;
-        return;
-      }
-      openCreate();
+  function choose(i){
+    const x = rows[i];
+    if(!x) return;
+    if(x.r.kind === 'create'){
+      const q = input.value.trim();
+      closePanel(false);
+      x.r.run(q);
       return;
     }
-    keyHint.hidden = true;
-    topicId = topicSel.value;
-    if(o.onChange) o.onChange({ discId, topicId, reason:'topic' });
-  });
-  // Saiu do campo parado em "+ Criar…" sem confirmar: volta ao tópico de antes.
-  topicSel.addEventListener('blur', () => {
-    if(topicSel.value === NEW_TOPIC_VALUE){ topicSel.value = topicId; keyHint.hidden = true; }
+    const changed = x.r.value !== value;
+    value = x.r.value;
+    closePanel(true);
+    drawValue(changed);
+    if(changed && o.onChange) o.onChange(value);
+  }
+
+  function onDoc(e){
+    if(!node.isConnected){ document.removeEventListener('mousedown', onDoc, true); return; }
+    if(!node.contains(e.target)) closePanel(false);
+  }
+  function openPanel(){
+    if(open || btn.disabled) return;
+    open = true;
+    input.value = '';
+    searchVisible = (o.count ? o.count() : 0) >= PICK_SEARCH_MIN;
+    searchBox.hidden = !searchVisible;
+    list.tabIndex = searchVisible ? -1 : 0;
+    panel.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    node.classList.add('is-open');
+    drawList();
+    document.addEventListener('mousedown', onDoc, true);
+    removeEsc = Overlay.pushEsc(() => closePanel(true), node);
+    const target = searchVisible ? input : list;
+    try { target.focus({ preventScroll:true }); } catch(_){ target.focus(); }
+    panel.scrollIntoView({ block:'nearest' });
+    swapIn(panel);
+  }
+  function closePanel(refocus){
+    if(!open) return;
+    open = false;
+    panel.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    node.classList.remove('is-open');
+    document.removeEventListener('mousedown', onDoc, true);
+    if(removeEsc){ removeEsc(); removeEsc = null; }
+    if(refocus && node.isConnected){ try { btn.focus({ preventScroll:true }); } catch(_){ btn.focus(); } }
+  }
+
+  btn.addEventListener('click', () => { if(open) closePanel(true); else openPanel(); });
+  btn.addEventListener('keydown', (e) => { if((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !open){ e.preventDefault(); openPanel(); } });
+  input.addEventListener('input', drawList);
+  panel.addEventListener('keydown', (e) => {
+    const n = rows.length;
+    if(e.key === 'ArrowDown'){ e.preventDefault(); if(n) setActive((act + 1) % n, true); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); if(n) setActive((act - 1 + n) % n, true); }
+    else if(e.key === 'Home' && !searchVisible){ e.preventDefault(); if(n) setActive(0, true); }
+    else if(e.key === 'End' && !searchVisible){ e.preventDefault(); if(n) setActive(n - 1, true); }
+    else if(e.key === 'Enter' || (e.key === ' ' && !searchVisible)){ e.preventDefault(); if(act >= 0) choose(act); }
+    else if(e.key === 'Tab'){ closePanel(true); }
   });
 
-  function openCreate(){
-    topicSel.value = topicId;                 // se cancelar, a tela volta exatamente como estava
-    keyHint.hidden = true;
-    const back = () => o.close.pop(topicSel);
+  drawValue(false);
+  return {
+    node, button: btn,
+    get value(){ return value; },
+    /** Troca o valor por código (criação de tópico, troca de disciplina). Não dispara onChange. */
+    set(v, animate){ value = v || ''; drawValue(!!animate); },
+    refresh(){ drawValue(false); },
+    open: openPanel, close: closePanel
+  };
+}
+
+/** Disciplinas estudadas mais recentemente (para o topo do seletor, quando a lista é longa). */
+function recentDisciplines(n){
+  return DerivedCache.get('recentDisc:' + n, () => {
+    const last = new Map();
+    state.sessions.forEach(s => {
+      const k = s.date + '|' + str(s.createdAt);
+      if(!last.has(s.disciplineId) || k > last.get(s.disciplineId)) last.set(s.disciplineId, k);
+    });
+    return Array.from(last.entries()).sort((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0))
+      .map(([id]) => getDiscipline(id)).filter(d => d && !d.archived).slice(0, n);
+  });
+}
+
+/** O que dizer de um tópico numa linha: a próxima revisão, quando existe; senão, a situação. */
+function topicPickMeta(t){
+  if(t.archived) return 'arquivado';
+  if(t.reviewEnabled && t.reviewDueDate) return 'revisão ' + fmtRelativeFuture(t.reviewDueDate);
+  return TOPIC_STATUS_LABEL[topicStatus(t)];
+}
+
+/**
+ * Disciplina + Tópico de um estudo. Serve ao registro, ao fim do cronômetro e
+ * à edição.
+ *   o.close               função de fechar do modal (com push/pop de subtela)
+ *   o.idPrefix            prefixo dos ids ('rm', 'fin', 'es')
+ *   o.discId / o.topicId  valores iniciais
+ *   o.allowNewDiscipline  oferece "Nova disciplina…" (só o nome; padrões no resto)
+ *   o.allowNewTopic       oferece "Criar novo tópico…" (editor canônico, em subtela)
+ *   o.includeArchived     lista também disciplinas arquivadas (edição de estudo antigo)
+ *   o.onChange({ discId, topicId, reason })   reason: 'discipline' | 'topic' | 'created'
+ *
+ * `ensure()` devolve a disciplina escolhida — criando-a antes, se a pessoa
+ * digitou um nome novo — ou null (com aviso) quando falta escolher.
+ */
+function studyTargetFields(o){
+  const prefix = o.idPrefix;
+  let discId = (o.discId && getDiscipline(o.discId)) ? o.discId : '';
+  let topicId = discId ? (o.topicId || '') : '';
+  let creating = false;
+  let ready = false;         // durante a montagem ninguém é avisado (quem chama ainda não tem a referência)
+  const emit = (reason) => { if(ready && o.onChange) o.onChange({ discId: api.discId, topicId: api.topicId, reason }); };
+
+  /* ---------- disciplina ---------- */
+  function discList(){
+    const list = (o.includeArchived ? state.disciplines : activeDisciplines()).slice().sort(sortByName);
+    // Um cronômetro ou estudo antigo pode apontar para uma disciplina arquivada depois:
+    // ela continua visível para o registro não trocar de disciplina sozinho.
+    if(discId && !list.some(d => d.id === discId)){ const d = getDiscipline(discId); if(d) list.unshift(d); }
+    return list;
+  }
+  const discRow = d => ({ kind:'opt', value:d.id, title:d.name, sub:areaNameOf(d), tag: d.archived ? 'arquivada' : null,
+    side: priorityMark(d.priority, { compact:true }) });
+  const discPicker = entityPicker({
+    id: prefix + '-disc', label:'Disciplina', placeholder:'Escolher disciplina',
+    searchPlaceholder:'Buscar disciplina…', noResults:'Nenhuma disciplina encontrada.',
+    value: discId, count: () => discList().length,
+    describe: v => { const d = v ? getDiscipline(v) : null;
+      return d ? { title: d.name + (d.archived ? ' (arquivada)' : ''), sub: areaNameOf(d), side: priorityMark(d.priority, { compact:true }) } : null; },
+    options: q => {
+      const all = discList();
+      const terms = normalizeText(q).split(' ').filter(Boolean);
+      const rows = [];
+      let total = 0;
+      if(terms.length){
+        const hit = all.filter(d => matchesTerms(normalizeText(d.name + ' ' + areaNameOf(d)), terms));
+        hit.forEach(d => rows.push(discRow(d)));
+        total = hit.length;
+      } else {
+        const recent = all.length > PICK_SEARCH_MIN ? recentDisciplines(3).filter(d => all.includes(d)) : [];
+        if(recent.length){
+          rows.push({ kind:'group', label:'Recentes' });
+          recent.forEach(d => rows.push(discRow(d)));
+          rows.push({ kind:'group', label:'Todas' });
+        }
+        all.forEach(d => rows.push(discRow(d)));
+        total = all.length + recent.length;
+      }
+      if(o.allowNewDiscipline){
+        const name = q.trim();
+        rows.push({ kind:'create', title: name ? `Criar a disciplina “${name}”` : 'Nova disciplina…', run: text => startCreating(text) });
+      }
+      return { rows, total };
+    },
+    onChange: v => { discId = v; topicId = ''; topicPicker.set(''); syncTopic(true); emit('discipline'); }
+  });
+
+  /* Disciplina nova sem sair do registro: só o nome, com os padrões de sempre. */
+  const newIn = h('input', { type:'text', id: prefix + '-newdisc', maxlength:'80', autocomplete:'off', placeholder:'Ex.: História' });
+  const cancelNew = h('button', { class:'linkbtn muted', type:'button', text:'Escolher uma disciplina que já existe', onclick:() => stopCreating() });
+  const newBox = h('div', { class:'field pick-new', hidden:true },
+    h('label', { for:newIn.id, text:'O que você está estudando?' }), newIn,
+    h('p', { class:'hint', text:'Uma matéria, um idioma, uma certificação, um instrumento… Um nome basta: ela é criada quando você continuar.' }),
+    cancelNew);
+  newIn.addEventListener('input', () => newIn.removeAttribute('aria-invalid'));
+  newIn.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); ensure().then(id => { if(id) topicPicker.button.focus(); }); } });
+  function startCreating(text){
+    creating = true;
+    newIn.value = text || '';
+    discPicker.node.hidden = true;
+    newBox.hidden = false;
+    cancelNew.hidden = !discList().length;
+    syncTopic(false);
+    swapIn(newBox);
+    setTimeout(() => { if(newIn.isConnected) newIn.focus(); }, 20);
+    emit('discipline');
+  }
+  function stopCreating(){
+    creating = false;
+    newBox.hidden = true;
+    discPicker.node.hidden = false;
+    syncTopic(false);
+    discPicker.button.focus();
+    emit('discipline');
+  }
+  let ensuring = null;
+  function ensure(){
+    if(ensuring) return ensuring;
+    ensuring = (async () => {
+      if(!creating){
+        if(discId && getDiscipline(discId)) return discId;
+        toast('Escolha uma disciplina.', 'err');
+        discPicker.button.focus();
+        return null;
+      }
+      const clean = newIn.value.trim();
+      if(!clean){
+        newIn.setAttribute('aria-invalid', 'true'); newIn.focus();
+        toast('Escreva o que você está estudando.', 'err');
+        return null;
+      }
+      const key = normalizeText(clean);
+      let disc = activeDisciplines().find(d => normalizeText(d.name) === key) || null;
+      if(!disc){
+        disc = newDiscipline(clean, null, PRIORITY_DEFAULT);
+        try { await DB.put('disciplines', disc); }
+        catch(err){
+          console.error('Falha ao criar a disciplina:', err);
+          toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível criar a disciplina' });
+          return null;
+        }
+        ui.planDraft = null;
+        try { await refresh(); } catch(err){ console.error(err); }
+        toast('Adicione tópicos quando quiser.', 'ok', { title: clean + ' criada' });
+      }
+      creating = false;
+      discId = disc.id; topicId = '';
+      newBox.hidden = true;
+      discPicker.node.hidden = false;
+      discPicker.set(discId, true);
+      topicPicker.set('');
+      syncTopic(true);
+      emit('discipline');
+      return discId;
+    })();
+    const done = () => { ensuring = null; };
+    ensuring.then(done, done);
+    return ensuring;
+  }
+
+  /* ---------- tópico (depende da disciplina) ---------- */
+  function topicList(){
+    const list = topicsOf(discId).slice();
+    if(topicId && !list.some(t => t.id === topicId)){
+      const t = getTopic(topicId);
+      if(t && t.disciplineId === discId) list.push(t);     // tópico arquivado depois: continua visível
+      else topicId = '';                                    // coerência acima de tudo
+    }
+    return list;
+  }
+  const topicPicker = entityPicker({
+    id: prefix + '-topic', label:'Tópico', optional:true, placeholder:'Sem tópico específico',
+    searchPlaceholder:'Buscar tópico…', noResults:'Nenhum tópico encontrado.',
+    value: topicId, count: () => topicList().length,
+    describe: v => { const t = v ? getTopic(v) : null;
+      return (t && t.disciplineId === discId) ? { title:t.name, sub:topicPickMeta(t) } : { title:'Sem tópico específico', muted:true }; },
+    options: q => {
+      const all = topicList();
+      const terms = normalizeText(q).split(' ').filter(Boolean);
+      const hit = terms.length ? all.filter(t => matchesTerms(normalizeText(t.name), terms)) : all;
+      const rows = [];
+      if(!terms.length) rows.push({ kind:'opt', value:'', title:'Sem tópico específico', muted:true });
+      hit.forEach(t => rows.push({ kind:'opt', value:t.id, title:t.name, sub:topicPickMeta(t) }));
+      if(o.allowNewTopic !== false && o.close){
+        const name = q.trim();
+        rows.push({ kind:'create', title: name ? `Criar o tópico “${name}”` : 'Criar novo tópico…', run: text => openCreate(text) });
+      }
+      return { rows, total: hit.length + (terms.length ? 0 : 1) };
+    },
+    onChange: v => { topicId = v; emit('topic'); }
+  });
+  function syncTopic(animate){
+    const show = !creating && !!discId;
+    const was = topicPicker.node.hidden;
+    topicPicker.node.hidden = !show;
+    topicPicker.refresh();
+    if(show && was && animate) swapIn(topicPicker.node);
+  }
+
+  /* Criar tópico: o EDITOR CANÔNICO numa subtela do mesmo modal. Ao salvar,
+     disciplina e tópico mudam JUNTOS — nunca um tópico de outra disciplina. */
+  function openCreate(name){
+    const back = () => o.close.pop(topicPicker.button);
     const ed = topicEditor({
-      disciplineId: discId,
-      chooseDiscipline: true,
-      inRegistration: true,
-      close: o.close,
-      onCancel: back,
-      onSaved: adopt,
-      onUseExisting: adopt
+      disciplineId: discId, name: name || '',
+      chooseDiscipline: true, inRegistration: true,
+      close: o.close, onCancel: back, onSaved: adopt, onUseExisting: adopt
     });
     o.close.push({ title: ed.title, content: ed.content, actions: ed.actions, focus: ed.focus, onEsc: back });
   }
@@ -3662,149 +4302,549 @@ function studyTargetFields(o){
     const fresh = getTopic(t.id) || t;
     discId = fresh.disciplineId;
     topicId = fresh.id;
-    fillDisciplines();
-    fillTopics();
-    o.close.pop(topicSel);
-    if(o.onChange) o.onChange({ discId, topicId, reason:'created' });
+    discPicker.set(discId);
+    topicPicker.set(topicId, true);
+    syncTopic(false);
+    o.close.pop(topicPicker.button);
+    emit('created');
   }
 
-  const node = h('div', { class:'study-target' },
-    h('div', { class:'field' }, h('label', { for:discSel.id, text:'Disciplina' }), discSel),
-    h('div', { class:'field' }, h('label', { for:topicSel.id, text:'Tópico (opcional)' }), topicSel, keyHint));
-
-  return {
-    node, discSelect: discSel, topicSelect: topicSel,
-    get discId(){ return discId; },
+  const node = h('div', { class:'study-target' }, discPicker.node, newBox, topicPicker.node);
+  const api = {
+    node, ensure,
+    discButton: discPicker.button, topicButton: topicPicker.button,
+    get discId(){ return creating ? '' : discId; },
     /** Só devolve o tópico se ele pertence à disciplina escolhida. */
     get topicId(){
+      if(creating) return null;
       const t = topicId ? getTopic(topicId) : null;
       return (t && t.disciplineId === discId) ? t.id : null;
     }
   };
+  syncTopic(false);
+  if(o.allowNewDiscipline && !discId && !discList().length) startCreating('');
+  ready = true;
+  return api;
 }
 
-/** Modal do botão global "Registrar estudo": cronômetro ou registro manual. */
-function openRegisterModal(preset){
-  const p = (preset && !(preset instanceof Event)) ? preset : {};
-  if(!activeDisciplines().length){
-    openModal(close => ({
-      title:'Primeiro, o que você está estudando?',
-      content: h('p', { class:'modal-sub', text:'Adicione uma disciplina — um nome basta. Depois é só registrar seus estudos aqui.' }),
-      actions:[
-        h('button', { class:'btn ghost', type:'button', text:'Agora não', onclick:() => close() }),
-        h('button', { class:'btn primary', type:'button', text:'Adicionar disciplina', onclick:() => { close(); openDisciplineModal(null); } }) ]
-    }));
-    return;
+/**
+ * Tipos de estudo: seis opções compactas, cada uma com um ícone discreto e uma
+ * linha dizendo o que é. Opcional — clicar de novo na escolhida desmarca.
+ * Grupo de rádio com setas (padrão ARIA) e um único ponto de parada do Tab.
+ */
+function studyTypePicker(o){
+  let value = SESSION_TYPES.some(t => t.v === o.value) ? o.value : null;
+  const lid = o.id + '-l';
+  const group = h('div', { class:'type-grid', role:'radiogroup', 'aria-labelledby':lid });
+  const buttons = SESSION_TYPES.map(t => {
+    const b = h('button', { class:'type-opt', type:'button', role:'radio', 'aria-checked': t.v === value ? 'true' : 'false', 'data-v':t.v },
+      h('span', { class:'type-ic', 'aria-hidden':'true' }, icon(t.icon, 'nav-icon')),
+      h('span', { class:'type-text' }, h('span', { class:'type-t', text:t.label }), h('span', { class:'type-d', text:t.hint })));
+    b.addEventListener('click', () => {
+      value = (value === t.v) ? null : t.v;
+      buttons.forEach(x => { x.setAttribute('aria-checked', x.dataset.v === value ? 'true' : 'false'); x.setAttribute('tabindex', x === b ? '0' : '-1'); });
+      if(o.onChange) o.onChange(value);
+    });
+    group.append(b);
+    return b;
+  });
+  rovingInit(group);
+  return {
+    node: h('div', { class:'field' },
+      h('span', { class:'pick-label', id:lid }, 'Tipo de estudo', h('span', { class:'optional', text:'opcional' })), group),
+    get value(){ return value; }
+  };
+}
+
+/**
+ * Descansos de um estudo.
+ *   modo 'time'    — cada descanso tem início e fim (registro por horário);
+ *   modo 'minutes' — cada descanso tem só a duração (edição, fim do cronômetro
+ *                    ou registro em que a pessoa só sabe quanto durou).
+ *
+ * read(ctx, lenient) valida e devolve { ok, breaks, total } ou { ok:false, msg, el }.
+ *   ctx (modo 'time') = { date, startMin, endAbs } — o intervalo do estudo, em
+ *   minutos desde a meia-noite da data de início (endAbs ≥ 1440 = dia seguinte).
+ *   lenient = true ignora linhas ainda em branco (para o resumo ao vivo);
+ *   uma linha preenchida e incoerente é sempre apontada.
+ * Nenhum descanso pode: ficar fora do estudo, terminar antes de começar ou
+ * dividir horário com outro.
+ */
+function breaksEditor(o){
+  const p = o.idPrefix;
+  let mode = o.mode === 'time' ? 'time' : 'minutes';
+  let seq = 0;
+  const rows = (o.breaks || []).map(b => ({
+    key: ++seq, id: b.id, startedAt: b.startedAt || null, endedAt: b.endedAt || null, origMinutes: b.minutes,
+    start: b.startedAt ? fmtClockOfDay(b.startedAt) : '', end: b.endedAt ? fmtClockOfDay(b.endedAt) : '',
+    minutes: String(b.minutes), inputs: []
+  }));
+  const changed = () => { if(o.onChange) o.onChange(); };
+
+  const head = h('p', { class:'breaks-title', text:'Descansos' });
+  const list = h('div', { class:'breaks-list' });
+  const question = h('span', { class:'breaks-q', text:'Teve algum descanso?' });
+  const addLabel = h('span');
+  const addBtn = h('button', { class:'linkbtn', type:'button', onclick:() => {
+    if(rows.length >= MAX_BREAKS_PER_STUDY) return;
+    const r = { key: ++seq, id: uid(), startedAt:null, endedAt:null, origMinutes:null, start:'', end:'', minutes:'', inputs:[] };
+    rows.push(r);
+    draw(r.key);
+    changed();
+  } }, addLabel);
+  const foot = h('p', { class:'breaks-foot' }, question, addBtn);
+  const node = h('div', { class:'breaks' }, head, list, foot);
+
+  function draw(focusKey){
+    clear(list);
+    rows.forEach((r, i) => {
+      const n = i + 1;
+      const rm = h('button', { class:'icon-btn mini', type:'button', 'aria-label':`Remover o descanso ${n}`, title:'Remover este descanso',
+        onclick:() => { rows.splice(rows.indexOf(r), 1); draw(); changed(); addBtn.focus(); } }, icon('i-close'));
+      let body;
+      if(mode === 'time'){
+        const a = h('input', { type:'time', id:`${p}-bs-${r.key}`, value:r.start, 'aria-label':`Descanso ${n}: começou às` });
+        const z = h('input', { type:'time', id:`${p}-be-${r.key}`, value:r.end, 'aria-label':`Descanso ${n}: terminou às` });
+        a.addEventListener('input', () => { r.start = a.value; a.removeAttribute('aria-invalid'); z.removeAttribute('aria-invalid'); changed(); });
+        z.addEventListener('input', () => { r.end = z.value; a.removeAttribute('aria-invalid'); z.removeAttribute('aria-invalid'); changed(); });
+        r.inputs = [a, z];
+        body = [a, h('span', { class:'break-sep', 'aria-hidden':'true', text:'→' }), z];
+      } else {
+        const m = h('input', { type:'number', min:'1', step:'1', inputmode:'numeric', id:`${p}-bm-${r.key}`, value:r.minutes,
+          'aria-label':`Descanso ${n}, em minutos` });
+        m.addEventListener('input', () => { r.minutes = m.value; m.removeAttribute('aria-invalid'); changed(); });
+        r.inputs = [m];
+        const clock = (r.startedAt && r.endedAt) ? `${fmtClockOfDay(r.startedAt)} → ${fmtClockOfDay(r.endedAt)}` : null;
+        body = [clock ? h('span', { class:'break-clock num', text:clock }) : null, m, h('span', { class:'break-unit', 'aria-hidden':'true', text:'min' })];
+      }
+      list.append(h('div', { class:'break-row is-' + mode, role:'group', 'aria-label':`Descanso ${n}` },
+        h('span', { class:'break-n', text:`Descanso ${n}` }), body, rm));
+    });
+    head.hidden = !rows.length;
+    question.hidden = !!rows.length;
+    addLabel.textContent = rows.length ? '+ Adicionar outro descanso' : '+ Adicionar descanso';
+    addBtn.hidden = rows.length >= MAX_BREAKS_PER_STUDY;
+    if(focusKey){
+      const r = rows.find(x => x.key === focusKey);
+      if(r && r.inputs[0]){ swapIn(r.inputs[0].parentNode); r.inputs[0].focus(); }
+    }
   }
 
-  let mode = p.mode === 'manual' ? 'manual' : 'timer';
-  const presetDisc = p.disciplineId ? getDiscipline(p.disciplineId) : null;
-  const discId0 = (presetDisc && !presetDisc.archived) ? presetDisc.id : (activeDisciplines().slice().sort(sortByName)[0] || {}).id || '';
-  const presetTopic = p.topicId ? getTopic(p.topicId) : null;
+  function read(ctx, lenient){
+    const out = [];
+    const fail = (r, msg, k) => ({ ok:false, msg, el: r.inputs[k || 0] || addBtn });
+    if(mode === 'minutes'){
+      for(const r of rows){
+        const raw = str(r.minutes).trim();
+        const m = Math.round(Number(raw));
+        if(!raw){
+          if(lenient) continue;
+          return fail(r, 'Informe quantos minutos durou o descanso — ou remova-o.');
+        }
+        if(!(m > 0) || m > 1440) return fail(r, 'O descanso precisa ter entre 1 minuto e 24 horas.');
+        const a = validInstant(r.startedAt), z = validInstant(r.endedAt);
+        if(a !== null && z !== null){
+          // minutos corrigidos à mão: o início fica, o fim acompanha a nova duração
+          out.push({ id:r.id, startedAt: new Date(a).toISOString(),
+            endedAt: (m === r.origMinutes) ? new Date(z).toISOString() : new Date(a + m * 60000).toISOString(), minutes:m });
+        } else out.push({ id:r.id, startedAt:null, endedAt:null, minutes:m });
+      }
+      return { ok:true, breaks:out, total: sum(out, b => b.minutes) };
+    }
+    if(!ctx){
+      if(lenient || !rows.length) return { ok:true, breaks:[], total:0 };
+      return fail(rows[0], 'Informe primeiro o horário do estudo.');
+    }
+    const spans = [];
+    for(const r of rows){
+      const bs = parseClock(r.start), be = parseClock(r.end);
+      if(bs === null || be === null){
+        if(lenient) continue;
+        return fail(r, 'Informe o início e o fim do descanso — ou remova-o.', bs === null ? 0 : 1);
+      }
+      // antes do horário de início = já no dia seguinte (estudo que atravessa a meia-noite)
+      const a = bs >= ctx.startMin ? bs : bs + 1440;
+      const z = be >= ctx.startMin ? be : be + 1440;
+      if(z <= a) return fail(r, 'O descanso precisa terminar depois de começar.', 1);
+      if(a < ctx.startMin || z > ctx.endAbs) return fail(r, 'Esse descanso está fora do horário do estudo.', a >= ctx.endAbs ? 0 : 1);
+      spans.push({ r, a, z });
+    }
+    spans.sort((x, y) => x.a - y.a);
+    for(let i = 1; i < spans.length; i++){
+      if(spans[i].a < spans[i - 1].z) return fail(spans[i].r, 'Dois descansos estão no mesmo horário.');
+    }
+    spans.forEach(s => {
+      const da = localDateTime(ctx.date, s.a), dz = localDateTime(ctx.date, s.z);
+      out.push({ id:s.r.id, startedAt: da.toISOString(), endedAt: dz.toISOString(), minutes: Math.round((dz - da) / 60000) });
+    });
+    return { ok:true, breaks:out, total: sum(out, b => b.minutes) };
+  }
+
+  draw();
+  return {
+    node, read, addButton: addBtn,
+    get count(){ return rows.length; },
+    /** Trocar de modo aproveita o que dá: horários viram minutos; minutos não viram horários. */
+    setMode(m){
+      const next = m === 'time' ? 'time' : 'minutes';
+      if(next === mode) return;
+      if(next === 'minutes'){
+        rows.forEach(r => {
+          const bs = parseClock(r.start), be = parseClock(r.end);
+          if(bs !== null && be !== null && be !== bs) r.minutes = String(be > bs ? be - bs : be + 1440 - bs);
+        });
+      }
+      mode = next;
+      draw();
+    }
+  };
+}
+
+/**
+ * "Quando" de um estudo que já aconteceu.
+ * Data (o dia em que o estudo COMEÇOU) + Comecei + Terminei → a duração sai
+ * sozinha. Terminar antes do horário de início significa "no dia seguinte":
+ * 23:50 → 00:12 são 22 minutos. Quem não lembra os horários informa só a duração.
+ *
+ * evaluate(lenient) devolve
+ *   { complete:true, date, minutes, breakMinutes, breaks, startedAt, endedAt, nextDay, needsConfirm }
+ * ou { complete:false, error | missing, errorEl }.
+ *   error   = algo incoerente (aparece na hora, junto dos campos);
+ *   missing = ainda falta preencher (só é cobrado ao registrar).
+ */
+function studyWhenFields(o){
+  const p = o.idPrefix;
+  let mode = 'time';
+  const tISO = todayISO();
+  const dateIn = h('input', { type:'date', id:p + '-date', value: (o.date && parseISO(o.date) && o.date <= tISO) ? o.date : tISO, max:tISO });
+  const startIn = h('input', { type:'time', id:p + '-start' });
+  const endIn = h('input', { type:'time', id:p + '-end' });
+  const minIn = h('input', { type:'number', id:p + '-min', min:'1', step:'1', inputmode:'numeric', value:String(state.settings.defaultSessionMinutes || 40) });
+  const result = h('p', { class:'when-result', id:p + '-when-result', 'aria-live':'polite' });
+  const note = h('p', { class:'when-note', 'aria-live':'polite' });
+  const breaks = breaksEditor({ idPrefix:p, mode:'time', breaks:[], onChange:() => refresh() });
+
+  const quick = h('div', { class:'chips', role:'group', 'aria-label':'Durações comuns' },
+    [20, 30, 40, 60].map(v => h('button', { class:'chip', type:'button', text:v + ' min',
+      onclick:() => { minIn.value = String(v); minIn.removeAttribute('aria-invalid'); refresh(); } })));
+  const startField = h('div', { class:'field' }, h('label', { for:startIn.id, text:'Comecei' }), startIn);
+  const endField = h('div', { class:'field' }, h('label', { for:endIn.id, text:'Terminei' }), endIn);
+  const durField = h('div', { class:'field when-dur', hidden:true }, h('label', { for:minIn.id, text:'Tempo estudado, em minutos' }), minIn, quick);
+  const modeBtn = h('button', { class:'linkbtn muted', type:'button', onclick:() => setMode(mode === 'time' ? 'duration' : 'time') });
+
+  function evaluate(lenient){
+    const date = dateIn.value;
+    const out = { mode, date, complete:false, error:null, missing:null, errorEl:null };
+    if(!date || !parseISO(date)){ out.missing = 'Escolha a data do estudo.'; out.errorEl = dateIn; return out; }
+    if(date > todayISO()){ out.error = 'Escolha hoje ou um dia que já passou.'; out.errorTitle = 'Data no futuro'; out.errorEl = dateIn; return out; }
+
+    if(mode === 'duration'){
+      const m = Math.round(Number(minIn.value));
+      if(!(m > 0)){ out.missing = 'Informe quanto tempo você estudou.'; out.errorEl = minIn; return out; }
+      const br = breaks.read(null, lenient);
+      if(!br.ok){ out.error = br.msg; out.errorEl = br.el; return out; }
+      return Object.assign(out, { complete:true, minutes:m, breakMinutes:br.total, breaks:br.breaks, startedAt:null, endedAt:null,
+        nextDay:false, needsConfirm: m > LONG_STUDY_CONFIRM_MIN });
+    }
+
+    const s = parseClock(startIn.value), e = parseClock(endIn.value);
+    if(s === null || e === null){
+      out.missing = s === null ? 'Informe a que horas você começou.' : 'Informe a que horas você terminou.';
+      out.errorEl = s === null ? startIn : endIn;
+      return out;
+    }
+    if(s === e){ out.error = 'O início e o fim estão no mesmo horário.'; out.errorEl = endIn; return out; }
+    const endAbs = e > s ? e : e + 1440;                    // terminou "antes" de começar = dia seguinte
+    const a = localDateTime(date, s), z = localDateTime(date, endAbs);
+    const elapsed = Math.round((z - a) / 60000);
+    const now = Date.now();
+    if(z.getTime() > now + 60000){
+      const startAhead = a.getTime() > now;
+      out.error = startAhead ? 'Esse horário ainda não chegou. Se o estudo foi em outro dia, mude a data.' : 'O horário de término ainda não chegou.';
+      out.errorEl = startAhead ? startIn : endIn;
+      return out;
+    }
+    const br = breaks.read({ date, startMin:s, endAbs }, lenient);
+    if(!br.ok){ out.error = br.msg; out.errorEl = br.el; return out; }
+    const net = elapsed - br.total;
+    if(!(net > 0)){ out.error = 'Os descansos ocupam todo o tempo do estudo.'; out.errorEl = breaks.addButton; return out; }
+    return Object.assign(out, { complete:true, minutes:net, breakMinutes:br.total, breaks:br.breaks, elapsed,
+      startedAt:a.toISOString(), endedAt:z.toISOString(), nextDay: endAbs >= 1440, needsConfirm: net > LONG_STUDY_CONFIRM_MIN });
+  }
+
+  function refresh(){
+    const r = evaluate(true);
+    let text = '', cls = 'when-result', extra = '';
+    if(r.complete){
+      const parts = [];
+      if(mode === 'time' || r.breakMinutes) parts.push(`${fmtDurationWords(r.minutes)} de estudo`);
+      if(r.breakMinutes) parts.push(`${fmtDurationWords(r.breakMinutes)} de descanso`);
+      if(r.nextDay) parts.push('terminou no dia seguinte');
+      text = parts.join(' · ');
+      cls += ' is-ok';
+      if(r.needsConfirm) extra = `São ${fmtDuration(r.minutes)} de estudo. Confira ${mode === 'time' ? 'os horários' : 'a duração'} antes de registrar.`;
+    } else if(r.error){
+      text = r.error; cls += ' is-error';
+    }
+    if(result.textContent !== text) result.textContent = text;
+    result.className = cls;
+    if(note.textContent !== extra) note.textContent = extra;
+    if(o.onChange) o.onChange(r);
+  }
+
+  function setMode(m){
+    mode = m;
+    startField.hidden = endField.hidden = mode !== 'time';
+    durField.hidden = mode !== 'duration';
+    modeBtn.textContent = mode === 'time' ? 'Não lembro os horários' : 'Informar os horários';
+    breaks.setMode(mode === 'time' ? 'time' : 'minutes');
+    refresh();
+  }
+
+  [dateIn, startIn, endIn, minIn].forEach(el => el.addEventListener('input', () => {
+    [dateIn, startIn, endIn, minIn].forEach(x => x.removeAttribute('aria-invalid'));
+    refresh();
+  }));
+  startIn.setAttribute('aria-describedby', result.id);
+  endIn.setAttribute('aria-describedby', result.id);
+
+  const node = h('div', { class:'when' },
+    h('div', { class:'when-grid' },
+      h('div', { class:'field' }, h('label', { for:dateIn.id, text:'Data' }), dateIn),
+      startField, endField, durField),
+    result, note,
+    h('p', { class:'when-mode' }, modeBtn),
+    breaks.node);
+  setMode('time');
+  modeBtn.addEventListener('click', () => { const f = mode === 'time' ? startIn : minIn; swapIn(f.parentNode); f.focus(); });
+
+  return { node, evaluate: () => evaluate(false), refresh, firstField: dateIn };
+}
+
+/**
+ * Contexto da tela para pré-selecionar o registro. Só quando a tela mostra,
+ * sem ambiguidade, UMA disciplina (ou um tópico dela): dentro de Disciplinas.
+ * Em Hoje, Revisões, Prazos, Análises ou Histórico nada é adivinhado.
+ */
+function registerContext(){
+  if(ui.view !== 'disciplines' || ui.discTab !== 'disciplines') return null;
+  const r = resolveDiscNav();
+  if(!r.disc || r.disc.archived) return null;
+  return { disciplineId: r.disc.id, topicId: (r.topic && !r.topic.archived) ? r.topic.id : null };
+}
+
+/**
+ * Janela única para começar um estudo ou registrar um que já aconteceu.
+ *   openRegisterModal()                    → "Já estudei" (o botão global Registrar estudo)
+ *   openRegisterModal({ mode:'timer' })    → "Estudar agora" (os botões Começar a estudar)
+ *   preset: { mode, disciplineId, topicId, type, date }
+ * Abre SOBRE a tela atual: salvar ou cancelar devolve a pessoa exatamente ao
+ * lugar onde ela estava (tela, nível, busca, ordenação e rolagem).
+ */
+function openRegisterModal(preset){
+  const p = (preset && !(preset instanceof Event)) ? preset : {};
+  const timerBusy = TimerService.isActive;                 // já há um estudo no cronômetro: só dá para registrar um passado
+  let mode = (p.mode === 'timer' && !timerBusy) ? 'timer' : 'manual';
+
+  const ctx = p.disciplineId ? null : registerContext();
+  const wantDisc = p.disciplineId || (ctx && ctx.disciplineId) || null;
+  const wantTopic = p.disciplineId ? (p.topicId || null) : (ctx ? ctx.topicId : null);
+  const act = activeDisciplines();
+  const presetDisc = wantDisc ? getDiscipline(wantDisc) : null;
+  // Sem contexto claro, nada é escolhido pela pessoa — a não ser que só exista uma disciplina.
+  const discId0 = (presetDisc && !presetDisc.archived) ? presetDisc.id : (act.length === 1 ? act[0].id : '');
+  const presetTopic = wantTopic ? getTopic(wantTopic) : null;
   const topicId0 = (presetTopic && !presetTopic.archived && presetTopic.disciplineId === discId0) ? presetTopic.id : '';
-  let difficulty = null, type = p.type || null, outcome = null;
+
+  let type = SESSION_TYPES.some(t => t.v === p.type) ? p.type : null;
+  let difficulty = null, outcome = null, targetMin = null;
   let saving = false;
 
   openModal(close => {
-    const tabs = h('div', { class:'chips', role:'group', 'aria-label':'Como registrar', style:'margin-bottom:14px' },
-      h('button', { class:'chip', type:'button', 'aria-pressed': mode === 'timer' ? 'true':'false', text:'Estudar agora', onclick:() => setMode('timer') }),
-      h('button', { class:'chip', type:'button', 'aria-pressed': mode === 'manual' ? 'true':'false', text:'Já estudei', onclick:() => setMode('manual') }));
+    const titleOf = () => mode === 'timer' ? 'Começar a estudar' : 'Registrar estudo';
+    const primaryLabel = () => mode === 'timer' ? 'Começar' : 'Registrar estudo';
 
-    /* Todos os campos são criados UMA vez. Trocar de aba ou de disciplina só
-       mostra, esconde ou atualiza opções — nada do que foi digitado se perde. */
-    const target = studyTargetFields({ close, idPrefix:'rm', discId:discId0, topicId:topicId0,
-      onChange: () => { updatePreview(); renderOutcome(); } });
+    /* ---------- estudar agora × já estudei ---------- */
+    const modeOpt = (v, ic, title, hint) => h('button', { class:'mode-opt', type:'button', role:'radio', 'data-v':v,
+        'aria-checked': mode === v ? 'true' : 'false', onclick:() => setMode(v, true) },
+      h('span', { class:'mode-ic', 'aria-hidden':'true' }, icon(ic, 'nav-icon')),
+      h('span', { class:'mode-text' }, h('span', { class:'mode-t', text:title }), h('span', { class:'mode-d', text:hint })));
+    const modes = h('div', { class:'mode-switch', role:'radiogroup', 'aria-label':'Como você quer registrar' },
+      modeOpt('timer', 'i-play', 'Estudar agora', 'O Ciclo conta o tempo enquanto você estuda.'),
+      modeOpt('manual', 'i-check', 'Já estudei', 'Guarde um estudo que já aconteceu.'));
+    rovingInit(modes);
+    const busyNote = h('p', { class:'modal-sub', text:'Há um estudo em andamento no cronômetro. Aqui você registra um estudo que já aconteceu.' });
 
-    const timerNote = h('p', { class:'hint', text:'O Ciclo conta o tempo por você — mesmo se você recarregar ou fechar a aba.' });
+    /* Todos os campos são criados UMA vez. Trocar de modo só mostra ou esconde
+       blocos — nada do que foi escolhido ou digitado se perde. */
+    const when = studyWhenFields({ idPrefix:'rm', date:p.date });
+    const target = studyTargetFields({ close, idPrefix:'rm', discId:discId0, topicId:topicId0, allowNewDiscipline:true,
+      onChange: () => renderOutcome() });
+    const typePick = studyTypePicker({ id:'rm-type', value:type, onChange: v => { type = v; renderOutcome(); } });
 
-    const dateInput = h('input', { type:'date', id:'rm-date', value: (p.date && p.date <= todayISO()) ? p.date : todayISO(), max: todayISO() });
-    const minInput = h('input', { type:'number', id:'rm-min', min:'1', step:'1', value:String(state.settings.defaultSessionMinutes), inputmode:'numeric' });
-    const preview = h('p', { class:'hint', 'aria-live':'polite' });
-    function updatePreview(){
-      const mins = Number(minInput.value);
-      const d = target.discId;
-      preview.textContent = (mins > 0 && d) ? `${mins} minutos = ${fmtNumber(creditsFor(d, mins))} crédito(s)` : '';
-    }
-    minInput.addEventListener('input', () => { minInput.removeAttribute('aria-invalid'); updatePreview(); });
-    dateInput.addEventListener('input', () => dateInput.removeAttribute('aria-invalid'));
+    /* estudar agora: uma duração de referência, opcional (o cronômetro nunca para sozinho) */
+    const goalValues = Array.from(new Set([20, 30, 40, state.settings.defaultSessionMinutes || 40])).sort((a, b) => a - b).slice(0, 4);
+    const goalBtns = [null].concat(goalValues).map(v => {
+      const b = h('button', { class:'chip', type:'button', 'aria-pressed': targetMin === v ? 'true' : 'false', text: v === null ? 'Livre' : v + ' min' });
+      b.addEventListener('click', () => { targetMin = v; goalBtns.forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); });
+      return b;
+    });
+    const timerBlock = h('div', { class:'rm-timer' },
+      h('div', { class:'field' },
+        h('span', { class:'pick-label', id:'rm-goal-l' }, 'Duração sugerida', h('span', { class:'optional', text:'opcional' })),
+        h('div', { class:'chips', role:'group', 'aria-labelledby':'rm-goal-l' }, goalBtns),
+        h('p', { class:'hint', text:'É só uma referência. O tempo continua contando até você finalizar — mesmo se recarregar ou fechar a aba — e você descansa quando quiser.' })));
 
-    const quick = h('div', { class:'chips', style:'margin-bottom:8px' },
-      [20,30,40,60].map(v => h('button', { class:'chip', type:'button', text:v + ' min',
-        onclick:() => { minInput.value = String(v); minInput.removeAttribute('aria-invalid'); updatePreview(); } })));
-
-    const outcomeField = h('div', { class:'field' });
+    /* já estudei: como foi */
+    const outcomeField = h('div', { class:'field', hidden:true });
     function renderOutcome(){
-      clear(outcomeField);
-      if(type === 'revisao' && target.topicId){
-        outcomeField.append(
-          h('label', { text:'Como você se saiu?' }),
-          pillGroup(REVIEW_OUTCOMES.map(o => ({ value:o.v, label:o.label })), outcome, v => { outcome = v; }));
-      }
+      const show = mode === 'manual' && type === 'revisao' && !!target.topicId;
+      outcomeField.hidden = !show;
+      if(!show || outcomeField.firstChild) return;        // já desenhado: a resposta dada continua lá
+      outcomeField.append(
+        h('label', { text:'Como você se saiu?' }),
+        pillGroup(REVIEW_OUTCOMES.map(x => ({ value:x.v, label:x.label })), outcome, v => { outcome = v; }, 'Como você se saiu'),
+        h('p', { class:'hint', text:'Isso ajusta quando este tópico volta para revisão.' }));
     }
-    const commentIn = h('textarea', { id:'rm-comment' });
-
-    const manual = h('div', { class:'rm-manual' },
-      h('div', { class:'row' },
-        h('div', { class:'field' }, h('label', { for:'rm-date', text:'Data' }), dateInput),
-        h('div', { class:'field' }, h('label', { for:'rm-min', text:'Minutos' }), quick, minInput, preview)),
-      selectField('rm-type', 'Tipo de estudo', [{value:'',label:'— Não informado —'}].concat(SESSION_TYPES.map(t => ({ value:t.v, label:t.label }))), type,
-        (e) => { type = e.target.value || null; renderOutcome(); }),
-      h('div', { class:'field' }, h('label', { text:'Dificuldade percebida (opcional)' }),
-        pillGroup(DIFFICULTIES.map(d => ({ value:d.v, label:d.label, color:d.color })), difficulty, v => { difficulty = v ? Number(v) : null; })),
+    const commentIn = h('textarea', { id:'rm-comment', maxlength:'2000' });
+    const howBlock = h('section', { class:'rm-group', 'aria-labelledby':'rm-g-how' },
+      h('h4', { class:'rm-group-t', id:'rm-g-how', text:'Como foi' }),
+      h('div', { class:'field' }, h('span', { class:'pick-label', id:'rm-diff-l' }, 'Dificuldade', h('span', { class:'optional', text:'opcional' })),
+        pillGroup(DIFFICULTIES.map(d => ({ value:d.v, label:d.label, color:d.color })), difficulty, v => { difficulty = v ? Number(v) : null; }, 'Dificuldade percebida')),
       outcomeField,
-      h('div', { class:'field' }, h('label', { for:'rm-comment', text:'Comentário (opcional)' }), commentIn));
+      h('div', { class:'field' }, h('label', { for:'rm-comment' }, 'Comentário', h('span', { class:'optional', text:'opcional' })), commentIn));
 
-    const primaryBtn = h('button', { class:'btn primary', type:'button', text:'Começar a estudar', onclick: async () => {
-      if(saving) return;
-      const discId = target.discId;
-      if(!discId || !getDiscipline(discId)){ toast('Escolha uma disciplina.', 'err'); return; }
-      const topicId = target.topicId;
-      if(mode === 'timer'){ close(); startTimer(discId, topicId, type); return; }
+    const whenBlock = h('section', { class:'rm-group', 'aria-labelledby':'rm-g-when' },
+      h('h4', { class:'rm-group-t', id:'rm-g-when', text:'Quando' }), when.node);
+    const whatTitle = h('h4', { class:'rm-group-t', id:'rm-g-what', text:'O que você estudou' });
+    const whatBlock = h('section', { class:'rm-group', 'aria-labelledby':'rm-g-what' }, whatTitle, target.node, typePick.node);
 
-      const minutes = Number(minInput.value);
-      if(!(minutes > 0)){ minInput.setAttribute('aria-invalid','true'); minInput.focus(); toast('Informe os minutos estudados.', 'err'); return; }
-      const date = dateInput.value || todayISO();
-      if(date > todayISO()){ dateInput.setAttribute('aria-invalid','true'); dateInput.focus(); toast('Escolha hoje ou um dia que já passou.', 'err', { title:'Data no futuro' }); return; }
-
-      saving = true;
-      primaryBtn.disabled = true; primaryBtn.setAttribute('aria-busy','true'); primaryBtn.textContent = 'Salvando…';
-      const ok = await saveSession({ disciplineId:discId, topicId, date, minutes, type, difficulty,
-        comment: commentIn.value.trim(), reviewOutcome: (type === 'revisao' && topicId) ? outcome : null });
-      saving = false;
-      if(ok){ close(); return; }
-      // Falhou: o modal continua aberto com tudo o que foi preenchido.
-      primaryBtn.disabled = false; primaryBtn.removeAttribute('aria-busy'); primaryBtn.textContent = 'Salvar estudo';
-    } });
-
-    function setMode(m){
-      mode = m;
-      $$('.chip', tabs).forEach((c, i) => c.setAttribute('aria-pressed', (i === 0) === (mode === 'timer') ? 'true' : 'false'));
-      timerNote.hidden = mode !== 'timer';
-      manual.hidden = mode !== 'manual';
-      // o rótulo da ação principal diz o que vai acontecer agora
-      primaryBtn.textContent = mode === 'timer' ? 'Começar a estudar' : 'Salvar estudo';
+    /* 8 horas ou mais: o Ciclo pergunta, não proíbe. Numa subtela — o formulário fica intacto. */
+    function confirmLong(w){
+      return new Promise(resolve => {
+        let settled = false;
+        const fix = h('button', { class:'btn ghost', type:'button', text:'Corrigir', onclick:() => finish(false) });
+        const finish = (yes) => {
+          if(settled) return;
+          settled = true;
+          close.pop(yes ? primaryBtn : when.firstField);
+          resolve(yes);
+        };
+        const range = w.startedAt ? `${fmtDateBR(w.date)}, das ${fmtClockOfDay(w.startedAt)} às ${fmtClockOfDay(w.endedAt)}${w.nextDay ? ' do dia seguinte' : ''}.` : null;
+        close.push({
+          title:'Conferir a duração',
+          content: h('div',
+            h('p', { class:'modal-sub', text: w.startedAt
+              ? `Esse intervalo resulta em ${fmtDuration(w.minutes)} de estudo. Está certo?`
+              : `São ${fmtDuration(w.minutes)} de estudo. Está certo?` }),
+            range ? h('p', { class:'hint', text:range }) : null),
+          actions:[ fix, h('button', { class:'btn primary', type:'button', text:'Sim, registrar', onclick:() => finish(true) }) ],
+          focus: fix,
+          onEsc:() => finish(false)
+        });
+      });
     }
 
-    setMode(mode);
-    updatePreview();
-    renderOutcome();
+    const primaryBtn = h('button', { class:'btn primary', type:'button', text: primaryLabel() });
+    const setBusy = (on) => {
+      primaryBtn.disabled = on;
+      if(on) primaryBtn.setAttribute('aria-busy', 'true'); else primaryBtn.removeAttribute('aria-busy');
+      primaryBtn.textContent = on && mode === 'manual' ? 'Registrando…' : primaryLabel();
+    };
+    primaryBtn.addEventListener('click', async () => {
+      if(saving) return;
+      saving = true;
+      try {
+        // "Quando" é conferido antes de qualquer gravação: um horário incoerente
+        // não deixa uma disciplina recém-digitada criada pela metade do caminho.
+        let w = null;
+        if(mode === 'manual'){
+          w = when.evaluate();
+          if(!w.complete){
+            if(w.errorEl){ if('value' in w.errorEl) w.errorEl.setAttribute('aria-invalid', 'true'); w.errorEl.focus(); }
+            toast(w.error || w.missing, 'err', w.errorTitle ? { title:w.errorTitle } : undefined);
+            return;
+          }
+        } else if(TimerService.isActive){
+          toast('Termine o estudo atual antes de começar outro.', 'err', { title:'Você já está estudando' });
+          return;
+        }
+
+        const discId = await target.ensure();          // cria a disciplina digitada, se for o caso
+        if(!discId) return;
+        const topicId = target.topicId;
+
+        if(mode === 'timer'){
+          close();
+          startTimer(discId, topicId, type, null, targetMin);
+          return;
+        }
+        if(w.needsConfirm && !(await confirmLong(w))) return;
+
+        setBusy(true);
+        const ok = await saveSession({
+          disciplineId:discId, topicId, date:w.date, minutes:w.minutes, breaks:w.breaks,
+          startedAt:w.startedAt, endedAt:w.endedAt, type, difficulty,
+          comment: commentIn.value.trim(),
+          reviewOutcome: (type === 'revisao' && topicId) ? outcome : null
+        });
+        if(ok){ close(); return; }
+        // Falhou: a janela continua aberta com tudo o que foi preenchido.
+      } finally {
+        saving = false;
+        if(!close.isClosed()) setBusy(false);
+      }
+    });
+
+    function setMode(m, animate){
+      if(timerBusy) m = 'manual';
+      mode = m;
+      $$('.mode-opt', modes).forEach(b => {
+        const on = b.dataset.v === mode;
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+        b.setAttribute('tabindex', on ? '0' : '-1');
+      });
+      const manual = mode === 'manual';
+      whenBlock.hidden = !manual;
+      howBlock.hidden = !manual;
+      whatTitle.hidden = !manual;
+      timerBlock.hidden = manual;
+      primaryBtn.textContent = primaryLabel();
+      const t = $('#modal-title'); if(t && close.depth() === 0) t.textContent = titleOf();
+      renderOutcome();
+      if(animate){ swapIn(manual ? whenBlock : timerBlock); if(manual) swapIn(howBlock); }
+    }
+    setMode(mode, false);
 
     return {
-      title:'Registrar estudo',
-      content: h('div', tabs, target.node, timerNote, manual),
+      title: titleOf(),
+      content: h('div', { class:'rm' }, timerBusy ? busyNote : modes, whenBlock, whatBlock, timerBlock, howBlock),
       actions:[
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
         primaryBtn
-      ]
+      ],
+      focus: timerBusy ? when.firstField : $('.mode-opt[aria-checked="true"]', modes)
     };
   }, { size:'wide' });
 }
 
-/** Modal de finalização do cronômetro. */
+/** "Começar a estudar": a mesma janela, já em "Estudar agora". */
+function openQuickStart(preset){
+  const p = (preset && !(preset instanceof Event)) ? preset : {};
+  openRegisterModal(Object.assign({}, p, { mode:'timer' }));
+}
+
+/**
+ * Fim do cronômetro. O retrato do estudo é tirado ao abrir (tempo estudado e
+ * descansos, com o descanso em curso já fechado) e o cronômetro só é
+ * encerrado DEPOIS de gravar: se a pessoa voltar, nada mudou.
+ */
 function openFinishModal(){
   if(!TimerService.isActive) return;
   const d = TimerService.data;
-  const elapsedMin = Math.max(1, Math.round(TimerService.getElapsed() / 60000));
+  const snap = TimerService.snapshot();
+  const studyMin = Math.max(1, Math.round(snap.studyMs / 60000));
+  const snapBreaks = timerBreaksToSession(snap.breaks);
   let type = d.presetType || null;
   let difficulty = null, outcome = null;
   let method = d.presetMethod || null;
@@ -3812,55 +4852,78 @@ function openFinishModal(){
   let saving = false;
 
   openModal(close => {
-    const minInput = h('input', { type:'number', id:'fin-min', min:'1', step:'1', value:String(elapsedMin), inputmode:'numeric' });
-    const preview = h('p', { class:'hint', 'aria-live':'polite' });
-    const target = studyTargetFields({ close, idPrefix:'fin', discId:d.disciplineId, topicId:d.topicId || '',
-      onChange: () => { update(); renderOutcome(); } });
-    function update(){
-      const m = Number(minInput.value);
-      preview.textContent = (m > 0 && target.discId) ? `${m} minutos = ${fmtNumber(creditsFor(target.discId, m))} crédito(s)` : '';
+    /* ---------- resumo: estudo e descanso, lado a lado e nunca somados ---------- */
+    const minInput = h('input', { type:'number', id:'fin-min', min:'1', step:'1', value:String(studyMin), inputmode:'numeric' });
+    const breaks = breaksEditor({ idPrefix:'fin', mode:'minutes', breaks:snapBreaks, onChange:() => drawSummary() });
+    const studyV = h('span', { class:'fs-v num' });
+    const restV = h('span', { class:'fs-v num' });
+    const restL = h('span', { class:'fs-l' });
+    const restBox = h('div', { class:'fs-item is-rest' }, restV, restL);
+    const startedLabel = `${fmtClockOfDay(snap.startedAt)} → ${fmtClockOfDay(snap.endedAt)}`;
+    const summary = h('div', { class:'finish-summary', role:'group', 'aria-label':'Resumo do estudo' },
+      h('div', { class:'fs-item' }, studyV, h('span', { class:'fs-l', text:'de estudo' })),
+      restBox,
+      h('p', { class:'fs-clock num', text: startedLabel }));
+    function drawSummary(){
+      const m = Math.round(Number(minInput.value));
+      studyV.textContent = m > 0 ? fmtDurationWords(m) : '—';
+      const br = breaks.read(null, true);
+      const total = br.ok ? br.total : 0, count = br.ok ? br.breaks.length : 0;
+      restBox.hidden = !(total > 0);
+      restV.textContent = fmtDurationWords(total);
+      restL.textContent = 'de descanso' + (count > 1 ? ` · ${count} descansos` : '');
     }
-    minInput.addEventListener('input', () => { minInput.removeAttribute('aria-invalid'); update(); });
+    minInput.addEventListener('input', () => { minInput.removeAttribute('aria-invalid'); drawSummary(); });
+    const fixToggle = h('summary', null, 'Corrigir o tempo');
+    const fix = h('details', { class:'advanced finish-fix' },
+      fixToggle,
+      h('div', { class:'advanced-body' },
+        h('div', { class:'field' }, h('label', { for:'fin-min', text:'Tempo estudado, em minutos' }), minInput,
+          h('p', { class:'hint', text:'Descanso não entra aqui: ele é guardado à parte.' })),
+        breaks.node));
+
+    const target = studyTargetFields({ close, idPrefix:'fin', discId:d.disciplineId, topicId:d.topicId || '',
+      onChange: () => renderOutcome() });
+    const typePick = studyTypePicker({ id:'fin-type', value:type, onChange: v => { type = v; renderOutcome(); } });
 
     const outcomeField = h('div', { class:'field' });
     function renderOutcome(){
       clear(outcomeField);
       const topic = target.topicId ? getTopic(target.topicId) : null;
-      if(!(type === 'revisao' && topic)) return;
+      outcomeField.hidden = !(type === 'revisao' && topic);
+      if(outcomeField.hidden) return;
       if(!methodTouched) method = ReviewEngine.effectiveMethod(topic).method;
       const sel = h('select', { id:'fin-method' });
       CONCRETE_METHODS.forEach(mv => sel.appendChild(h('option', { value:mv, selected: mv === method }, methodLabel(mv))));
       sel.addEventListener('change', () => { method = sel.value; methodTouched = true; });
       outcomeField.append(
         h('label', { text:'Como você se saiu?' }),
-        pillGroup(REVIEW_OUTCOMES.map(o => ({ value:o.v, label:o.label })), outcome, v => { outcome = v; }),
+        pillGroup(REVIEW_OUTCOMES.map(x => ({ value:x.v, label:x.label })), outcome, v => { outcome = v; }, 'Como você se saiu'),
         h('p', { class:'hint', text:'Isso ajusta quando este tópico volta para revisão.' }),
-        h('label', { for:'fin-method', style:'margin-top:10px', text:'Como você revisou' }),
+        h('label', { for:'fin-method', style:'margin-top:12px', text:'Como você revisou' }),
         sel);
     }
+    const commentIn = h('textarea', { id:'fin-comment', maxlength:'2000' });
 
-    const typeSel = selectField('fin-type', 'Tipo de estudo',
-      [{value:'',label:'— Não informado —'}].concat(SESSION_TYPES.map(t => ({ value:t.v, label:t.label }))), type,
-      (e) => { type = e.target.value || null; renderOutcome(); });
-    const commentIn = h('textarea', { id:'fin-comment' });
-
-    const content = h('div',
-      h('div', { class:'field' }, h('label', { for:'fin-min', text:'Tempo (minutos)' }), minInput, preview),
+    const content = h('div', { class:'rm' },
+      summary, fix,
       target.node,
-      typeSel,
-      h('div', { class:'field' }, h('label', { text:'Dificuldade percebida (opcional)' }),
-        pillGroup(DIFFICULTIES.map(x => ({ value:x.v, label:x.label, color:x.color })), difficulty, v => { difficulty = v ? Number(v) : null; })),
+      typePick.node,
+      h('div', { class:'field' }, h('span', { class:'pick-label' }, 'Dificuldade', h('span', { class:'optional', text:'opcional' })),
+        pillGroup(DIFFICULTIES.map(x => ({ value:x.v, label:x.label, color:x.color })), difficulty, v => { difficulty = v ? Number(v) : null; }, 'Dificuldade percebida')),
       outcomeField,
-      h('div', { class:'field' }, h('label', { for:'fin-comment', text:'Comentário (opcional)' }), commentIn));
+      h('div', { class:'field' }, h('label', { for:'fin-comment' }, 'Comentário', h('span', { class:'optional', text:'opcional' })), commentIn));
     renderOutcome();
-    update();
+    drawSummary();
 
-    const saveBtn = h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: async () => {
+    const saveBtn = h('button', { class:'btn primary', type:'button', text:'Registrar estudo', onclick: async () => {
       if(saving) return;
-      const minutes = Number(minInput.value);
-      if(!(minutes > 0)){ minInput.setAttribute('aria-invalid','true'); minInput.focus(); toast('Informe um tempo válido.', 'err'); return; }
-      const discId = target.discId;
-      if(!discId || !getDiscipline(discId)){ toast('Escolha uma disciplina.', 'err'); return; }
+      const minutes = Math.round(Number(minInput.value));
+      if(!(minutes > 0)){ fix.open = true; minInput.setAttribute('aria-invalid','true'); minInput.focus(); toast('Informe um tempo de estudo válido.', 'err'); return; }
+      const br = breaks.read(null, false);
+      if(!br.ok){ fix.open = true; if(br.el){ if('value' in br.el) br.el.setAttribute('aria-invalid','true'); br.el.focus(); } toast(br.msg, 'err'); return; }
+      const discId = await target.ensure();
+      if(!discId) return;
       // Outra aba pode ter finalizado este estudo (o evento "storage" mantém a memória em dia).
       if(!TimerService.isActive){
         close(); renderTimerBar();
@@ -3868,36 +4931,38 @@ function openFinishModal(){
         return;
       }
       const topicId = target.topicId;
-      // openedAt é o início real; startedAt muda a cada "Retomar".
-      const started = TimerService.data.openedAt || TimerService.data.startedAt;
 
       saving = true;
-      saveBtn.disabled = true; saveBtn.setAttribute('aria-busy','true'); saveBtn.textContent = 'Salvando…';
+      saveBtn.disabled = true; saveBtn.setAttribute('aria-busy','true'); saveBtn.textContent = 'Registrando…';
       /* v6.3 — grava ANTES de encerrar o cronômetro. Se a gravação falhar, o
-         cronômetro continua e o modal fica aberto: nenhum minuto se perde. */
+         cronômetro continua e o modal fica aberto: nenhum minuto se perde.
+         v6.4 — a data do estudo é o dia em que ele COMEÇOU; início e fim vêm do
+         retrato (o fim é o momento em que a pessoa pediu para finalizar). */
       const ok = await saveSession({
-        disciplineId: discId, topicId, date: todayISO(),
-        minutes, type, difficulty, comment: commentIn.value.trim(),
+        disciplineId: discId, topicId, date: dateToISO(new Date(snap.startedAt)),
+        minutes, breaks: br.breaks, type, difficulty, comment: commentIn.value.trim(),
         reviewOutcome: (type === 'revisao' && topicId) ? outcome : null,
         reviewMethod: (type === 'revisao' && topicId) ? method : null,
-        startedAt: new Date(started).toISOString(), endedAt: nowISO()
+        startedAt: new Date(snap.startedAt).toISOString(), endedAt: new Date(snap.endedAt).toISOString()
       });
       saving = false;
-      if(!ok){ saveBtn.disabled = false; saveBtn.removeAttribute('aria-busy'); saveBtn.textContent = 'Salvar'; return; }
+      if(!ok){ saveBtn.disabled = false; saveBtn.removeAttribute('aria-busy'); saveBtn.textContent = 'Registrar estudo'; return; }
       TimerService.finish();
       close();
       renderTimerBar();
+      announce('Estudo finalizado.');
       // se veio de uma sessão de revisão montada, segue para o próximo item
       if(ui.reviewQueue && ui.reviewQueue.length) setTimeout(runNextQueuedReview, 400);
     } });
 
     return {
-      title:'Como foi o estudo?',
+      title:'Finalizar estudo',
       content,
       actions:[
-        h('button', { class:'btn ghost', type:'button', text:'Continuar estudando', onclick:() => close() }),
+        h('button', { class:'btn ghost', type:'button', text: snap.onBreak ? 'Voltar ao descanso' : 'Continuar estudando', onclick:() => close() }),
         saveBtn
-      ]
+      ],
+      focus: fixToggle          // o primeiro controle: a janela abre no resumo, não no fim do formulário
     };
   }, { size:'wide', dismissible:false });
 }
@@ -3906,12 +4971,16 @@ function openFinishModal(){
 function offerStaleSession(){
   const hours = TimerService.getOpenAgeMs() / 3600000;
   if(hours < 6) return;
-  const elapsedMin = Math.round(TimerService.getElapsed() / 60000);
+  const name = (getDiscipline(TimerService.data.disciplineId) || {}).name || '';
+  const resting = TimerService.isOnBreak;
+  const text = resting
+    ? `O estudo de ${name} está em descanso há ${fmtDuration(Math.round(TimerService.getBreakElapsed() / 60000))}. Talvez o cronômetro tenha ficado ligado sem querer.`
+    : `O estudo de ${name} já soma ${fmtDuration(Math.round(TimerService.getElapsed() / 60000))}. Talvez o cronômetro tenha ficado ligado sem querer.`;
   openModal(close => ({
     title:'O cronômetro ficou ligado',
     content: h('div',
-      h('p', { class:'modal-sub', text:`O estudo de ${(getDiscipline(TimerService.data.disciplineId) || {}).name || ''} começou há ${fmtDuration(elapsedMin)}. Talvez o cronômetro tenha ficado ligado sem querer.` }),
-      h('p', { class:'hint', text:'Ao finalizar, você pode corrigir o tempo antes de salvar.' })
+      h('p', { class:'modal-sub', text }),
+      h('p', { class:'hint', text:'Ao finalizar, em "Corrigir o tempo", você ajusta o tempo de estudo e os descansos antes de registrar.' })
     ),
     actions:[
       h('button', { class:'btn ghost', type:'button', text:'Continuar', onclick:() => close() }),
@@ -3934,13 +5003,18 @@ async function saveSession(input){
   const disc = getDiscipline(input.disciplineId);
   if(!disc){ toast('Escolha outra disciplina e tente de novo.', 'err', { title:'Disciplina não encontrada' }); return false; }
 
+  /* Integridade (v6.4): `minutes` é tempo de ESTUDO e precisa ser positivo; o
+     tópico tem de ser da disciplina; descansos são saneados e ficam à parte. */
   const minutes = Math.max(0, Math.round(Number(input.minutes) || 0));
+  if(!(minutes > 0)){ toast('Informe quanto tempo você estudou.', 'err', { title:'Falta o tempo de estudo' }); return false; }
+  const topicIn = input.topicId ? getTopic(input.topicId) : null;
+  const breaks = sanitizeBreaks(input.breaks);
   const session = newSession({
     disciplineId: disc.id,
-    topicId: input.topicId || null,
+    topicId: (topicIn && topicIn.disciplineId === disc.id) ? topicIn.id : null,
     date: input.date || todayISO(),
     minutes,
-    credits: creditsFor(disc.id, minutes),
+    breaks,
     type: input.type || null,
     difficulty: input.difficulty || null,
     comment: str(input.comment),
@@ -3990,9 +5064,10 @@ async function saveSession(input){
   } else {
     const rows = [
       disc.name + (topicName ? ' · ' + topicName : ''),
-      ['Tempo', fmtDuration(minutes)],
-      ['Créditos', fmtNumber(session.credits)]
+      ['Tempo estudado', fmtDuration(minutes)]
     ];
+    const restMin = breakMinutesOf(session);
+    if(restMin > 0) rows.push(['Descanso', fmtDuration(restMin)]);
     if(prog.plannedTotal > 0) rows.push(['Semana', `${fmtDuration(prog.realizedTotal)} / ${fmtDuration(prog.plannedTotal)}`]);
     if(topicCopy && topicCopy.reviewDueDate) rows.push(['Próxima revisão', fmtRelativeFuture(topicCopy.reviewDueDate)]);
     toastRich('Estudo registrado', rows);
@@ -4005,7 +5080,12 @@ async function updateSession(id, changes){
   if(!s){ toast('Ele pode ter sido removido em outra aba.', 'err', { title:'Estudo não encontrado' }); return false; }
   const updated = Object.assign({}, s, changes, { updatedAt: nowISO() });
   updated.minutes = Math.max(0, Math.round(Number(updated.minutes) || 0));
-  updated.credits = creditsFor(updated.disciplineId, updated.minutes);
+  updated.breaks = sanitizeBreaks(updated.breaks);
+  // crédito antigo calculado sobre outro tempo/disciplina deixaria de ser verdade: não acompanha a edição
+  if('credits' in updated && (updated.minutes !== s.minutes || updated.disciplineId !== s.disciplineId)) delete updated.credits;
+  // v6.4: o tópico precisa ser da disciplina do estudo
+  const tp = updated.topicId ? getTopic(updated.topicId) : null;
+  if(!tp || tp.disciplineId !== updated.disciplineId) updated.topicId = null;
   try { await DB.put('sessions', updated); }
   catch(err){
     console.error('Falha ao atualizar o estudo:', err);
@@ -4084,7 +5164,44 @@ function renderToday(){
     todayFocus(actions[0], actions.slice(1)),
     dailyQuoteCard(),       // v6.3: logo abaixo da ação principal, sem competir com ela
     todayNext(),
+    todayRhythm(),          // v6.4: constância, discreta e sem cobrança — depois do que há para fazer
     startGuideCard()));
+}
+
+/**
+ * "Seu ritmo" — em quantos dos últimos 7 dias houve estudo (janela corrida,
+ * terminando hoje). É informação, não meta: dia sem estudo aparece neutro e
+ * nenhuma sequência é "perdida". Depois de alguns dias sem registros, a frase
+ * só constata e convida.
+ */
+function todayRhythm(){
+  const r = recentRhythm(7);
+  if(!r.lastStudy) return null;
+  let title, sub;
+  if(r.daysSinceLast !== null && r.daysSinceLast >= 4){
+    title = `Você está há ${r.daysSinceLast} dias sem registrar um estudo.`;
+    sub = 'Quando quiser, é só continuar.';
+  } else {
+    title = r.activeDays === r.days ? `Você estudou em todos os últimos ${r.days} dias.` : `Você estudou em ${r.activeDays} dos últimos ${r.days} dias.`;
+    sub = `Seu último estudo foi ${fmtRelativePast(r.lastStudy)}.`;
+  }
+  const WD = ['D','S','T','Q','Q','S','S'];
+  const WD_NAME = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+  const tISO = todayISO();
+  const names = r.strip.filter(x => x.active).map(x => WD_NAME[parseISO(x.iso).getDay()]);
+  const strip = h('ol', { class:'rhythm-strip', role:'img',
+      'aria-label': names.length ? `Dias com estudo nos últimos ${r.days} dias: ${names.join(', ')}.` : `Nenhum estudo nos últimos ${r.days} dias.` },
+    r.strip.map(x => h('li', { class:'rh-day' + (x.active ? ' is-on' : '') + (x.iso === tISO ? ' is-today' : ''), 'aria-hidden':'true' },
+      h('span', { class:'rh-dot' }), h('span', { class:'rh-wd', text: WD[parseISO(x.iso).getDay()] }))));
+  return h('section', { class:'rhythm-block', 'aria-labelledby':'rh-title' },
+    h('h3', { class:'block-label', id:'rh-title', text:'Seu ritmo' }),
+    h('div', { class:'rhythm' },
+      h('div', { class:'rhythm-text' },
+        h('p', { class:'rhythm-t', text:title }),
+        h('p', { class:'rhythm-s' }, sub, ' ',
+          h('button', { class:'linkbtn muted', type:'button', text:'Ver nas Análises',
+            onclick:() => applyAnalyticsQuery({ scopeType:'all', scopeId:null, periodPreset:'30d', focus:'time' }) }))),
+      strip));
 }
 
 /** A recomendação principal: o quê, por quê (uma frase) e uma ação. */
@@ -4406,7 +5523,7 @@ function openReviewOutcomeModal(topicId, method, suggestedMinutes){
         h('div', { class:'field' }, h('label', { for:'ro-comment', text:'Comentário (opcional)' }), h('textarea', { id:'ro-comment' }))),
       actions:[
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
-        h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: async () => {
+        h('button', { class:'btn primary', type:'button', text:'Registrar revisão', onclick: async () => {
           if(!outcome){ toast('Escolha como foi a revisão.', 'err'); return; }
           const minutes = Math.max(1, Number(minInput.value) || 10);
           const comment = (($('#ro-comment') || {}).value || '').trim();
@@ -6194,7 +7311,7 @@ function discDisciplineLevel(r){
   parts.push(h('div', { class:'level-actions' },
     d.archived
       ? h('button', { class:'btn primary sm', type:'button', text:'Reativar', onclick:() => toggleArchiveDiscipline(d.id) })
-      : h('button', { class:'btn primary sm', type:'button', 'data-fk':'study', onclick:() => openRegisterModal({ disciplineId:d.id }) }, icon('i-play'), 'Começar a estudar'),
+      : h('button', { class:'btn primary sm', type:'button', 'data-fk':'study', onclick:() => openRegisterModal({ mode:'timer', disciplineId:d.id }) }, icon('i-play'), 'Começar a estudar'),
     h('button', { class:'btn ghost sm', type:'button', text:'Editar', 'data-fk':'edit', onclick:() => openDisciplineModal(d) }),
     menuButton('Mais', [
       { label:'Adicionar prazo', run:() => openDeadlineModal(null, { disciplineId:d.id }) },
@@ -6625,7 +7742,6 @@ function openDisciplineModal(disc, opts){
     const prio = priorityPicker({ value:priority, context:'discipline', id:'dm-prio', label:'Prioridade', helpKey:'prioridade',
       onChange: v => { priority = v; } });
 
-    const mpcIn = h('input', { type:'number', id:'dm-mpc', min:'1', step:'1', inputmode:'numeric', value:String(disc ? disc.minutesPerCredit : 20) });
     let nature = disc ? (disc.contentNature || 'mixed') : 'mixed';
     let dStrategy = disc ? (disc.reviewStrategy || 'inherit') : 'inherit';
     let dMethod = disc ? (disc.preferredReviewMethod || 'inherit') : 'inherit';
@@ -6653,9 +7769,7 @@ function openDisciplineModal(disc, opts){
         h('div', { class:'field' }, h('label', { for:'dm-nature' }, 'Tipo de conteúdo', helpDot('natureza')), natureSel,
           h('p', { class:'hint', text:'Ajuda o Ciclo a sugerir como revisar.' })),
         h('div', { class:'field' }, h('label', { for:'dm-strategy' }, 'Quando revisar', helpDot('estrategia')), stratSel),
-        h('div', { class:'field' }, h('label', { for:'dm-method' }, 'Como revisar', helpDot('metodo')), methodSel),
-        h('div', { class:'field tight' }, h('label', { for:'dm-mpc' }, 'Minutos por crédito', helpDot('creditos')), mpcIn,
-          h('p', { class:'hint', text:'Quantos minutos valem 1 crédito nesta disciplina.' }))));
+        h('div', { class:'field tight' }, h('label', { for:'dm-method' }, 'Como revisar', helpDot('metodo')), methodSel)));
 
     const content = h('div',
       h('div', { class:'field' },
@@ -6684,16 +7798,15 @@ function openDisciplineModal(disc, opts){
         if(existing) areaId = existing.id;
         else { createdArea = newArea(areaName); areaId = createdArea.id; }
       }
-      const mpc = Math.max(1, Math.round(Number(mpcIn.value) || 20));
       close();
       try {
         let entity;
         if(disc){
-          entity = Object.assign({}, disc, { name, areaId, priority, minutesPerCredit:mpc,
+          entity = Object.assign({}, disc, { name, areaId, priority,
             contentNature:nature, reviewStrategy:dStrategy, preferredReviewMethod:dMethod, updatedAt: nowISO() });
         } else {
           entity = newDiscipline(name, areaId, priority);
-          Object.assign(entity, { minutesPerCredit:mpc, contentNature:nature, reviewStrategy:dStrategy, preferredReviewMethod:dMethod });
+          Object.assign(entity, { contentNature:nature, reviewStrategy:dStrategy, preferredReviewMethod:dMethod });
         }
         await DB.transactional(createdArea ? ['areas','disciplines'] : ['disciplines'], api => {
           if(createdArea) api.put('areas', createdArea);
@@ -8067,6 +9180,7 @@ function analyticsFocusSummary(a, focus){
     if(t.activeDays > 1) out.push(`Nos dias com estudo, a média foi ${fmtDuration(t.avgPerActiveDay)}.`);
     const best = a.byWeekday.slice().sort((x,y) => y.minutes - x.minutes)[0];
     if(a.days >= 7 && t.count >= 3 && best && best.minutes > 0) out.push(`${best.label} foi o dia da semana com mais tempo (${fmtDuration(best.minutes)}).`);
+    restSentences(a).forEach(s => out.push(s));
     pushComparison(a, out);
   } else if(focus === 'planning'){
     const pa = a.planAdherence;
@@ -8115,6 +9229,16 @@ function analyticsFocusSummary(a, focus){
   }
   return out;
 }
+/** Descansos em frases: quanto, quantos e a relação com o estudo. Só descreve. */
+function restSentences(a){
+  const rs = a.rest, out = [];
+  if(!rs.count) return out;
+  out.push(rs.count === 1
+    ? `Você fez 1 descanso, de ${fmtDurationWords(rs.minutes)}.`
+    : `Você descansou ${fmtDuration(rs.minutes)} em ${rs.count} descansos, com média de ${fmtDurationWords(rs.avg)} cada.`);
+  if(isNum(rs.studyPerRestHour) && rs.minutes >= 10) out.push(`Foram ${fmtDuration(rs.studyPerRestHour)} de estudo para cada 1h de descanso.`);
+  return out;
+}
 function pushComparison(a, out){
   const cmp = a.previousComparison;
   if(cmp.available && isNum(cmp.minutesDelta) && a.totals.count > 0){
@@ -8152,6 +9276,8 @@ function analyticsFocusMetrics(a, focus){
     days:     () => ({ key:'days', label:'Dias com estudo', value:String(t.activeDays), sub:`de ${plural(a.days, 'dia', 'dias')}`, delta: delta(cmp.activeDaysDelta), onOpen:open('sessions') }),
     sessions: () => ({ key:'sessions', label:'Estudos registrados', value:String(t.count), sub: t.count ? `média de ${fmtDuration(t.avgSession)}` : null, delta: focus === 'time' ? delta(cmp.sessionsDelta) : null, onOpen:open('sessions') }),
     avgDay:   () => ({ key:'avgday', label:'Média por dia de estudo', value:fmtDuration(t.avgPerActiveDay), sub:`${fmtDuration(t.avgPerDay)} por dia do período`, onOpen:open('time') }),
+    // v6.4 — descanso é um número à parte: nunca somado ao tempo estudado
+    rest:     () => ({ key:'rest', label:'Descansos', value:fmtDuration(a.rest.minutes), sub: a.rest.count === 1 ? '1 descanso' : `${a.rest.count} descansos · média de ${fmtDurationWords(a.rest.avg)}`, onOpen:open('rest') }),
     plan:     () => ({ key:'plan', label:METRIC_WORDS.adherence.title, value:safePct(a.planAdherence.pct), sub:`${fmtDuration(a.planAdherence.realized)} de ${fmtDuration(a.planAdherence.planned)}`, onOpen:open('plan') }),
     reviews:  () => ({ key:'reviews', label:'Revisões concluídas', value:String(a.reviews.completed), sub: a.reviews.overdueNow ? `${plural(a.reviews.overdueNow, 'atrasada', 'atrasadas')} agora` : 'nenhuma atrasada agora', onOpen:open('reviews') }),
     coverage: () => ({ key:'content', label:METRIC_WORDS.coverage.title, value:`${a.content.covered} de ${a.content.totalTopics}`, sub:`${safePct(a.content.coverage)} dos tópicos`, onOpen:open('content') })
@@ -8161,7 +9287,7 @@ function analyticsFocusMetrics(a, focus){
     sub: topicObj ? TOPIC_STATUS_LABEL[topicStatus(topicObj)] : null, muted: !(topicObj && topicObj.masteryLevel), onOpen:open('content') });
   const r = a.reviews, c = a.content, pa = a.planAdherence, dl = a.deadlines;
 
-  if(focus === 'time') return [M.time(), M.days(), M.sessions(), M.avgDay()];
+  if(focus === 'time') return [M.time(), M.days(), M.avgDay(), a.rest.count > 0 ? M.rest() : M.sessions()];
   if(focus === 'planning'){
     const diff = pa.realized - pa.planned;
     return [M.plan(),
@@ -8356,7 +9482,7 @@ function deadlineLine(dl, extra, done, opts){
 /* ---------- 4. insights: poucos, separados em atenção / positivo ---------- */
 const FOCUS_INSIGHT_TAGS = {
   overview:  null,
-  time:      ['time','distribution','types','difficulty','projection'],
+  time:      ['time','rest','distribution','types','difficulty','projection'],
   planning:  ['plan','priority','projection'],
   reviews:   ['reviews'],
   content:   ['content','priority'],
@@ -8439,6 +9565,8 @@ function analyticsExploreItems(a, focus){
     weekday:      { label:'Por dia da semana', show: t.count > 0, build:() => { const mx = Math.max(1, ...a.byWeekday.map(x => x.minutes));
                     return h('div', { class:'an-explore-content' }, a.byWeekday.map(x => hbarRow(x.label, x.minutes / mx * 100, fmtDuration(x.minutes)))); } },
     calendar:     { label:'Calendário', meta:'ver um dia ou escolher um intervalo', show:true, build:() => exploreContent(analyticsCalendarCard(a)) },
+    rhythm:       { label:'Dias com estudo, semana a semana', show: t.count > 0 && a.weeklyRhythm.length > 1, build:() => h('div', { class:'an-explore-content' }, weeklyRhythmViz(a)) },
+    rest:         { label:'Descansos', meta:'quanto e quantos', show: a.rest.count > 0, build:() => h('div', { class:'an-explore-content' }, restDetail(a)) },
     plan:         { label:'Planejado × realizado', show: a.planAdherence.hasPlan && a.planAdherence.perDiscipline.length > 0, build:() => h('div', { class:'an-explore-content' }, planVsActualViz(a)) },
     weeks:        { label:'Semana a semana', show: sc.type !== 'topic', build:() => exploreContent(weeklyReportCard(sc)) },
     reviews:      { label:'Revisões', show: a.reviews.expected > 0 || a.reviews.completed > 0 || a.reviews.overdueNow > 0, build:() => exploreContent(analyticsReviewsCard(a)) },
@@ -8453,8 +9581,8 @@ function analyticsExploreItems(a, focus){
   };
   const mainIsTime = (focus === 'overview' || focus === 'time') && a.days > 1;
   const order = {
-    overview:  ['distribution','calendar','plan','reviews','content','attention','deadlines','priority','weeks','projection','difficulty','types'].concat(mainIsTime ? [] : ['time']),
-    time:      ['weekday','distribution','calendar','types','difficulty','weeks','projection'].concat(mainIsTime ? [] : ['time']),
+    overview:  ['distribution','calendar','rhythm','rest','plan','reviews','content','attention','deadlines','priority','weeks','projection','difficulty','types'].concat(mainIsTime ? [] : ['time']),
+    time:      ['rhythm','weekday','calendar','rest','distribution','types','difficulty','weeks','projection'].concat(mainIsTime ? [] : ['time']),
     planning:  ['weeks','distribution','calendar','projection','priority'],
     reviews:   (a.reviews.completed ? ['due'] : []).concat(['attention','reviews','calendar','content']),
     content:   ['attention','priority','distribution','reviews'],
@@ -8485,6 +9613,53 @@ function analyticsExploreBlock(a, focus){
   });
   return h('section', { class:'an-block an-explore', 'aria-labelledby':'an-ex-t' },
     h('h3', { class:'an-block-t', id:'an-ex-t', text:'Explorar mais' }), list);
+}
+
+/* ---------- v6.4: constância por semana e descansos ---------- */
+/** Em quantos dias de cada semana houve estudo. Semana cortada pelo período conta só os dias incluídos. */
+function weeklyRhythmViz(a){
+  const day = d => `${d.getDate()} ${MONTHS_ABBR[d.getMonth()]}`;
+  return h('div', null,
+    a.weeklyRhythm.map(w => hbarRow(
+      dateToISO(w.start) === dateToISO(w.end) ? day(w.start) : `${day(w.start)} – ${day(w.end)}`,
+      w.days > 0 ? (w.activeDays / w.days) * 100 : 0,
+      `${w.activeDays} de ${plural(w.days, 'dia', 'dias')}`)),
+    h('p', { class:'viz-legend' }, h('span', { class:'viz-hint', text:'Dia com estudo é um dia com pelo menos um estudo registrado. Dia sem estudo não é falha: é só um dia sem registro.' })));
+}
+
+/** Descansos do período: números, a relação com o estudo e os estudos em que aconteceram. */
+function restDetail(a){
+  const rs = a.rest, t = a.totals;
+  const box = h('div', { class:'rest-detail' });
+  if(!rs.count){
+    box.append(h('p', { class:'influence-note', text:'Nenhum descanso registrado neste período. No cronômetro, use "Descansar"; num estudo que já aconteceu, "+ Adicionar descanso".' }));
+    return box;
+  }
+  box.append(h('div', { class:'stat-grid compact' },
+    statBox(fmtDuration(rs.minutes), 'tempo de descanso'),
+    statBox(String(rs.count), rs.count === 1 ? 'descanso' : 'descansos'),
+    statBox(fmtDurationWords(rs.avg), 'média por descanso'),
+    statBox(`${rs.sessionsWithBreaks} de ${t.count}`, 'estudos com descanso')));
+  const lines = [];
+  if(isNum(rs.studyPerRestHour) && rs.minutes >= 10) lines.push(`Foram ${fmtDuration(rs.studyPerRestHour)} de estudo para cada 1h de descanso.`);
+  if(rs.longest && rs.longest.withBreaks > 0) lines.push(`Você fez descansos em ${rs.longest.withBreaks} dos ${rs.longest.of} estudos mais longos do período.`);
+  lines.forEach(x => box.append(h('p', { class:'hint', style:'margin-top:10px', text:x })));
+  const list = a.sessions.filter(s => breakMinutesOf(s) > 0)
+    .sort((x, y) => y.date.localeCompare(x.date) || str(y.createdAt).localeCompare(str(x.createdAt))).slice(0, 12);
+  const ul = h('ul', { class:'an-sess-list' });
+  list.forEach(s => {
+    const topic = topicLabelOf(s);
+    ul.append(h('li', null, h('button', { class:'an-sess', type:'button', 'aria-label':`Abrir o estudo de ${fmtDateBR(s.date)}`,
+        onclick:() => { if(Drawer.isOpen) Drawer.close(); openEditSessionModal(s.id); } },
+      h('span', { class:'an-sess-date', text: fmtDateBR(s.date) }),
+      h('span', { class:'an-sess-main' },
+        h('span', { class:'an-sess-title', text: disciplineName(s.disciplineId) + (topic ? ' › ' + topic : '') }),
+        h('span', { class:'an-sess-sub', text: `${fmtDuration(s.minutes)} de estudo` })),
+      h('span', { class:'an-sess-min', text: fmtDurationWords(breakMinutesOf(s)) }))));
+  });
+  box.append(drawerSection('Estudos com descanso', ul));
+  box.append(h('p', { class:'hint', style:'margin-top:10px', text:'Descanso nunca entra no tempo estudado, no plano da semana nem na ordem "Mais estudadas".' }));
+  return box;
 }
 
 /* ---------- menu simples (ações secundárias) ---------- */
@@ -8609,8 +9784,9 @@ function openAnalyticsDrawer(kind, a){
       statBox(fmtDuration(t.minutes), 'total'),
       statBox(fmtDuration(t.avgPerDay), 'média por dia do período'),
       statBox(fmtDuration(t.avgPerActiveDay), 'média por dia com estudo'),
-      statBox(fmtDuration(t.avgSession), 'em média, por estudo'),
-      statBox(fmtNumber(t.credits), 'créditos')));
+      statBox(fmtDuration(t.avgSession), 'em média, por estudo')));
+    if(a.rest.count > 0) body.append(h('p', { class:'hint', style:'margin-top:10px',
+      text:`Descansos ficam fora desta soma: ${fmtDuration(a.rest.minutes)} em ${plural(a.rest.count, 'descanso', 'descansos')}.` }));
     const cmp = a.previousComparison;
     body.append(h('p', { class:'hint', style:'margin-top:10px', text: cmp.available
       ? `Período anterior equivalente (${fmtRangeLabel(cmp.prevRange)}): ${fmtDuration(cmp.prev.minutes)}.`
@@ -8658,6 +9834,12 @@ function openAnalyticsDrawer(kind, a){
       body.append(drawerSection('Tipos de estudo', a.byType.filter(x => x.count > 0).map(x =>
         hbarRow(x.label, x.count / maxT * 100, `${x.count} · ${safePct(x.pct)}`))));
     }
+  }
+
+  else if(kind === 'rest'){
+    title = 'Descansos';
+    body.append(drawerIntro(`Descansos feitos durante os estudos ${scopeWords(a)} no período. Eles ficam guardados à parte.`));
+    body.append(restDetail(a));
   }
 
   else if(kind === 'plan'){
@@ -8951,10 +10133,12 @@ function openDayDrawer(iso, scope){
   if(!list.length){
     body.append(h('p', { class:'influence-note', text: iso > todayISO() ? 'Este dia ainda não chegou.' : 'Nenhum estudo registrado neste dia.' }));
   } else {
+    const restDay = sum(list, x => breakMinutesOf(x));
     body.append(h('div', { class:'stat-grid compact' },
-      statBox(fmtDuration(total), 'tempo'),
+      statBox(fmtDuration(total), 'tempo estudado'),
       statBox(String(list.length), list.length === 1 ? 'estudo' : 'estudos'),
-      statBox(String(list.filter(s => s.type === 'revisao' || s.reviewOutcome).length), 'revisões')));
+      statBox(String(list.filter(s => s.type === 'revisao' || s.reviewOutcome).length), 'revisões'),
+      restDay > 0 ? statBox(fmtDuration(restDay), 'descanso') : null));
     const ul = h('ul', { class:'an-sess-list' });
     list.forEach(s => {
       const topic = topicLabelOf(s);
@@ -9476,7 +10660,9 @@ function buildStudyReportText(a){
   L.push(`Média por dia do período: ${fmtDuration(t.avgPerDay)}`);
   L.push(`Média por dia com estudo: ${fmtDuration(t.avgPerActiveDay)}`);
   L.push(`Duração média por estudo: ${fmtDuration(t.avgSession)}`);
-  L.push(`Créditos: ${fmtNumber(t.credits)}`);
+  L.push(a.rest.count > 0
+    ? `Descansos (fora do tempo de estudo): ${fmtDuration(a.rest.minutes)} em ${plural(a.rest.count, 'descanso', 'descansos')}, média de ${fmtDurationWords(a.rest.avg)}`
+    : 'Descansos: nenhum registrado no período');
   const cmp = a.previousComparison;
   L.push(cmp.available
     ? `Período anterior equivalente (${fmtDateBR(dateToISO(cmp.prevRange.start))} a ${fmtDateBR(dateToISO(cmp.prevRange.end))}): ${fmtDuration(cmp.prev.minutes)}${isNum(cmp.minutesDelta) ? ` (${cmp.minutesDelta >= 0 ? '+' : '−'}${fmtNumber(Math.abs(cmp.minutesDelta), 0)}%)` : ''}`
@@ -9630,8 +10816,10 @@ function renderHistory(){
   const f = ui.history;
   if(!state.sessions.length){
     mount(root, h('section', { class:'quiet-empty' }, emptyState('Nenhum estudo registrado ainda',
-      'Use o botão "Registrar estudo" para começar a estudar com o cronômetro ou para lançar um estudo que já aconteceu.',
-      h('button', { class:'btn primary', type:'button', text:'Registrar estudo', onclick:() => openRegisterModal() }))));
+      '"Começar a estudar" liga o cronômetro. "Registrar estudo" guarda algo que você já estudou.',
+      h('div', { class:'empty-actions' },
+        h('button', { class:'btn primary', type:'button', onclick:() => openQuickStart() }, icon('i-play'), 'Começar a estudar'),
+        h('button', { class:'btn ghost', type:'button', text:'Registrar estudo', onclick:() => openRegisterModal() })))));
     return;
   }
   /* v6.2 — busca só nos estudos registrados (disciplina, área, tópico,
@@ -9797,42 +10985,65 @@ function renderHistoryTable(){
   }
 }
 
+/**
+ * Detalhe + edição de um estudo. Mostra o horário registrado, o tempo estudado
+ * e os descansos — e deixa corrigir cada um. Descanso nunca é somado ao tempo
+ * de estudo; mudar a data desloca os horários gravados pelo mesmo número de dias.
+ */
 function openEditSessionModal(id){
   const s = state.sessions.find(x => x.id === id);
   if(!s) return;
   openModal(close => {
-    let discId = s.disciplineId, topicId = s.topicId || '', type = s.type, difficulty = s.difficulty, outcome = s.reviewOutcome;
-    const body = h('div');
+    let type = s.type, difficulty = s.difficulty, outcome = s.reviewOutcome;
     const dateIn = h('input', { type:'date', id:'es-date', value:s.date, max: todayISO() > s.date ? todayISO() : s.date });
     const minIn = h('input', { type:'number', id:'es-min', min:'1', step:'1', value:String(s.minutes), inputmode:'numeric' });
-    const commentIn = h('textarea', { id:'es-comment' });
+    const commentIn = h('textarea', { id:'es-comment', maxlength:'2000' });
     commentIn.value = str(s.comment);
+    minIn.addEventListener('input', () => minIn.removeAttribute('aria-invalid'));
 
-    function build(){
-      clear(body);
-      body.append(
-        selectField('es-disc', 'Disciplina', disciplineOptions(false, true), discId, e => { discId = e.target.value; topicId = ''; build(); }),
-        // v6.3: o tópico atual aparece mesmo se foi arquivado — antes ele sumia da
-        // lista e salvar a edição desligava o estudo do tópico sem aviso.
-        selectField('es-topic', 'Tópico', (() => {
-          const opts = topicOptions(discId, true);
-          const cur = topicId ? getTopic(topicId) : null;
-          if(cur && cur.disciplineId === discId && !opts.some(o => o.value === cur.id)) opts.push({ value:cur.id, label:cur.name + ' (arquivado)' });
-          return opts;
-        })(), topicId, e => { topicId = e.target.value; }),
-        h('div', { class:'row' },
-          h('div', { class:'field' }, h('label', { for:'es-date', text:'Data' }), dateIn),
-          h('div', { class:'field' }, h('label', { for:'es-min', text:'Minutos' }), minIn)),
-        selectField('es-type', 'Tipo', [{ value:'', label:'— Não informado —' }].concat(SESSION_TYPES.map(t => ({ value:t.v, label:t.label }))), type, e => { type = e.target.value || null; build(); }),
-        h('div', { class:'field' }, h('label', { text:'Dificuldade' }),
-          pillGroup(DIFFICULTIES.map(d => ({ value:d.v, label:d.label, color:d.color })), difficulty, v => { difficulty = v ? Number(v) : null; })),
-        type === 'revisao' ? h('div', { class:'field' }, h('label', { text:'Resultado da revisão' }),
-          pillGroup(REVIEW_OUTCOMES.map(o => ({ value:o.v, label:o.label })), outcome, v => { outcome = v; }),
-          h('p', { class:'hint', text:'Editar o resultado aqui não reprograma a revisão já aplicada ao tópico.' })) : null,
-        h('div', { class:'field' }, h('label', { for:'es-comment', text:'Comentário' }), commentIn)
-      );
+    const clock = sessionClockRange(s);
+    const breaks = breaksEditor({ idPrefix:'es', mode:'minutes', breaks: sanitizeBreaks(breaksOf(s)) });
+    // v6.3: disciplina e tópico atuais aparecem mesmo se foram arquivados — antes
+    // sumiam da lista e salvar a edição desligava o estudo do tópico sem aviso.
+    const target = studyTargetFields({ close, idPrefix:'es', discId:s.disciplineId, topicId:s.topicId || '', includeArchived:true,
+      allowNewTopic:false, onChange: () => renderOutcome() });
+    const typePick = studyTypePicker({ id:'es-type', value:type, onChange: v => { type = v; renderOutcome(); } });
+    const legacyTopic = (!s.topicId && str(s.legacyTopicText)) ? str(s.legacyTopicText) : null;
+
+    const outcomeField = h('div', { class:'field', hidden:true });
+    function renderOutcome(){
+      const show = type === 'revisao';
+      outcomeField.hidden = !show;
+      if(!show || outcomeField.firstChild) return;
+      outcomeField.append(h('label', { text:'Resultado da revisão' }),
+        pillGroup(REVIEW_OUTCOMES.map(x => ({ value:x.v, label:x.label })), outcome, v => { outcome = v; }, 'Resultado da revisão'),
+        h('p', { class:'hint', text:'Editar o resultado aqui não reprograma a revisão já aplicada ao tópico.' }));
     }
-    build();
+
+    const body = h('div', { class:'rm' },
+      clock ? h('p', { class:'es-clock' }, h('span', { class:'es-clock-l', text:'Horário' }),
+        h('span', { class:'num', text: clock.text + (clock.nextDay ? ' · terminou no dia seguinte' : '') })) : null,
+      h('div', { class:'when-grid is-edit' },
+        h('div', { class:'field' }, h('label', { for:'es-date', text:'Data' }), dateIn),
+        h('div', { class:'field' }, h('label', { for:'es-min', text:'Tempo estudado, em minutos' }), minIn)),
+      breaks.node,
+      target.node,
+      legacyTopic ? h('p', { class:'hint', text:`Anotado na época como “${legacyTopic}”.` }) : null,
+      typePick.node,
+      h('div', { class:'field' }, h('span', { class:'pick-label' }, 'Dificuldade', h('span', { class:'optional', text:'opcional' })),
+        pillGroup(DIFFICULTIES.map(d => ({ value:d.v, label:d.label, color:d.color })), difficulty, v => { difficulty = v ? Number(v) : null; }, 'Dificuldade percebida')),
+      outcomeField,
+      h('div', { class:'field' }, h('label', { for:'es-comment' }, 'Comentário', h('span', { class:'optional', text:'opcional' })), commentIn));
+    renderOutcome();
+
+    /** Desloca um instante gravado por `days` dias, mantendo a hora local (sem deslize de fuso). */
+    const shiftISO = (iso, days) => {
+      const t = validInstant(iso);
+      if(t === null || !days) return iso || null;
+      const d = new Date(t);
+      d.setDate(d.getDate() + days);
+      return d.toISOString();
+    };
 
     return {
       title:'Editar estudo',
@@ -9845,13 +11056,23 @@ function openEditSessionModal(id){
         } }),
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
         h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: once(async () => {
-          const minutes = Number(minIn.value);
-          if(!(minutes > 0)){ minIn.setAttribute('aria-invalid','true'); minIn.focus(); toast('Informe um tempo válido.', 'err'); return; }
-          const t = topicId ? getTopic(topicId) : null;
+          const minutes = Math.round(Number(minIn.value));
+          if(!(minutes > 0)){ minIn.setAttribute('aria-invalid','true'); minIn.focus(); toast('Informe um tempo de estudo válido.', 'err'); return; }
+          const date = dateIn.value || s.date;
+          if(date > todayISO() && date !== s.date){ dateIn.setAttribute('aria-invalid','true'); dateIn.focus(); toast('Escolha hoje ou um dia que já passou.', 'err', { title:'Data no futuro' }); return; }
+          const br = breaks.read(null, false);
+          if(!br.ok){ if(br.el){ if('value' in br.el) br.el.setAttribute('aria-invalid','true'); br.el.focus(); } toast(br.msg, 'err'); return; }
+          const discId = await target.ensure();
+          if(!discId) return;
+          // a data mudou: os horários gravados (do estudo e dos descansos) acompanham
+          const from = parseISO(s.date), to = parseISO(date);
+          const days = (from && to) ? diffDays(to, from) : 0;
           const ok = await updateSession(id, {
-            disciplineId: discId, topicId: (t && t.disciplineId === discId) ? t.id : null, date: dateIn.value || s.date,
+            disciplineId: discId, topicId: target.topicId, date,
             minutes, type, difficulty, comment: commentIn.value.trim(),
-            reviewOutcome: type === 'revisao' ? outcome : null
+            reviewOutcome: type === 'revisao' ? outcome : null,
+            startedAt: shiftISO(s.startedAt, days), endedAt: shiftISO(s.endedAt, days),
+            breaks: br.breaks.map(b => Object.assign({}, b, { startedAt: shiftISO(b.startedAt, days), endedAt: shiftISO(b.endedAt, days) }))
           });
           if(ok) close();          // falhou: a edição continua aberta, com tudo preenchido
         }) })
@@ -10068,11 +11289,24 @@ function bindEvents(){
   }
 
 
-  $('#fab').addEventListener('click', () => {
+  /* v6.4 — "Registrar estudo" é uma ação global e diz o que faz: guarda algo que
+     você já estudou. Funciona em qualquer tela, sem sair dela. Com o cronômetro
+     ligado, o mesmo botão finaliza o estudo em andamento. */
+  const fabBtn = $('#fab');
+  fabBtn.addEventListener('click', () => {
+    clearTimeout(fabHintTimer);
+    Tooltip.hide();
     if(TimerService.isActive){ openFinishModal(); return; }
-    // v5: quem ainda não registrou nada entra pela rota mais curta
-    if(state.sessions.length < 3) openQuickStart(); else openRegisterModal();
+    openRegisterModal();
   });
+  /* A dica aparece ao passar o mouse e no foco de TECLADO. Quando o foco só
+     volta para o botão (ao fechar a janela com o mouse), ela não reaparece. */
+  const fabHint = () => TimerService.isActive ? 'Registre o estudo que está no cronômetro.' : 'Adicione algo que você já estudou.';
+  let fabHintTimer = null;
+  fabBtn.addEventListener('mouseenter', () => { clearTimeout(fabHintTimer); fabHintTimer = setTimeout(() => { if(!Overlay.isOpen) Tooltip.show(fabBtn, fabHint); }, 350); });
+  fabBtn.addEventListener('mouseleave', () => { clearTimeout(fabHintTimer); Tooltip.hide(); });
+  fabBtn.addEventListener('focus', () => { let kb = false; try { kb = fabBtn.matches(':focus-visible'); } catch(_){} if(kb && !Overlay.isOpen) Tooltip.show(fabBtn, fabHint); });
+  fabBtn.addEventListener('blur', () => { clearTimeout(fabHintTimer); Tooltip.hide(); });
 
   document.addEventListener('keydown', (e) => {
     const tag = (e.target && e.target.tagName || '').toLowerCase();
@@ -10251,6 +11485,15 @@ async function init(){
     console.error('Falha na migração v5.2:', err);
     toast('Seus dados continuam intactos. Recarregue a página para tentar de novo.', 'err',
       { title:'Não foi possível atualizar o formato de prioridades e prazos' });
+  }
+
+  // v6.3 → v6.4: cada estudo ganha a lista de descansos (vazia). Minutos intactos.
+  try {
+    await runV64Migration();
+  } catch(err){
+    console.error('Falha na migração v6.4:', err);
+    toast('Seus dados continuam intactos. Recarregue a página para tentar de novo.', 'err',
+      { title:'Não foi possível atualizar o formato dos estudos' });
   }
 
   await loadAll();
@@ -10944,6 +12187,7 @@ const NAV_ICONS = {
 const FocusMode = {
   tick: null,
   _layer: null,
+  _resting: null,
   enter(){
     if(!TimerService.isActive){ toast('Comece a estudar para usar o modo foco.', 'info'); return; }
     if(this.isOpen) return;
@@ -10966,27 +12210,45 @@ const FocusMode = {
     this._layer = null;
   },
   get isOpen(){ const r = document.getElementById('focus-root'); return r && !r.hidden; },
-  render(){
+  render(opts){
     if(!TimerService.isActive){ this.exit(); return; }
+    const o = opts || {};
     const d = TimerService.data;
     const disc = getDiscipline(d.disciplineId);
     const topic = d.topicId ? getTopic(d.topicId) : null;
+    const resting = TimerService.isOnBreak;
+    this._resting = resting;
+    const root = document.getElementById('focus-root');
+    root.setAttribute('data-state', resting ? 'rest' : 'study');
     document.getElementById('focus-disc').textContent = disc ? disc.name : '';
-    document.getElementById('focus-topic').textContent = topic ? topic.name : (d.presetType ? sessionTypeLabel(d.presetType) : 'Sem tópico específico');
+    document.getElementById('focus-topic').textContent = [topic ? topic.name : null, d.presetType ? sessionTypeLabel(d.presetType) : null].filter(Boolean).join(' · ');
+    document.getElementById('focus-state').textContent = resting ? 'Descansando' : 'Estudando';
+    document.getElementById('focus-sub').textContent = resting ? `Seu estudo está pausado em ${fmtTimer(TimerService.getElapsed())}.` : '';
     this.renderClock();
-    mount(document.getElementById('focus-actions'),
-      h('button', { class:'btn ghost', type:'button', text: TimerService.isRunning ? 'Pausar' : 'Retomar',
-        onclick:() => { TimerService.isRunning ? TimerService.pause() : TimerService.resume(); this.render(); renderTimerBar(); } }),
-      h('button', { class:'btn primary', type:'button', text:'Finalizar', onclick:() => { this.exit(); openFinishModal(); } }),
+    const actions = document.getElementById('focus-actions');
+    const hadFocus = actions.contains(document.activeElement);
+    mount(actions,
+      h('button', { class:'btn ' + (resting ? 'primary' : 'ghost'), type:'button', 'data-fk':'focus-toggle',
+        text: resting ? 'Voltar a estudar' : 'Descansar', onclick:toggleBreak }),
+      h('button', { class:'btn ' + (resting ? 'ghost' : 'primary'), type:'button', text:'Finalizar estudo', onclick:() => { this.exit(); openFinishModal(); } }),
       h('button', { class:'btn ghost', type:'button', text:'Sair do foco', onclick:() => this.exit() })
     );
+    if(hadFocus){ const b = actions.querySelector('[data-fk="focus-toggle"]'); if(b) b.focus(); }
+    if(o.switched){ swapIn(document.getElementById('focus-state')); swapIn(document.getElementById('focus-clock')); }
   },
+  /** A cada segundo, só o texto do relógio (o estado só muda nas transições). */
   renderClock(){
     if(!TimerService.isActive){ this.exit(); return; }
-    document.getElementById('focus-clock').textContent = fmtClock(TimerService.getElapsed());
-    document.getElementById('focus-state').textContent = TimerService.isRunning ? 'Estudando' : 'Pausado';
+    const resting = TimerService.isOnBreak;
+    if(resting !== this._resting){ this.render({ switched:true }); return; }    // trocado em outra aba
+    const el = document.getElementById('focus-clock');
+    const t = fmtTimer(resting ? TimerService.getBreakElapsed() : TimerService.getElapsed());
+    if(el.textContent !== t) el.textContent = t;
   }
 };
+
+/* =========================================================================
+   CENTRAL DE AJUDA (v5.3)};
 
 /* =========================================================================
    CENTRAL DE AJUDA (v5.3)
@@ -11089,8 +12351,8 @@ function openInteractiveGuide(id){ openHelpArticle(LEGACY_GUIDE_TO_ARTICLE[id] |
    ========================================================================= */
 function appFunctions(){
   const list = [
-    { id:'register',   label:'Registrar estudo', sub:'com cronômetro ou um estudo que já aconteceu', icon:'i-plus', kw:'estudar iniciar timer cronometro sessao registrar lancar', run:() => openRegisterModal() },
-    { id:'quick',      label:'Começar a estudar', sub:'escolha o que estudar e o tempo', icon:'i-play', kw:'sessao rapida iniciar comecar estudar agora', run:() => openQuickStart() },
+    { id:'register',   label:'Registrar estudo', sub:'guarde algo que você já estudou', icon:'i-plus', kw:'registrar lancar ja estudei passado horario duracao sessao manual', run:() => openRegisterModal() },
+    { id:'quick',      label:'Começar a estudar', sub:'o Ciclo conta o tempo', icon:'i-play', kw:'estudar agora iniciar comecar timer cronometro sessao', run:() => openQuickStart() },
     { id:'addDisc',    label:'Adicionar disciplina', sub:'o que você está estudando', icon:'i-disc', kw:'disciplina materia nova criar adicionar', run:() => openDisciplineModal(null) },
     { id:'addArea',    label:'Nova área de estudo', sub:'um grupo para disciplinas relacionadas', icon:'i-disc', kw:'area organizar agrupar criar nova', run:() => openAreaModal(null) },
     { id:'addTopic',   label:'Adicionar tópico', sub:'uma parte de uma disciplina', icon:'i-disc', kw:'topico assunto novo criar adicionar', run:() => HELP_ACTIONS.addTopic() },
@@ -11592,7 +12854,7 @@ function helpHomePanel(box){
       first ? h('li', { class:'line' }, h('button', { class:'line-main', type:'button', onclick:() => helpGo({ kind:'article', id:first.id }) },
         h('span', { class:'line-t', text:'Primeiros passos' }), h('span', { class:'line-s', text:'O essencial para começar em poucos minutos.' })), icon('i-arrow', 'nav-icon line-go')) : null,
       h('li', { class:'line' }, h('button', { class:'line-main', type:'button', onclick:() => helpGo({ kind:'glossary' }) },
-        h('span', { class:'line-t', text:'Glossário' }), h('span', { class:'line-s', text:'Consolidação, créditos, revisão espaçada… cada termo em uma linha.' })), icon('i-arrow', 'nav-icon line-go')),
+        h('span', { class:'line-t', text:'Glossário' }), h('span', { class:'line-s', text:'Consolidação, plano semanal, revisão espaçada… cada termo em uma linha.' })), icon('i-arrow', 'nav-icon line-go')),
       h('li', { class:'line' }, h('button', { class:'line-main', type:'button', onclick:() => openContactDrawer() },
         h('span', { class:'line-t', text:'Entrar em contato' }), h('span', { class:'line-s num', text: CONTACT_EMAIL })), icon('i-mail', 'nav-icon line-go')),
       h('li', { class:'line' }, h('button', { class:'line-main', type:'button', onclick:() => openReportProblemDrawer() },
@@ -12248,18 +13510,21 @@ function maybeShowWhatsNew(){
 
   const cameFrom6 = /^6\./.test(seen);             // já usava alguma versão 6.x
   const saw62 = /^6\.[2-9]/.test(seen);           // já viu a navegação da 6.2
+  const saw63 = /^6\.[3-9]/.test(seen);           // já viu a captura de tópico da 6.3
   const items = [
-    'Criar um tópico sem sair do registro: no campo Tópico, escolha "+ Criar novo tópico…". O que você já preencheu continua lá, e o tópico novo volta selecionado.',
-    'Ao finalizar o cronômetro, dá para escolher ou criar o tópico. Se algo falhar ao salvar, o cronômetro continua — nenhum minuto se perde.',
-    'A frase do dia foi refeita: só frases reais, com autor e obra, conferidas na fonte. Ela aparece logo abaixo da recomendação e muda uma vez por dia.',
-    'Textos e números mais fáceis de ler, com as fontes do seu próprio sistema. Se o Ciclo ficar aberto de um dia para o outro, "Hoje" se atualiza sozinho.'
+    '"Registrar estudo" guarda algo que você já estudou — de qualquer tela, sem sair dela. "Começar a estudar" liga o cronômetro.',
+    'Em "Já estudei", diga a que horas começou e terminou: a duração sai sozinha, mesmo quando o estudo atravessa a meia-noite (23:50 → 00:12 são 22 minutos).',
+    'Descansos: no cronômetro, "Descansar" pausa o estudo e conta o descanso à parte. Ele nunca entra no tempo estudado nem no plano da semana.',
+    'Seu ritmo: Hoje mostra em quantos dos últimos 7 dias você estudou, e Análises ganhou os dias com estudo por semana e os descansos — sem nota e sem cobrança.',
+    'Créditos saíram do Ciclo: agora tudo é medido em tempo. Seus estudos e minutos continuam exatamente como estavam.'
   ];
+  if(cameFrom6 && !saw63) items.push('Também da 6.3: criar um tópico sem sair do registro e a frase do dia só com frases reais, com autor e obra.');
   if(cameFrom6 && !saw62) items.push('Também da 6.2: o Voltar do navegador volta dentro do Ciclo, e cada lista tem busca e ordenação próprias.');
-  if(!cameFrom6) items.push('Também da 6.0 à 6.2: visual mais calmo, Disciplinas como um índice, Análises que começam por uma pergunta, Prazos numa aba própria e o Voltar do navegador funcionando dentro do Ciclo.');
+  if(!cameFrom6) items.push('Também da 6.0 à 6.3: visual mais calmo, Disciplinas como um índice, Análises que começam por uma pergunta, Prazos numa aba própria e o Voltar do navegador funcionando dentro do Ciclo.');
   const cfg = {
-    title: 'Ciclo 6.3',
+    title: 'Ciclo 6.4',
     sub: cameFrom5 || cameFrom6
-      ? 'Mais fácil de ler, mais rápido de registrar e mais difícil de perder algo. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
+      ? 'Estudar, registrar, descansar e acompanhar a constância ficaram mais simples. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
       : 'O Diário de Estudos agora se chama Ciclo — e ganhou uma interface nova. Seus dados, revisões e planos continuam como estavam.',
     items, note: converted
   };
@@ -12368,183 +13633,6 @@ function openWelcome(){
   }, { size:'narrow', dismissible:false });
 
   if(rebuildRef) rebuildRef();
-}
-
-/* =========================================================================
-   v5 — ROTA DE ZERO CONFIGURAÇÃO
-   "O que vai estudar? / Assunto (opcional) / Quanto tempo? / Começar"
-   Cria disciplina e tópico na hora, se necessário, com confirmação leve.
-   ========================================================================= */
-function openQuickStart(preset){
-  const p = preset || {};
-  let disciplineName = '';
-  let disciplineId = p.disciplineId || '';
-  let topicText = '';
-  let minutes = state.settings.defaultSessionMinutes || 40;
-  let free = false;
-  let busy = false;
-
-  const discs = activeDisciplines().slice().sort(sortByName);
-  if(!disciplineId && discs.length) disciplineId = discs[0].id;
-
-  openModal(close => {
-    const body = h('div');
-
-    /* --- o que vai estudar --- */
-    const discField = h('div', { class:'field' });
-    function buildDiscField(){
-      clear(discField);
-      discField.append(h('label', { for:'qs-disc', text:'O que você vai estudar?' }));
-      if(discs.length){
-        const sel = h('select', { id:'qs-disc' });
-        discs.forEach(d => sel.appendChild(h('option', { value:d.id, selected:d.id === disciplineId }, d.name)));
-        sel.appendChild(h('option', { value:'__new__' }, '+ Adicionar outra…'));
-        sel.addEventListener('change', () => {
-          if(sel.value === '__new__'){ disciplineId = ''; buildDiscField(); }
-          else { disciplineId = sel.value; buildTopicField(); }
-        });
-        discField.append(sel);
-        if(!disciplineId){
-          const nameIn = h('input', { type:'text', id:'qs-newdisc', placeholder:'Ex.: História', maxlength:'80', style:'margin-top:8px' });
-          nameIn.addEventListener('input', () => { disciplineName = nameIn.value; });
-          discField.append(nameIn, h('p', { class:'hint', text:'Ela será criada quando você começar.' }));
-          setTimeout(() => nameIn.focus(), 30);
-        }
-      } else {
-        const nameIn = h('input', { type:'text', id:'qs-newdisc', placeholder:'Ex.: Matemática', maxlength:'80' });
-        nameIn.addEventListener('input', () => { disciplineName = nameIn.value; });
-        discField.append(nameIn, h('p', { class:'hint', text:'Ela será criada quando você começar.' }));
-      }
-    }
-
-    /* --- tópico (opcional) --- */
-    const topicField = h('div', { class:'field' });
-    function buildTopicField(){
-      clear(topicField);
-      const known = disciplineId ? topicsOf(disciplineId) : [];
-      topicField.append(h('label', { for:'qs-topic' }, 'Tópico ', h('span', { class:'optional', text:'opcional' })));
-      const input = h('input', { type:'text', id:'qs-topic', value:topicText, maxlength:'80',
-        placeholder: known.length ? 'Ex.: ' + known[0].name : 'Ex.: Derivadas',
-        autocomplete:'off', list: known.length ? 'qs-topic-list' : null });
-      input.addEventListener('input', () => { topicText = input.value; });
-      topicField.append(input);
-      if(known.length){
-        const dl = h('datalist', { id:'qs-topic-list' });
-        known.forEach(t => dl.appendChild(h('option', { value:t.name })));
-        topicField.append(dl);
-      }
-      topicField.append(h('p', { class:'hint', text:'Ajuda o Ciclo a lembrar você de revisar depois. Pode deixar em branco.' }));
-    }
-
-    /* --- tempo --- */
-    const timeField = h('div', { class:'field' });
-    const timeChips = h('div', { class:'chips' });
-    function buildTime(){
-      clear(timeChips);
-      [20,30,40].forEach(v => timeChips.appendChild(h('button', { class:'chip', type:'button',
-        'aria-pressed': (!free && minutes === v) ? 'true' : 'false', text: v + ' min',
-        onclick:() => { minutes = v; free = false; buildTime(); } })));
-      timeChips.appendChild(h('button', { class:'chip', type:'button', 'aria-pressed': free ? 'true':'false', text:'Livre',
-        onclick:() => { free = true; buildTime(); } }));
-      clear(timeField);
-      timeField.append(h('label', { text:'Quanto tempo?' }), timeChips,
-        h('p', { class:'hint', text: free
-          ? 'O cronômetro corre sem limite. Você para quando quiser.'
-          : 'Uma sugestão de duração. Você pode parar antes ou seguir além.' }));
-    }
-
-    buildDiscField(); buildTopicField(); buildTime();
-    body.append(discField, topicField, timeField);
-
-    const startBtn = h('button', { class:'btn primary', type:'button', text:'Começar' });
-    startBtn.addEventListener('click', async () => {
-      if(busy) return;                       // guarda contra duplo clique
-      busy = true; startBtn.disabled = true;
-      try { await begin(); }
-      finally { busy = false; startBtn.disabled = false; }
-    });
-
-    async function begin(){
-      let disc = disciplineId ? getDiscipline(disciplineId) : null;
-
-      if(!disc){
-        const clean = str(disciplineName).trim();
-        if(!clean){ toast('Escreva o que você vai estudar.', 'err'); return; }
-        const existing = activeDisciplines().find(d => d.name.toLowerCase() === clean.toLowerCase());
-        if(existing) disc = existing;
-        else {
-          disc = newDiscipline(clean, null, 3);
-          try { await DB.put('disciplines', disc); await refresh(); }
-          catch(err){ console.error(err); toast('Não foi possível criar a disciplina.', 'err'); return; }
-          toast(clean + ' adicionada.', 'ok');
-        }
-      }
-
-      disciplineId = disc.id;                // voltar para esta tela não cria a disciplina de novo
-      const target = free ? null : minutes;
-      const go = (topicId) => { close(); startTimer(disc.id, topicId || null, null, null, target); };
-
-      const topicName = str(topicText).trim();
-      if(!topicName){ go(null); return; }
-
-      const twin = findTopicByName(disc.id, topicName);
-      if(twin && !twin.archived){ go(twin.id); return; }
-
-      /* Assunto novo (ou arquivado): pergunta uma vez, numa subtela deste mesmo
-         modal. Esc ou "Voltar" devolvem o formulário exatamente como estava. */
-      const back = () => close.pop(startBtn);
-      let working = false;
-      const addBtn = h('button', { class:'btn primary', type:'button', text: twin ? 'Reativar e começar' : 'Adicionar e começar', onclick: async () => {
-        if(working) return;
-        working = true; addBtn.disabled = true;
-        try {
-          let t;
-          if(twin){
-            t = Object.assign({}, twin, { archived:false });
-            await persist('topics', t);
-          } else {
-            const existing = topicsOf(disc.id, true);
-            const order = existing.length ? Math.max(...existing.map(x => x.sortOrder || 0)) + 10 : 10;
-            t = newTopic(disc.id, topicName, order);
-            await DB.put('topics', t);
-          }
-          try { await refresh(); } catch(err){ console.error(err); }
-          toast(`${t.name} · ${disc.name}`, 'ok', { title: twin ? 'Tópico reativado' : 'Tópico adicionado' });
-          go(t.id);
-        } catch(err){
-          console.error(err);
-          working = false; addBtn.disabled = false;
-          toast('Tente de novo ou comece sem adicionar o tópico.', 'err', { title:'Não foi possível salvar o tópico' });
-        }
-      } });
-      close.push({
-        title: twin ? 'Reativar este tópico?' : 'Adicionar como tópico?',
-        content: h('div',
-          h('p', { class:'modal-sub', text: twin
-            ? `“${twin.name}” já existe em ${disc.name}, mas está arquivado.`
-            : `“${topicName}” ainda não está em ${disc.name}.` }),
-          h('p', { class:'hint', text: twin
-            ? 'Reativar mantém o histórico e as revisões dele. Também dá para estudar sem tópico.'
-            : 'Adicionar permite que o Ciclo acompanhe suas revisões e seu progresso nesse tópico. Também dá para seguir sem adicionar.' })),
-        actions:[
-          h('button', { class:'linkbtn muted', type:'button', text:'Voltar', onclick: back }),
-          h('button', { class:'btn ghost', type:'button', text:'Começar sem tópico', onclick:() => go(null) }),
-          addBtn
-        ],
-        focus: addBtn,
-        onEsc: back
-      });
-    }
-
-    return {
-      title:'Começar a estudar',
-      content: body,
-      actions:[
-        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
-        startBtn
-      ]
-    };
-  }, { size:'wide' });
 }
 
 /* =========================================================================

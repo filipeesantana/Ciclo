@@ -29,7 +29,7 @@ Serve para qualquer pessoa e qualquer área: escola, faculdade, concursos, idiom
 ## Como começar
 
 1. **Adicione algo que você estuda.** Uma matéria, um idioma, uma certificação, um instrumento.
-2. **Comece a estudar.** Escolha quanto tempo quer estudar e o Ciclo conta o tempo para você.
+2. **Comece a estudar.** Escolha o que vai estudar e o Ciclo conta o tempo para você — e o descanso, quando você quiser descansar.
 3. **Adicione tópicos conforme precisar.** Por exemplo, *Matemática → Derivadas*. Não precisa cadastrar tudo de uma vez — dá para criar um tópico na hora de registrar o estudo.
 4. **O Ciclo avisa quando revisar.** Cada tópico estudado volta sozinho no momento certo.
 5. **Organize sua semana quando quiser.** Dizer quantas horas você tem por semana é opcional e melhora as sugestões.
@@ -40,9 +40,11 @@ Você não precisa criar Área de Estudo, definir prioridade, montar um plano ou
 
 Cada tela responde a uma pergunta. O que importa aparece primeiro; o resto fica a um clique.
 
-**Hoje** — *o que devo fazer agora?* Uma recomendação em destaque, com o motivo em uma frase e um botão para começar. Logo abaixo, discretamente, a frase do dia — sempre real, com autor e obra. Depois, só o que vem a seguir: as revisões do dia, como está a semana e o próximo prazo.
+**Hoje** — *o que devo fazer agora?* Uma recomendação em destaque, com o motivo em uma frase e um botão para começar. Logo abaixo, discretamente, a frase do dia — sempre real, com autor e obra. Depois, só o que vem a seguir: as revisões do dia, como está a semana e o próximo prazo. Por fim, **Seu ritmo**: em quantos dos últimos 7 dias você estudou.
 
-**Registrar estudo** — o botão que acompanha todas as telas. Você começa o cronômetro ou lança um estudo que já aconteceu; se o tópico ainda não existe, escolha *+ Criar novo tópico…* no próprio campo, sem perder o que já preencheu.
+**Começar a estudar** — *quero estudar agora.* Você escolhe a disciplina (e, se quiser, o tópico e o tipo de estudo) e o cronômetro começa.
+
+**Registrar estudo** — *já estudei e quero guardar isso.* É o botão que acompanha todas as telas: abre por cima do que você está vendo e, ao registrar ou cancelar, você continua no mesmo lugar. Dentro de uma disciplina ou de um tópico, ele já vem com os dois escolhidos. Se o tópico ainda não existe, escolha *Criar novo tópico…* no próprio campo, sem perder o que já preencheu.
 
 **Planejamento** — *como vou distribuir meu tempo?* Você diz quantas horas tem por semana e o Ciclo sugere a divisão entre as matérias. A tela mostra a divisão da semana e quanto já foi feito; os detalhes ficam em *Ajustar*. Cada semana guarda o próprio registro.
 
@@ -53,6 +55,20 @@ Cada tela responde a uma pergunta. O que importa aparece primeiro; o resto fica 
 **Análises** — *o que quero entender?* Você escolhe o que analisar, o período e o que quer ver. Depois recebe um resumo, poucos números, um gráfico principal e os principais insights, com mais visões disponíveis quando quiser.
 
 **Histórico** — *o que já fiz?* Todos os estudos registrados, dia a dia, com busca e filtros num painel.
+
+### Estudar, registrar e descansar
+
+As duas ações ficam na mesma janela — *Estudar agora* e *Já estudei* — e alimentam o mesmo histórico.
+
+- **Horário em vez de conta de cabeça.** Em *Já estudei*, diga o dia, a hora em que começou e a hora em que terminou: a duração sai sozinha. *14:10 → 15:25* são 1h15.
+- **Depois da meia-noite.** *23:50 → 00:12* são 22 minutos; o Ciclo entende que o estudo terminou no dia seguinte e avisa. A data é sempre a do dia em que o estudo começou.
+- **Engano de digitação.** Se o intervalo passar de 8 horas, o Ciclo pergunta se está certo antes de registrar. Ele só pergunta — estudos longos continuam valendo.
+- **Não lembra os horários?** Informe só quanto tempo estudou.
+- **Descansos.** No cronômetro, *Descansar* para o tempo de estudo e começa a contar o descanso; *Voltar a estudar* continua de onde você parou, quantas vezes quiser. Num estudo que já aconteceu, use *+ Adicionar descanso*.
+
+O descanso é guardado junto do estudo, mas **nunca é somado a ele**: 45 min de estudo, 10 de descanso, 35 de estudo, 8 de descanso e mais 40 de estudo são **2h estudadas e 18 min de descanso**. O plano da semana, o tempo de cada disciplina e a ordem *Mais estudadas* contam só o estudo.
+
+O cronômetro não interrompe nada sozinho e não toca alarme: quem decide a hora de descansar é você. Se a página for recarregada ou a aba fechada — inclusive no meio de um descanso —, ele volta com os tempos certos.
 
 ### Encontrar e voltar
 
@@ -124,11 +140,13 @@ Análises não começa despejando números. Primeiro pergunta: **o que você que
 
 Ao clicar em **Gerar análise**, você recebe só o que responde à sua escolha:
 
-- **Seu período em resumo** — poucas frases sobre o que aconteceu. Por exemplo: *"Você estudou 12h40 em 9 dos últimos 30 dias."*
+- **Seu período em resumo** — poucas frases sobre o que aconteceu. Por exemplo: *"Você estudou 12h40 em 9 de 30 dias."*
 - **Três ou quatro números essenciais** — os que têm seta abrem os detalhes.
 - **Um gráfico principal**, escolhido conforme o foco: tempo ao longo do período, planejado × realizado, resultado das revisões, situação dos tópicos ou linha do tempo dos prazos.
 - **Principais insights** — pontos de atenção e pontos positivos, sem alarme.
-- **Explorar mais** — calendário, distribuição do tempo, semana a semana, prioridades e outras visões, que abrem só quando você clicar.
+- **Explorar mais** — calendário, distribuição do tempo, dias com estudo semana a semana, descansos, prioridades e outras visões, que abrem só quando você clicar.
+
+No foco **Tempo e constância**, além do tempo estudado, aparecem os **dias com estudo** e os **descansos** (quanto, quantos e a média de cada um). Um dia conta quando tem pelo menos um estudo registrado; analisando uma disciplina ou um tópico, contam só os dias em que ele foi estudado. São números, não notas: o Ciclo não diz se você estudou pouco nem se descansou demais.
 
 *Alterar análise* volta às escolhas já preenchidas, sem perder o resultado até você gerar outro. Combinações que não fazem sentido (como planejamento de um único tópico) aparecem indisponíveis, com a explicação ao lado. Em *Exportar*, você copia um resumo ou baixa um relatório em texto (`ciclo-relatorio-…-AAAA-MM-DD.txt`) com exatamente o escopo, o período e o foco escolhidos — gerado no seu navegador, sem comentários nem anotações pessoais.
 
@@ -159,7 +177,7 @@ Isso tem duas consequências práticas:
 
 Por isso existe o backup, na tela **Dados**:
 
-- **Backup completo (.json)**: guarda tudo (áreas, disciplinas, tópicos, prioridades, estudos registrados, planos, prazos e configurações). É o arquivo que restaura o Ciclo em outro computador ou depois de limpar o navegador.
+- **Backup completo (.json)**: guarda tudo (áreas, disciplinas, tópicos, prioridades, estudos registrados com seus descansos, planos, prazos e configurações). É o arquivo que restaura o Ciclo em outro computador ou depois de limpar o navegador.
 - **Histórico (.csv)**: apenas a lista de estudos, para abrir numa planilha.
 
 Ao importar um backup, o Ciclo verifica o arquivo antes de gravar qualquer coisa e pede confirmação. Backups de versões anteriores, inclusive da época do Diário de Estudos, continuam sendo aceitos e são convertidos para o formato atual.
@@ -177,6 +195,8 @@ A tela Dados mostra quando foi seu último backup. Exportar de vez em quando e g
 - **Menos por vez, mais quando precisar.** Cada tela mostra o que ajuda na decisão do momento; a profundidade continua lá, atrás de um clique.
 - **Palavras comuns.** Se um termo precisa de glossário, primeiro o Ciclo tenta usar uma palavra melhor.
 - **Sério, sem virar jogo.** Sem pontos, rankings ou sequências punitivas. O foco é estudar.
+- **Informar, não julgar.** Constância e descanso aparecem como fatos. Um dia sem estudo é só um dia sem registro.
+- **Tempo é a medida.** Tudo no Ciclo é contado em horas e minutos de estudo.
 
 ## Como é feito
 
@@ -190,18 +210,24 @@ O endereço também está no aplicativo, em **Ajuda** e em **Configurações →
 
 ## Versão atual
 
-**v6.3.0 — Editorial Polish / Smart Capture / Reliability**
+**v6.4.0 — Study Flow / Rest / Rhythm**
 
-Mais fácil de ler, mais rápido de registrar, mais difícil de perder algo.
+Estudar, registrar, descansar e acompanhar a constância — mais simples e mais claro.
 
-- **Criar tópico sem sair do registro:** no campo Tópico, *+ Criar novo tópico…* abre o mesmo formulário de tópico de sempre, dentro do registro, com a disciplina já escolhida (e editável). Ao salvar, disciplina e tópico voltam selecionados juntos — nunca um tópico de outra disciplina — e tudo o que você já tinha preenchido continua lá. Nome repetido não vira um segundo tópico: o Ciclo oferece usar o existente ou reativar o arquivado.
-- **Cronômetro mais seguro:** ao finalizar, dá para escolher ou criar o tópico; o estudo só é encerrado depois de gravado. Com o Ciclo aberto em duas abas, o mesmo estudo não é gravado duas vezes.
-- **Frase do dia refeita:** só frases reais — de Sêneca, Leonardo da Vinci, Montaigne, Goethe, Ramón y Cajal e outros —, com autor e obra, conferidas na fonte original. Nada de frase inventada, provérbio sem autor ou atribuição duvidosa. Ela aparece logo abaixo da recomendação e muda uma vez por dia.
-- **Tipografia revista:** escala de tamanhos coerente, pesos mais consistentes e números com algarismos alinhados, usando só as fontes do seu próprio sistema (nada é baixado da internet).
-- **Estabilidade:** trocar de disciplina no registro não apaga mais minutos e comentário; salvar o plano duas vezes seguidas não cria dois planos; editar um estudo ou prazo ligado a um tópico arquivado não desfaz o vínculo; a tela *Hoje* se atualiza sozinha na virada do dia.
-- **Movimento mais curto** e menos trabalho escondido para o navegador, principalmente no modo foco.
+- **Registrar estudo, com todas as letras.** O botão global diz o que faz (guardar algo que você já estudou) e funciona em qualquer tela, sem tirar você de onde está. *Começar a estudar* liga o cronômetro. As duas ações ficam na mesma janela e nada do que foi preenchido se perde ao trocar de uma para a outra.
+- **Horários automáticos no "Já estudei".** Informe quando começou e quando terminou: a duração sai sozinha, inclusive atravessando a meia-noite. Intervalos muito longos pedem confirmação.
+- **Descansos cronometrados.** *Descansar* e *Voltar a estudar* no cronômetro, quantas vezes você quiser. O descanso é guardado à parte e nunca entra no tempo estudado, no plano da semana ou em *Mais estudadas*.
+- **Constância mais visível.** *Seu ritmo* na tela Hoje e os dias com estudo nas Análises — por semana, por disciplina ou por tópico. Sem nota, sem sequência a perder.
+- **Seletores mais cuidadosos.** Disciplina e tópico têm busca e mostram o que foi escolhido (com a área e a prioridade); os tipos de estudo vêm com ícone e uma linha de explicação.
+- **Cronômetro refinado.** Um relógio só, o estado escrito (*Estudando* ou *Descansando*) e, ao finalizar, estudo e descanso lado a lado.
+- **Créditos descontinuados.** O Ciclo passou a trabalhar só com tempo. Seus estudos e minutos continuam exatamente como estavam.
+- **Acabamento tipográfico e de movimento:** textos de apoio um pouco maiores, menos negrito e transições mais curtas.
 
-Nada mudou no formato dos seus dados: nenhuma revisão reagendada, e backups de qualquer versão anterior continuam sendo aceitos.
+Seus dados continuam com você: cada estudo já registrado mantém os mesmos minutos e apenas ganha uma lista de descansos vazia. Backups de qualquer versão anterior continuam sendo aceitos.
+
+### v6.3
+
+**Editorial Polish / Smart Capture / Reliability.** Criar um tópico sem sair do registro, cronômetro que só encerra depois de gravar, frase do dia só com frases reais (autor e obra), tipografia revista com as fontes do próprio sistema e várias correções de estabilidade.
 
 ### v6.2
 

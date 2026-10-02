@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO v6.3.0 — folha de estilo única · Editorial Polish
+   CICLO v6.4.0 — folha de estilo única · Study Flow / Rest / Rhythm
    (antes "Diário de Estudos")
 
    Organização:
@@ -11,6 +11,7 @@
      20 V6.1 — CALM STRUCTURE (índice navegável, prioridade, ritmo editorial)
      21 V6.2 — NAVIGATION & FINDABILITY
      22 V6.3 — EDITORIAL POLISH (tipografia, frase do dia, captura de tópico)
+     23 V6.4 — STUDY FLOW / REST / RHYTHM (registro, seletores, descanso, ritmo)
 
    v6 — princípios visuais:
      · tipografia e espaço fazem a hierarquia; caixas só para unidades independentes;
@@ -85,6 +86,8 @@
   --on-success:       #05231A;
   --info:             #8FB2D9;
   --info-soft:        rgba(143,178,217,.14);
+  --info-tint:        rgba(143,178,217,.07);      /* v6.4: descanso — um estado calmo, nunca um alerta */
+  --info-line:        rgba(143,178,217,.42);
 
   /* controles */
   --field-bg:         #0D1314;
@@ -142,8 +145,8 @@
   --fs-micro:   11px;
 
   /* movimento */
-  --motion-fast:      120ms;
-  --motion-base:      180ms;
+  --motion-fast:      110ms;       /* v6.4: resposta ao toque (hover, seleção, foco) */
+  --motion-base:      170ms;       /* v6.4: mudança de estado (abrir, trocar, selecionar) */
   --motion-slow:      220ms;       /* v6.3: 250 → 220ms, dentro da faixa 200–240 */
   --ease-standard:    cubic-bezier(.2,.8,.2,1);
   --ease-emphasized:  cubic-bezier(.16,1,.3,1);
@@ -229,6 +232,8 @@ html[data-theme="light"]{
   --on-success:       #FFFFFF;
   --info:             #3D6591;
   --info-soft:        rgba(61,101,145,.10);
+  --info-tint:        rgba(61,101,145,.06);
+  --info-line:        rgba(61,101,145,.38);
 
   --field-bg:         #FFFFFF;
   --switch-off:       #D5D0C6;
@@ -563,7 +568,7 @@ html[data-density="compact"] .page-head{ margin-bottom:14px }
    ========================================================================= */
 label{ display:block; font-size:13px; font-weight:500; color:var(--text-secondary); margin-bottom:6px }
 
-input[type=text],input[type=number],input[type=date],input[type=search],select,textarea{
+input[type=text],input[type=number],input[type=date],input[type=time],input[type=search],select,textarea{
   width:100%; min-height:38px; padding:8px 11px;
   border:1px solid var(--field-border); border-radius:var(--radius-sm);
   background:var(--field-bg); color:var(--text);
@@ -920,20 +925,16 @@ button.tr-main:hover{ background:var(--surface-hover) }
   box-shadow:var(--shadow-md);
 }
 .timerbar.is-entering{ animation:slideDown var(--motion-slow) var(--ease-emphasized) }
-.timerbar[data-state="paused"]{ border-color:var(--border-strong); box-shadow:var(--shadow-md) }
 .timerbar .tb-status{
   width:9px; height:9px; border-radius:50%; flex-shrink:0;
   background:var(--primary); box-shadow:0 0 0 4px var(--primary-soft);
   transition:background-color var(--motion-base) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard);
 }
-.timerbar[data-state="paused"] .tb-status{ background:var(--text-tertiary); box-shadow:0 0 0 4px var(--surface-hover) }
 .timerbar .tb-what{ flex:1; min-width:140px }
 .timerbar .tb-label{ color:var(--primary); font-size:10px }
-.timerbar[data-state="paused"] .tb-label{ color:var(--text-tertiary) }
 .timerbar .tb-disc{ font-size:15px; font-weight:600; line-height:1.3 }
 .timerbar .tb-topic{ font-size:12px; color:var(--text-secondary) }
 .timerbar .tb-clock{ font-family:var(--sans); font-variant-numeric:tabular-nums; font-size:24px; font-weight:500; letter-spacing:.01em }
-.timerbar .tb-clock.paused{ color:var(--text-tertiary) }
 
 
 /* =========================================================================
@@ -3030,9 +3031,7 @@ p,li,dd{ text-wrap:pretty }
 .today > .daily-quote:last-child{ margin-bottom:8px }
 
 /* ---------- captura de tópico no registro ---------- */
-.study-target{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:0 14px }
 .study-target .field{ min-width:0 }
-.study-target select{ text-overflow:ellipsis }
 .tm-msg:empty{ display:none }
 .tm-msg{ margin-top:8px; animation:fadeUp var(--motion-base) var(--ease-standard) }
 .tm-msg .err,.tm-msg .warn{ margin-top:0 }
@@ -3049,7 +3048,6 @@ p,li,dd{ text-wrap:pretty }
 
 /* ---------- celular ---------- */
 @media (max-width:860px){
-  .study-target{ grid-template-columns:minmax(0,1fr) }
   .daily-quote{ margin-top:26px }
   .dq-text p{ font-size:16px; line-height:1.55 }
   .daily-quote + .next-block{ margin-top:28px }
@@ -3063,10 +3061,275 @@ p,li,dd{ text-wrap:pretty }
   .start-guide .checklist li > .linkbtn{ margin-left:34px }
 }
 
-/* botão flutuante: em telas estreitas, só o verbo — o nome completo segue no aria-label */
-@media (max-width:400px){ .fab .fab-noun{ display:none } }
+/* v6.4: o botão flutuante diz sempre a ação inteira ("Registrar estudo"), em qualquer largura */
 
 /* iOS amplia a página ao focar campos com menos de 16px: nos toques, 16px. */
 @media (hover:none) and (pointer:coarse){
-  input[type=text],input[type=number],input[type=date],input[type=search],select,textarea{ font-size:16px }
+  input[type=text],input[type=number],input[type=date],input[type=time],input[type=search],select,textarea{ font-size:16px }
+}
+
+
+/* =========================================================================
+   23 · V6.4 — STUDY FLOW / REST / RHYTHM
+   Sem redesenho: as mesmas superfícies, cores e medidas. O que entra aqui é
+   o coração operacional — estudar, registrar, descansar e ver a constância.
+
+   · "Registrar estudo" e "Começar a estudar": a mesma janela, dois modos;
+   · seletores de Disciplina e Tópico que mostram o que foi escolhido como
+     uma pequena composição (nome, contexto, "Alterar"), não como texto solto;
+   · tipos de estudo compactos, com ícone e uma linha de explicação;
+   · cronômetro com dois estados — estudando e descansando. O descanso usa
+     o azul calmo (--info): é um estado normal, nunca um alerta;
+   · "Seu ritmo" na tela Hoje: informação discreta, dia sem estudo é neutro.
+   ========================================================================= */
+
+/* ---------- acabamento tipográfico (leve) ----------
+   Mais conforto de leitura, menos peso: selecionado se mostra por cor e
+   contorno, não por negrito (que ainda fazia o texto "pular" de largura). */
+.hint{ font-size:13px; line-height:1.5 }
+.optional{ font-size:12px; margin-left:6px }
+.chip[aria-pressed="true"],.chip.active,
+.segmented button[aria-pressed="true"]{ font-weight:500 }
+.modal h3{ letter-spacing:-.014em }
+.modal label,
+.pick-label{ font-size:14px; line-height:1.4 }
+.modal input[type=text],.modal input[type=number],.modal input[type=date],.modal input[type=time],
+.modal select,.modal textarea{ min-height:42px; font-size:15px; padding:9px 12px }
+.modal textarea{ min-height:76px }
+.modal .field{ margin-bottom:20px }
+.modal .field:last-child{ margin-bottom:0 }
+.modal .study-target > .field{ margin-bottom:20px }      /* Tópico é o último da dupla, mas não do formulário */
+
+/* ---------- a janela de registro ---------- */
+.rm > :last-child{ margin-bottom:0 }
+.rm-group{ margin-top:26px }
+.rm > .rm-group:first-child,
+.mode-switch + .rm-group,
+.rm > .modal-sub + .rm-group{ margin-top:0 }
+.rm-group[hidden] + .rm-group{ margin-top:0 }
+.rm-group-t{
+  font-family:var(--sans); font-size:13px; font-weight:500; letter-spacing:0; color:var(--text-tertiary);
+  margin:0 0 14px; padding-bottom:9px; border-bottom:1px solid var(--border-soft);
+}
+.rm-timer{ margin-top:20px }
+
+/* estudar agora × já estudei: duas formas de alimentar o mesmo histórico */
+.mode-switch{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; margin-bottom:24px }
+.mode-opt{
+  display:flex; align-items:flex-start; gap:12px; text-align:left;
+  padding:13px 14px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface);
+  transition:border-color var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard),
+             box-shadow var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
+}
+.mode-opt:hover{ border-color:var(--border-strong); background:var(--surface-hover) }
+.mode-opt:active{ transform:scale(.99) }
+.mode-ic,.type-ic{
+  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+  width:30px; height:30px; border-radius:var(--radius-sm);
+  background:var(--surface-sunken); color:var(--text-secondary);
+  transition:background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.mode-ic .nav-icon,.type-ic .nav-icon{ width:16px; height:16px }
+.mode-text,.type-text{ display:flex; flex-direction:column; gap:2px; min-width:0 }
+.mode-t{ font-size:15px; font-weight:500; color:var(--text); line-height:1.3 }
+.mode-d{ font-size:13px; line-height:1.4; color:var(--text-secondary) }
+.mode-opt[aria-checked="true"],
+.type-opt[aria-checked="true"]{
+  border-color:var(--primary); background:var(--primary-tint); box-shadow:inset 0 0 0 1px var(--primary-line);
+}
+.mode-opt[aria-checked="true"] .mode-ic,
+.type-opt[aria-checked="true"] .type-ic{ background:var(--primary); color:var(--on-primary) }
+.mode-opt:focus-visible,.type-opt:focus-visible{ outline:2px solid var(--primary); outline-offset:2px }
+
+/* ---------- seletor de Disciplina / Tópico ---------- */
+.pick-label{ display:block; font-weight:500; color:var(--text-secondary); margin-bottom:7px }
+.pick-value{
+  display:flex; align-items:center; gap:12px; width:100%; min-height:54px; text-align:left;
+  padding:9px 14px; border:1px solid var(--field-border); border-radius:var(--radius-md);
+  background:var(--field-bg); color:var(--text);
+  transition:border-color var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard),
+             box-shadow var(--motion-fast) var(--ease-standard);
+}
+.pick-value:hover{ border-color:var(--border-strong) }
+.pick-value.has-value{ background:var(--surface-raised); border-color:var(--border) }
+.pick-value.has-value:hover{ border-color:var(--border-strong) }
+.pick-value:focus-visible{ outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-ring) }
+.pick.is-open .pick-value{ border-color:var(--primary); border-bottom-left-radius:0; border-bottom-right-radius:0; box-shadow:none }
+.pick-main{ flex:1; min-width:0; display:flex; flex-direction:column; gap:1px }
+.pick-t{ font-size:15px; font-weight:500; line-height:1.35; color:var(--text); overflow-wrap:anywhere }
+.pick-t.is-placeholder,.pick-t.is-muted{ font-weight:400; color:var(--text-secondary) }
+.pick-s{ font-size:13px; line-height:1.35; color:var(--text-secondary); overflow-wrap:anywhere }
+.pick-s::first-letter{ text-transform:uppercase }
+.pick-side{ display:inline-flex; align-items:center; flex-shrink:0 }
+.pick-side .prio-mark.is-compact{ padding:0 }
+.pick-change{ flex-shrink:0; font-size:13px; font-weight:500; color:var(--primary); padding-left:2px }
+.pick-panel{
+  border:1px solid var(--primary); border-top:0; border-radius:0 0 var(--radius-md) var(--radius-md);
+  background:var(--surface-overlay); overflow:hidden;
+}
+.pick-search{ border:0; border-bottom:1px solid var(--border-soft); border-radius:0; background:transparent; min-height:44px; padding:0 14px }
+.pick-search:focus-within{ border-color:var(--border-soft); box-shadow:none }
+.pick-list{ max-height:min(272px, 44vh); overflow-y:auto; overscroll-behavior:contain; padding:6px }
+.pick-list:focus-visible{ outline:none }
+.pick-group{ padding:9px 10px 4px; font-size:12px; font-weight:500; color:var(--text-tertiary) }
+.pick-opt{
+  display:flex; align-items:center; gap:10px; min-height:44px; padding:7px 10px;
+  border-radius:var(--radius-sm); cursor:pointer;
+}
+.pick-opt.is-active{ background:var(--surface-hover) }
+.pick-opt .hl{ background:var(--accent-soft); color:inherit; border-radius:2px }
+.pick-check{ width:16px; height:16px; color:var(--primary); stroke-width:2.2 }
+.pick-plus{ width:15px; height:15px; margin:0 3px }
+.pick-opt.is-create{ color:var(--primary) }
+.pick-opt.is-create .pick-t{ color:var(--primary) }
+.pick-opt.is-create:not(:first-child){ margin-top:4px; border-top:1px solid var(--border-soft); border-top-left-radius:0; border-top-right-radius:0; padding-top:9px }
+.pick-tag{ flex-shrink:0; font-size:12px; font-style:italic; color:var(--text-tertiary) }
+.pick-none{ padding:14px 10px; font-size:14px; color:var(--text-secondary) }
+.pick-more{ padding:8px 16px; font-size:12px; color:var(--text-tertiary); border-top:1px solid var(--border-soft) }
+.pick-new .linkbtn{ display:inline-block; margin-top:10px; font-size:13px }
+
+/* ---------- tipos de estudo: compactos, escaneáveis ---------- */
+.type-grid{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px }
+.type-opt{
+  display:flex; align-items:flex-start; gap:10px; text-align:left; min-height:60px;
+  padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface);
+  transition:border-color var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard),
+             box-shadow var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
+}
+.type-opt:hover{ border-color:var(--border-strong); background:var(--surface-hover) }
+.type-opt:active{ transform:scale(.985) }
+.type-ic{ width:28px; height:28px }
+.type-t{ font-size:14px; font-weight:500; line-height:1.3; color:var(--text) }
+.type-d{ font-size:12px; line-height:1.4; color:var(--text-secondary) }
+
+/* ---------- quando: data, horários e a duração que sai sozinha ---------- */
+.when-grid{ display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr); gap:0 12px }
+.when-grid.is-edit{ grid-template-columns:minmax(0,1fr) minmax(0,1fr) }
+.when-grid .when-dur{ grid-column:2 / -1 }
+.when-grid .when-dur .chips{ margin-top:10px }
+.modal .when-grid .field{ margin-bottom:10px }
+.when-result{ min-height:24px; font-size:15px; font-weight:500; line-height:1.55; color:var(--text) }
+.when-result.is-ok::before{
+  content:""; display:inline-block; width:7px; height:7px; border-radius:50%;
+  background:var(--primary); margin-right:9px; vertical-align:2px;
+}
+.when-result.is-error{ font-size:14px; font-weight:400; color:var(--danger) }
+.when-note{ font-size:13px; line-height:1.5; color:var(--accent); margin-top:2px }
+.when-note:empty{ display:none }
+.when-mode{ margin-top:6px; font-size:13px }
+.when-mode .linkbtn,.breaks-foot .linkbtn{ font-size:13px }
+
+/* descansos de um estudo */
+.breaks{ margin-top:16px }
+.rm > .breaks{ margin:0 0 22px }
+.breaks-title{ font-size:14px; font-weight:500; color:var(--text-secondary); margin-bottom:9px }
+.break-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px }
+.break-n{ flex:0 0 auto; min-width:88px; font-size:13px; color:var(--text-secondary) }
+.modal .break-row input{ flex:0 1 124px; min-width:0; width:auto }
+.modal .break-row.is-minutes input{ flex-basis:88px }
+.break-clock{ font-size:13px; color:var(--text-tertiary); white-space:nowrap }
+.break-sep,.break-unit{ font-size:13px; color:var(--text-tertiary) }
+.break-row .icon-btn{ margin-left:auto }
+.break-row .icon-btn .btn-icon{ width:13px; height:13px }
+.breaks-foot{ display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 10px; font-size:13px; color:var(--text-secondary) }
+.breaks-list:not(:empty) + .breaks-foot{ margin-top:4px }
+
+/* ---------- fim do cronômetro: estudo e descanso lado a lado, nunca somados ---------- */
+.finish-summary{
+  display:flex; align-items:flex-end; flex-wrap:wrap; gap:8px 32px;
+  padding-bottom:18px; border-bottom:1px solid var(--border-soft);
+}
+.fs-item{ display:flex; flex-direction:column; gap:2px }
+.fs-v{ font-size:34px; font-weight:400; line-height:1.08; letter-spacing:-.022em; color:var(--text) }
+.fs-item.is-rest .fs-v{ font-size:22px; line-height:1.25; letter-spacing:-.01em; color:var(--info) }
+.fs-l{ font-size:13px; color:var(--text-secondary) }
+.fs-clock{ margin-left:auto; font-size:13px; color:var(--text-tertiary) }
+.finish-fix{ margin:12px 0 22px }
+.finish-fix .breaks{ margin-top:4px }
+.es-clock{ display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 12px; font-size:15px; margin-bottom:18px }
+.es-clock-l{ font-size:13px; color:var(--text-secondary) }
+
+/* ---------- cronômetro: estudando / descansando ---------- */
+.timerbar{ gap:12px 20px; padding:14px 16px 14px 18px }
+.timerbar .tb-what{ flex:1 1 180px; min-width:0 }
+.timerbar .tb-label{ font-size:13px; font-weight:500; color:var(--primary) }
+.timerbar .tb-disc{ font-size:16px; font-weight:500; overflow-wrap:anywhere }
+.timerbar .tb-topic{ font-size:13px; overflow-wrap:anywhere }
+.timerbar .tb-time{ display:flex; flex-direction:column; align-items:flex-end; gap:1px; min-width:92px }
+.timerbar .tb-clock{ font-size:30px; font-weight:400; line-height:1.1; letter-spacing:-.012em }
+.timerbar .tb-sub{ font-size:12px; color:var(--text-tertiary); white-space:nowrap }
+.timerbar .tb-actions{ display:flex; align-items:center; flex-wrap:wrap; gap:8px 10px }
+.timerbar .tb-actions .linkbtn{ margin-left:4px; font-size:13px }
+.timerbar[data-state="rest"]{ border-color:var(--info-line) }
+.timerbar[data-state="rest"] .tb-status{ background:var(--info); box-shadow:0 0 0 4px var(--info-soft) }
+.timerbar[data-state="rest"] .tb-label{ color:var(--info) }
+/* estudo ↔ descanso: a troca é curta e sai do próprio conteúdo, sem deslocar a barra */
+.timerbar.is-switching .tb-label,
+.timerbar.is-switching .tb-time{ animation:stateSwap var(--motion-base) var(--ease-emphasized) }
+@keyframes stateSwap{ from{ opacity:0; transform:translateY(4px) scale(.985) } to{ opacity:1; transform:none } }
+
+/* modo foco: disciplina, tópico, estado e UM relógio */
+.focus-topic{ min-height:24px; margin-bottom:28px }
+.focus-state{ font-size:15px; font-weight:500; color:var(--primary); margin:0 0 10px }
+.focus-clock{ font-weight:300; letter-spacing:-.01em }
+.focus-sub{ min-height:22px; margin-top:14px; font-size:14px; color:var(--text-secondary) }
+.focus-mode[data-state="rest"]{
+  background:radial-gradient(ellipse 70% 55% at 50% 38%, var(--info-tint), transparent 70%), var(--bg);
+}
+.focus-mode[data-state="rest"] .focus-state{ color:var(--info) }
+
+/* ---------- Hoje: seu ritmo (secundário, sem cobrança) ---------- */
+.rhythm-block{ margin-top:var(--space-block) }
+.rhythm{
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px 32px;
+  padding:16px 0; border-top:1px solid var(--border-soft); border-bottom:1px solid var(--border-soft);
+}
+.rhythm-text{ flex:1 1 260px; min-width:0 }
+.rhythm-t{ font-size:15px; font-weight:500; color:var(--text) }
+.rhythm-s{ font-size:13px; color:var(--text-secondary); margin-top:3px }
+.rhythm-s .linkbtn{ font-size:13px; white-space:nowrap }
+.rhythm-strip{ display:flex; gap:11px; flex-shrink:0 }
+.rh-day{ display:flex; flex-direction:column; align-items:center; gap:6px }
+.rh-dot{ width:13px; height:13px; border-radius:50%; background:var(--track) }
+.rh-day.is-on .rh-dot{ background:var(--primary) }
+.rh-day.is-today .rh-dot{ box-shadow:0 0 0 3px var(--bg), 0 0 0 4px var(--border-strong) }
+.rh-wd{ font-size:11px; line-height:1; color:var(--text-tertiary) }
+.rh-day.is-today .rh-wd{ color:var(--text-secondary); font-weight:600 }
+
+/* ---------- Análises: descansos ---------- */
+.rest-detail .dr-section{ margin-top:20px }
+.an-explore-content .rest-detail .stat-grid{ margin-top:2px }
+
+/* ---------- celular ---------- */
+@media (max-width:640px){
+  .type-grid{ grid-template-columns:repeat(2, minmax(0,1fr)) }
+  .when-grid{ grid-template-columns:minmax(0,1fr) minmax(0,1fr) }
+  .when-grid > .field:first-child{ grid-column:1 / -1 }
+  .when-grid .when-dur{ grid-column:1 / -1 }
+  .when-grid.is-edit > .field:first-child{ grid-column:auto }
+  .finish-summary{ gap:8px 24px }
+  .fs-clock{ margin-left:0; flex-basis:100% }
+  .timerbar .tb-time{ align-items:flex-start; min-width:0 }
+  .timerbar .tb-clock{ font-size:26px }
+  .timerbar .tb-actions{ width:100% }
+  .rhythm-strip{ gap:9px }
+}
+@media (max-width:460px){
+  .mode-switch{ grid-template-columns:minmax(0,1fr) }
+  .mode-opt{ padding:11px 12px }
+  .type-opt{ min-height:0; align-items:center; padding:9px 10px }
+  .type-d{ display:none }              /* em telas muito estreitas, o nome do tipo basta */
+  .break-n{ min-width:0; flex-basis:100% }
+  .break-row{ flex-wrap:wrap }
+  .modal{ padding:22px 18px }
+}
+/* toque: áreas confortáveis */
+@media (hover:none) and (pointer:coarse){
+  .pick-opt{ min-height:48px }
+  .break-row .icon-btn.mini{ width:36px; height:36px }
+}
+@media (forced-colors:active){
+  .mode-opt,.type-opt,.pick-value,.pick-panel{ border:1px solid CanvasText }
+  .mode-opt[aria-checked="true"],.type-opt[aria-checked="true"],.pick-opt.is-active{ outline:2px solid Highlight }
+  .rh-day.is-on .rh-dot{ background:Highlight }
 }
