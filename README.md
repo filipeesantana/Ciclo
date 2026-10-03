@@ -60,7 +60,8 @@ Cada tela responde a uma pergunta. O que importa aparece primeiro; o resto fica 
 
 As duas ações ficam na mesma janela — *Estudar agora* e *Já estudei* — e alimentam o mesmo histórico.
 
-- **Horário em vez de conta de cabeça.** Em *Já estudei*, diga o dia, a hora em que começou e a hora em que terminou: a duração sai sozinha. *14:10 → 15:25* são 1h15.
+- **Horário em vez de conta de cabeça.** Em *Já estudei*, diga o dia, a hora em que começou e a hora em que terminou: a duração aparece na hora. *14:10 → 15:25* são 1h15.
+- **Só os números.** Os horários usam o formato 24h e você não precisa de seletor nenhum: digite *2350* e o Ciclo mostra *23:50*. Colar um horário pronto também funciona, e um horário impossível (como 27:89) é apontado na hora, em vez de virar outro.
 - **Depois da meia-noite.** *23:50 → 00:12* são 22 minutos; o Ciclo entende que o estudo terminou no dia seguinte e avisa. A data é sempre a do dia em que o estudo começou.
 - **Engano de digitação.** Se o intervalo passar de 8 horas, o Ciclo pergunta se está certo antes de registrar. Ele só pergunta — estudos longos continuam valendo.
 - **Não lembra os horários?** Informe só quanto tempo estudou.
@@ -210,9 +211,23 @@ O endereço também está no aplicativo, em **Ajuda** e em **Configurações →
 
 ## Versão atual
 
-**v6.4.0 — Study Flow / Rest / Rhythm**
+**v6.4.1 — Interface Refinement**
 
-Estudar, registrar, descansar e acompanhar a constância — mais simples e mais claro.
+Uma versão de acabamento: nenhuma função nova, o mesmo Ciclo com mais cuidado.
+
+- **Novo campo de horário.** Formato 24h, digitando só os números (*2350 → 23:50*). Sem seletor do navegador e sem a roda do mouse mudando a hora por engano.
+- **Duração em tempo real.** Assim que o início e o fim estão preenchidos, o tempo de estudo aparece — com o tempo decorrido e o descanso separados quando há descansos, e o aviso de que o estudo terminou no dia seguinte.
+- **Registro refinado.** *Quando* e *O que você estudou* ficam lado a lado nas telas largas; *Como foi* reúne tipo de estudo, dificuldade e comentário. O comentário só ocupa espaço quando você pede. Finalizar e editar um estudo seguem a mesma composição.
+- **Menos rolagem no computador.** O registro cabe inteiro nas telas mais comuns, e os botões das janelas ficam sempre à vista.
+- **Tipografia revisada.** Títulos e textos usam a mesma família de fontes do próprio sistema — sem serifada, com menos negrito e sem maiúsculas decorativas.
+- **Hierarquia mais clara.** O título de cada grupo se destaca dos campos que ele contém, e o espaço mostra o que pertence a quê.
+- **Movimento mais curto** ao abrir janelas, trocar de tela e atualizar números.
+
+Seus dados não mudam: o formato é o mesmo da v6.4, e backups de qualquer versão anterior continuam sendo aceitos.
+
+### v6.4
+
+**Study Flow / Rest / Rhythm.** Estudar, registrar, descansar e acompanhar a constância — mais simples e mais claro.
 
 - **Registrar estudo, com todas as letras.** O botão global diz o que faz (guardar algo que você já estudou) e funciona em qualquer tela, sem tirar você de onde está. *Começar a estudar* liga o cronômetro. As duas ações ficam na mesma janela e nada do que foi preenchido se perde ao trocar de uma para a outra.
 - **Horários automáticos no "Já estudei".** Informe quando começou e quando terminou: a duração sai sozinha, inclusive atravessando a meia-noite. Intervalos muito longos pedem confirmação.
@@ -223,7 +238,7 @@ Estudar, registrar, descansar e acompanhar a constância — mais simples e mais
 - **Créditos descontinuados.** O Ciclo passou a trabalhar só com tempo. Seus estudos e minutos continuam exatamente como estavam.
 - **Acabamento tipográfico e de movimento:** textos de apoio um pouco maiores, menos negrito e transições mais curtas.
 
-Seus dados continuam com você: cada estudo já registrado mantém os mesmos minutos e apenas ganha uma lista de descansos vazia. Backups de qualquer versão anterior continuam sendo aceitos.
+Cada estudo já registrado manteve os mesmos minutos e apenas ganhou uma lista de descansos vazia.
 
 ### v6.3
 

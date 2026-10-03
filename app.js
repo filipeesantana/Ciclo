@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v6.4.0 · Study Flow / Rest / Rhythm
+   CICLO — v6.4.1 · Interface Refinement
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -10,7 +10,8 @@
      ANALYTICS ENGINE · TIMER SERVICE · BACKUP · UI STATE · RENDERING
      NAVEGAÇÃO & BUSCA CONTEXTUAL (v6.2: histórico, voltar, buscar, ordenar)
      REGISTRO COM TÓPICO (v6.3: editor canônico em subtela, virada do dia)
-     FLUXO DE ESTUDO (v6.4: estudar agora / já estudei, descansos, constância)
+     FLUXO DE ESTUDO (v6.4: estudar agora / já estudei, descansos, constância;
+                      v6.4.1: campo de horário próprio, registro em duas colunas)
      HELP ENGINE (busca, rotas, glossário) · EVENT HANDLERS · INITIALIZATION
    ========================================================================= */
 'use strict';
@@ -18,7 +19,7 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '6.4.0';
+const APP_VERSION = '6.4.1';
 const APP_SCHEMA_VERSION = 6;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
@@ -44,6 +45,9 @@ const APP_SCHEMA_VERSION = 6;          // formato LÓGICO dos dados. A v5.2 mudo
                                        // deixaram de existir no produto: os campos antigos
                                        // (`credits`, `minutesPerCredit`, `legacyWeeklyMinutes`)
                                        // não são mais lidos nem gravados em registros novos.
+                                       // A v6.4.1 é só interface (campo de horário, composição
+                                       // do registro, tipografia): nenhum campo persistente
+                                       // novo, por isso o formato continua em 6.
 
 /* Identificadores técnicos LEGADOS. O produto passou a se chamar "Ciclo" na v5.1,
    mas estes nomes ficam como estão: renomeá-los faria o navegador procurar um
@@ -502,6 +506,79 @@ function parseClock(v){
   const hh = Number(m[1]), mm = Number(m[2]);
   return (hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59) ? hh * 60 + mm : null;
 }
+/* v6.4.1 — HORÁRIO DIGITADO. O campo de horário do Ciclo é um campo de texto
+   comum (ver `timeField`): a pessoa digita só os números e o Ciclo põe os dois
+   pontos. As três funções abaixo são puras — sem DOM —, para a máscara ser
+   simples de ler e de testar.
+
+     clockMask('2350')  → '23:50'      clockMask('930') → '09:30'
+     clockMask('23:5')  → '23:5'       clockMask('9')   → '09'
+     clockState('23:50') → 'valid'     clockState('27:89') → 'invalid'
+     clockState('09:5')  → 'partial'   clockState('')      → 'empty'
+
+   Regra de ouro: a máscara nunca "conserta" um horário impossível. 27:89 fica
+   como foi digitado e é apontado como erro — nada vira outro horário em silêncio. */
+const CLOCK_SEPARATOR = /[:.,;hH]/;
+
+/** Texto digitado → texto exibido. Só reorganiza dígitos; não valida nem corrige. */
+function clockMask(raw){
+  const s = str(raw).replace(/[^\d:.,;hH]/g, '');
+  const cut = s.search(CLOCK_SEPARATOR);
+  const digits = s.replace(/\D/g, '');
+  // Com separador digitado ("9:30", "23h5"): o que vem antes é a hora, o que vem depois são os minutos.
+  if(cut >= 0 && cut <= 2 && /^\d*$/.test(s.slice(0, cut))){
+    return s.slice(0, cut) + ':' + s.slice(cut + 1).replace(/\D/g, '').slice(0, 2);
+  }
+  // Só dígitos: os dois primeiros são a hora. Uma hora que começa com 3–9 só pode
+  // ter um dígito ("9" é 09), então o zero entra na frente e "930" vira 09:30.
+  let d = digits;
+  if(d && d[0] > '2') d = '0' + d;
+  d = d.slice(0, 4);
+  return d.length <= 2 ? d : d.slice(0, 2) + ':' + d.slice(2);
+}
+
+/** 'empty' | 'partial' (ainda digitando) | 'valid' | 'invalid' (não pode ser um horário). */
+function clockState(text){
+  const t = str(text);
+  if(!t) return 'empty';
+  const full = /^(\d{1,2}):(\d{2})$/.exec(t);
+  if(full) return (Number(full[1]) <= 23 && Number(full[2]) <= 59) ? 'valid' : 'invalid';
+  const part = /^(\d{0,2})(?::(\d{0,2}))?$/.exec(t);
+  if(!part) return 'invalid';
+  if(part[1] && Number(part[1]) > 23) return 'invalid';          // 25… não existe
+  if(part[2] && Number(part[2][0]) > 5) return 'invalid';        // 09:7… não existe
+  return 'partial';
+}
+
+/**
+ * Ao sair do campo: completa o que é inequívoco e deixa o resto como está.
+ *   '9:30' → '09:30'   '14' → '14:00'   '9:' → '09:00'
+ *   '09:5' continua '09:5' (09:05 ou 09:50? o Ciclo não adivinha).
+ */
+function clockSettle(text){
+  const t = str(text);
+  let m = /^(\d{1,2}):(\d{2})$/.exec(t);
+  if(m) return m[1].padStart(2, '0') + ':' + m[2];
+  m = /^(\d{1,2}):?$/.exec(t);
+  if(m && Number(m[1]) <= 23) return m[1].padStart(2, '0') + ':00';
+  return t;
+}
+
+/** Texto colado ("18:45", "18h45", "6:45 PM", "1845") → "HH:MM" quando dá para entender; senão, o texto mascarado. */
+function clockFromPaste(raw){
+  const src = str(raw).trim();
+  const text = clockSettle(clockMask(src));
+  const m = /^(\d{2}):(\d{2})$/.exec(text);
+  const ampm = /(^|[^a-z])([ap])\.?\s?m\.?($|[^a-z])/i.exec(src);
+  if(m && ampm){
+    // relógio de 12 horas colado de outro lugar: converte para 24h em vez de aceitar errado
+    let hh = Number(m[1]);
+    const pm = ampm[2].toLowerCase() === 'p';
+    if(hh >= 1 && hh <= 12){ hh = (hh % 12) + (pm ? 12 : 0); return String(hh).padStart(2, '0') + ':' + m[2]; }
+  }
+  return text;
+}
+
 /** Data civil local + minutos desde a meia-noite → instante (Date). Aceita minutos ≥ 1440 (dia seguinte). */
 function localDateTime(iso, minutesOfDay){
   const d = parseISO(iso);
@@ -3515,7 +3592,13 @@ function openModal(build, opts){
     if(options.onClose) options.onClose(result);
   };
   // Com uma subtela aberta, clicar fora não fecha nada: perderia o que foi digitado nas duas telas.
-  const onBackdrop = (e) => { if(e.target === root && !views.length && options.dismissible !== false) close(null); };
+  // v6.4.1 — `keepOnBackdrop()` deixa um formulário já preenchido ignorar o clique fora (um
+  // esbarrão no fundo não joga fora o que foi digitado). Esc e "Cancelar" continuam fechando.
+  const onBackdrop = (e) => {
+    if(e.target !== root || views.length || options.dismissible === false) return;
+    if(typeof options.keepOnBackdrop === 'function' && options.keepOnBackdrop()) return;
+    close(null);
+  };
 
   /** Abre uma subtela: { title, content, actions, onEsc, focus }. */
   close.push = (sub) => {
@@ -3532,6 +3615,7 @@ function openModal(build, opts){
     mount(contentEl, sub.content || null);
     mount(actionsEl, ...(sub.actions || []));
     guardModalActions(actionsEl);
+    box.classList.add('is-sub');            // v6.4.1: uma subtela é um formulário simples — a janela larga se estreita
     box.scrollTop = 0;
     const target = sub.focus || box.querySelector('#modal-content input,#modal-content select,#modal-content textarea,#modal-content button');
     if(target) setTimeout(() => { if(!closed && document.contains(target)) target.focus(); }, 30);
@@ -3543,6 +3627,7 @@ function openModal(build, opts){
     titleEl.textContent = v.title;
     mount(contentEl, v.content);
     mount(actionsEl, v.actions);
+    box.classList.toggle('is-sub', views.length > 0);
     box.scrollTop = v.scroll;
     const target = (focusEl && document.contains(focusEl)) ? focusEl : v.focus;
     if(target && document.contains(target) && typeof target.focus === 'function'){
@@ -4357,6 +4442,176 @@ function studyTypePicker(o){
 }
 
 /**
+ * Comentário de um estudo (v6.4.1). É opcional — e por isso fica fora do
+ * caminho: aparece como "+ Adicionar comentário" e só vira um campo quando a
+ * pessoa quer escrever. Um estudo que já tem comentário abre com o campo à
+ * mostra. "Remover" recolhe o campo sem jogar fora o que foi escrito: abrir de
+ * novo traz o texto de volta. Recolhido, `value` é '' (nada é gravado).
+ */
+function commentField(o){
+  const ta = h('textarea', { id:o.id, maxlength:'2000', rows:'3' });
+  ta.value = str(o.value);
+  const boxId = o.id + '-box';
+  const addBtn = h('button', { class:'linkbtn add-link', type:'button', 'aria-controls':boxId, text:'+ Adicionar comentário' });
+  const hideBtn = h('button', { class:'linkbtn muted', type:'button', text:'Remover', 'aria-label':'Remover o comentário' });
+  const box = h('div', { class:'field comment-box', id:boxId, hidden:true },
+    h('div', { class:'label-row' }, h('label', { for:o.id }, 'Comentário', h('span', { class:'optional', text:'opcional' })), hideBtn),
+    ta);
+  const setOpen = (open, byUser) => {
+    box.hidden = !open;
+    addBtn.hidden = open;
+    if(!byUser) return;
+    if(open){
+      swapIn(box); ta.focus();
+      // o campo inteiro à vista, acima das ações fixas da janela (scroll-padding no CSS)
+      try { box.scrollIntoView({ block:'nearest' }); } catch(_){}
+    } else addBtn.focus();
+  };
+  addBtn.addEventListener('click', () => setOpen(true, true));
+  hideBtn.addEventListener('click', () => setOpen(false, true));
+  setOpen(!!ta.value.trim(), false);
+  return {
+    node: h('div', { class:'comment' }, addBtn, box),
+    textarea: ta,
+    get value(){ return box.hidden ? '' : ta.value.trim(); }
+  };
+}
+
+/** Dificuldade percebida — opcional; clicar de novo na escolhida desmarca. */
+function difficultyField(idPrefix, value, onPick){
+  return h('div', { class:'field' },
+    h('span', { class:'pick-label', id:idPrefix + '-diff-l' }, 'Dificuldade', h('span', { class:'optional', text:'opcional' })),
+    pillGroup(DIFFICULTIES.map(d => ({ value:d.v, label:d.label, color:d.color })), value, v => onPick(v ? Number(v) : null), 'Dificuldade percebida'));
+}
+
+/**
+ * "Como foi" — o grupo que reúne tudo o que descreve o estudo depois de feito:
+ * tipo de estudo, dificuldade, resultado da revisão e comentário. O título é o
+ * pai; os campos são os filhos (ver .rm-group no CSS). A ordem no documento é
+ * a ordem de leitura e do Tab: tipo → dificuldade → resultado → comentário.
+ */
+function howGroup(o){
+  const title = h('h4', { class:'rm-group-t', id:o.id, text:'Como foi' });
+  const row = h('div', { class:'how-row' },
+    h('div', { class:'how-col' }, o.difficulty, o.outcome || null),
+    h('div', { class:'how-col' }, o.comment));
+  return { node: h('section', { class:'rm-group rm-how', 'aria-labelledby':o.id }, title, o.type, row), title, row };
+}
+
+/**
+ * Campo de horário do Ciclo — 24 horas, HH:MM (v6.4.1).
+ *
+ * É um campo de texto comum, sem o seletor nativo do navegador: nada de
+ * "rodinhas", e a roda do mouse sobre o campo só rola a janela — o horário
+ * nunca muda sozinho. Digitar é a forma principal de uso:
+ *
+ *   2350 → 23:50     930 → 09:30     colar "18:45" → 18:45
+ *
+ * O que o campo faz e o que ele NÃO faz:
+ *   · organiza os dígitos enquanto a pessoa digita (clockMask), sem brigar com
+ *     o cursor nem com Backspace/Delete;
+ *   · ao sair, completa só o que é inequívoco ("14" → 14:00; "9:30" → 09:30);
+ *   · nunca transforma um horário impossível em outro: 27:89 fica como está e
+ *     é apontado como erro (aria-invalid). Um horário pela metade (09:5) só é
+ *     apontado depois que a pessoa sai do campo;
+ *   · ↑ e ↓ ajustam a hora ou os minutos (onde o cursor estiver), só quando o
+ *     horário já está completo. Tab, Shift+Tab, Home e End são os do navegador.
+ *
+ *   o = { id, value, ariaLabel, describedBy, enterHint, onInput(), onEnter() }
+ */
+function timeField(o){
+  const input = h('input', { type:'text', class:'time-input num', id:o.id, inputmode:'numeric', autocomplete:'off', autocapitalize:'off',
+    spellcheck:'false', placeholder:'hh:mm', enterkeyhint:o.enterHint || 'done',
+    'aria-label':o.ariaLabel || null, 'aria-describedby':o.describedBy || null });
+  if(o.value) input.value = clockSettle(clockMask(o.value));
+  let focused = false;
+
+  const notify = () => { if(o.onInput) o.onInput(); };
+  const stateNow = () => clockState(input.value);
+  const mark = () => {
+    const st = stateNow();
+    if(st === 'invalid' || (st === 'partial' && !focused)) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  };
+  const settle = () => { const t = clockSettle(input.value); if(t !== input.value) input.value = t; mark(); };
+
+  input.addEventListener('input', () => {
+    const raw = input.value;
+    const text = clockMask(raw);
+    if(text !== raw){
+      const pos = (typeof input.selectionStart === 'number') ? input.selectionStart : raw.length;
+      if(pos >= raw.length) input.value = text;               // digitando no fim: o cursor continua no fim
+      else {
+        // edição no meio: o cursor fica depois do mesmo dígito em que estava
+        const countDigits = t => t.replace(/\D/g, '').length;
+        let left = countDigits(raw.slice(0, pos)) + (countDigits(text) > countDigits(raw) ? 1 : 0);
+        let i = 0;
+        while(i < text.length && left > 0){ if(/\d/.test(text[i])) left--; i++; }
+        input.value = text;
+        try { input.setSelectionRange(i, i); } catch(_){}
+      }
+    }
+    mark(); notify();
+  });
+
+  /* Colar um horário inteiro ("18:45", "18h45", "6:45 PM") substitui o campo.
+     Qualquer outra coisa segue o caminho normal: entra no cursor e passa pela máscara. */
+  input.addEventListener('paste', (e) => {
+    let data = null;
+    try { data = e.clipboardData ? e.clipboardData.getData('text') : null; } catch(_){}
+    if(typeof data !== 'string') return;
+    const text = clockFromPaste(data);
+    if(clockState(text) !== 'valid') return;
+    e.preventDefault();
+    input.value = text;
+    mark(); notify();
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){
+      settle(); notify();
+      if(o.onEnter && stateNow() === 'valid'){ e.preventDefault(); o.onEnter(); }
+      return;
+    }
+    if((e.key !== 'ArrowUp' && e.key !== 'ArrowDown') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if(stateNow() !== 'valid') return;                          // nada para ajustar: a tecla segue o padrão do navegador
+    e.preventDefault();
+    const text = clockSettle(input.value);
+    const onHour = (typeof input.selectionStart === 'number' ? input.selectionStart : 5) <= 2;
+    const step = e.key === 'ArrowUp' ? 1 : -1;
+    let hh = Number(text.slice(0, 2)), mm = Number(text.slice(3, 5));
+    if(onHour) hh = (hh + step + 24) % 24; else mm = (mm + step + 60) % 60;
+    input.value = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+    try { input.setSelectionRange(onHour ? 0 : 3, onHour ? 2 : 5); } catch(_){}
+    mark(); notify();
+  });
+
+  input.addEventListener('focus', () => { focused = true; });
+  input.addEventListener('blur', () => { focused = false; settle(); notify(); });
+
+  return {
+    input,
+    get state(){ return stateNow(); },
+    get focused(){ return focused; },
+    /** O texto como está no campo (inclusive pela metade) — para redesenhar sem perder nada. */
+    get text(){ return input.value; },
+    /** "HH:MM" quando o horário está completo e válido; senão, ''. */
+    get value(){ return stateNow() === 'valid' ? clockSettle(input.value) : ''; },
+    set(v){ input.value = v ? clockSettle(clockMask(v)) : ''; mark(); },
+    focus(){ input.focus(); }
+  };
+}
+
+/** Rótulo de um campo de horário: o nome à esquerda e, discreto, o formato à direita. */
+function timeLabel(forId, text){
+  return h('label', { for:forId, class:'time-label' }, text, h('span', { class:'time-fmt', 'aria-hidden':'true', text:'24h' }));
+}
+
+const CLOCK_SR_HELP = 'Horário no formato 24 horas, de 00:00 a 23:59. Digite as horas e os minutos; os dois pontos entram sozinhos.';
+const CLOCK_RANGE_ERROR = 'Use um horário entre 00:00 e 23:59.';
+const CLOCK_PARTIAL_ERROR = 'Horário incompleto. Digite as horas e os minutos — 0950 vira 09:50.';
+
+/**
  * Descansos de um estudo.
  *   modo 'time'    — cada descanso tem início e fim (registro por horário);
  *   modo 'minutes' — cada descanso tem só a duração (edição, fim do cronômetro
@@ -4369,6 +4624,11 @@ function studyTypePicker(o){
  *   uma linha preenchida e incoerente é sempre apontada.
  * Nenhum descanso pode: ficar fora do estudo, terminar antes de começar ou
  * dividir horário com outro.
+ *
+ * v6.4.1 — no modo 'time' cada linha é uma frase curta e sempre editável:
+ *   [23:58] → [00:05]   7 min   ✕
+ * `o.compact` tira a pergunta "Teve algum descanso?" (o registro já diz isso
+ * pelo contexto) e `o.footExtra` põe outra ação na mesma linha do "+ Adicionar".
  */
 function breaksEditor(o){
   const p = o.idPrefix;
@@ -4383,7 +4643,7 @@ function breaksEditor(o){
 
   const head = h('p', { class:'breaks-title', text:'Descansos' });
   const list = h('div', { class:'breaks-list' });
-  const question = h('span', { class:'breaks-q', text:'Teve algum descanso?' });
+  const question = o.compact ? null : h('span', { class:'breaks-q', text:'Teve algum descanso?' });
   const addLabel = h('span');
   const addBtn = h('button', { class:'linkbtn', type:'button', onclick:() => {
     if(rows.length >= MAX_BREAKS_PER_STUDY) return;
@@ -4392,8 +4652,16 @@ function breaksEditor(o){
     draw(r.key);
     changed();
   } }, addLabel);
-  const foot = h('p', { class:'breaks-foot' }, question, addBtn);
-  const node = h('div', { class:'breaks' }, head, list, foot);
+  const foot = h('p', { class:'breaks-foot' }, question, addBtn, o.footExtra ? h('span', { class:'breaks-extra' }, o.footExtra) : null);
+  const node = h('div', { class:'breaks' + (o.compact ? ' is-compact' : '') }, head, list, foot);
+
+  /** Duração de uma linha por horário: "7 min" (ou vazio enquanto não dá para calcular). */
+  function spanText(r){
+    if(clockState(r.start) !== 'valid' || clockState(r.end) !== 'valid') return '';
+    const bs = parseClock(r.start), be = parseClock(r.end);
+    if(bs === null || be === null || bs === be) return '';
+    return fmtDurationWords(be > bs ? be - bs : be + 1440 - bs);
+  }
 
   function draw(focusKey){
     clear(list);
@@ -4403,30 +4671,35 @@ function breaksEditor(o){
         onclick:() => { rows.splice(rows.indexOf(r), 1); draw(); changed(); addBtn.focus(); } }, icon('i-close'));
       let body;
       if(mode === 'time'){
-        const a = h('input', { type:'time', id:`${p}-bs-${r.key}`, value:r.start, 'aria-label':`Descanso ${n}: começou às` });
-        const z = h('input', { type:'time', id:`${p}-be-${r.key}`, value:r.end, 'aria-label':`Descanso ${n}: terminou às` });
-        a.addEventListener('input', () => { r.start = a.value; a.removeAttribute('aria-invalid'); z.removeAttribute('aria-invalid'); changed(); });
-        z.addEventListener('input', () => { r.end = z.value; a.removeAttribute('aria-invalid'); z.removeAttribute('aria-invalid'); changed(); });
-        r.inputs = [a, z];
-        body = [a, h('span', { class:'break-sep', 'aria-hidden':'true', text:'→' }), z];
+        const len = h('span', { class:'break-len num', text: spanText(r) });
+        const sync = () => { const t = spanText(r); if(len.textContent !== t) len.textContent = t; changed(); };
+        const a = timeField({ id:`${p}-bs-${r.key}`, value:r.start, ariaLabel:`Descanso ${n}: começou às`, describedBy:o.clockHelpId || null,
+          enterHint:'next', onInput:() => { r.start = a.text; sync(); }, onEnter:() => z.focus() });
+        const z = timeField({ id:`${p}-be-${r.key}`, value:r.end, ariaLabel:`Descanso ${n}: terminou às`, describedBy:o.clockHelpId || null,
+          onInput:() => { r.end = z.text; sync(); } });
+        r.inputs = [a.input, z.input];
+        body = [a.input, h('span', { class:'break-sep', 'aria-hidden':'true', text:'→' }), z.input, len];
       } else {
-        const m = h('input', { type:'number', min:'1', step:'1', inputmode:'numeric', id:`${p}-bm-${r.key}`, value:r.minutes,
+        const m = h('input', { type:'number', class:'no-spin', min:'1', step:'1', inputmode:'numeric', id:`${p}-bm-${r.key}`, value:r.minutes,
           'aria-label':`Descanso ${n}, em minutos` });
         m.addEventListener('input', () => { r.minutes = m.value; m.removeAttribute('aria-invalid'); changed(); });
         r.inputs = [m];
         const clock = (r.startedAt && r.endedAt) ? `${fmtClockOfDay(r.startedAt)} → ${fmtClockOfDay(r.endedAt)}` : null;
-        body = [clock ? h('span', { class:'break-clock num', text:clock }) : null, m, h('span', { class:'break-unit', 'aria-hidden':'true', text:'min' })];
+        body = [h('span', { class:'break-n', text:`Descanso ${n}` }),
+          clock ? h('span', { class:'break-clock num', text:clock }) : null, m, h('span', { class:'break-unit', 'aria-hidden':'true', text:'min' })];
       }
-      list.append(h('div', { class:'break-row is-' + mode, role:'group', 'aria-label':`Descanso ${n}` },
-        h('span', { class:'break-n', text:`Descanso ${n}` }), body, rm));
+      list.append(h('div', { class:'break-row is-' + mode, role:'group', 'aria-label':`Descanso ${n}` }, body, rm));
     });
     head.hidden = !rows.length;
-    question.hidden = !!rows.length;
-    addLabel.textContent = rows.length ? '+ Adicionar outro descanso' : '+ Adicionar descanso';
+    if(question) question.hidden = !!rows.length;
+    addLabel.textContent = rows.length ? '+ Outro descanso' : '+ Adicionar descanso';
     addBtn.hidden = rows.length >= MAX_BREAKS_PER_STUDY;
     if(focusKey){
       const r = rows.find(x => x.key === focusKey);
-      if(r && r.inputs[0]){ swapIn(r.inputs[0].parentNode); r.inputs[0].focus(); }
+      if(r && r.inputs[0]){
+        swapIn(r.inputs[0].parentNode); r.inputs[0].focus();
+        try { foot.scrollIntoView({ block:'nearest' }); } catch(_){}      // a linha nova e o "+ Outro descanso" ficam à vista
+      }
     }
   }
 
@@ -4451,13 +4724,19 @@ function breaksEditor(o){
       }
       return { ok:true, breaks:out, total: sum(out, b => b.minutes) };
     }
+    // Um horário impossível (27:89) é apontado mesmo antes de existir o horário do estudo.
+    for(const r of rows){
+      const sa = clockState(r.start), sz = clockState(r.end);
+      if(sa === 'invalid' || sz === 'invalid') return fail(r, CLOCK_RANGE_ERROR, sa === 'invalid' ? 0 : 1);
+    }
     if(!ctx){
       if(lenient || !rows.length) return { ok:true, breaks:[], total:0 };
       return fail(rows[0], 'Informe primeiro o horário do estudo.');
     }
     const spans = [];
     for(const r of rows){
-      const bs = parseClock(r.start), be = parseClock(r.end);
+      const bs = clockState(r.start) === 'valid' ? parseClock(r.start) : null;
+      const be = clockState(r.end) === 'valid' ? parseClock(r.end) : null;
       if(bs === null || be === null){
         if(lenient) continue;
         return fail(r, 'Informe o início e o fim do descanso — ou remova-o.', bs === null ? 0 : 1);
@@ -4503,38 +4782,49 @@ function breaksEditor(o){
 /**
  * "Quando" de um estudo que já aconteceu.
  * Data (o dia em que o estudo COMEÇOU) + Comecei + Terminei → a duração sai
- * sozinha. Terminar antes do horário de início significa "no dia seguinte":
- * 23:50 → 00:12 são 22 minutos. Quem não lembra os horários informa só a duração.
+ * sozinha, na hora. Terminar antes do horário de início significa "no dia
+ * seguinte": 23:50 → 00:12 são 22 minutos. Quem não lembra os horários informa
+ * só a duração — e pode voltar aos horários sem perder o que já digitou.
  *
  * evaluate(lenient) devolve
  *   { complete:true, date, minutes, breakMinutes, breaks, startedAt, endedAt, nextDay, needsConfirm }
  * ou { complete:false, error | missing, errorEl }.
  *   error   = algo incoerente (aparece na hora, junto dos campos);
  *   missing = ainda falta preencher (só é cobrado ao registrar).
+ *
+ * v6.4.1 — os horários usam `timeField` (campo próprio, 24h). O resultado tem
+ * três leituras que não se confundem: o TEMPO DE ESTUDO (principal), e, quando
+ * há descanso, o tempo decorrido e o descanso numa linha de apoio. Só o texto
+ * dessa região muda a cada tecla — nada mais é redesenhado.
  */
 function studyWhenFields(o){
   const p = o.idPrefix;
   let mode = 'time';
   const tISO = todayISO();
+  const clockHelpId = p + '-clock-help', resultId = p + '-when-result';
   const dateIn = h('input', { type:'date', id:p + '-date', value: (o.date && parseISO(o.date) && o.date <= tISO) ? o.date : tISO, max:tISO });
-  const startIn = h('input', { type:'time', id:p + '-start' });
-  const endIn = h('input', { type:'time', id:p + '-end' });
-  const minIn = h('input', { type:'number', id:p + '-min', min:'1', step:'1', inputmode:'numeric', value:String(state.settings.defaultSessionMinutes || 40) });
-  const result = h('p', { class:'when-result', id:p + '-when-result', 'aria-live':'polite' });
+  const onEdit = () => { dateIn.removeAttribute('aria-invalid'); minIn.removeAttribute('aria-invalid'); refresh(); };
+  const startF = timeField({ id:p + '-start', describedBy: clockHelpId + ' ' + resultId, enterHint:'next', onInput:onEdit, onEnter:() => endF.focus() });
+  const endF = timeField({ id:p + '-end', describedBy: clockHelpId + ' ' + resultId, onInput:onEdit });
+  const minIn = h('input', { type:'number', class:'no-spin', id:p + '-min', min:'1', step:'1', inputmode:'numeric', value:String(state.settings.defaultSessionMinutes || 40) });
+  const result = h('p', { class:'when-result', id:resultId, 'aria-live':'polite', 'aria-atomic':'true' });
+  const detail = h('p', { class:'when-detail num', hidden:true });
+  const helper = h('p', { class:'when-help' });
+  const fixBtn = h('button', { class:'linkbtn', type:'button', hidden:true });
   const note = h('p', { class:'when-note', 'aria-live':'polite' });
-  const breaks = breaksEditor({ idPrefix:p, mode:'time', breaks:[], onChange:() => refresh() });
+  const modeBtn = h('button', { class:'linkbtn muted', type:'button', onclick:() => setMode(mode === 'time' ? 'duration' : 'time') });
+  const breaks = breaksEditor({ idPrefix:p, mode:'time', breaks:[], compact:true, footExtra:modeBtn, clockHelpId, onChange:() => refresh() });
 
   const quick = h('div', { class:'chips', role:'group', 'aria-label':'Durações comuns' },
     [20, 30, 40, 60].map(v => h('button', { class:'chip', type:'button', text:v + ' min',
       onclick:() => { minIn.value = String(v); minIn.removeAttribute('aria-invalid'); refresh(); } })));
-  const startField = h('div', { class:'field' }, h('label', { for:startIn.id, text:'Comecei' }), startIn);
-  const endField = h('div', { class:'field' }, h('label', { for:endIn.id, text:'Terminei' }), endIn);
+  const startField = h('div', { class:'field' }, timeLabel(startF.input.id, 'Comecei'), startF.input);
+  const endField = h('div', { class:'field' }, timeLabel(endF.input.id, 'Terminei'), endF.input);
   const durField = h('div', { class:'field when-dur', hidden:true }, h('label', { for:minIn.id, text:'Tempo estudado, em minutos' }), minIn, quick);
-  const modeBtn = h('button', { class:'linkbtn muted', type:'button', onclick:() => setMode(mode === 'time' ? 'duration' : 'time') });
 
   function evaluate(lenient){
     const date = dateIn.value;
-    const out = { mode, date, complete:false, error:null, missing:null, errorEl:null };
+    const out = { mode, date, complete:false, error:null, missing:null, errorEl:null, fixDate:null };
     if(!date || !parseISO(date)){ out.missing = 'Escolha a data do estudo.'; out.errorEl = dateIn; return out; }
     if(date > todayISO()){ out.error = 'Escolha hoje ou um dia que já passou.'; out.errorTitle = 'Data no futuro'; out.errorEl = dateIn; return out; }
 
@@ -4547,13 +4837,22 @@ function studyWhenFields(o){
         nextDay:false, needsConfirm: m > LONG_STUDY_CONFIRM_MIN });
     }
 
-    const s = parseClock(startIn.value), e = parseClock(endIn.value);
-    if(s === null || e === null){
-      out.missing = s === null ? 'Informe a que horas você começou.' : 'Informe a que horas você terminou.';
-      out.errorEl = s === null ? startIn : endIn;
+    // Horário impossível: apontado na hora. Horário pela metade: só depois de sair do campo (ou ao registrar).
+    const wrong = [startF, endF].find(f => f.state === 'invalid');
+    if(wrong){ out.error = CLOCK_RANGE_ERROR; out.errorEl = wrong.input; return out; }
+    const half = [startF, endF].find(f => f.state === 'partial');
+    if(half){
+      if(lenient && half.focused) out.missing = CLOCK_PARTIAL_ERROR; else out.error = CLOCK_PARTIAL_ERROR;
+      out.errorEl = half.input;
       return out;
     }
-    if(s === e){ out.error = 'O início e o fim estão no mesmo horário.'; out.errorEl = endIn; return out; }
+    const s = parseClock(startF.value), e = parseClock(endF.value);
+    if(s === null || e === null){
+      out.missing = s === null ? 'Informe a que horas você começou.' : 'Informe a que horas você terminou.';
+      out.errorEl = s === null ? startF.input : endF.input;
+      return out;
+    }
+    if(s === e){ out.error = 'O início e o fim estão no mesmo horário.'; out.errorEl = endF.input; return out; }
     const endAbs = e > s ? e : e + 1440;                    // terminou "antes" de começar = dia seguinte
     const a = localDateTime(date, s), z = localDateTime(date, endAbs);
     const elapsed = Math.round((z - a) / 60000);
@@ -4561,7 +4860,11 @@ function studyWhenFields(o){
     if(z.getTime() > now + 60000){
       const startAhead = a.getTime() > now;
       out.error = startAhead ? 'Esse horário ainda não chegou. Se o estudo foi em outro dia, mude a data.' : 'O horário de término ainda não chegou.';
-      out.errorEl = startAhead ? startIn : endIn;
+      out.errorEl = startAhead ? startF.input : endF.input;
+      // Caso mais comum: acabou de passar da meia-noite e o estudo começou "ontem".
+      const prev = addDaysISO(date, -1);
+      const zPrev = localDateTime(prev, endAbs);
+      if(zPrev && zPrev.getTime() <= now + 60000) out.fixDate = prev;
       return out;
     }
     const br = breaks.read({ date, startMin:s, endAbs }, lenient);
@@ -4572,25 +4875,53 @@ function studyWhenFields(o){
       startedAt:a.toISOString(), endedAt:z.toISOString(), nextDay: endAbs >= 1440, needsConfirm: net > LONG_STUDY_CONFIRM_MIN });
   }
 
+  let shown = null;                                          // o que está escrito agora (só redesenha quando muda)
   function refresh(){
     const r = evaluate(true);
-    let text = '', cls = 'when-result', extra = '';
+    let main = '', tail = '', sub = '', extra = '', err = '';
     if(r.complete){
-      const parts = [];
-      if(mode === 'time' || r.breakMinutes) parts.push(`${fmtDurationWords(r.minutes)} de estudo`);
-      if(r.breakMinutes) parts.push(`${fmtDurationWords(r.breakMinutes)} de descanso`);
-      if(r.nextDay) parts.push('terminou no dia seguinte');
-      text = parts.join(' · ');
-      cls += ' is-ok';
+      if(mode === 'time' || r.breakMinutes){
+        main = fmtDurationWords(r.minutes);
+        if(r.nextDay) tail = 'terminou no dia seguinte';
+      }
+      if(r.breakMinutes){
+        sub = mode === 'time'
+          ? `${fmtDurationWords(r.elapsed)} decorridos · ${fmtDurationWords(r.breakMinutes)} de descanso`
+          : `${fmtDurationWords(r.breakMinutes)} de descanso, guardado à parte`;
+      }
       if(r.needsConfirm) extra = `São ${fmtDuration(r.minutes)} de estudo. Confira ${mode === 'time' ? 'os horários' : 'a duração'} antes de registrar.`;
     } else if(r.error){
-      text = r.error; cls += ' is-error';
+      err = r.error;
     }
-    if(result.textContent !== text) result.textContent = text;
-    result.className = cls;
+    const key = [main, tail, err].join('|');
+    if(key !== shown){
+      const hadValue = !!shown && shown[0] !== '|';
+      shown = key;
+      clear(result);
+      // appendChildren ignora o que não existe (Node.append escreveria "null" na tela)
+      if(main) appendChildren(result, [h('span', { class:'wr-v num', text:main }), ' de estudo', tail ? h('span', { class:'wr-x', text:' · ' + tail }) : null]);
+      else if(err) result.textContent = err;
+      result.className = 'when-result' + (main ? ' is-ok' : (err ? ' is-error' : ''));
+      // a duração troca com um fade curto; a primeira aparição e os erros entram sem movimento extra
+      if(main && hadValue && !prefersReducedMotion() && typeof result.animate === 'function'){
+        try { result.animate([{ opacity:.45 }, { opacity:1 }], { duration:130, easing:'ease-out' }); } catch(_){}
+      }
+    }
+    if(detail.textContent !== sub) detail.textContent = sub;
+    detail.hidden = !sub;
+    helper.hidden = !!(main || err) || mode !== 'time';
     if(note.textContent !== extra) note.textContent = extra;
+    fixBtn.hidden = !r.fixDate;
+    if(r.fixDate){ fixBtn.dataset.date = r.fixDate; fixBtn.textContent = `Foi ontem? Usar ${fmtDateBR(r.fixDate)}`; }
     if(o.onChange) o.onChange(r);
   }
+  fixBtn.addEventListener('click', () => {
+    const d = fixBtn.dataset.date;
+    if(!d || !parseISO(d)) return;
+    dateIn.value = d;
+    refresh();
+    endF.focus();
+  });
 
   function setMode(m){
     mode = m;
@@ -4601,24 +4932,28 @@ function studyWhenFields(o){
     refresh();
   }
 
-  [dateIn, startIn, endIn, minIn].forEach(el => el.addEventListener('input', () => {
-    [dateIn, startIn, endIn, minIn].forEach(x => x.removeAttribute('aria-invalid'));
-    refresh();
-  }));
-  startIn.setAttribute('aria-describedby', result.id);
-  endIn.setAttribute('aria-describedby', result.id);
+  [dateIn, minIn].forEach(el => el.addEventListener('input', onEdit));
+  helper.textContent = 'Digite só os números: 2350 vira 23:50.';
 
   const node = h('div', { class:'when' },
+    h('span', { class:'sr-only', id:clockHelpId, text:CLOCK_SR_HELP }),
     h('div', { class:'when-grid' },
       h('div', { class:'field' }, h('label', { for:dateIn.id, text:'Data' }), dateIn),
       startField, endField, durField),
-    result, note,
-    h('p', { class:'when-mode' }, modeBtn),
+    h('div', { class:'when-out' }, result, detail, helper, fixBtn, note),
     breaks.node);
   setMode('time');
-  modeBtn.addEventListener('click', () => { const f = mode === 'time' ? startIn : minIn; swapIn(f.parentNode); f.focus(); });
+  modeBtn.addEventListener('click', () => {
+    const f = mode === 'time' ? startF.input : minIn;
+    swapIn(f.parentNode); f.focus();
+  });
 
-  return { node, evaluate: () => evaluate(false), refresh, firstField: dateIn };
+  const date0 = dateIn.value, min0 = minIn.value;
+  return {
+    node, evaluate: () => evaluate(false), refresh, firstField: dateIn,
+    /** Algo já foi preenchido aqui? (para a janela não fechar com um clique fora) */
+    isDirty: () => !!(startF.text || endF.text || breaks.count || dateIn.value !== date0 || mode !== 'time' || minIn.value !== min0)
+  };
 }
 
 /**
@@ -4657,8 +4992,10 @@ function openRegisterModal(preset){
   const topicId0 = (presetTopic && !presetTopic.archived && presetTopic.disciplineId === discId0) ? presetTopic.id : '';
 
   let type = SESSION_TYPES.some(t => t.v === p.type) ? p.type : null;
+  const type0 = type;
   let difficulty = null, outcome = null, targetMin = null;
   let saving = false;
+  let isDirty = () => false;
 
   openModal(close => {
     const titleOf = () => mode === 'timer' ? 'Começar a estudar' : 'Registrar estudo';
@@ -4689,7 +5026,7 @@ function openRegisterModal(preset){
       b.addEventListener('click', () => { targetMin = v; goalBtns.forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); });
       return b;
     });
-    const timerBlock = h('div', { class:'rm-timer' },
+    const timerBlock = h('div', { class:'rm-group rm-timer' },
       h('div', { class:'field' },
         h('span', { class:'pick-label', id:'rm-goal-l' }, 'Duração sugerida', h('span', { class:'optional', text:'opcional' })),
         h('div', { class:'chips', role:'group', 'aria-labelledby':'rm-goal-l' }, goalBtns),
@@ -4706,18 +5043,22 @@ function openRegisterModal(preset){
         pillGroup(REVIEW_OUTCOMES.map(x => ({ value:x.v, label:x.label })), outcome, v => { outcome = v; }, 'Como você se saiu'),
         h('p', { class:'hint', text:'Isso ajusta quando este tópico volta para revisão.' }));
     }
-    const commentIn = h('textarea', { id:'rm-comment', maxlength:'2000' });
-    const howBlock = h('section', { class:'rm-group', 'aria-labelledby':'rm-g-how' },
-      h('h4', { class:'rm-group-t', id:'rm-g-how', text:'Como foi' }),
-      h('div', { class:'field' }, h('span', { class:'pick-label', id:'rm-diff-l' }, 'Dificuldade', h('span', { class:'optional', text:'opcional' })),
-        pillGroup(DIFFICULTIES.map(d => ({ value:d.v, label:d.label, color:d.color })), difficulty, v => { difficulty = v ? Number(v) : null; }, 'Dificuldade percebida')),
-      outcomeField,
-      h('div', { class:'field' }, h('label', { for:'rm-comment' }, 'Comentário', h('span', { class:'optional', text:'opcional' })), commentIn));
-
-    const whenBlock = h('section', { class:'rm-group', 'aria-labelledby':'rm-g-when' },
+    const comment = commentField({ id:'rm-comment' });
+    /* v6.4.1 — três perguntas, três grupos. "Quando" e "O que você estudou" são
+       independentes e ficam lado a lado quando há largura; "Como foi" vem
+       depois e reúne tipo, dificuldade e comentário. A ordem no documento é a
+       ordem de leitura (e do Tab), em uma ou em duas colunas. */
+    const how = howGroup({ id:'rm-g-how', type:typePick.node,
+      difficulty: difficultyField('rm', difficulty, v => { difficulty = v; }), outcome:outcomeField, comment:comment.node });
+    const howBlock = how.node;
+    const whenBlock = h('section', { class:'rm-group rm-when', 'aria-labelledby':'rm-g-when' },
       h('h4', { class:'rm-group-t', id:'rm-g-when', text:'Quando' }), when.node);
     const whatTitle = h('h4', { class:'rm-group-t', id:'rm-g-what', text:'O que você estudou' });
-    const whatBlock = h('section', { class:'rm-group', 'aria-labelledby':'rm-g-what' }, whatTitle, target.node, typePick.node);
+    const whatBlock = h('section', { class:'rm-group rm-what', 'aria-labelledby':'rm-g-what' }, whatTitle, target.node);
+    const grid = h('div', { class:'rm-grid' }, whenBlock, whatBlock, howBlock, timerBlock);
+    // Já há algo preenchido além do que veio pronto? Então um clique fora da janela não a fecha.
+    isDirty = () => when.isDirty() || !!comment.textarea.value.trim() || type !== type0 || difficulty !== null || outcome !== null
+      || target.discId !== discId0 || (target.topicId || '') !== topicId0 || targetMin !== null;
 
     /* 8 horas ou mais: o Ciclo pergunta, não proíbe. Numa subtela — o formulário fica intacto. */
     function confirmLong(w){
@@ -4785,7 +5126,7 @@ function openRegisterModal(preset){
         const ok = await saveSession({
           disciplineId:discId, topicId, date:w.date, minutes:w.minutes, breaks:w.breaks,
           startedAt:w.startedAt, endedAt:w.endedAt, type, difficulty,
-          comment: commentIn.value.trim(),
+          comment: comment.value,
           reviewOutcome: (type === 'revisao' && topicId) ? outcome : null
         });
         if(ok){ close(); return; }
@@ -4805,27 +5146,32 @@ function openRegisterModal(preset){
         b.setAttribute('tabindex', on ? '0' : '-1');
       });
       const manual = mode === 'manual';
+      grid.dataset.mode = mode;
       whenBlock.hidden = !manual;
-      howBlock.hidden = !manual;
+      // "Estudar agora" ainda não tem um "como foi": do grupo, fica só o tipo de estudo
+      how.title.hidden = !manual;
+      how.row.hidden = !manual;
+      if(manual) howBlock.setAttribute('aria-labelledby', how.title.id); else howBlock.removeAttribute('aria-labelledby');
       whatTitle.hidden = !manual;
+      if(manual) whatBlock.setAttribute('aria-labelledby', whatTitle.id); else whatBlock.removeAttribute('aria-labelledby');
       timerBlock.hidden = manual;
       primaryBtn.textContent = primaryLabel();
       const t = $('#modal-title'); if(t && close.depth() === 0) t.textContent = titleOf();
       renderOutcome();
-      if(animate){ swapIn(manual ? whenBlock : timerBlock); if(manual) swapIn(howBlock); }
+      if(animate) swapIn(grid);
     }
     setMode(mode, false);
 
     return {
       title: titleOf(),
-      content: h('div', { class:'rm' }, timerBusy ? busyNote : modes, whenBlock, whatBlock, timerBlock, howBlock),
+      content: h('div', { class:'rm' }, timerBusy ? busyNote : modes, grid),
       actions:[
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
         primaryBtn
       ],
       focus: timerBusy ? when.firstField : $('.mode-opt[aria-checked="true"]', modes)
     };
-  }, { size:'wide' });
+  }, { size:'study', keepOnBackdrop: () => isDirty() });
 }
 
 /** "Começar a estudar": a mesma janela, já em "Estudar agora". */
@@ -4853,7 +5199,7 @@ function openFinishModal(){
 
   openModal(close => {
     /* ---------- resumo: estudo e descanso, lado a lado e nunca somados ---------- */
-    const minInput = h('input', { type:'number', id:'fin-min', min:'1', step:'1', value:String(studyMin), inputmode:'numeric' });
+    const minInput = h('input', { type:'number', class:'no-spin', id:'fin-min', min:'1', step:'1', value:String(studyMin), inputmode:'numeric' });
     const breaks = breaksEditor({ idPrefix:'fin', mode:'minutes', breaks:snapBreaks, onChange:() => drawSummary() });
     const studyV = h('span', { class:'fs-v num' });
     const restV = h('span', { class:'fs-v num' });
@@ -4903,16 +5249,18 @@ function openFinishModal(){
         h('label', { for:'fin-method', style:'margin-top:12px', text:'Como você revisou' }),
         sel);
     }
-    const commentIn = h('textarea', { id:'fin-comment', maxlength:'2000' });
+    const comment = commentField({ id:'fin-comment' });
+    const how = howGroup({ id:'fin-g-how', type:typePick.node,
+      difficulty: difficultyField('fin', difficulty, v => { difficulty = v; }), outcome:outcomeField, comment:comment.node });
 
+    // v6.4.1 — a mesma composição do registro: tempo e conteúdo lado a lado; "Como foi" depois.
     const content = h('div', { class:'rm' },
-      summary, fix,
-      target.node,
-      typePick.node,
-      h('div', { class:'field' }, h('span', { class:'pick-label' }, 'Dificuldade', h('span', { class:'optional', text:'opcional' })),
-        pillGroup(DIFFICULTIES.map(x => ({ value:x.v, label:x.label, color:x.color })), difficulty, v => { difficulty = v ? Number(v) : null; }, 'Dificuldade percebida')),
-      outcomeField,
-      h('div', { class:'field' }, h('label', { for:'fin-comment' }, 'Comentário', h('span', { class:'optional', text:'opcional' })), commentIn));
+      h('div', { class:'rm-grid' },
+        h('section', { class:'rm-group rm-when', 'aria-labelledby':'fin-g-time' },
+          h('h4', { class:'rm-group-t', id:'fin-g-time', text:'Tempo' }), summary, fix),
+        h('section', { class:'rm-group rm-what', 'aria-labelledby':'fin-g-what' },
+          h('h4', { class:'rm-group-t', id:'fin-g-what', text:'O que você estudou' }), target.node),
+        how.node));
     renderOutcome();
     drawSummary();
 
@@ -4940,7 +5288,7 @@ function openFinishModal(){
          retrato (o fim é o momento em que a pessoa pediu para finalizar). */
       const ok = await saveSession({
         disciplineId: discId, topicId, date: dateToISO(new Date(snap.startedAt)),
-        minutes, breaks: br.breaks, type, difficulty, comment: commentIn.value.trim(),
+        minutes, breaks: br.breaks, type, difficulty, comment: comment.value,
         reviewOutcome: (type === 'revisao' && topicId) ? outcome : null,
         reviewMethod: (type === 'revisao' && topicId) ? method : null,
         startedAt: new Date(snap.startedAt).toISOString(), endedAt: new Date(snap.endedAt).toISOString()
@@ -4964,7 +5312,7 @@ function openFinishModal(){
       ],
       focus: fixToggle          // o primeiro controle: a janela abre no resumo, não no fim do formulário
     };
-  }, { size:'wide', dismissible:false });
+  }, { size:'study', dismissible:false });
 }
 
 /** Sessão esquecida aberta por muito tempo. */
@@ -8400,12 +8748,12 @@ function openDeadlineModal(dl, preset){
       h('div', { class:'row' },
         h('div', { class:'field' }, dateLabel, dateIn),
         h('div', { class:'field' }, h('label', { for:'dl-start' }, 'Data de início', h('span', { class:'optional', text:'opcional' })), startIn,
-          h('p', { class:'hint', text:'Antes desta data, o prazo não influencia suas recomendações.' }))),
+          h('p', { class:'hint', text:'Antes dela, o prazo não pesa nas sugestões.' }))),
       h('div', { class:'row' },
         h('div', { class:'field' }, h('label', { for:'dl-disc' }, 'Disciplina', h('span', { class:'optional', text:'opcional' })), discSel,
           h('p', { class:'hint', text:'O prazo passa a influenciar esta disciplina.' })),
         h('div', { class:'field' }, h('label', { for:'dl-topic' }, 'Tópico', h('span', { class:'optional', text:'opcional' })), topicSel,
-          h('p', { class:'hint', text:'Se escolher, só este tópico recebe atenção extra.' }))),
+          h('p', { class:'hint', text:'Só este tópico recebe atenção extra.' }))),
       h('div', { class:'field' }, prio),
       h('div', { class:'field' }, h('label', { text:'Status' }), statusCtl),
       h('details', { class:'advanced', open: !!(dl && (dl.instructions || dl.notes)) },
@@ -10996,9 +11344,8 @@ function openEditSessionModal(id){
   openModal(close => {
     let type = s.type, difficulty = s.difficulty, outcome = s.reviewOutcome;
     const dateIn = h('input', { type:'date', id:'es-date', value:s.date, max: todayISO() > s.date ? todayISO() : s.date });
-    const minIn = h('input', { type:'number', id:'es-min', min:'1', step:'1', value:String(s.minutes), inputmode:'numeric' });
-    const commentIn = h('textarea', { id:'es-comment', maxlength:'2000' });
-    commentIn.value = str(s.comment);
+    const minIn = h('input', { type:'number', class:'no-spin', id:'es-min', min:'1', step:'1', value:String(s.minutes), inputmode:'numeric' });
+    const comment = commentField({ id:'es-comment', value:s.comment });      // já tem comentário? o campo abre à mostra
     minIn.addEventListener('input', () => minIn.removeAttribute('aria-invalid'));
 
     const clock = sessionClockRange(s);
@@ -11020,20 +11367,24 @@ function openEditSessionModal(id){
         h('p', { class:'hint', text:'Editar o resultado aqui não reprograma a revisão já aplicada ao tópico.' }));
     }
 
+    const how = howGroup({ id:'es-g-how', type:typePick.node,
+      difficulty: difficultyField('es', difficulty, v => { difficulty = v; }), outcome:outcomeField, comment:comment.node });
+    // v6.4.1 — a mesma composição do registro: quando e o quê lado a lado; "Como foi" depois.
     const body = h('div', { class:'rm' },
-      clock ? h('p', { class:'es-clock' }, h('span', { class:'es-clock-l', text:'Horário' }),
-        h('span', { class:'num', text: clock.text + (clock.nextDay ? ' · terminou no dia seguinte' : '') })) : null,
-      h('div', { class:'when-grid is-edit' },
-        h('div', { class:'field' }, h('label', { for:'es-date', text:'Data' }), dateIn),
-        h('div', { class:'field' }, h('label', { for:'es-min', text:'Tempo estudado, em minutos' }), minIn)),
-      breaks.node,
-      target.node,
-      legacyTopic ? h('p', { class:'hint', text:`Anotado na época como “${legacyTopic}”.` }) : null,
-      typePick.node,
-      h('div', { class:'field' }, h('span', { class:'pick-label' }, 'Dificuldade', h('span', { class:'optional', text:'opcional' })),
-        pillGroup(DIFFICULTIES.map(d => ({ value:d.v, label:d.label, color:d.color })), difficulty, v => { difficulty = v ? Number(v) : null; }, 'Dificuldade percebida')),
-      outcomeField,
-      h('div', { class:'field' }, h('label', { for:'es-comment' }, 'Comentário', h('span', { class:'optional', text:'opcional' })), commentIn));
+      h('div', { class:'rm-grid' },
+        h('section', { class:'rm-group rm-when', 'aria-labelledby':'es-g-when' },
+          h('h4', { class:'rm-group-t', id:'es-g-when', text:'Quando' }),
+          clock ? h('p', { class:'es-clock' }, h('span', { class:'es-clock-l', text:'Horário' }),
+            h('span', { class:'num', text: clock.text + (clock.nextDay ? ' · terminou no dia seguinte' : '') })) : null,
+          h('div', { class:'when-grid is-edit' },
+            h('div', { class:'field' }, h('label', { for:'es-date', text:'Data' }), dateIn),
+            h('div', { class:'field' }, h('label', { for:'es-min', text:'Tempo estudado (min)' }), minIn)),
+          breaks.node),
+        h('section', { class:'rm-group rm-what', 'aria-labelledby':'es-g-what' },
+          h('h4', { class:'rm-group-t', id:'es-g-what', text:'O que você estudou' }),
+          target.node,
+          legacyTopic ? h('p', { class:'hint', text:`Anotado na época como “${legacyTopic}”.` }) : null),
+        how.node));
     renderOutcome();
 
     /** Desloca um instante gravado por `days` dias, mantendo a hora local (sem deslize de fuso). */
@@ -11069,7 +11420,7 @@ function openEditSessionModal(id){
           const days = (from && to) ? diffDays(to, from) : 0;
           const ok = await updateSession(id, {
             disciplineId: discId, topicId: target.topicId, date,
-            minutes, type, difficulty, comment: commentIn.value.trim(),
+            minutes, type, difficulty, comment: comment.value,
             reviewOutcome: type === 'revisao' ? outcome : null,
             startedAt: shiftISO(s.startedAt, days), endedAt: shiftISO(s.endedAt, days),
             breaks: br.breaks.map(b => Object.assign({}, b, { startedAt: shiftISO(b.startedAt, days), endedAt: shiftISO(b.endedAt, days) }))
@@ -11078,7 +11429,7 @@ function openEditSessionModal(id){
         }) })
       ]
     };
-  }, { size:'wide' });
+  }, { size:'study' });
 }
 
 /* =========================================================================
@@ -13511,19 +13862,32 @@ function maybeShowWhatsNew(){
   const cameFrom6 = /^6\./.test(seen);             // já usava alguma versão 6.x
   const saw62 = /^6\.[2-9]/.test(seen);           // já viu a navegação da 6.2
   const saw63 = /^6\.[3-9]/.test(seen);           // já viu a captura de tópico da 6.3
-  const items = [
+  const saw64 = /^6\.[4-9]/.test(seen);           // já viu o fluxo de estudo da 6.4
+  /* v6.4.1 — refinamento. Quem já viu a 6.4 recebe só o que mudou agora, em
+     poucas linhas; quem vem de antes vê a 6.4 inteira, com o acabamento junto. */
+  const refinements = [
+    'Horário mais fácil de preencher: digite só os números (2350 vira 23:50), no formato 24h. A roda do mouse não muda mais a hora.',
+    'A duração aparece na hora, assim que você informa o início e o fim — com os descansos já descontados.',
+    'Registrar estudo aproveita a largura da tela: "Quando" e "O que você estudou" lado a lado, e "Como foi" reunindo tipo, dificuldade e comentário. Menos rolagem.',
+    'Tipografia revista: títulos e textos na mesma família, mais legíveis e com menos negrito.'
+  ];
+  const items = saw64 ? refinements : [
     '"Registrar estudo" guarda algo que você já estudou — de qualquer tela, sem sair dela. "Começar a estudar" liga o cronômetro.',
     'Em "Já estudei", diga a que horas começou e terminou: a duração sai sozinha, mesmo quando o estudo atravessa a meia-noite (23:50 → 00:12 são 22 minutos).',
     'Descansos: no cronômetro, "Descansar" pausa o estudo e conta o descanso à parte. Ele nunca entra no tempo estudado nem no plano da semana.',
     'Seu ritmo: Hoje mostra em quantos dos últimos 7 dias você estudou, e Análises ganhou os dias com estudo por semana e os descansos — sem nota e sem cobrança.',
-    'Créditos saíram do Ciclo: agora tudo é medido em tempo. Seus estudos e minutos continuam exatamente como estavam.'
+    'Créditos saíram do Ciclo: agora tudo é medido em tempo. Seus estudos e minutos continuam exatamente como estavam.',
+    'Horários no formato 24h, digitando só os números (2350 vira 23:50), e uma tipografia mais legível em todo o Ciclo.'
   ];
-  if(cameFrom6 && !saw63) items.push('Também da 6.3: criar um tópico sem sair do registro e a frase do dia só com frases reais, com autor e obra.');
-  if(cameFrom6 && !saw62) items.push('Também da 6.2: o Voltar do navegador volta dentro do Ciclo, e cada lista tem busca e ordenação próprias.');
+  if(saw64){ /* nada a acrescentar: a lista acima já é só o refinamento */ }
+  else if(cameFrom6 && !saw63) items.push('Também da 6.3: criar um tópico sem sair do registro e a frase do dia só com frases reais, com autor e obra.');
+  if(!saw64 && cameFrom6 && !saw62) items.push('Também da 6.2: o Voltar do navegador volta dentro do Ciclo, e cada lista tem busca e ordenação próprias.');
   if(!cameFrom6) items.push('Também da 6.0 à 6.3: visual mais calmo, Disciplinas como um índice, Análises que começam por uma pergunta, Prazos numa aba própria e o Voltar do navegador funcionando dentro do Ciclo.');
   const cfg = {
-    title: 'Ciclo 6.4',
-    sub: cameFrom5 || cameFrom6
+    title: saw64 ? 'Ciclo 6.4.1' : 'Ciclo 6.4',
+    sub: saw64
+      ? 'Uma versão de acabamento: nada novo para aprender, e nenhum dado foi alterado.'
+      : cameFrom5 || cameFrom6
       ? 'Estudar, registrar, descansar e acompanhar a constância ficaram mais simples. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
       : 'O Diário de Estudos agora se chama Ciclo — e ganhou uma interface nova. Seus dados, revisões e planos continuam como estavam.',
     items, note: converted
@@ -14023,7 +14387,7 @@ function renderSettings(){
 
 function openChangelog(){
   const body = h('div', CHANGELOG.map(c => h('div', { style:'margin-bottom:16px' },
-    h('p', { style:'font-family:var(--serif);font-size:17px;margin-bottom:3px', text:'v' + c.v }),
+    h('p', { class:'cl-version num', text:'v' + c.v }),
     h('p', { class:'hint prose', text:c.d }))));
   Drawer.open('Novidades', body);
 }
