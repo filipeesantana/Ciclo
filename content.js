@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — CONTEÚDO ESTÁTICO (v6.4.1)
+   CICLO — CONTEÚDO ESTÁTICO (v6.5.0)
    Textos, guias e frases. Nada aqui vai para o IndexedDB e nada vem da rede.
 
    Blocos: DAILY_QUOTES · REVIEW_METHOD_GUIDES · HELP_SECTIONS ·
@@ -347,11 +347,11 @@ const HELP_GLOSSARY = {
   planoBase: { term:'Plano semanal', article:'plano-base', alias:'plano base modelo semanal padrão padrao distribuicao',
     short:'O modelo de divisão do seu tempo por semana. Cada semana guarda uma cópia do plano que valia nela.' },
   aderencia: { term:'Plano cumprido', article:'planejado-realizado', alias:'aderencia aderência meta porcentagem planejado realizado',
-    short:'Quanto do tempo planejado foi de fato estudado no período. 100% é ter cumprido exatamente o previsto.' },
+    short:'Quanto do que foi planejado para cada disciplina foi de fato estudado. Tempo a mais numa disciplina não compensa o que faltou em outra: ele aparece à parte, como "além do plano".' },
   cobertura: { term:'Conteúdo estudado', article:'cobertura-dominio', alias:'cobertura percentual topicos progresso',
     short:'A parte dos tópicos que você já estudou pelo menos uma vez.' },
-  dominio: { term:'Consolidação', article:'dominio', alias:'dominio domínio retencao retenção consolidado dominar memoria',
-    short:'Uma estimativa, de 1 a 5, de quanto um tópico já está firme na memória, com base nos resultados das suas revisões.' },
+  dominio: { term:'Consolidação estimada', article:'dominio', alias:'dominio domínio retencao retenção consolidado consolidacao consolidação dominar memoria estimativa',
+    short:'Uma estimativa, de 1 a 5, de quanto um tópico já está firme na memória. Ela sai só das suas respostas nas revisões ("esqueci", "lembrei bem"…) — não é uma medição da sua memória.' },
   dificuldade: { term:'Dificuldade', article:'dificuldade', alias:'esforco esforço percepcao percebida',
     short:'De 1 a 5, quanto aquele estudo pareceu difícil para você. É só para análise: não altera o planejamento nem as revisões.' },
   descanso: { term:'Descanso', article:'descansos', alias:'descansar pausa intervalo parar voltar a estudar',
@@ -698,8 +698,11 @@ const HELP_ARTICLES = [
     { p:'"Descansar" para o tempo de estudo e começa a contar o [[descanso|descanso]]. "Voltar a estudar" encerra o descanso e o estudo continua de onde parou. Você pode descansar quantas vezes quiser — o cronômetro nunca para sozinho.' },
     { h:'Ele sobrevive a fechar a aba' },
     { p:'O tempo é calculado por marcação de horário, não por um contador que roda na tela. Se você recarregar a página, fechar e reabrir o navegador, o cronômetro volta com o tempo correto — inclusive no meio de um descanso.' },
+    { note:'Para isso o navegador precisa conseguir guardar o cronômetro. Se não conseguir (armazenamento cheio ou bloqueado), o Ciclo avisa na própria barra: o tempo continua contando, mas finalize antes de fechar a página.' },
+    { h:'Em duas abas' },
+    { p:'O cronômetro é um só, mesmo com o Ciclo aberto em mais de uma aba. Finalizar ou descartar em uma encerra nas outras, e o mesmo estudo nunca é registrado duas vezes: se a segunda aba tentar, ela avisa que o estudo já foi registrado.' },
     { h:'Ao finalizar' },
-    { p:'O Ciclo mostra o tempo de estudo e o tempo de descanso, lado a lado e sem somar. Em "Corrigir o tempo" você ajusta os dois antes de registrar.' },
+    { p:'O Ciclo mostra o tempo de estudo e o tempo de descanso, lado a lado e sem somar. Em "Corrigir o tempo" você ajusta os dois antes de registrar. Se o tempo corrigido deixar de fechar com o horário medido, o estudo é guardado só com a duração — e você é avisado antes.' },
     { h:'Cronômetro esquecido' },
     { p:'Se você voltar e o cronômetro estiver ligado há muitas horas, o Ciclo pergunta o que fazer em vez de registrar tudo automaticamente.' }
   ],
@@ -862,15 +865,22 @@ const HELP_ARTICLES = [
 {
   id:'planejado-realizado', section:'usar', group:'semana',
   title:'Planejado × realizado',
-  oneLine:'"Plano cumprido" é quanto do tempo planejado foi de fato estudado.',
-  summary:'Como a comparação é feita e por que passar de 100% não é sempre melhor.',
+  oneLine:'"Plano cumprido" é quanto do planejado para cada disciplina foi de fato estudado.',
+  summary:'Como a conta é feita, e por que tempo a mais numa disciplina não compensa o que faltou em outra.',
   keywords:'planejado realizado aderencia plano cumprido porcentagem meta comparacao',
   content:[
     { h:'Como funciona' },
-    { p:'[[aderencia|Plano cumprido]] de 100% significa que você cumpriu exatamente o previsto; acima disso significa que estudou mais. A comparação usa o plano histórico de cada semana tocada pelo período.' },
+    { p:'O plano divide o seu tempo entre disciplinas. [[aderencia|Plano cumprido]] mede se essa divisão aconteceu: de cada disciplina, conta o que você estudou até o limite do que foi planejado para ela. 100% significa que todas receberam pelo menos o tempo previsto.' },
     { h:'Exemplo' },
-    { p:'Se o período cobre apenas três dias de uma semana, o planejado daquela semana entra proporcionalmente a esses três dias.' },
-    { note:'Passar de 100% não é automaticamente melhor — pode significar que outra disciplina ficou para trás. Por isso a análise mostra também o desempenho por disciplina.' }
+    { p:'Você planejou 1h de Redes e 1h de Matemática e estudou 2h de Redes. O plano cumprido é 50%: Redes foi cumprida, Matemática não. A hora a mais de Redes aparece à parte, como "além do plano".' },
+    { h:'O que aparece na tela' },
+    { ul:[
+      'Plano cumprido — a porcentagem acima. Nunca passa de 100%.',
+      'Estudado no total — todo o tempo estudado no período, com ou sem plano.',
+      'Além do plano — o tempo que passou do planejado de uma disciplina, ou foi para uma disciplina sem plano.'
+    ]},
+    { p:'A comparação usa o plano que existia em cada semana tocada pelo período. Se o período cobre apenas três dias de uma semana, o planejado daquela semana entra proporcionalmente a esses três dias.' },
+    { note:'Estudar mais do que o planejado não é problema nenhum — só não é a mesma coisa que cumprir o plano. Por isso os dois números aparecem separados.' }
   ],
   cta:{ action:'openAnalytics', label:'Abrir Análises' },
   related:['analises-como-ler','consistencia-guia']
@@ -1210,8 +1220,9 @@ const HELP_ARTICLES = [
     { h:'Como fazer' },
     { steps:[
       'Abra a tela Dados.',
-      'Clique em "Exportar backup (.json)".',
-      'Guarde o arquivo em algum lugar que não seja só este computador.'
+      'Clique em "Fazer backup (.json)".',
+      'Confira se o arquivo apareceu nos downloads do navegador.',
+      'Guarde uma cópia em algum lugar que não seja só este aparelho.'
     ]},
     { h:'O que o arquivo contém' },
     { p:'Tudo: áreas, disciplinas, tópicos, prioridades, estudos registrados, planos, semanas, prazos e configurações.' },
@@ -1220,27 +1231,40 @@ const HELP_ARTICLES = [
       'JSON — o [[backup|backup]] completo e restaurável. É o arquivo que traz seus dados de volta.',
       'CSV — apenas a lista de estudos, em formato de planilha. Serve para abrir no Excel ou no Google Sheets. Não restaura o Ciclo.'
     ]},
-    { note:'A tela Dados mostra quando foi seu último backup e avisa discretamente quando faz muito tempo.' }
+    { note:'A tela Dados mostra quando o último backup foi gerado e avisa discretamente quando faz muito tempo. O Ciclo sabe que gerou o arquivo; ele não tem como confirmar onde o navegador o salvou — por isso vale conferir os downloads.' },
+    { h:'Com o cronômetro ligado' },
+    { p:'Um estudo em andamento só entra no histórico quando você finaliza. Enquanto isso, ele ainda não faz parte do backup: finalize o estudo e gere o backup de novo para incluí-lo.' }
   ],
   cta:{ action:'backupNow', label:'Fazer backup agora' },
   related:['importar','mudar-computador','privacidade']
 },
 {
   id:'importar', section:'usar', group:'dados',
-  title:'Importar e restaurar um backup',
-  oneLine:'A importação substitui os dados atuais — e pede confirmação antes.',
-  summary:'Como restaurar, e o que acontece se algo der errado no meio.',
+  title:'Restaurar um backup',
+  oneLine:'A restauração substitui os dados atuais — e mostra o que vai entrar antes de gravar.',
+  summary:'Como restaurar, o que o Ciclo confere no arquivo e o que acontece se algo der errado no meio.',
   keywords:'importar restaurar backup json arquivo substituir confirmar versao antiga',
   content:[
     { h:'Como fazer' },
     { steps:[
       'Abra a tela Dados.',
-      'Clique em "Importar" e escolha o arquivo .json.',
-      'Confira o resumo do que será restaurado.',
-      'Confirme.'
+      'Clique em "Restaurar backup" e escolha o arquivo .json.',
+      'Confira a prévia: quantas disciplinas, tópicos e estudos vão entrar.',
+      'Confirme em "Substituir e restaurar".'
     ]},
-    { h:'No Ciclo' },
-    { p:'O Ciclo valida o conteúdo antes de gravar qualquer coisa. A restauração acontece em uma operação única: se algo der errado no meio do caminho, nada é apagado e os dados anteriores continuam onde estavam.' },
+    { h:'O que o Ciclo confere' },
+    { p:'O arquivo é lido por inteiro antes de qualquer gravação. A prévia mostra o que entra, o que precisou de ajuste (por exemplo, um estudo ligado a um tópico que não existe no arquivo fica só na disciplina) e o que fica de fora (por exemplo, um registro sem data recuperável). Nada é ajustado em silêncio.' },
+    { h:'Quando o arquivo é recusado' },
+    { ul:[
+      'Não é um backup do Ciclo, ou está incompleto ou corrompido.',
+      'Foi criado por uma versão mais nova do Ciclo: atualize a página e tente de novo.',
+      'Tem dois registros diferentes com o mesmo identificador.'
+    ]},
+    { p:'Nesses casos nada é gravado e os seus dados atuais continuam como estavam.' },
+    { h:'Se algo der errado no meio' },
+    { p:'A restauração acontece em uma operação única: ou tudo entra, ou nada muda. Se a gravação falhar, a janela continua aberta dizendo isso, e os dados anteriores continuam onde estavam.' },
+    { h:'Com o cronômetro ligado' },
+    { p:'Um estudo em andamento não está nos dados atuais nem no backup. Antes de restaurar, o Ciclo pergunta o que fazer com ele: cancelar a restauração, finalizar o estudo primeiro ou descartar o tempo.' },
     { note:'Backups de versões anteriores, inclusive da época do Diário de Estudos, continuam sendo aceitos e são convertidos para o formato atual.' }
   ],
   cta:{ action:'openData', label:'Abrir a tela Dados' },
@@ -1249,15 +1273,15 @@ const HELP_ARTICLES = [
 {
   id:'mudar-computador', section:'usar', group:'dados',
   title:'Como levar meus dados para outro computador',
-  oneLine:'Exporte o JSON num, importe no outro. Não existe sincronização.',
+  oneLine:'Faça o backup num, restaure no outro. Não existe sincronização.',
   summary:'O procedimento, e por que ele é manual.',
   keywords:'mudar computador transferir migrar celular sincronizar sincronizacao dispositivo levar',
   content:[
     { h:'Como fazer' },
     { steps:[
-      'No computador atual: Dados → Exportar backup (.json).',
+      'No computador atual: Dados → Fazer backup (.json).',
       'Leve o arquivo como preferir — pendrive, nuvem, e-mail para você mesmo.',
-      'No outro computador: abra o Ciclo, vá em Dados → Importar e escolha o arquivo.'
+      'No outro computador: abra o Ciclo, vá em Dados → Restaurar backup e escolha o arquivo.'
     ]},
     { h:'Por que não sincroniza' },
     { p:'Sincronizar exigiria guardar seus dados em um servidor e identificar você com uma conta. O Ciclo foi construído sem isso de propósito. O preço dessa escolha é que cada navegador tem sua própria cópia.' },
@@ -1281,6 +1305,10 @@ const HELP_ARTICLES = [
       'Usar o Ciclo numa janela anônima — o que for registrado ali costuma sumir ao fechar.'
     ]},
     { note:'Esse espaço é separado por navegador e por perfil. Por isso os dados do Chrome não aparecem no Firefox.' },
+    { h:'E a internet?' },
+    { p:'O Ciclo é uma página: a internet é usada só para abri-la (ou nem isso, se você abrir os arquivos direto do seu computador). Depois de aberta, ela não envia nem busca nada — registrar, revisar, analisar e fazer backup acontecem dentro do navegador. O Ciclo não se instala como aplicativo: para abrir de novo sem conexão, o navegador precisa ter a página guardada ou você precisa ter os arquivos no aparelho.' },
+    { h:'Em mais de uma aba' },
+    { p:'Você pode abrir o Ciclo em duas abas ou janelas do mesmo navegador. Elas usam os mesmos dados e se avisam quando algo muda. Se você estiver com um formulário aberto, o Ciclo não mexe nele: avisa que os dados mudaram em outra aba e deixa você escolher entre atualizar e continuar editando.' },
     { h:'A contrapartida' },
     { p:'O backup é responsabilidade sua. Exportar o arquivo de vez em quando é o que protege o seu histórico.' }
   ],
@@ -1736,7 +1764,7 @@ const HELP_FAQ = [
     a:'Pode, com todas as funções essenciais. A experiência é pensada primeiro para computador, mas o celular continua completo. Os dados, porém, não são compartilhados entre os aparelhos.' },
   { id:'faq-conta', g:'comecando', article:'privacidade',
     q:'Existe conta ou login?',
-    a:'Não existe e não é necessário. O Ciclo abre direto e funciona sem internet.' },
+    a:'Não existe e não é necessário. O Ciclo abre direto, sem cadastro. Depois de aberto, ele não usa a internet para nada: tudo acontece no seu navegador.' },
 
   /* ---- estudos ---- */
   { id:'faq-obedecer', g:'estudando', article:'como-o-ciclo-sugere',
@@ -1753,7 +1781,13 @@ const HELP_FAQ = [
     a:'Em Registrar estudo, escolha o dia em que começou e informe Comecei 23:50 e Terminei 00:12. O Ciclo entende que terminou no dia seguinte e registra 22 minutos.' },
   { id:'faq-aba-fechada', g:'estudando', article:'cronometro',
     q:'O cronômetro continua se eu fechar ou atualizar a página?',
-    a:'Sim. O tempo é calculado por marcação de horário, não por um contador na tela. Se ficar aberto muitas horas, o Ciclo pergunta o que fazer em vez de registrar tudo sozinho.' },
+    a:'Sim, desde que o navegador consiga guardar o cronômetro — se não conseguir, o Ciclo avisa na barra do cronômetro. O tempo é calculado por marcação de horário, não por um contador na tela. Se ficar aberto muitas horas, o Ciclo pergunta o que fazer em vez de registrar tudo sozinho.' },
+  { id:'faq-duas-abas', g:'estudando', article:'privacidade',
+    q:'Posso usar o Ciclo em duas abas ao mesmo tempo?',
+    a:'Pode. As abas usam os mesmos dados e se atualizam sozinhas. O cronômetro é um só: finalizar em uma aba encerra nas outras, e o mesmo estudo nunca é gravado duas vezes. Com um formulário aberto, o Ciclo avisa que os dados mudaram em vez de mexer no que você está digitando.' },
+  { id:'faq-editar-estudo-revisao', g:'revisoes', article:'resultados-revisao',
+    q:'Editei ou excluí um estudo. O que acontece com as revisões do tópico?',
+    a:'O tópico acompanha o histórico. Se você excluir o único estudo de um tópico, ele volta a "não iniciado" e não fica nenhuma revisão marcada. Se mexer na revisão mais recente, a próxima data é recalculada. Corrigir ou registrar uma revisão mais antiga só ajusta o histórico e as contagens: a agenda continua valendo pela revisão mais recente.' },
   { id:'faq-dias-sem-estudar', g:'estudando',
     q:'O que acontece se eu ficar alguns dias sem estudar?',
     a:'Nada é marcado como falha. As revisões daquele período ficam pendentes e as disciplinas não estudadas ganham mais peso na recomendação.' },
@@ -1799,10 +1833,10 @@ const HELP_FAQ = [
   /* ---- planejamento ---- */
   { id:'faq-estudar-mais', g:'planejamento', article:'planejado-realizado',
     q:'Posso estudar mais que o planejado?',
-    a:'Pode. O plano é uma referência, não um teto. A disciplina que passou do previsto apenas perde peso na recomendação, para abrir espaço às que estão atrás.' },
+    a:'Pode. O plano é uma referência, não um teto. O tempo a mais aparece como "além do plano" — ele não aumenta o plano cumprido — e a disciplina que passou do previsto apenas perde peso na recomendação, para abrir espaço às que estão atrás.' },
   { id:'faq-plano-cumprido', g:'planejamento', article:'planejado-realizado',
     q:'O que significa "plano cumprido"?',
-    a:'Quanto do tempo planejado foi realmente estudado no período. 100% é ter cumprido exatamente o previsto.' },
+    a:'Quanto do que foi planejado para cada disciplina foi realmente estudado. Planejou 1h de Redes e 1h de Matemática e estudou 2h de Redes? O plano cumprido é 50%, com 1h "além do plano". 100% é ter dado a cada disciplina pelo menos o tempo previsto.' },
   { id:'faq-plano-obrigatorio', g:'planejamento', article:'planejamento',
     q:'O planejamento é obrigatório?',
     a:'Não. Sem ele o Ciclo continua sugerindo o que estudar, só com menos informação. Informar suas horas por semana melhora bastante as sugestões.' },
@@ -1836,7 +1870,7 @@ const HELP_FAQ = [
     a:'O histórico é apagado junto, sem como recuperar — a menos que você tenha um backup exportado. É a principal razão para exportar de tempos em tempos.' },
   { id:'faq-backup', g:'dados', article:'backup',
     q:'Como faço backup?',
-    a:'Na tela Dados, clique em "Exportar backup (.json)" e guarde o arquivo fora deste computador. É o arquivo que restaura tudo.' },
+    a:'Na tela Dados, clique em "Fazer backup (.json)", confira se o arquivo apareceu nos downloads e guarde uma cópia fora deste aparelho. É o arquivo que restaura tudo.' },
   { id:'faq-json-csv', g:'dados', article:'backup',
     q:'Qual a diferença entre backup JSON e CSV?',
     a:'O JSON é o backup completo, o único que restaura o Ciclo. O CSV traz só a lista de estudos, para abrir em planilha.' },
@@ -1916,7 +1950,7 @@ const CONTEXT_HELP = {
                       tip:'Fatos calculados dos seus registros. Descrevem o que aconteceu, sem supor causas.' },
   minimo:           { term:'minimoSemanal' },
   aderencia:        { title:'Plano cumprido', article:'planejado-realizado',
-                      tip:'Quanto do tempo planejado foi realmente estudado.' },
+                      tip:'Quanto do planejado para cada disciplina foi realmente estudado. Tempo a mais numa não compensa o que faltou em outra.' },
   cobertura:        { title:'Conteúdo estudado', article:'cobertura-dominio',
                       tip:'A parte dos tópicos que você já estudou pelo menos uma vez.' },
   dominio:          { term:'dominio' },
@@ -2053,6 +2087,7 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 };
 
 const CHANGELOG = [
+  { v:'6.5', d:'Public Release Hardening. Uma versão de confiabilidade, sem funções novas: o que mudou foi o quanto você pode confiar no que está gravado. O cronômetro em duas abas não registra mais o mesmo estudo duas vezes — nem com cliques simultâneos; a segunda aba avisa que o estudo já foi registrado. Editar, mover ou excluir um estudo agora atualiza o tópico junto: excluir o único estudo de um tópico o devolve a "não iniciado", e registrar uma revisão com data antiga não empurra mais a próxima revisão para o passado. A restauração de backup confere o arquivo inteiro antes de gravar, mostra o que vai entrar, o que foi ajustado e o que fica de fora, recusa backups de uma versão mais nova e nunca troca uma data ilegível por "hoje". "Plano cumprido" passou a medir a divisão do tempo: estudar a mais numa disciplina não compensa o que faltou em outra, e esse tempo aparece à parte, como "além do plano". Um estudo é guardado por horário ou só por duração, nunca com as duas coisas se contradizendo. Com o Ciclo aberto em duas abas, uma avisa a outra quando os dados mudam, e um formulário aberto nunca é atropelado. Janelas só fecham depois de gravar; se a gravação falhar, o que você digitou continua lá. O CSV ficou seguro para abrir em planilhas, as Análises dizem se cada número é do período ou da situação atual, a análise que você montou continua lá quando você volta, e a navegação por teclado ficou mais firme (modo foco, "Ir para o conteúdo"). Nenhum dado seu foi alterado e nenhuma migração foi necessária.' },
   { v:'6.4.1', d:'Interface Refinement. Uma versão de acabamento, sem funções novas. O horário do estudo ganhou um campo próprio, no formato 24h: basta digitar os números (2350 vira 23:50), colar um horário também funciona, e a roda do mouse não muda mais a hora. A duração aparece assim que o início e o fim são informados — com o que foi decorrido, o descanso e o tempo estudado separados quando há descansos. "Registrar estudo" passou a aproveitar a largura da tela: "Quando" e "O que você estudou" ficam lado a lado, e "Como foi" reúne tipo de estudo, dificuldade e comentário; o comentário só aparece quando você pede. Finalizar e editar um estudo seguem a mesma composição, e os botões de ação das janelas ficam sempre à vista. A tipografia foi revista: títulos e textos usam a mesma família de fontes do sistema, sem serifada, com menos negrito e sem maiúsculas decorativas. Nenhum dado foi alterado.' },
   { v:'6.4', d:'Study Flow / Rest / Rhythm. "Registrar estudo" passou a dizer o que faz — guardar algo que você já estudou — e funciona em qualquer tela, sem tirar você de onde está; "Começar a estudar" liga o cronômetro. As duas ficam na mesma janela, em "Estudar agora" e "Já estudei". No registro de um estudo que já aconteceu, você informa a hora em que começou e terminou e a duração sai sozinha, inclusive quando o estudo atravessa a meia-noite (23:50 → 00:12 são 22 minutos); intervalos muito longos pedem confirmação. Disciplina e tópico ganharam seletores com busca que mostram o que foi escolhido, e os tipos de estudo vêm com ícone e uma linha de explicação. O cronômetro agora tem descansos: "Descansar" pausa o estudo e conta o descanso à parte, quantas vezes você quiser, e nada disso entra no tempo estudado, no plano ou em "Mais estudadas". A tela Hoje mostra seu ritmo (em quantos dos últimos 7 dias você estudou) e Análises ganhou dias com estudo por semana e descansos, sem nota e sem cobrança. Créditos deixaram de existir: o Ciclo trabalha só com tempo. Seus estudos e minutos continuam como estavam, e backups antigos continuam sendo aceitos.' },
   { v:'6.3', d:'Editorial Polish / Smart Capture / Reliability. Criar um tópico sem sair do registro: no campo Tópico, "+ Criar novo tópico…" abre o mesmo formulário de tópico de sempre dentro do registro, com a disciplina já escolhida (e editável); ao salvar, disciplina e tópico voltam selecionados juntos, e nada do que foi preenchido se perde. Nomes repetidos não criam um segundo tópico — o Ciclo oferece usar o existente ou reativar o arquivado. O fim do cronômetro também permite escolher ou criar o tópico, e o estudo só é encerrado depois de gravado. A frase do dia foi reconstruída só com frases reais, com autor e obra, conferidas na fonte, e passou a aparecer logo abaixo da recomendação. Tipografia revista com fontes do próprio sistema, números mais legíveis e movimentos mais curtos. Correções: trocar a disciplina no registro não apaga mais os minutos e o comentário; salvar o plano duas vezes seguidas não cria dois planos; o cronômetro em duas abas não grava o mesmo estudo duas vezes; editar um estudo ou prazo ligado a um tópico arquivado não desfaz mais esse vínculo; "Hoje" se atualiza sozinho na virada do dia. Nenhum dado foi alterado.' },

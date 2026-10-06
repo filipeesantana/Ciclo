@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO v6.4.1 — folha de estilo única · Interface Refinement
+   CICLO v6.5.0 — folha de estilo única · Public Release Hardening
    (antes "Diário de Estudos")
 
    Organização:
@@ -13,6 +13,7 @@
      22 V6.3 — EDITORIAL POLISH (tipografia, frase do dia, captura de tópico)
      23 V6.4 — STUDY FLOW / REST / RHYTHM (registro, seletores, descanso, ritmo)
      24 V6.4.1 — INTERFACE REFINEMENT (horário, composição do registro, tipografia)
+     25 V6.5 — RELIABILITY (avisos de integridade, restauração, acessibilidade)
 
    v6 — princípios visuais:
      · tipografia e espaço fazem a hierarquia; caixas só para unidades independentes;
@@ -3593,4 +3594,106 @@ input[type=number].no-spin::-webkit-inner-spin-button{ display:none; -webkit-app
 }
 @media (forced-colors:active){
   input.time-input[aria-invalid="true"]{ outline:2px solid Mark }
+}
+
+
+/* =========================================================================
+   25 V6.5 — RELIABILITY
+   Nenhum redesenho: só o que as garantias da v6.5 precisam mostrar —
+   "pular para o conteúdo", avisos de dados/cronômetro, a prévia da
+   restauração e os rótulos de tempo das métricas. Tudo com os tokens que já
+   existiam (teal = ação, brass = atenção, danger = erro).
+   ========================================================================= */
+
+/* ---------- pular para o conteúdo: invisível até receber foco pelo teclado ---------- */
+.skip-link{
+  position:fixed; top:8px; left:8px; z-index:400;
+  padding:10px 14px; border-radius:var(--radius-sm);
+  background:var(--surface-overlay); color:var(--text);
+  border:1px solid var(--primary-line); box-shadow:var(--shadow-md);
+  font-size:14px; font-weight:500; text-decoration:none;
+  transform:translateY(-160%);
+}
+.skip-link:focus,.skip-link:focus-visible{ transform:none; outline:2px solid var(--primary); outline-offset:2px }
+#main:focus{ outline:none }
+
+/* ---------- "Os dados mudaram em outra aba." ---------- */
+.sync-notice{
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px;
+  padding:10px 14px; margin:0 0 16px;
+  background:var(--accent-soft); border:1px solid var(--accent-line); border-radius:var(--radius-md);
+  font-size:13px; line-height:1.45; color:var(--text);
+}
+.sync-notice .sync-text{ font-weight:500; flex:1 1 180px; min-width:0 }
+.sync-notice .sync-actions{ display:flex; flex-wrap:wrap; gap:8px }
+.sync-notice .sync-hint{ flex:1 1 100%; font-size:12px; color:var(--text-secondary) }
+/* fora de uma janela: faixa fixa no alto, acima do conteúdo e abaixo das camadas */
+.sync-notice.is-page{
+  position:fixed; z-index:90; top:calc(12px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%);
+  width:min(560px, calc(100vw - 24px)); margin:0;
+  background:var(--surface-overlay); box-shadow:var(--shadow-md);
+}
+@media (max-width:860px){ .sync-notice.is-page{ top:calc(64px + env(safe-area-inset-top,0px)) } }
+
+/* ---------- cronômetro que não pôde ser guardado ---------- */
+.timerbar .tb-warn{
+  flex:1 1 100%; position:relative;
+  margin:2px 0 0; padding:10px 0 0 24px; border-top:1px solid var(--accent-line);
+  font-size:13px; line-height:1.45; color:var(--accent);
+}
+.timerbar .tb-warn svg{ position:absolute; left:0; top:12px; width:16px; height:16px }
+.timerbar .tb-warn .tb-warn-x{ color:var(--text-secondary) }
+.focus-warn{ max-width:44ch; margin:14px auto 0; font-size:13px; line-height:1.45; color:var(--accent) }
+
+/* ---------- horário × duração: avisos junto do campo ---------- */
+.clock-note{ margin-top:10px; padding-left:10px; border-left:2px solid var(--accent-line); color:var(--text-secondary) }
+.clock-note[hidden]{ display:none }
+.finish-summary.is-duration-only .fs-clock{ text-decoration:line-through; text-decoration-thickness:1px; color:var(--text-tertiary) }
+.min-human{ margin-top:4px; color:var(--text-secondary); font-variant-numeric:tabular-nums }
+.min-human:empty{ display:none }
+span.min-human{ margin:0 }
+
+/* ---------- telas muito estreitas (≤ 360px): nada estoura a janela ----------
+   O seletor de situação do prazo (três opções lado a lado) passava 22px da
+   largura a 320px e criava rolagem horizontal na janela. Em vez de encolher o
+   texto, as opções dividem a largura e quebram linha se precisarem. */
+@media (max-width:360px){
+  .modal .segmented{ display:flex; flex-wrap:wrap; max-width:100% }
+  .modal .segmented button{ flex:1 1 auto; min-width:0 }
+}
+.restore .modal-sub,.restore .hint,.restore .warn,.restore .reasons li{ overflow-wrap:anywhere }
+
+/* ---------- prévia da restauração e verificação dos dados ---------- */
+.restore .restore-h{ font-size:13px; font-weight:500; color:var(--text-secondary); margin:4px 0 6px; letter-spacing:0 }
+.restore-table{ border-top:1px solid var(--border-soft); margin-bottom:14px }
+.restore-row{ display:flex; justify-content:space-between; align-items:baseline; gap:8px 16px; flex-wrap:wrap; padding:8px 0; border-bottom:1px solid var(--border-soft) }
+.restore-k{ font-size:14px }
+.restore-v{ font-size:13px; color:var(--text-secondary); text-align:right; margin-left:auto }
+.restore .restore-ok{ margin:0 0 12px }
+.restore .advanced{ margin-bottom:12px }
+.restore .advanced .reasons{ margin:0 }
+.restore .warn{ margin-top:14px }
+.restore .linkbtn{ vertical-align:baseline }
+
+/* ---------- Análises: a que tempo cada número se refere ---------- */
+.an-metric-w{
+  order:-1; align-self:flex-start;
+  font-size:11px; line-height:1.3; letter-spacing:.02em; color:var(--text-tertiary);
+}
+
+/* ---------- alto contraste do sistema (forced-colors) ----------
+   Nesse modo o navegador descarta fundos e sombras: o que era dito por cor de
+   fundo precisa de borda, e o que era barra colorida precisa continuar visível. */
+@media (forced-colors:active){
+  .skip-link:focus{ outline:2px solid Highlight }
+  .sync-notice,.timerbar .tb-warn,.clock-note{ border:1px solid CanvasText }
+  .timerbar,.modal,.drawer,.palette,.toast{ border:1px solid CanvasText }
+  /* barras de progresso e de gráfico: trilho com borda, preenchimento na cor de realce */
+  .bar,.hbar{ border:1px solid CanvasText; forced-color-adjust:none; background:Canvas }
+  .bar-fill,.hbar > span,.pva-real{ forced-color-adjust:none; background:Highlight }
+  .pva-plan{ forced-color-adjust:none; background:transparent; border:1px dashed CanvasText }
+  /* seleção nunca só por cor: o item escolhido ganha contorno */
+  [aria-pressed="true"],[aria-checked="true"],[aria-current="page"],[aria-selected="true"]{ outline:2px solid Highlight; outline-offset:-2px }
+  [aria-invalid="true"]{ outline:2px solid Mark }
+  :focus-visible{ outline:2px solid Highlight; outline-offset:2px }
 }

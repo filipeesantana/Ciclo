@@ -1,6 +1,6 @@
 # Ciclo
 
-**Seu sistema de estudos.** Organize o que você estuda, registre seus estudos, receba revisões no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta, sem servidor, sem internet.
+**Seu sistema de estudos.** Organize o que você estuda, registre seus estudos, receba revisões no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta e sem servidor. Depois de aberto, o Ciclo não usa a internet para nada.
 
 O nome vem do próprio método: **planejar → estudar → revisar → analisar → reajustar**, e começar de novo.
 
@@ -46,7 +46,7 @@ Cada tela responde a uma pergunta. O que importa aparece primeiro; o resto fica 
 
 **Registrar estudo** — *já estudei e quero guardar isso.* É o botão que acompanha todas as telas: abre por cima do que você está vendo e, ao registrar ou cancelar, você continua no mesmo lugar. Dentro de uma disciplina ou de um tópico, ele já vem com os dois escolhidos. Se o tópico ainda não existe, escolha *Criar novo tópico…* no próprio campo, sem perder o que já preencheu.
 
-**Planejamento** — *como vou distribuir meu tempo?* Você diz quantas horas tem por semana e o Ciclo sugere a divisão entre as matérias. A tela mostra a divisão da semana e quanto já foi feito; os detalhes ficam em *Ajustar*. Cada semana guarda o próprio registro.
+**Planejamento** — *como vou distribuir meu tempo?* Você diz quantas horas tem por semana e o Ciclo sugere a divisão entre as matérias. A tela mostra a divisão da semana e quanto já foi feito; os detalhes ficam em *Ajustar*. Cada semana guarda o próprio registro. **Plano cumprido** mede essa divisão: de cada disciplina conta o que você estudou até o que foi planejado para ela. Tempo a mais numa disciplina não compensa o que faltou em outra — ele aparece à parte, como *além do plano*.
 
 **Revisões** — *o que preciso revisar?* Primeiro o que é para agora, começando pelo que corre mais risco de ser esquecido, com um botão para revisar por 20 minutos. As próximas revisões ficam recolhidas logo abaixo.
 
@@ -69,7 +69,9 @@ As duas ações ficam na mesma janela — *Estudar agora* e *Já estudei* — e 
 
 O descanso é guardado junto do estudo, mas **nunca é somado a ele**: 45 min de estudo, 10 de descanso, 35 de estudo, 8 de descanso e mais 40 de estudo são **2h estudadas e 18 min de descanso**. O plano da semana, o tempo de cada disciplina e a ordem *Mais estudadas* contam só o estudo.
 
-O cronômetro não interrompe nada sozinho e não toca alarme: quem decide a hora de descansar é você. Se a página for recarregada ou a aba fechada — inclusive no meio de um descanso —, ele volta com os tempos certos.
+O cronômetro não interrompe nada sozinho e não toca alarme: quem decide a hora de descansar é você. Se a página for recarregada ou a aba fechada — inclusive no meio de um descanso —, ele volta com os tempos certos. Com o Ciclo aberto em duas abas, o cronômetro é um só, e finalizar duas vezes nunca registra o mesmo estudo duas vezes.
+
+Um estudo é guardado de um de dois jeitos, e só um: **por horário** (início e fim, e a duração sai deles) ou **só pela duração**. Se você corrigir os minutos e eles deixarem de fechar com o horário, o Ciclo avisa e passa a guardar só a duração — nunca um horário que contradiz o tempo estudado.
 
 ### Encontrar e voltar
 
@@ -128,6 +130,9 @@ Depois que você estuda um tópico, ele entra sozinho no ciclo de revisão. Quan
 - **Como revisar**: revisar não é reler. O Ciclo sugere um jeito de revisar (tentar lembrar antes de olhar o material, resolver exercícios, explicar com suas palavras, escrever de memória…) e mostra um roteiro curto. Você pode trocar quando quiser.
 - **Revisar com o tempo que você tem**: com muitas revisões acumuladas, basta dizer quanto tempo você tem. O Ciclo escolhe as mais importantes que cabem nesse tempo, e o restante continua na fila.
 - **Resultado**: ao terminar, você responde como foi (*Esqueci*, *Lembrei com dificuldade*, *Lembrei bem* ou *Dominei*) e o Ciclo ajusta a próxima data.
+- **Corrigir depois**: editar ou excluir um estudo atualiza o tópico junto. Se era o único estudo do tópico, ele volta a *não iniciado*. A agenda vale sempre pela revisão mais recente: registrar ou corrigir uma revisão mais antiga ajusta o histórico, sem empurrar a próxima revisão para o passado.
+
+A **consolidação estimada** de um tópico (de 1 a 5) sai só das suas respostas nas revisões. É uma estimativa para orientar a agenda, não uma medição da sua memória.
 
 Quem quiser mais controle pode escolher outro ritmo em *Quando revisar* (ciclo programado, intensiva para provas, manutenção) por disciplina ou por tópico. Ninguém precisa mexer nisso para usar bem o Ciclo.
 
@@ -142,14 +147,14 @@ Análises não começa despejando números. Primeiro pergunta: **o que você que
 Ao clicar em **Gerar análise**, você recebe só o que responde à sua escolha:
 
 - **Seu período em resumo** — poucas frases sobre o que aconteceu. Por exemplo: *"Você estudou 12h40 em 9 de 30 dias."*
-- **Três ou quatro números essenciais** — os que têm seta abrem os detalhes.
+- **Três ou quatro números essenciais** — os que têm seta abrem os detalhes. Cada um diz a que tempo se refere: *no período* (o que aconteceu no intervalo escolhido) ou *situação atual* (como as coisas estão agora, qualquer que seja o período).
 - **Um gráfico principal**, escolhido conforme o foco: tempo ao longo do período, planejado × realizado, resultado das revisões, situação dos tópicos ou linha do tempo dos prazos.
 - **Principais insights** — pontos de atenção e pontos positivos, sem alarme.
 - **Explorar mais** — calendário, distribuição do tempo, dias com estudo semana a semana, descansos, prioridades e outras visões, que abrem só quando você clicar.
 
 No foco **Tempo e constância**, além do tempo estudado, aparecem os **dias com estudo** e os **descansos** (quanto, quantos e a média de cada um). Um dia conta quando tem pelo menos um estudo registrado; analisando uma disciplina ou um tópico, contam só os dias em que ele foi estudado. São números, não notas: o Ciclo não diz se você estudou pouco nem se descansou demais.
 
-*Alterar análise* volta às escolhas já preenchidas, sem perder o resultado até você gerar outro. Combinações que não fazem sentido (como planejamento de um único tópico) aparecem indisponíveis, com a explicação ao lado. Em *Exportar*, você copia um resumo ou baixa um relatório em texto (`ciclo-relatorio-…-AAAA-MM-DD.txt`) com exatamente o escopo, o período e o foco escolhidos — gerado no seu navegador, sem comentários nem anotações pessoais.
+*Alterar análise* volta às escolhas já preenchidas, sem perder o resultado até você gerar outro. Sair de Análises e voltar também mantém a análise que você montou. Combinações que não fazem sentido (como planejamento de um único tópico) aparecem indisponíveis, com a explicação ao lado. Em *Exportar*, você copia um resumo ou baixa um relatório em texto (`ciclo-relatorio-…-AAAA-MM-DD.txt`) com exatamente o escopo, o período e o foco escolhidos — gerado no seu navegador, sem comentários nem anotações pessoais.
 
 Os insights são fatos calculados dos seus registros. Eles mostram o que aconteceu, sem tentar adivinhar o porquê.
 
@@ -179,11 +184,17 @@ Isso tem duas consequências práticas:
 Por isso existe o backup, na tela **Dados**:
 
 - **Backup completo (.json)**: guarda tudo (áreas, disciplinas, tópicos, prioridades, estudos registrados com seus descansos, planos, prazos e configurações). É o arquivo que restaura o Ciclo em outro computador ou depois de limpar o navegador.
-- **Histórico (.csv)**: apenas a lista de estudos, para abrir numa planilha.
+- **Histórico (.csv)**: apenas a lista de estudos, para abrir numa planilha. Textos que uma planilha poderia interpretar como fórmula saem neutralizados.
 
-Ao importar um backup, o Ciclo verifica o arquivo antes de gravar qualquer coisa e pede confirmação. Backups de versões anteriores, inclusive da época do Diário de Estudos, continuam sendo aceitos e são convertidos para o formato atual.
+**Restaurar** é feito com cuidado:
 
-A tela Dados mostra quando foi seu último backup. Exportar de vez em quando e guardar o arquivo fora do computador é a melhor proteção para o seu histórico.
+1. o arquivo é lido e conferido por inteiro antes de qualquer gravação;
+2. você vê uma prévia — quantas disciplinas, tópicos e estudos vão entrar, o que precisou de ajuste e o que fica de fora, com o motivo;
+3. só depois de confirmar os dados são trocados, numa operação única: ou tudo entra, ou nada muda.
+
+Um arquivo que não é um backup do Ciclo, que está corrompido, que tem identificadores repetidos ou que foi criado por uma versão mais nova é recusado, e os dados que estavam no navegador continuam intactos. Backups de versões anteriores, inclusive da época do Diário de Estudos, continuam sendo aceitos e são convertidos para o formato atual.
+
+A tela Dados mostra quando o último backup foi **gerado**. Confira se o arquivo apareceu nos seus downloads e guarde uma cópia fora do aparelho: essa é a melhor proteção para o seu histórico. Em **Verificar os dados**, o Ciclo confere datas e vínculos do que está guardado, sem alterar nada.
 
 ## Filosofia
 
@@ -203,6 +214,20 @@ A tela Dados mostra quando foi seu último backup. Exportar de vez em quando e g
 
 O Ciclo é uma aplicação local-first feita em HTML, CSS e JavaScript puro, sem frameworks. Os dados ficam no IndexedDB do navegador e nenhuma informação é enviada para um servidor.
 
+## Notas técnicas
+
+Curto e direto, para quem quer saber exatamente o que esperar.
+
+- **Navegadores.** A v6.5 foi testada de forma automatizada no Chromium 141, a base do Chrome e do Edge. Firefox e Safari não foram testados nesta versão: o Ciclo usa apenas recursos padrão da web, mas isso não é uma garantia.
+- **Onde os dados ficam.** No IndexedDB do navegador; o cronômetro em andamento e o tema ficam no `localStorage`. Cada navegador (e cada perfil) tem a sua cópia. Nada é enviado para fora.
+- **Internet.** O Ciclo é uma página comum: a rede serve só para abri-la. Ele não se instala como aplicativo e não guarda a si mesmo para uso sem conexão — sem rede, só abre se o navegador ainda tiver a página guardada ou se você abrir os arquivos direto do seu aparelho.
+- **O que as datas significam.** Datas de estudo, de prazo e de revisão são dias do calendário **no fuso do seu aparelho**. Um estudo pertence ao dia em que começou: 23:50 → 00:12 conta inteiro no dia das 23:50. Horários exatos (início, fim, descansos) são guardados como instantes e mostrados no seu fuso.
+- **Backup.** O arquivo `.json` contém tudo o que está registrado. O Ciclo sabe que gerou o arquivo, mas não tem como confirmar onde o navegador o salvou.
+- **Cronômetro e backup.** Um estudo em andamento só entra no histórico quando é finalizado — até lá, não faz parte do backup. Antes de restaurar um backup com o cronômetro ligado, o Ciclo pergunta o que fazer com esse tempo.
+- **Duas abas.** Pode usar. As abas compartilham os dados e se avisam quando algo muda; com um formulário aberto, o Ciclo avisa em vez de mexer no que você está digitando.
+- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v6.5 não muda o formato dos dados nem exige migração. Se a página parecer antiga, recarregue-a.
+- **Se algo der errado.** Recarregar a página é seguro: tudo o que foi registrado já está gravado. Se uma gravação falhar, o Ciclo diz isso e mantém a janela aberta com o que você digitou. Se os dados sumirem (navegador limpo, outro perfil), restaure o último backup em **Dados → Restaurar backup**.
+
 ## Contato
 
 Dúvidas, sugestões ou problemas: **contatosantanafilipe@gmail.com**
@@ -211,19 +236,26 @@ O endereço também está no aplicativo, em **Ajuda** e em **Configurações →
 
 ## Versão atual
 
-**v6.4.1 — Interface Refinement**
+**v6.5.0 — Public Release Hardening**
 
-Uma versão de acabamento: nenhuma função nova, o mesmo Ciclo com mais cuidado.
+Uma versão de confiabilidade: nenhuma função nova e nada para reaprender. O que mudou é o quanto se pode confiar no que está gravado.
 
-- **Novo campo de horário.** Formato 24h, digitando só os números (*2350 → 23:50*). Sem seletor do navegador e sem a roda do mouse mudando a hora por engano.
-- **Duração em tempo real.** Assim que o início e o fim estão preenchidos, o tempo de estudo aparece — com o tempo decorrido e o descanso separados quando há descansos, e o aviso de que o estudo terminou no dia seguinte.
-- **Registro refinado.** *Quando* e *O que você estudou* ficam lado a lado nas telas largas; *Como foi* reúne tipo de estudo, dificuldade e comentário. O comentário só ocupa espaço quando você pede. Finalizar e editar um estudo seguem a mesma composição.
-- **Menos rolagem no computador.** O registro cabe inteiro nas telas mais comuns, e os botões das janelas ficam sempre à vista.
-- **Tipografia revisada.** Títulos e textos usam a mesma família de fontes do próprio sistema — sem serifada, com menos negrito e sem maiúsculas decorativas.
-- **Hierarquia mais clara.** O título de cada grupo se destaca dos campos que ele contém, e o espaço mostra o que pertence a quê.
-- **Movimento mais curto** ao abrir janelas, trocar de tela e atualizar números.
+- **O mesmo estudo nunca é registrado duas vezes.** Nem com cliques repetidos, nem finalizando o cronômetro em duas abas ao mesmo tempo: a segunda aba avisa que o estudo já foi registrado.
+- **O tópico acompanha o histórico.** Editar, mover ou excluir um estudo atualiza o tópico junto. Excluir o único estudo de um tópico o devolve a *não iniciado*; uma revisão registrada com data antiga não empurra mais a próxima revisão para o passado.
+- **Restauração com prévia.** O arquivo é conferido por inteiro antes de gravar, e você vê o que entra, o que foi ajustado e o que fica de fora. Backups de uma versão mais nova são recusados, e uma data ilegível nunca vira "hoje".
+- **Plano cumprido mede a divisão do tempo.** O que passa do planejado de uma disciplina aparece à parte, como *além do plano*.
+- **Horário ou duração, nunca os dois se contradizendo.** Corrigir os minutos de um estudo não deixa mais um horário antigo que não fecha.
+- **Duas abas.** Uma avisa a outra quando os dados mudam; um formulário aberto nunca é atropelado, e edições conflitantes são mostradas em vez de sobrescritas.
+- **Janelas só fecham depois de gravar.** Se a gravação falhar, o que você digitou continua lá. Se o cronômetro não puder ser guardado pelo navegador, ele avisa.
+- **Análises mais claras.** Cada número diz se é *do período* ou da *situação atual*; a análise montada continua lá quando você volta.
+- **CSV seguro para planilhas**, datas de conclusão de prazo no dia certo do seu fuso e pausas curtas do cronômetro que não somem do total.
+- **Navegação por teclado.** *Ir para o conteúdo* como primeiro item do Tab, modo foco como janela de verdade (foco preso, Esc, retorno do foco) e a página atrás de uma janela fica inerte. As marcações para leitores de tela foram reforçadas, mas esta versão não foi testada com um leitor de tela.
 
-Seus dados não mudam: o formato é o mesmo da v6.4, e backups de qualquer versão anterior continuam sendo aceitos.
+Seus dados não mudam: o formato é o mesmo da v6.4, não há migração, e backups de qualquer versão anterior continuam sendo aceitos.
+
+### v6.4.1
+
+**Interface Refinement.** Campo de horário próprio no formato 24h (*2350 → 23:50*), duração em tempo real, registro em duas colunas com *Como foi* reunindo tipo, dificuldade e comentário, botões das janelas sempre à vista e tipografia revisada.
 
 ### v6.4
 

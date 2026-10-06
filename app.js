@@ -1,7 +1,15 @@
 /* =========================================================================
-   CICLO — v6.4.1 · Interface Refinement
+   CICLO — v6.5.0 · Public Release Hardening
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
+
+   v6.5 — integridade, confiabilidade e consistência. As regras que decidem o
+   que é gravado ficam em poucos lugares, todos com nome:
+     TimeRules          contas de tempo puras (intervalo, descanso, minutos)
+     IntegrityValidator validação estrutural única (restauração e diagnóstico)
+     TopicReconciler    estado derivado do tópico a partir do histórico
+     SessionCommands    criar / finalizar cronômetro / editar / mover / excluir
+     DataSync           aviso entre abas de que os dados mudaram
 
    Seções:
      CONSTANTS · UTILITIES · DATE HELPERS · DATABASE · MIGRATION
@@ -12,6 +20,7 @@
      REGISTRO COM TÓPICO (v6.3: editor canônico em subtela, virada do dia)
      FLUXO DE ESTUDO (v6.4: estudar agora / já estudei, descansos, constância;
                       v6.4.1: campo de horário próprio, registro em duas colunas)
+     CONFIABILIDADE (v6.5: comandos atômicos, reconciliação, sincronia entre abas)
      HELP ENGINE (busca, rotas, glossário) · EVENT HANDLERS · INITIALIZATION
    ========================================================================= */
 'use strict';
@@ -19,7 +28,7 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '6.4.1';
+const APP_VERSION = '6.5.0';
 const APP_SCHEMA_VERSION = 6;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
@@ -48,6 +57,11 @@ const APP_SCHEMA_VERSION = 6;          // formato LÓGICO dos dados. A v5.2 mudo
                                        // A v6.4.1 é só interface (campo de horário, composição
                                        // do registro, tipografia): nenhum campo persistente
                                        // novo, por isso o formato continua em 6.
+                                       // A v6.5 (confiabilidade) também continua em 6: a
+                                       // identidade do cronômetro (`runId`) vive só no
+                                       // localStorage do cronômetro e vira o `id` do estudo —
+                                       // um campo que sempre existiu. Nenhum registro ganha
+                                       // campo novo; nenhuma migração de dados é necessária.
 
 /* Identificadores técnicos LEGADOS. O produto passou a se chamar "Ciclo" na v5.1,
    mas estes nomes ficam como estão: renomeá-los faria o navegador procurar um
@@ -515,6 +529,7 @@ function parseClock(v){
      clockMask('23:5')  → '23:5'       clockMask('9')   → '09'
      clockState('23:50') → 'valid'     clockState('27:89') → 'invalid'
      clockState('09:5')  → 'partial'   clockState('')      → 'empty'
+     clockMask('12345') → '12:345'  →  clockState → 'invalid' (nada é cortado)
 
    Regra de ouro: a máscara nunca "conserta" um horário impossível. 27:89 fica
    como foi digitado e é apontado como erro — nada vira outro horário em silêncio. */
@@ -527,13 +542,15 @@ function clockMask(raw){
   const digits = s.replace(/\D/g, '');
   // Com separador digitado ("9:30", "23h5"): o que vem antes é a hora, o que vem depois são os minutos.
   if(cut >= 0 && cut <= 2 && /^\d*$/.test(s.slice(0, cut))){
-    return s.slice(0, cut) + ':' + s.slice(cut + 1).replace(/\D/g, '').slice(0, 2);
+    // v6.5: dígitos a mais NÃO são cortados — "9:305" fica à vista e é apontado como erro.
+    return s.slice(0, cut) + ':' + s.slice(cut + 1).replace(/\D/g, '');
   }
   // Só dígitos: os dois primeiros são a hora. Uma hora que começa com 3–9 só pode
   // ter um dígito ("9" é 09), então o zero entra na frente e "930" vira 09:30.
   let d = digits;
   if(d && d[0] > '2') d = '0' + d;
-  d = d.slice(0, 4);
+  // v6.5: antes, "12345" era cortado para 12:34 em silêncio — um horário que a pessoa
+  // não digitou. Agora o excesso continua no campo ("12:345") e vira erro visível.
   return d.length <= 2 ? d : d.slice(0, 2) + ':' + d.slice(2);
 }
 
@@ -592,6 +609,164 @@ function fmtClockOfDay(value){
   return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
 }
 function validInstant(v){ if(!v || typeof v !== 'string') return null; const t = Date.parse(v); return isFinite(t) ? t : null; }
+
+/* =========================================================================
+   v6.5 — POLÍTICA TEMPORAL DO CICLO (vale para o produto inteiro)
+
+   1. DATAS ACADÊMICAS são dias civis LOCAIS, gravados como "YYYY-MM-DD":
+      a data de um estudo, de um prazo, de uma revisão, o início da semana.
+      Elas nunca passam por UTC e nunca "andam" quando o fuso muda.
+   2. INSTANTES são momentos exatos, gravados em ISO-8601 UTC ("…Z"):
+      `startedAt`, `endedAt`, `createdAt`, `updatedAt`, `completedAt`,
+      o início e o fim de cada descanso.
+   3. "EM QUE DIA ISSO ACONTECEU?" é sempre respondido no fuso LOCAL do
+      aparelho: um instante vira dia com `localDateOfStamp`, nunca cortando
+      os dez primeiros caracteres do ISO (isso leria o dia em UTC).
+   4. UM ESTUDO PERTENCE AO DIA EM QUE COMEÇOU. 23:50 → 00:12 conta inteiro
+      no dia das 23:50 — nas Análises, no plano da semana e no histórico.
+   ========================================================================= */
+
+/** Data civil ESTRITA: exatamente "YYYY-MM-DD" e existente no calendário (2026-02-31 não existe). */
+function isStrictISODate(v){
+  if(typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = parseISO(v);
+  return !!d && dateToISO(d) === v;
+}
+/**
+ * Carimbo gravado → dia civil LOCAL ("YYYY-MM-DD"), ou null.
+ * Aceita um instante ISO (convertido para o fuso local) e também uma data civil
+ * já pronta (versões antigas gravaram só o dia em alguns campos): essa volta
+ * como está — passar por `new Date('2026-10-01')` a leria em UTC e devolveria
+ * o dia anterior em qualquer fuso a oeste de Greenwich.
+ */
+function localDateOfStamp(value){
+  if(value === null || value === undefined || value === '') return null;
+  if(typeof value === 'string' && isStrictISODate(value)) return value;
+  const d = (value instanceof Date) ? value : new Date(value);
+  return isNaN(d.getTime()) ? null : dateToISO(d);
+}
+
+/* =========================================================================
+   v6.5 — TIME RULES: as contas de tempo do Ciclo, puras (sem DOM, sem banco).
+   Registro, edição, cronômetro e importação usam as MESMAS funções.
+
+   Um estudo é guardado em um de dois modos — e só um:
+     MODO HORÁRIO  → tem início e fim (instantes). A conta fecha:
+                     fim − início = minutos de estudo + descansos (±1 min).
+     MODO DURAÇÃO  → só os minutos. Sem `startedAt`/`endedAt`.
+   Nunca fica um horário gravado que contradiz a duração: quando a pessoa
+   corrige os minutos e a conta deixa de fechar, o estudo passa a valer pela
+   duração e o horário antigo deixa de ser guardado (ela é avisada antes).
+   ========================================================================= */
+const TimeRules = {
+  TOLERANCE_MIN: 1,           // segundos arredondados podem somar até 1 minuto de diferença
+  SUSPICIOUS_MIN: LONG_STUDY_CONFIRM_MIN,
+
+  /**
+   * Início e fim como minutos do dia (0–1439). Fim menor que o início é o dia
+   * seguinte. Devolve { ok, minutes, endAbs, nextDay } ou { ok:false, reason }.
+   */
+  span(startMin, endMin){
+    if(!isNum(startMin) || !isNum(endMin)) return { ok:false, reason:'missing' };
+    if(startMin < 0 || startMin > 1439 || endMin < 0 || endMin > 1439) return { ok:false, reason:'range' };
+    if(startMin === endMin) return { ok:false, reason:'same' };
+    const endAbs = endMin > startMin ? endMin : endMin + 1440;
+    return { ok:true, minutes: endAbs - startMin, endAbs, nextDay: endAbs >= 1440 };
+  },
+
+  /** Tempo de estudo = tempo decorrido − descansos. Nunca negativo; 0 quer dizer "não sobrou estudo". */
+  netMinutes(elapsedMin, breakMin){
+    const n = Math.round(Number(elapsedMin) || 0) - Math.round(Number(breakMin) || 0);
+    return n > 0 ? n : 0;
+  },
+
+  /** Minutos inteiros entre dois instantes (ms). */
+  minutesBetween(aMs, zMs){ return (isNum(aMs) && isNum(zMs) && zMs > aMs) ? Math.round((zMs - aMs) / 60000) : 0; },
+
+  /**
+   * Descansos (em minutos do dia, já "abertos" para o dia seguinte quando preciso)
+   * contra o intervalo do estudo. Devolve null quando está tudo certo, ou
+   * { index, reason:'order'|'outside'|'overlap' } apontando o primeiro problema.
+   */
+  checkBreakSpans(spans, startMin, endAbs){
+    for(let i = 0; i < spans.length; i++){
+      const s = spans[i];
+      if(!(s.z > s.a)) return { index:i, reason:'order' };
+      if(s.a < startMin || s.z > endAbs) return { index:i, reason:'outside' };
+    }
+    const sorted = spans.map((s, i) => ({ a:s.a, z:s.z, i })).sort((x, y) => x.a - y.a);
+    for(let k = 1; k < sorted.length; k++){
+      if(sorted[k].a < sorted[k - 1].z) return { index: sorted[k].i, reason:'overlap' };
+    }
+    return null;
+  },
+
+  /**
+   * Durações em milissegundos → minutos inteiros SEM perder o total.
+   * Arredondar cada pausa sozinha jogava fora três pausas de 25 s (75 s reais
+   * viravam 0 min). Aqui o total é arredondado uma vez e distribuído pelo
+   * método dos maiores restos: [25s, 25s, 25s] → [1, 0, 0]; [90s, 90s] → [2, 1].
+   */
+  distributeMinutes(msList){
+    const list = (msList || []).map(ms => (isNum(ms) && ms > 0) ? ms : 0);
+    const total = Math.round(sum(list) / 60000);
+    const base = list.map(ms => Math.floor(ms / 60000));
+    let left = total - sum(base);
+    const order = list.map((ms, i) => ({ i, rest: ms % 60000 })).sort((x, y) => (y.rest - x.rest) || (x.i - y.i));
+    for(let k = 0; k < order.length && left > 0; k++){ if(order[k].rest > 0){ base[order[k].i] += 1; left--; } }
+    return base;
+  },
+
+  /** Estudo acima do limite de conferência (8h): o Ciclo pergunta, não bloqueia. */
+  isSuspicious(minutes){ return Number(minutes) > this.SUSPICIOUS_MIN; },
+
+  /**
+   * O horário gravado de um estudo ainda fecha com a duração dele?
+   * { mode:'clock'|'duration', consistent, elapsed, expected, allBreaksTimed }
+   */
+  clockInfo(session){
+    const a = validInstant(session && session.startedAt), z = validInstant(session && session.endedAt);
+    const breaks = (session && Array.isArray(session.breaks)) ? session.breaks : [];
+    const breakMin = sum(breaks, b => (isNum(b.minutes) && b.minutes > 0) ? b.minutes : 0);
+    const minutes = Math.round(Number(session && session.minutes) || 0);
+    if(a === null || z === null || z <= a) return { mode:'duration', consistent:true, elapsed:null, expected: minutes + breakMin, allBreaksTimed:false };
+    const elapsedMs = z - a;
+    const expected = minutes + breakMin;
+    // a comparação é feita em milissegundos: 50 min de estudo cabem em 49m31s…50m30s de relógio
+    const consistent = Math.abs(elapsedMs - expected * 60000) <= (this.TOLERANCE_MIN * 60000 + 30000);
+    const allBreaksTimed = breaks.every(b => {
+      const ba = validInstant(b.startedAt), bz = validInstant(b.endedAt);
+      return ba !== null && bz !== null && bz > ba && ba >= a - 60000 && bz <= z + 60000;
+    });
+    return { mode:'clock', consistent, elapsed: Math.round(elapsedMs / 60000), expected, allBreaksTimed };
+  },
+
+  /**
+   * Garante que um estudo nunca seja gravado com horário que contradiz a duração.
+   * Devolve uma CÓPIA dos campos temporais: se a conta não fecha, o estudo passa
+   * a valer pela duração (sem início/fim; os descansos ficam só com os minutos).
+   */
+  settle(session){
+    const info = this.clockInfo(session);
+    const breaks = (Array.isArray(session.breaks) ? session.breaks : []).map(b => Object.assign({}, b));
+    if(info.mode === 'clock' && info.consistent){
+      return { startedAt: session.startedAt, endedAt: session.endedAt, breaks, clockDropped:false };
+    }
+    const hadClock = info.mode === 'clock';
+    return {
+      startedAt: null, endedAt: null,
+      breaks: hadClock ? breaks.map(b => Object.assign(b, { startedAt:null, endedAt:null })) : breaks,
+      clockDropped: hadClock
+    };
+  }
+};
+
+/** "125 min" lido como gente lê: "2h05". Só aparece quando ajuda (60 min ou mais). */
+function humanMinutesHint(value){
+  const m = Math.round(Number(value));
+  if(!(m >= 60) || m > 100000) return '';
+  return 'São ' + fmtDuration(m) + '.';
+}
 
 /** Número ISO-8601 aproximado da semana, usado nos relatórios semanais. */
 function isoWeekNumber(d){
@@ -670,12 +845,21 @@ const DB = (() => {
       request.onerror = () => reject(request.error);
     });
   }
+  /* v6.5 — o motivo real da falha chega a quem chamou. `transaction.error` pode
+     estar vazio no evento "error" (o erro é do pedido, não da transação), então o
+     último erro de pedido é guardado e usado no "abort". Só o "abort" rejeita:
+     um pedido que falha e é tratado não derruba a transação. */
   function done(transaction){
     return new Promise((resolve, reject) => {
+      let last = null;
       transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-      transaction.onabort = () => reject(transaction.error || new Error('Transação cancelada.'));
+      transaction.onerror = (ev) => { last = (ev && ev.target && ev.target.error) || transaction.error || last; };
+      transaction.onabort = () => reject(transaction.error || last || new Error('Transação cancelada.'));
     });
+  }
+  /** Avisa as outras abas DEPOIS que a gravação terminou. Nunca atrapalha a gravação. */
+  function committed(stores){
+    try { if(typeof DataSync !== 'undefined') DataSync.committed(stores); } catch(_){ /* aviso é conveniência */ }
   }
 
   return {
@@ -683,32 +867,82 @@ const DB = (() => {
     get isOpen(){ return !!db; },
     get(store, key){ return wrap(tx([store],'readonly').objectStore(store).get(key)); },
     getAll(store){ return wrap(tx([store],'readonly').objectStore(store).getAll()); },
-    async put(store, value){ const t = tx([store],'readwrite'); t.objectStore(store).put(value); await done(t); return value; },
+    async put(store, value){ const t = tx([store],'readwrite'); t.objectStore(store).put(value); await done(t); committed([store]); return value; },
     async putMany(store, values){
       if(!values.length) return;
       const t = tx([store],'readwrite');
       const os = t.objectStore(store);
       values.forEach(v => os.put(v));
       await done(t);
+      committed([store]);
     },
-    async delete(store, key){ const t = tx([store],'readwrite'); t.objectStore(store).delete(key); await done(t); },
+    async delete(store, key){ const t = tx([store],'readwrite'); t.objectStore(store).delete(key); await done(t); committed([store]); },
     async clearStores(stores){
       const t = tx(stores,'readwrite');
       stores.forEach(s => t.objectStore(s).clear());
       await done(t);
+      committed(stores);
     },
     /** Escrita atômica em vários stores: ou tudo grava, ou nada.
         `clear` existe aqui para que "apagar e regravar" (restauração de backup)
-        aconteça dentro de UMA transação. */
+        aconteça dentro de UMA transação. `add` (v6.5) recusa uma chave que já
+        existe — é o que impede um registro de entrar duas vezes. */
     async transactional(stores, writer){
       const t = tx(stores,'readwrite');
+      const finished = done(t);
+      finished.catch(() => {});
       const api = {
         put:(s, v) => t.objectStore(s).put(v),
+        add:(s, v) => t.objectStore(s).add(v),
         delete:(s, k) => t.objectStore(s).delete(k),
         clear:(s) => t.objectStore(s).clear()
       };
       try { writer(api); } catch(err){ try{ t.abort(); }catch(_){} throw err; }
-      await done(t);
+      await finished;
+      committed(stores);
+    },
+    /**
+     * v6.5 — LER, DECIDIR E GRAVAR na mesma transação.
+     *
+     * `work(api)` é assíncrona e usa só o `api` (get, getAll, getAllByIndex, put,
+     * add, delete, clear). O IndexedDB executa transações de escrita sobre os
+     * mesmos stores UMA DE CADA VEZ — inclusive entre abas —, então o que é lido
+     * aqui dentro é o estado que vale no momento da gravação, não o que a aba
+     * tinha na memória. É isso que torna um comando idempotente de verdade:
+     * "se já existe, não grava de novo" é decidido pelo banco.
+     *
+     * Regras de uso:
+     *   · dentro de `work`, espere APENAS chamadas do `api`. Esperar outra coisa
+     *     (rede, setTimeout, outra transação) encerra a transação antes da hora;
+     *   · se `work` lançar, tudo é desfeito e o erro sobe;
+     *   · `add` numa chave existente rejeita com ConstraintError e desfaz tudo.
+     * Devolve o que `work` devolver.
+     */
+    async atomic(stores, work){
+      const t = tx(stores,'readwrite');
+      const finished = done(t);
+      finished.catch(() => {});                       // tratado abaixo; evita "unhandled rejection"
+      let wrote = false;
+      const ask = (request) => { const p = wrap(request); p.catch(() => {}); return p; };
+      const api = {
+        get:(s, k) => ask(t.objectStore(s).get(k)),
+        getAll:(s) => ask(t.objectStore(s).getAll()),
+        getAllByIndex:(s, index, key) => ask(t.objectStore(s).index(index).getAll(key)),
+        put:(s, v) => { wrote = true; return ask(t.objectStore(s).put(v)); },
+        add:(s, v) => { wrote = true; return ask(t.objectStore(s).add(v)); },
+        delete:(s, k) => { wrote = true; return ask(t.objectStore(s).delete(k)); },
+        clear:(s) => { wrote = true; return ask(t.objectStore(s).clear()); }
+      };
+      let result;
+      try { result = await work(api); }
+      catch(err){
+        try { t.abort(); } catch(_){ /* já abortada pelo próprio erro */ }
+        await finished.catch(() => {});
+        throw err;
+      }
+      await finished;
+      if(wrote) committed(stores);
+      return result;
     },
     /** Conta registros de um store (usado nas checagens de integridade). */
     count(store){ return wrap(tx([store],'readonly').objectStore(store).count()); }
@@ -730,7 +964,8 @@ function readV2Raw(){
 }
 
 /** Converte um estado no formato V2 para entidades V3. Não grava nada. */
-function convertV2(raw){
+function convertV2(raw, opts){
+  const o = opts || {};
   const ts = nowISO();
   const areas = [], disciplines = [], sessions = [];
   const areaIds = new Set();
@@ -763,7 +998,14 @@ function convertV2(raw){
     if(!l || !l.id) return;
     if(sessIds.has(l.id)) return;
     if(!discIds.has(l.subjectId)) return;            // ignora log órfão (relatado depois)
-    const date = parseISO(str(l.date)) ? str(l.date).slice(0,10) : todayISO();
+    /* v6.5 — data ilegível não vira "hoje" em silêncio.
+       Na restauração de um arquivo (`keepRawDate`) o valor original segue adiante
+       e o IntegrityValidator decide (recupera pelo carimbo de criação ou deixa o
+       registro de fora, avisando). Na migração automática do localStorage da V2
+       nada pode ficar de fora: usa o dia em que o registro foi criado e, só se
+       nem isso existir, o dia de hoje. */
+    const civil = isStrictISODate(str(l.date).slice(0,10)) ? str(l.date).slice(0,10) : null;
+    const date = civil || (o.keepRawDate ? str(l.date) : (localDateOfStamp(validInstant(str(l.criadoEm)) !== null ? str(l.criadoEm) : null) || todayISO()));
     sessIds.add(l.id);
     sessions.push({
       id: String(l.id),
@@ -778,7 +1020,8 @@ function convertV2(raw){
       difficulty: (isNum(l.dificuldade) && l.dificuldade >= 1 && l.dificuldade <= 5) ? l.dificuldade : null,
       comment: str(l.comentario),
       reviewOutcome: null,
-      createdAt: str(l.criadoEm) || ts,
+      // na restauração, um carimbo de criação ausente fica ausente: senão a data ilegível seria "recuperada" como hoje
+      createdAt: str(l.criadoEm) || (o.keepRawDate ? null : ts),
       updatedAt: ts
     });
   });
@@ -1211,6 +1454,10 @@ function breakMinutesOf(session){ return sum(breaksOf(session), b => (isNum(b.mi
 function sessionClockRange(session){
   const a = validInstant(session.startedAt), z = validInstant(session.endedAt);
   if(a === null || z === null || z <= a) return null;
+  /* v6.5 — um horário que não fecha com a duração não é mostrado. Edições feitas
+     até a v6.4.1 podiam mudar os minutos e deixar o horário antigo no registro;
+     nesses estudos vale a duração, que é o que entra em todas as contas. */
+  if(!TimeRules.clockInfo(session).consistent) return null;
   const nextDay = dateToISO(new Date(a)) !== dateToISO(new Date(z));
   return { text: `${fmtClockOfDay(a)} → ${fmtClockOfDay(z)}`, nextDay, start:a, end:z };
 }
@@ -1448,12 +1695,51 @@ const DeadlineEngine = {
   dueText(dl){
     const info = deadlineTypeInfo(dl.type);
     const n = this.daysLeft(dl);
-    if(this.isDone(dl)) return 'Concluído' + (dl.completedAt ? ' em ' + fmtDateBR(str(dl.completedAt).slice(0,10)) : '');
+    // v6.5: `completedAt` é um instante (UTC); o DIA em que foi concluído é o dia LOCAL daquele instante.
+    // Cortar os 10 primeiros caracteres lia o dia em UTC: concluir às 22h30 em Brasília aparecia como "amanhã".
+    if(this.isDone(dl)){ const day = localDateOfStamp(dl.completedAt); return 'Concluído' + (day ? ' em ' + fmtDateBR(day) : ''); }
     if(n === null) return info.dueWord;
     if(n < 0) return `${info.dueWord} venceu há ${-n} ${-n === 1 ? 'dia' : 'dias'}`;
     if(n === 0) return `${info.dueWord} hoje`;
     if(n === 1) return `${info.dueWord} amanhã`;
     return `${info.dueWord} em ${n} dias`;
+  }
+};
+
+/* =========================================================================
+   v6.5 — PLAN RULES: o que "Plano cumprido" quer dizer.
+
+   O plano semanal divide o tempo entre disciplinas. "Cumprir o plano" é
+   estudar, em CADA disciplina, o que foi planejado para ela. Por isso:
+
+       plano cumprido = Σ min(realizado, planejado)  ÷  Σ planejado
+                        (por disciplina, em cada semana)
+
+   Tempo a mais numa disciplina não compensa o que faltou em outra: planejou
+   1h de Redes e 1h de Matemática e estudou 2h de Redes → 50% do plano, com
+   1h "além do plano" mostrada à parte. O volume total continua visível
+   ("estudado no total"); ele só não é mais chamado de plano cumprido.
+   Antes da v6.5 a conta era Σ realizado ÷ Σ planejado, e o exemplo acima
+   aparecia como 100%.
+   ========================================================================= */
+const PlanRules = {
+  /** Quanto do realizado conta para o plano de UMA disciplina numa semana. */
+  counted(planned, realized){ return Math.max(0, Math.min(Number(realized) || 0, Number(planned) || 0)); },
+  /**
+   * pares = [{ planned, realized }] (um por disciplina e semana) + tempo sem plano.
+   * → { planned, realized, counted, extra, remaining, pct, volumePct }
+   */
+  summarize(pairs, unplannedRealized){
+    const planned = sum(pairs, x => Number(x.planned) || 0);
+    const realized = sum(pairs, x => Number(x.realized) || 0) + (Number(unplannedRealized) || 0);
+    const counted = sum(pairs, x => this.counted(x.planned, x.realized));
+    return {
+      planned, realized, counted,
+      extra: Math.max(0, realized - counted),
+      remaining: Math.max(0, planned - counted),
+      pct: planned > 0 ? (counted / planned) * 100 : null,
+      volumePct: planned > 0 ? (realized / planned) * 100 : null
+    };
   }
 };
 
@@ -1548,9 +1834,15 @@ const PlannerEngine = {
       allocations: base.allocations.map(a => ({ ...a })),
       createdAt: nowISO(), updatedAt: nowISO()
     };
-    await DB.put('weeklyPlans', wp);
-    state.weeklyPlans.push(wp);
-    return wp;
+    // v6.5: cria só se ainda não existe NO BANCO — duas abas na virada da semana não se sobrescrevem.
+    const saved = await DB.atomic(['weeklyPlans'], async api => {
+      const cur = await api.get('weeklyPlans', ws);
+      if(cur) return cur;
+      api.put('weeklyPlans', wp);
+      return wp;
+    });
+    state.weeklyPlans.push(saved);
+    return saved;
   },
 
   weeklyPlanFor(dateRef){
@@ -1573,25 +1865,34 @@ const PlannerEngine = {
     weekSessions.forEach(s => realizedByDisc.set(s.disciplineId, (realizedByDisc.get(s.disciplineId) || 0) + s.minutes));
 
     const perDiscipline = [];
+    let countedTotal = 0;
     if(wp){
       wp.allocations.forEach(a => {
+        const planned = a.targetMinutes || 0;
+        const realized = realizedByDisc.get(a.disciplineId) || 0;
+        countedTotal += PlanRules.counted(planned, realized);
         const d = getDiscipline(a.disciplineId);
         if(!d || d.archived) return;
-        const realized = realizedByDisc.get(a.disciplineId) || 0;
         perDiscipline.push({
           disciplineId: a.disciplineId,
-          planned: a.targetMinutes || 0,
+          planned,
           realized,
-          remaining: Math.max(0, (a.targetMinutes || 0) - realized)
+          remaining: Math.max(0, planned - realized)
         });
       });
     }
     const plannedTotal = wp ? sum(wp.allocations, a => a.targetMinutes || 0) : 0;
     const realizedTotal = sum(weekSessions, s => s.minutes);
+    /* v6.5 — "Plano cumprido" mede a DISTRIBUIÇÃO, não o volume (ver PlanRules):
+       `pct` conta, de cada disciplina, no máximo o que foi planejado para ela.
+       `extraTotal` é o tempo estudado além disso — aparece à parte, nunca somado. */
     return {
       weeklyPlan: wp, range, plannedTotal, realizedTotal,
-      remainingTotal: Math.max(0, plannedTotal - realizedTotal),
-      pct: plannedTotal > 0 ? (realizedTotal / plannedTotal) * 100 : null,
+      countedTotal,
+      extraTotal: Math.max(0, realizedTotal - countedTotal),
+      remainingTotal: Math.max(0, plannedTotal - countedTotal),
+      pct: plannedTotal > 0 ? (countedTotal / plannedTotal) * 100 : null,
+      volumePct: plannedTotal > 0 ? (realizedTotal / plannedTotal) * 100 : null,
       perDiscipline
     };
   },
@@ -1685,34 +1986,30 @@ const ReviewEngine = {
 
   /* ---------- agendamento ---------- */
 
-  /** Primeiro estudo de um tópico: agenda a primeira revisão para o dia seguinte. */
-  scheduleFirstReview(topic, dateISO){
-    if(!topic.reviewEnabled) return topic;
-    if(topic.reviewDueDate || topic.firstStudiedAt) return topic;   // já agendado: não mexe
-    const strategy = this.effectiveStrategy(topic);
+  /** Primeiro intervalo de uma estratégia (1 dia na adaptativa; o 1º passo nos ciclos). */
+  firstInterval(strategy){
     const steps = CYCLE_STEPS[strategy];
-    const firstInterval = steps ? steps[0] : 1;
-    topic.firstStudiedAt = dateISO;
-    topic.reviewIntervalDays = firstInterval;
-    topic.reviewDueDate = addDaysISO(dateISO, firstInterval);
-    topic.masteryLevel = REVIEW_INITIAL_MASTERY;
-    topic.consecutiveSuccessfulReviews = 0;
-    topic.reviewRepetitions = 0;
-    topic.reviewCycleStep = 0;
-    topic.updatedAt = nowISO();
-    return topic;
+    return steps ? steps[0] : 1;
   },
 
+  /* v6.5 — "agendar a primeira revisão" e "aplicar o resultado de uma revisão"
+     saíram daqui: quem altera o tópico agora é só o TopicReconciler (uma fonte de
+     verdade para criar, editar, mover e excluir). Aqui ficam as REGRAS puras que
+     ele usa: firstInterval, computeNext e nextMastery. */
+
   /**
-   * Aplica o resultado de uma revisão. Cada estratégia decide o próximo
-   * intervalo; domínio e sequência de acertos seguem a mesma regra em todas.
+   * v6.5 — a REGRA do próximo intervalo, pura: não lê `state`, não toca em tópico.
+   *   p = { strategy, prevInterval, cycleStep, outcome, intervalModifier, deadlineDays }
+   *   → { interval, cycleStep } ou null se o resultado não existe.
+   * É a mesma conta de sempre, só isolada para poder ser usada também quando um
+   * estudo é corrigido (TopicReconciler) e para ser testada sem navegador.
    */
-  applyReviewOutcome(topic, outcome, dateISO, methodUsed){
-    const rule = REVIEW[outcome];
-    if(!rule) return topic;
-    const on = dateISO || todayISO();
-    const strategy = this.effectiveStrategy(topic);
-    const prev = topic.reviewIntervalDays || 1;
+  computeNext(p){
+    const rule = REVIEW[p.outcome];
+    if(!rule) return null;
+    const strategy = p.strategy || 'adaptive';
+    const prev = (isNum(p.prevInterval) && p.prevInterval > 0) ? p.prevInterval : 1;
+    let cycleStep = isNum(p.cycleStep) ? p.cycleStep : 0;
 
     let interval;
     if(strategy === 'adaptive'){
@@ -1721,44 +2018,38 @@ const ReviewEngine = {
     } else {
       // ciclos programados: o resultado move o passo dentro do ciclo
       const steps = CYCLE_STEPS[strategy] || CYCLE_STEPS.fixed;
-      let step = clamp(isNum(topic.reviewCycleStep) ? topic.reviewCycleStep : 0, 0, steps.length - 1);
-      if(outcome === 'forgot') step = 0;                       // recomeça o ciclo
-      else if(outcome === 'hard') step = Math.max(0, step);     // repete o passo atual
-      else if(outcome === 'remembered') step = Math.min(steps.length - 1, step + 1);
-      else if(outcome === 'mastered') step = Math.min(steps.length - 1, step + 2);
-      topic.reviewCycleStep = step;
+      let step = clamp(cycleStep, 0, steps.length - 1);
+      if(p.outcome === 'forgot') step = 0;                       // recomeça o ciclo
+      else if(p.outcome === 'hard') step = Math.max(0, step);     // repete o passo atual
+      else if(p.outcome === 'remembered') step = Math.min(steps.length - 1, step + 1);
+      else if(p.outcome === 'mastered') step = Math.min(steps.length - 1, step + 2);
+      cycleStep = step;
       interval = steps[step];
     }
     interval = clamp(interval, 1, REVIEW_MAX_INTERVAL);
 
     // v5.2 — a prioridade do tópico MODULA o intervalo-base (não o substitui).
     // "Esqueci" continua voltando no dia seguinte, qualquer que seja a prioridade.
-    if(outcome !== 'forgot'){
-      interval = Math.max(1, Math.round(interval * PriorityEngine.reviewIntervalModifier(topic)));
+    if(p.outcome !== 'forgot'){
+      const mod = (isNum(p.intervalModifier) && p.intervalModifier > 0) ? p.intervalModifier : 1;
+      interval = Math.max(1, Math.round(interval * mod));
     }
-    // Prazo ativo ligado a ESTE tópico: a próxima revisão cai antes dele.
-    // A estratégia escolhida pelo usuário não é alterada.
-    const dlInfo = DeadlineEngine.forTopic(topic);
-    if(dlInfo.specific && dlInfo.days !== null && dlInfo.days >= 2 && interval > dlInfo.days - 1){
-      interval = Math.max(1, dlInfo.days - 1);
+    // Prazo ativo ligado ao tópico: a próxima revisão cai antes dele.
+    if(isNum(p.deadlineDays) && p.deadlineDays >= 2 && interval > p.deadlineDays - 1){
+      interval = Math.max(1, p.deadlineDays - 1);
     }
-    interval = clamp(interval, 1, REVIEW_MAX_INTERVAL);
+    return { interval: clamp(interval, 1, REVIEW_MAX_INTERVAL), cycleStep };
+  },
 
-    let mastery = topic.masteryLevel || REVIEW_INITIAL_MASTERY;
-    mastery = (rule.mastery === 'max') ? 5 : clamp(mastery + rule.mastery, 1, 5);
-
-    topic.reviewIntervalDays = interval;
-    topic.masteryLevel = mastery;
-    topic.consecutiveSuccessfulReviews = rule.resetStreak ? 0 : (topic.consecutiveSuccessfulReviews || 0) + 1;
-    topic.reviewRepetitions = (topic.reviewRepetitions || 0) + 1;
-    topic.lastReviewedAt = on;
-    topic.lastReviewOutcome = outcome;
-    if(outcome === 'forgot') topic.reviewFailures = (topic.reviewFailures || 0) + 1;
-    topic.reviewDueDate = addDaysISO(on, interval);
-    topic.lastStudiedAt = on;
-    if(methodUsed && CONCRETE_METHODS.includes(methodUsed)) topic.lastReviewMethod = methodUsed;
-    topic.updatedAt = nowISO();
-    return topic;
+  /** Domínio e sequência de acertos depois de um resultado (regra pura, igual em todas as estratégias). */
+  nextMastery(mastery, streak, outcome){
+    const rule = REVIEW[outcome];
+    if(!rule) return { mastery, streak };
+    const m = mastery || REVIEW_INITIAL_MASTERY;
+    return {
+      mastery: (rule.mastery === 'max') ? 5 : clamp(m + rule.mastery, 1, 5),
+      streak: rule.resetStreak ? 0 : (streak || 0) + 1
+    };
   },
 
   /**
@@ -2369,7 +2660,7 @@ const AnalyticsEngine = {
    * pelo período. O plano é por disciplina: no escopo de tópico ele não se aplica.
    */
   planAdherence(range, scope){
-    const empty = { applicable: scope.type !== 'topic', hasPlan:false, planned:0, realized:0, weeks:[], perDiscipline:[], pct:null };
+    const empty = { applicable: scope.type !== 'topic', hasPlan:false, planned:0, realized:0, counted:0, extra:0, weeks:[], perDiscipline:[], pct:null, volumePct:null };
     if(scope.type === 'topic') return empty;
     const weeks = [];
     let cursor = startOfWeek(range.start);
@@ -2385,27 +2676,40 @@ const AnalyticsEngine = {
       const coveredDays = diffDays(clipEnd, clipStart) + 1;
       const factor = clamp(coveredDays / 7, 0, 1);          // semana parcial conta proporcionalmente
       const a = dateToISO(clipStart), b = dateToISO(clipEnd);
-      const realized = sum(scoped.filter(s => s.date >= a && s.date <= b), s => s.minutes || 0);
+      const inWeek = scoped.filter(s => s.date >= a && s.date <= b);
+      const realized = sum(inWeek, s => s.minutes || 0);
+      const realizedByDisc = new Map();
+      inWeek.forEach(s => realizedByDisc.set(s.disciplineId, (realizedByDisc.get(s.disciplineId) || 0) + (s.minutes || 0)));
       const allocs = wp ? (wp.allocations || []).filter(x => AnalyticsScope.hasDiscipline(scope, x.disciplineId)) : [];
       const planned = sum(allocs, x => x.targetMinutes || 0) * factor;
-      weeks.push({ weekStart: ws, weeklyPlan: wp || null, allocs, planned, realized, factor, coveredDays,
+      // v6.5 — plano cumprido da semana: de cada disciplina conta no máximo o planejado para ela (PlanRules)
+      // (somado por disciplina antes de comparar: uma disciplina repetida no plano não conta duas vezes)
+      let counted = 0;
+      const plannedByDisc = new Map();
+      allocs.forEach(al => plannedByDisc.set(al.disciplineId, (plannedByDisc.get(al.disciplineId) || 0) + (al.targetMinutes || 0) * factor));
+      plannedByDisc.forEach((pl, id) => { counted += PlanRules.counted(pl, realizedByDisc.get(id) || 0); });
+      weeks.push({ weekStart: ws, weeklyPlan: wp || null, allocs, planned, realized, counted, factor, coveredDays,
+                   extra: Math.max(0, realized - counted), plannedByDisc, realizedByDisc,
                    weekNumber: isoWeekNumber(wStart),
-                   pct: planned > 0 ? (realized / planned) * 100 : null });
+                   pct: planned > 0 ? (counted / planned) * 100 : null,
+                   volumePct: planned > 0 ? (realized / planned) * 100 : null });
       cursor = addDays(cursor, 7);
     }
     const planned = sum(weeks, w => w.planned);
     const realized = sum(weeks, w => w.realized);
+    const counted = sum(weeks, w => w.counted);
     const hasPlan = planned > 0;
     if(!hasPlan) return { ...empty, weeks, realized };
 
     const map = new Map();
-    weeks.forEach(w => w.allocs.forEach(al => {
-      const cur = map.get(al.disciplineId) || { disciplineId:al.disciplineId, planned:0, realized:0 };
-      cur.planned += (al.targetMinutes || 0) * w.factor;
-      map.set(al.disciplineId, cur);
+    weeks.forEach(w => w.plannedByDisc.forEach((pl, id) => {
+      const cur = map.get(id) || { disciplineId:id, planned:0, realized:0, counted:0 };
+      cur.planned += pl;
+      cur.counted += PlanRules.counted(pl, w.realizedByDisc.get(id) || 0);
+      map.set(id, cur);
     }));
     scoped.forEach(s => {
-      const cur = map.get(s.disciplineId) || { disciplineId:s.disciplineId, planned:0, realized:0 };
+      const cur = map.get(s.disciplineId) || { disciplineId:s.disciplineId, planned:0, realized:0, counted:0 };
       cur.realized += s.minutes || 0;
       map.set(s.disciplineId, cur);
     });
@@ -2417,10 +2721,15 @@ const AnalyticsEngine = {
                            pct: v.planned > 0 ? (v.realized / v.planned) * 100 : null });
     });
     perDiscipline.sort((a,b) => (a.pct === null ? 999 : a.pct) - (b.pct === null ? 999 : b.pct));
-    return { applicable:true, hasPlan, planned, realized, weeks, perDiscipline, pct: (realized / planned) * 100 };
+    /* `pct` = plano cumprido (distribuição, nunca passa de 100%).
+       `volumePct` = tudo o que foi estudado ÷ planejado (pode passar de 100%).
+       Por disciplina, `pct` continua sendo realizado ÷ planejado daquela disciplina:
+       ali "130%" é a leitura certa de "estudou mais do que planejou". */
+    return { applicable:true, hasPlan, planned, realized, counted, extra: Math.max(0, realized - counted), weeks, perDiscipline,
+             pct: (counted / planned) * 100, volumePct: (realized / planned) * 100 };
   },
 
-  /** Revisões concluídas no período × previstas (vencidas no período), dentro do escopo. */
+  /** Revisões do escopo: concluídas no período + a situação de agora (marcadas, atrasadas, próximas). */
   reviewStats(range, scope, sessions){
     const done = sessions.filter(s => s.type === 'revisao' || s.reviewOutcome);
     const a = dateToISO(range.start), b = dateToISO(range.end);
@@ -2450,11 +2759,15 @@ const AnalyticsEngine = {
 
     const withMastery = scheduledTopics.filter(t => t.masteryLevel);
     const avgMastery = withMastery.length ? sum(withMastery, t => t.masteryLevel) / withMastery.length : null;
-    const expected = scheduledInRange + done.length;
     const upcoming = ReviewEngine.getUpcomingReviews(7).filter(inScope);
+    /* v6.5 — saiu a "taxa de revisões feitas ÷ esperadas". O tópico guarda só a
+       PRÓXIMA data de revisão; quantas revisões estavam previstas num período
+       passado não pode ser reconstruído, e a taxa somava coisas de tempos
+       diferentes. Ficam os fatos, cada um com o seu tempo:
+         completed  → no período        scheduled → marcadas HOJE para dentro do período
+         overdueNow, dueToday, upcoming → situação de agora */
     return {
-      completed: done.length, scheduled: scheduledInRange, expected,
-      rate: expected > 0 ? (done.length / expected) * 100 : null,
+      completed: done.length, scheduled: scheduledInRange,
       overdueNow: overdueList.length, overdueList, dueToday: due.length, dueList: due, upcoming,
       outcomes, minutes: sum(done, s => s.minutes || 0), sessionsList: done,
       byMethod, forgetful, avgMastery, scheduledCount: scheduledTopics.length
@@ -2508,8 +2821,12 @@ const AnalyticsEngine = {
                     started: DeadlineEngine.hasStarted(dl) }));
     const upcoming = open.filter(x => x.days !== null && x.days >= 0);
     const overdue = open.filter(x => x.days !== null && x.days < 0);
-    const completedInRange = all.filter(dl => DeadlineEngine.isDone(dl) && dl.completedAt &&
-      str(dl.completedAt).slice(0,10) >= a && str(dl.completedAt).slice(0,10) <= b);
+    // "em que dia foi concluído?" é respondido no fuso local (ver POLÍTICA TEMPORAL)
+    const completedInRange = all.filter(dl => {
+      if(!DeadlineEngine.isDone(dl)) return false;
+      const day = localDateOfStamp(dl.completedAt);
+      return !!day && day >= a && day <= b;
+    });
     const dueInRange = all.filter(dl => dl.date >= a && dl.date <= b);
     return { all, open, upcoming, overdue, completedInRange, dueInRange,
              next: upcoming[0] || null, soon: upcoming.filter(x => x.days <= 14) };
@@ -2621,7 +2938,7 @@ const AnalyticsEngine = {
       out.push(`Você estudou ${fmtDuration(t.minutes)}${where} em ${plural(t.count, 'estudo registrado', 'estudos registrados')}, com estudo em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')}.`);
     }
     const pa = a.planAdherence;
-    if(pa.hasPlan) out.push(`Cumpriu ${safePct(pa.pct)} do plano: ${fmtDuration(pa.realized)} de ${fmtDuration(pa.planned)} planejadas.`);
+    if(pa.hasPlan) out.push(`Cumpriu ${safePct(pa.pct)} do plano: ${fmtDuration(pa.counted)} de ${fmtDuration(pa.planned)} planejadas` + (pa.extra >= 1 ? `, mais ${fmtDuration(pa.extra)} além do plano.` : '.'));
     if(t.count > 0 && a.scope.type !== 'topic' && a.scope.type !== 'discipline' && a.byDiscipline.length > 1){
       const top = a.byDiscipline[0];
       out.push(`${top.label} recebeu mais tempo (${safePct(top.pct)}).`);
@@ -2801,9 +3118,14 @@ const AnalyticsEngine = {
    contas — e o tempo de estudo nunca corre escondido durante um descanso.
    ========================================================================= */
 const TimerService = {
-  data: null,          // { disciplineId, topicId, presetType, presetMethod, openedAt, startedAt, accumulatedMs,
+  data: null,          // { runId, disciplineId, topicId, presetType, presetMethod, openedAt, startedAt, accumulatedMs,
                        //   running, breaks:[{id,startedAt,endedAt}], breakStartedAt, targetMinutes? }
   _tick: null,
+  /* v6.5 — `runId` é a identidade deste cronômetro. Ela nasce em start(), fica
+     no localStorage junto com o resto e vira o `id` do estudo ao finalizar.
+     Duas abas veem o MESMO runId; o banco aceita um estudo com esse id uma vez. */
+  /** A última gravação no localStorage deu certo? Se não, fechar a página perde este cronômetro. */
+  persisted: true,
 
   restore(){
     try {
@@ -2811,7 +3133,11 @@ const TimerService = {
       if(!raw) { this.data = null; return null; }
       const d = JSON.parse(raw);
       if(!d || typeof d !== 'object' || !d.disciplineId) { this.clear(); return null; }
-      if(!getDiscipline(d.disciplineId)) { this.clear(); return null; }   // disciplina sumiu
+      /* A disciplina não está na memória desta aba. Antes isso apagava o cronômetro do
+         armazenamento — mas, com duas abas, a disciplina pode ter acabado de ser criada
+         na outra e ainda não ter chegado aqui. Agora esta aba só não mostra o cronômetro;
+         quem decide o destino dele é a aba que o conhece (ou o próximo estudo iniciado). */
+      if(!getDiscipline(d.disciplineId)) { this.data = null; this.persisted = true; return null; }
       const now = Date.now();
       const running = !!d.running;
       const breaks = (Array.isArray(d.breaks) ? d.breaks : [])
@@ -2819,6 +3145,8 @@ const TimerService = {
         .slice(0, MAX_BREAKS_PER_STUDY)
         .map(b => ({ id: str(b.id) || uid(), startedAt: b.startedAt, endedAt: b.endedAt }));
       this.data = {
+        // cronômetro iniciado antes da v6.5 não tem identidade: recebe uma agora, uma única vez
+        runId: (typeof d.runId === 'string' && d.runId) ? d.runId : uid(),
         disciplineId: str(d.disciplineId),
         topicId: d.topicId ? str(d.topicId) : null,
         presetType: SESSION_TYPES.some(t => t.v === d.presetType) ? d.presetType : null,
@@ -2834,20 +3162,51 @@ const TimerService = {
         // v6.3 — duração sugerida escolhida no "Começar a estudar" (opcional; cronômetros antigos não têm)
         targetMinutes: (isNum(d.targetMinutes) && d.targetMinutes > 0 && d.targetMinutes <= 1440) ? Math.round(d.targetMinutes) : null
       };
-      // cronômetro vindo da v6.3 em pausa: grava o início do descanso uma única vez
-      if(!running && !isNum(d.breakStartedAt)) this._persist();
+      this.persisted = true;
+      // cronômetro vindo da v6.3 em pausa (grava o início do descanso) ou sem identidade (grava o runId): uma única vez
+      if((!running && !isNum(d.breakStartedAt)) || this.data.runId !== d.runId) this._persist();
       return this.data;
     } catch(_){ this.clear(); return null; }
   },
+  /**
+   * Grava o cronômetro no localStorage. v6.5 — devolve se deu certo e guarda o
+   * resultado em `persisted`: armazenamento cheio ou bloqueado não é mais
+   * engolido em silêncio (a barra do cronômetro avisa e tenta de novo sozinha).
+   */
   _persist(){
     try {
-      if(this.data) localStorage.setItem(TIMER_LS_KEY, JSON.stringify(this.data));
-      else localStorage.removeItem(TIMER_LS_KEY);
-    } catch(_){ /* storage cheio ou bloqueado: o timer segue em memória */ }
+      if(this.data){
+        const json = JSON.stringify(this.data);
+        localStorage.setItem(TIMER_LS_KEY, json);
+        this.persisted = localStorage.getItem(TIMER_LS_KEY) === json;
+      } else {
+        localStorage.removeItem(TIMER_LS_KEY);
+        this.persisted = true;
+      }
+    } catch(_){
+      // o cronômetro segue contando na memória; o que não dá para garantir é a recuperação
+      this.persisted = !this.data;
+    }
+    return this.persisted;
+  },
+  /** Nova tentativa de gravar um cronômetro que não coube/entrou no armazenamento. */
+  retryPersist(){ return (this.data && !this.persisted) ? this._persist() : this.persisted; },
+  /**
+   * O que o armazenamento diz sobre o cronômetro AGORA (outra aba pode ter
+   * finalizado, descartado ou começado outro): o runId gravado, null se não há
+   * cronômetro gravado, ou undefined se não foi possível ler.
+   */
+  storedRunId(){
+    try {
+      const raw = localStorage.getItem(TIMER_LS_KEY);
+      if(!raw) return null;
+      const d = JSON.parse(raw);
+      return (d && typeof d.runId === 'string' && d.runId) ? d.runId : null;
+    } catch(_){ return undefined; }
   },
   start(disciplineId, topicId, presetType, presetMethod, targetMinutes){
     const now = Date.now();
-    this.data = { disciplineId, topicId: topicId || null, presetType: presetType || null,
+    this.data = { runId: uid(), disciplineId, topicId: topicId || null, presetType: presetType || null,
                   presetMethod: presetMethod || null,
                   startedAt: now, accumulatedMs: 0, running: true, openedAt: now,
                   breaks: [], breakStartedAt: null,
@@ -2916,18 +3275,38 @@ const TimerService = {
       breaks, startedAt: d.openedAt || d.startedAt, endedAt: now, onBreak: !d.running
     };
   },
-  finish(){ const d = this.data; const ms = this.getElapsed(); this.clear(); return { data:d, elapsedMs:ms }; },
-  discard(){ this.clear(); },
   clear(){ this.data = null; this._persist(); this.stopTicking(); },
+  /** Esquece o cronômetro só na memória desta aba (outra aba já cuidou do armazenamento). */
+  forget(){ this.data = null; this.persisted = true; this.stopTicking(); },
+  /**
+   * Encerra o cronômetro `runId` depois que o estudo dele foi gravado (ou já
+   * existia). Só apaga o armazenamento se ele ainda guarda ESTE cronômetro:
+   * se outra aba já limpou ou começou outro estudo, esta aba apenas acompanha.
+   */
+  release(runId){
+    const stored = this.storedRunId();
+    if(stored === runId || stored === undefined){ this.clear(); return; }
+    if(stored === null){ this.forget(); return; }
+    this.stopTicking();
+    this.restore();
+  },
   startTicking(fn){ this.stopTicking(); this._tick = setInterval(fn, 1000); },
   stopTicking(){ if(this._tick){ clearInterval(this._tick); this._tick = null; } }
 };
 
-/** Descansos do cronômetro (ms) → descansos do estudo (ISO + minutos). Menos de meio minuto não vira registro. */
+/**
+ * Descansos do cronômetro (ms) → descansos do estudo (ISO + minutos).
+ * v6.5 — os minutos saem do TOTAL de descanso, distribuídos entre as pausas
+ * (TimeRules.distributeMinutes). Antes cada pausa era arredondada sozinha e
+ * várias pausas curtas somavam zero; agora o total registrado acompanha o
+ * total real. Uma pausa que fica com 0 min não vira registro — o tempo dela
+ * já está contado no total das outras.
+ */
 function timerBreaksToSession(breaks){
-  return sanitizeBreaks((breaks || []).map(b => ({
-    id: b.id, startedAt: new Date(b.startedAt).toISOString(), endedAt: new Date(b.endedAt).toISOString(),
-    minutes: Math.round((b.endedAt - b.startedAt) / 60000)
+  const list = (breaks || []).filter(b => b && isNum(b.startedAt) && isNum(b.endedAt) && b.endedAt > b.startedAt);
+  const minutes = TimeRules.distributeMinutes(list.map(b => b.endedAt - b.startedAt));
+  return sanitizeBreaks(list.map((b, i) => ({
+    id: b.id, startedAt: new Date(b.startedAt).toISOString(), endedAt: new Date(b.endedAt).toISOString(), minutes: minutes[i]
   })).filter(b => b.minutes > 0));
 }
 
@@ -2974,204 +3353,65 @@ const Backup = {
   },
 
   async exportJSON(){
+    // v6.5: o backup sai do que está NO BANCO agora (outra aba pode ter gravado depois do último desenho desta).
+    await loadAll();
     this.download(`ciclo_backup_${todayISO()}.json`, JSON.stringify(this.buildExport(), null, 2), 'application/json');
+    // "gerado", não "feito": o Ciclo não tem como confirmar que o navegador salvou o arquivo.
     await setMeta('lastBackupAt', nowISO());
   },
 
-  exportCSV(){
+  /**
+   * Texto de uma célula de CSV. v6.5 — planilhas (Excel, LibreOffice, Google)
+   * tratam como FÓRMULA qualquer célula que comece com = + - @ (ou com TAB/CR).
+   * Um comentário como "=HYPERLINK(...)" seria executado ao abrir o arquivo.
+   * A célula de texto que começa assim ganha um apóstrofo na frente: a planilha
+   * mostra o texto e não calcula nada. Números do próprio Ciclo não passam por
+   * aqui (ver `exportCSV`), então continuam sendo números na planilha.
+   */
+  csvText(v){
+    let t = str(v);
+    if(/^[\t\r]/.test(t) || /^\s*[=+\-@]/.test(t)) t = "'" + t;
+    return '"' + t.replace(/"/g, '""') + '"';
+  },
+  csvNumber(v){
+    const n = Number(v);
+    return isFinite(n) ? String(Math.round(n * 100) / 100) : '0';
+  },
+
+  buildCSV(){
     // `minutos` é o tempo de estudo; o descanso sai numa coluna própria e nunca é somado a ele.
     const head = ['data','area','disciplina','topico','tipo','dificuldade','minutos','descanso_minutos','resultado_revisao','metodo_revisao','comentario'];
-    const esc = v => '"' + str(v).replace(/"/g,'""') + '"';
+    const T = v => this.csvText(v), N = v => this.csvNumber(v);
     const rows = state.sessions.slice().sort((a,b) => a.date.localeCompare(b.date)).map(s => {
       const d = getDiscipline(s.disciplineId);
       const diff = difficultyInfo(s.difficulty);
       return [
-        s.date, d ? areaNameOf(d) : '', d ? d.name : '', topicLabelOf(s),
-        s.type ? sessionTypeLabel(s.type) : '', diff ? diff.label : '',
-        s.minutes, breakMinutesOf(s), reviewOutcomeLabel(s.reviewOutcome) || '',
-        s.reviewMethod ? methodLabel(s.reviewMethod) : '', s.comment
-      ].map(esc).join(',');
+        T(s.date), T(d ? areaNameOf(d) : ''), T(d ? d.name : ''), T(topicLabelOf(s)),
+        T(s.type ? sessionTypeLabel(s.type) : ''), T(diff ? diff.label : ''),
+        N(s.minutes), N(breakMinutesOf(s)), T(reviewOutcomeLabel(s.reviewOutcome) || ''),
+        T(s.reviewMethod ? methodLabel(s.reviewMethod) : ''), T(s.comment)
+      ].join(',');
     });
-    this.download(`ciclo_sessoes_${todayISO()}.csv`, [head.join(','), ...rows].join('\n'), 'text/csv;charset=utf-8');
+    // BOM: sem ele o Excel lê acentos errados. CRLF é o fim de linha do formato CSV (RFC 4180).
+    return '﻿' + [head.join(','), ...rows].join('\r\n') + '\r\n';
   },
 
-  /** Detecta o formato do arquivo e normaliza para entidades V3. Nunca executa conteúdo. */
+  exportCSV(){
+    this.download(`ciclo_sessoes_${todayISO()}.csv`, this.buildCSV(), 'text/csv;charset=utf-8');
+  },
+
+  /**
+   * Lê o texto de um arquivo de backup e devolve { data, report, warnings, format }.
+   * Nunca executa conteúdo. Lança um Error (com `fatal:true`) quando o arquivo
+   * não pode ser restaurado — nesse caso nada é gravado e o banco atual fica intacto.
+   * A validação em si é do IntegrityValidator.
+   */
   parseBackup(text){
     let raw;
     try { raw = JSON.parse(text); }
-    catch(_){ throw new Error('Arquivo inválido: não é um JSON legível.'); }
-    if(!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Arquivo inválido: estrutura inesperada.');
-
-    const isV3 = Number(raw.schemaVersion) >= 3 || Array.isArray(raw.disciplines);  // cobre v3 e v4
-    const isV2 = !isV3 && (Array.isArray(raw.subjects) || Array.isArray(raw.logs));
-    if(!isV3 && !isV2) throw new Error('Arquivo inválido: não parece um backup do Ciclo.');
-
-    // Coleções presentes precisam ser listas de verdade: um campo corrompido não
-    // pode virar silenciosamente uma restauração vazia (que apagaria tudo).
-    if(isV3){
-      ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines'].forEach(k => {
-        if(k in raw && raw[k] !== null && raw[k] !== undefined && !Array.isArray(raw[k])){
-          throw new Error(`Arquivo inválido: o campo "${k}" está corrompido.`);
-        }
-      });
-    }
-
-    const warnings = [];
-    let data;
-
-    if(isV2){
-      const c = convertV2(raw);
-      data = { areas:c.areas, disciplines:c.disciplines, topics:[], sessions:c.sessions, plans:[], weeklyPlans:[], deadlines:[], settings:c.settings };
-      if(c.orphanLogs) warnings.push(`${c.orphanLogs} registro(s) antigo(s) sem matéria correspondente foram ignorados.`);
-      warnings.push('Backup no formato da V2 — convertido automaticamente.');
-    } else {
-      data = {
-        areas: this._arr(raw.areas), disciplines: this._arr(raw.disciplines), topics: this._arr(raw.topics),
-        sessions: this._arr(raw.sessions), plans: this._arr(raw.plans), weeklyPlans: this._arr(raw.weeklyPlans),
-        deadlines: this._arr(raw.deadlines),
-        settings: Object.assign({}, DEFAULT_SETTINGS, (raw.settings && typeof raw.settings === 'object') ? raw.settings : {})
-      };
-    }
-
-    // Validação e saneamento (nada além dos campos conhecidos entra no banco).
-    const areaIds = new Set();
-    data.areas = data.areas.filter(a => a && a.id && !areaIds.has(a.id) && areaIds.add(a.id)).map(a => ({
-      id:str(a.id), name:str(a.name) || 'Área', archived:!!a.archived,
-      createdAt:str(a.createdAt) || nowISO(), updatedAt:str(a.updatedAt) || nowISO()
-    }));
-
-    const discIds = new Set();
-    data.disciplines = data.disciplines.filter(d => d && d.id && !discIds.has(d.id) && discIds.add(d.id)).map(d => ({
-      id:str(d.id), areaId: (d.areaId && areaIds.has(d.areaId)) ? str(d.areaId) : null,
-      name:str(d.name) || 'Disciplina',
-      priority: clamp(Number(d.priority) || 3, 1, 5),
-      // v6.4: `minutesPerCredit` e `legacyWeeklyMinutes` de backups antigos são aceitos e ignorados
-      contentNature: CONTENT_NATURES.some(n => n.v === d.contentNature) ? d.contentNature : 'mixed',
-      reviewStrategy: ['inherit'].concat(REVIEW_STRATEGIES.map(x => x.v)).includes(d.reviewStrategy) ? d.reviewStrategy : 'inherit',
-      preferredReviewMethod: ['inherit'].concat(REVIEW_METHODS.map(x => x.v)).includes(d.preferredReviewMethod) ? d.preferredReviewMethod : 'inherit',
-      archived: !!d.archived, createdAt:str(d.createdAt) || nowISO(), updatedAt:str(d.updatedAt) || nowISO()
-    }));
-
-    const topicIds = new Set();
-    let droppedTopics = 0;
-    data.topics = data.topics.filter(t => {
-      if(!t || !t.id || topicIds.has(t.id)) return false;
-      if(!discIds.has(t.disciplineId)){ droppedTopics++; return false; }
-      topicIds.add(t.id); return true;
-    }).map(t => ({
-      id:str(t.id), disciplineId:str(t.disciplineId), name:str(t.name) || 'Tópico',
-      sortOrder: isNum(t.sortOrder) ? t.sortOrder : 0, archived: !!t.archived,
-      reviewEnabled: t.reviewEnabled !== false,
-      firstStudiedAt: parseISO(str(t.firstStudiedAt)) ? str(t.firstStudiedAt) : null,
-      lastStudiedAt: parseISO(str(t.lastStudiedAt)) ? str(t.lastStudiedAt) : null,
-      reviewDueDate: parseISO(str(t.reviewDueDate)) ? str(t.reviewDueDate) : null,
-      reviewIntervalDays: isNum(t.reviewIntervalDays) ? clamp(t.reviewIntervalDays,1,REVIEW_MAX_INTERVAL) : null,
-      lastReviewedAt: parseISO(str(t.lastReviewedAt)) ? str(t.lastReviewedAt) : null,
-      reviewRepetitions: isNum(t.reviewRepetitions) ? t.reviewRepetitions : 0,
-      masteryLevel: (isNum(t.masteryLevel) && t.masteryLevel >= 1 && t.masteryLevel <= 5) ? t.masteryLevel : null,
-      consecutiveSuccessfulReviews: isNum(t.consecutiveSuccessfulReviews) ? t.consecutiveSuccessfulReviews : 0,
-      // v5.2: prioridade 1–5; backups antigos trazem `importance` (low/normal/high)
-      priority: normalizePriority(t.priority, t.importance),
-      reviewStrategy: ['inherit'].concat(REVIEW_STRATEGIES.map(x => x.v)).includes(t.reviewStrategy) ? t.reviewStrategy : 'inherit',
-      preferredReviewMethod: ['inherit'].concat(REVIEW_METHODS.map(x => x.v)).includes(t.preferredReviewMethod) ? t.preferredReviewMethod : 'inherit',
-      reviewCycleStep: isNum(t.reviewCycleStep) ? clamp(t.reviewCycleStep, 0, 10) : 0,
-      reviewFailures: isNum(t.reviewFailures) ? Math.max(0, t.reviewFailures) : 0,
-      lastReviewOutcome: REVIEW_OUTCOMES.some(o => o.v === t.lastReviewOutcome) ? t.lastReviewOutcome : null,
-      // v6.3: o último jeito de revisar (gravado pelo motor de revisão) também volta no backup
-      ...(CONCRETE_METHODS.includes(t.lastReviewMethod) ? { lastReviewMethod: t.lastReviewMethod } : {}),
-      createdAt:str(t.createdAt) || nowISO(), updatedAt:str(t.updatedAt) || nowISO()
-    }));
-    if(droppedTopics) warnings.push(`${droppedTopics} tópico(s) sem disciplina correspondente foram ignorados.`);
-
-    const sessIds = new Set();
-    let droppedSessions = 0;
-    data.sessions = data.sessions.filter(s => {
-      if(!s || !s.id || sessIds.has(s.id)) return false;
-      if(!discIds.has(s.disciplineId)){ droppedSessions++; return false; }
-      sessIds.add(s.id); return true;
-    }).map(s => ({
-      id:str(s.id), disciplineId:str(s.disciplineId),
-      topicId: (s.topicId && topicIds.has(s.topicId)) ? str(s.topicId) : null,
-      legacyTopicText: str(s.legacyTopicText),
-      date: parseISO(str(s.date)) ? str(s.date).slice(0,10) : todayISO(),
-      startedAt: str(s.startedAt) || null, endedAt: str(s.endedAt) || null,
-      minutes: isNum(s.minutes) ? Math.max(0, s.minutes) : 0,       // tempo de estudo: nunca recalculado na importação
-      // v6.4: descansos do estudo. Backups anteriores não têm o campo → []. `credits` antigo é ignorado.
-      breaks: sanitizeBreaks(s.breaks),
-      type: SESSION_TYPES.some(t => t.v === s.type) ? s.type : null,
-      difficulty: (isNum(s.difficulty) && s.difficulty >= 1 && s.difficulty <= 5) ? s.difficulty : null,
-      comment: str(s.comment),
-      reviewOutcome: REVIEW_OUTCOMES.some(o => o.v === s.reviewOutcome) ? s.reviewOutcome : null,
-      reviewMethod: REVIEW_METHODS.some(m => m.v === s.reviewMethod) ? s.reviewMethod : null,
-      reviewStrategyAtTime: REVIEW_STRATEGIES.some(x => x.v === s.reviewStrategyAtTime) ? s.reviewStrategyAtTime : null,
-      createdAt: str(s.createdAt) || nowISO(), updatedAt: str(s.updatedAt) || nowISO()
-    }));
-    if(droppedSessions) warnings.push(`${plural(droppedSessions, 'estudo registrado', 'estudos registrados')} sem disciplina correspondente ${droppedSessions === 1 ? 'foi ignorado' : 'foram ignorados'}.`);
-
-    const planIds = new Set();
-    data.plans = data.plans.filter(p => p && p.id && !planIds.has(p.id) && planIds.add(p.id)).map(p => ({
-      id:str(p.id), name:str(p.name) || 'Plano',
-      weeklyAvailableMinutes: isNum(p.weeklyAvailableMinutes) ? Math.max(0, Math.round(p.weeklyAvailableMinutes)) : 0,
-      active: !!p.active,
-      allocations: this._arr(p.allocations).filter(a => a && discIds.has(a.disciplineId)).map(a => ({
-        disciplineId:str(a.disciplineId),
-        priority: clamp(Number(a.priority) || 3, 1, 5),
-        minWeeklyMinutes: isNum(a.minWeeklyMinutes) ? Math.max(0, Math.round(a.minWeeklyMinutes)) : 0,
-        targetMinutes: isNum(a.targetMinutes) ? Math.max(0, Math.round(a.targetMinutes)) : 0
-      })),
-      createdAt:str(p.createdAt) || nowISO(), updatedAt:str(p.updatedAt) || nowISO()
-    }));
-    let activeSeen = false;
-    data.plans.forEach(p => { if(p.active && activeSeen) p.active = false; else if(p.active) activeSeen = true; });
-
-    const wpIds = new Set();
-    data.weeklyPlans = data.weeklyPlans.filter(w => w && w.weekStart && parseISO(str(w.weekStart)) && !wpIds.has(str(w.weekStart)) && wpIds.add(str(w.weekStart))).map(w => ({
-      id: str(w.weekStart), weekStart: str(w.weekStart),
-      weekEnd: parseISO(str(w.weekEnd)) ? str(w.weekEnd) : addDaysISO(str(w.weekStart), 6),
-      basePlanId: str(w.basePlanId) || null,
-      availableMinutes: isNum(w.availableMinutes) ? Math.max(0, Math.round(w.availableMinutes)) : 0,
-      allocations: this._arr(w.allocations).filter(a => a && discIds.has(a.disciplineId)).map(a => ({
-        disciplineId:str(a.disciplineId),
-        priority: clamp(Number(a.priority) || 3, 1, 5),
-        minWeeklyMinutes: isNum(a.minWeeklyMinutes) ? Math.max(0, Math.round(a.minWeeklyMinutes)) : 0,
-        targetMinutes: isNum(a.targetMinutes) ? Math.max(0, Math.round(a.targetMinutes)) : 0
-      })),
-      createdAt:str(w.createdAt) || nowISO(), updatedAt:str(w.updatedAt) || nowISO()
-    }));
-
-    const dlIds = new Set();
-    const topicDisc = new Map(data.topics.map(t => [t.id, t.disciplineId]));
-    const isoOrNull = v => parseISO(str(v)) ? str(v).slice(0,10) : null;
-    data.deadlines = data.deadlines.filter(d => d && d.id && !dlIds.has(d.id) && dlIds.add(d.id)).map(d => {
-      // v5.2: tipo, status, início, orientações e anotações. Backups antigos
-      // (date/importance/completed) são convertidos aqui, sem perda.
-      let disciplineId = (d.disciplineId && discIds.has(d.disciplineId)) ? str(d.disciplineId) : null;
-      let topicId = (d.topicId && topicIds.has(d.topicId)) ? str(d.topicId) : null;
-      if(topicId && !disciplineId) disciplineId = topicDisc.get(topicId) || null;
-      if(topicId && topicDisc.get(topicId) !== disciplineId) topicId = null;   // tópico precisa ser da disciplina
-      const status = DEADLINE_STATUSES.some(x => x.v === d.status) ? d.status : (d.completed ? 'completed' : 'pending');
-      return {
-        id:str(d.id), title: str(d.title).slice(0, 160) || 'Prazo',
-        type: DEADLINE_TYPES.some(x => x.v === d.type) ? d.type : 'other',
-        date: isoOrNull(d.date) || isoOrNull(d.dueDate) || todayISO(),
-        startDate: isoOrNull(d.startDate),
-        disciplineId, topicId,
-        priority: normalizePriority(d.priority, d.importance),
-        status,
-        instructions: str(d.instructions).slice(0, 5000),
-        notes: str(d.notes).slice(0, 5000),
-        completedAt: status === 'completed' ? (str(d.completedAt) || null) : null,
-        createdAt:str(d.createdAt) || nowISO(), updatedAt:str(d.updatedAt) || nowISO()
-      };
-    });
-
-    data.settings = sanitizeSettings(data.settings);
-
-    if(data.disciplines.length === 0 && data.sessions.length === 0 && data.areas.length === 0){
-      throw new Error('Arquivo inválido: o backup não contém dados para restaurar.');
-    }
-
-    return { data, warnings, format: isV2 ? 'v2' : 'v3' };
+    catch(_){ throw IntegrityValidator.fatal('O arquivo não é um JSON legível. Ele pode estar incompleto ou ter sido alterado.', 'Arquivo ilegível'); }
+    const out = IntegrityValidator.analyzeBackup(raw);
+    return { data: out.data, report: out.report, warnings: out.report.repaired.concat(out.report.ignored).map(x => x.text), format: out.report.format };
   },
 
   _arr(v){ return Array.isArray(v) ? v : []; },
@@ -3179,25 +3419,486 @@ const Backup = {
   /**
    * Substitui todo o conteúdo do banco pelo backup.
    *
-   * v5.2.1 — limpeza e regravação passam a acontecer na MESMA transação. Antes
-   * eram duas operações independentes: se o navegador fechasse, travasse ou o
-   * disco falhasse entre elas, o usuário ficava com o banco VAZIO e sem o backup
-   * gravado. Agora, ou o estado novo entra inteiro, ou o antigo permanece
-   * exatamente como estava.
+   * v5.2.1 — limpeza e regravação acontecem na MESMA transação: ou o estado novo
+   * entra inteiro, ou o antigo permanece exatamente como estava.
+   * v6.5 — os registros entram com `add`, que recusa chave repetida. A validação
+   * já garante que não há ids repetidos; se algum escapasse, a transação inteira
+   * seria desfeita em vez de um registro sobrescrever outro em silêncio.
    */
   async restoreInto(data){
     const stores = ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings'];
     await DB.transactional(stores, api => {
       stores.forEach(st => api.clear(st));
-      data.areas.forEach(x => api.put('areas', x));
-      data.disciplines.forEach(x => api.put('disciplines', x));
-      data.topics.forEach(x => api.put('topics', x));
-      data.sessions.forEach(x => api.put('sessions', x));
-      data.plans.forEach(x => api.put('plans', x));
-      data.weeklyPlans.forEach(x => api.put('weeklyPlans', x));
-      data.deadlines.forEach(x => api.put('deadlines', x));
+      data.areas.forEach(x => api.add('areas', x));
+      data.disciplines.forEach(x => api.add('disciplines', x));
+      data.topics.forEach(x => api.add('topics', x));
+      data.sessions.forEach(x => api.add('sessions', x));
+      data.plans.forEach(x => api.add('plans', x));
+      data.weeklyPlans.forEach(x => api.add('weeklyPlans', x));
+      data.deadlines.forEach(x => api.add('deadlines', x));
       api.put('settings', { key:'settings', value:data.settings });
     });
+  }
+};
+
+/* =========================================================================
+   v6.5 — INTEGRITY VALIDATOR: a única fonte de validação estrutural.
+   A restauração de backup e o diagnóstico "Verificar integridade" usam as
+   mesmas regras. Puro: não lê o banco, não grava, não toca na tela.
+
+   Cada problema encontrado cai em UMA de três classes:
+
+     FATAL      o arquivo não pode ser restaurado com segurança. Nada é gravado.
+                · não é JSON / não é um backup do Ciclo / coleção corrompida
+                · foi criado por uma versão MAIS NOVA do Ciclo
+                · dois registros DIFERENTES com o mesmo identificador
+                · não tem nenhum dado
+     REPARÁVEL  o registro entra, com um ajuste explícito e contado
+                (vínculo quebrado desfeito, valor ilegível em branco…)
+     IGNORÁVEL  o registro fica de fora, com o motivo contado
+                (sem identificador, órfão, sem data recuperável…)
+
+   Regras que não mudam:
+     · identificadores são comparados DEPOIS de normalizados: 1 e "1" são o mesmo;
+     · toda relação é conferida (área, disciplina, tópico — e o tópico tem de
+       ser da mesma disciplina do estudo ou do prazo);
+     · uma data ilegível NUNCA vira "hoje": ou é recuperada de outro campo do
+       próprio registro, ou o registro fica de fora — e isso é dito à pessoa;
+     · conversões de formato antigo (importância → prioridade, concluído →
+       status, backup da V2) são migrações, não reparos: não contam como problema.
+   ========================================================================= */
+const IntegrityValidator = {
+  STORE_LABELS: { areas:'áreas', disciplines:'disciplinas', topics:'tópicos', sessions:'estudos', plans:'planos', weeklyPlans:'semanas registradas', deadlines:'prazos' },
+
+  fatal(message, title){
+    const e = new Error(message);
+    e.fatal = true;
+    e.title = title || 'Este backup não pode ser restaurado';
+    return e;
+  },
+
+  /** Identificador normalizado: texto sem espaços nas pontas; número vira texto. Qualquer outra coisa não é id. */
+  normId(v){
+    if(typeof v === 'string') return v.trim();
+    if(typeof v === 'number' && isFinite(v)) return String(v);
+    return '';
+  },
+
+  /** Data civil: { value, trimmed } — aceita "YYYY-MM-DD" e, como reparo, "YYYY-MM-DDT…" (só o dia). */
+  civilDate(v){
+    if(typeof v !== 'string') return { value:null, trimmed:false };
+    if(isStrictISODate(v)) return { value:v, trimmed:false };
+    if(/^\d{4}-\d{2}-\d{2}[T ]/.test(v) && isStrictISODate(v.slice(0, 10))) return { value: v.slice(0, 10), trimmed:true };
+    return { value:null, trimmed:false };
+  },
+
+  /** Instante: ISO normalizado ou null. */
+  instant(v){
+    const t = validInstant(v);
+    return t === null ? null : new Date(t).toISOString();
+  },
+
+  /** Frases do relatório, por código. */
+  TEXT: {
+    // reparos
+    'name-empty':            n => `${plural(n, 'registro sem nome recebeu', 'registros sem nome receberam')} um nome padrão.`,
+    'area-missing':          n => `${plural(n, 'disciplina apontava', 'disciplinas apontavam')} para uma área que não existe no arquivo: ${n === 1 ? 'fica' : 'ficam'} sem área.`,
+    'priority':              n => `${plural(n, 'prioridade fora da escala de 1 a 5 voltou', 'prioridades fora da escala de 1 a 5 voltaram')} para "Média".`,
+    'option':                n => `${plural(n, 'opção desconhecida voltou', 'opções desconhecidas voltaram')} ao padrão (tipo, estratégia, método ou situação).`,
+    'topic-date':            n => `${plural(n, 'data ilegível de tópico ficou', 'datas ilegíveis de tópicos ficaram')} em branco.`,
+    'topic-number':          n => `${plural(n, 'número inválido de revisão voltou', 'números inválidos de revisão voltaram')} ao valor inicial.`,
+    'session-topic-missing': n => `${plural(n, 'estudo apontava', 'estudos apontavam')} para um tópico que não existe no arquivo: ${n === 1 ? 'fica' : 'ficam'} só na disciplina.`,
+    'session-topic-foreign': n => `${plural(n, 'estudo apontava', 'estudos apontavam')} para um tópico de outra disciplina: ${n === 1 ? 'fica' : 'ficam'} só na disciplina.`,
+    'session-date-derived':  n => `${plural(n, 'estudo sem data legível recebe', 'estudos sem data legível recebem')} o dia do horário de início gravado ${n === 1 ? 'nele' : 'neles'} — ou, na falta, o dia em que ${n === 1 ? 'foi registrado' : 'foram registrados'}.`,
+    'date-trimmed':          n => `${plural(n, 'data trazia', 'datas traziam')} horário junto e ${n === 1 ? 'ficou' : 'ficaram'} só com o dia.`,
+    'session-clock':         n => `${plural(n, 'horário ilegível de estudo ficou', 'horários ilegíveis de estudo ficaram')} em branco. A duração foi mantida.`,
+    'minutes-text':          n => `${plural(n, 'duração gravada como texto virou', 'durações gravadas como texto viraram')} número.`,
+    'minutes-invalid':       n => `${plural(n, 'estudo com duração ilegível ou negativa fica', 'estudos com duração ilegível ou negativa ficam')} com 0 min.`,
+    'breaks':                n => `${plural(n, 'descanso sem duração válida ficou', 'descansos sem duração válida ficaram')} de fora.`,
+    'plan-active':           n => `Havia mais de um plano marcado como ativo: ${plural(n, 'plano deixou', 'planos deixaram')} de ser o ativo.`,
+    'deadline-link':         n => `${plural(n, 'prazo apontava', 'prazos apontavam')} para uma disciplina ou um tópico que não existe ou não combina: ${n === 1 ? 'fica' : 'ficam'} sem esse vínculo.`,
+    'deadline-field':        n => `${plural(n, 'data ilegível de prazo ficou', 'datas ilegíveis de prazos ficaram')} em branco (início ou conclusão).`,
+    'stamp':                 n => `${plural(n, 'registro sem data de criação legível recebe', 'registros sem data de criação legível recebem')} a data de agora.`,
+    // ignorados
+    'no-id':                 n => `${plural(n, 'registro sem identificador', 'registros sem identificador')}.`,
+    'duplicate':             n => `${plural(n, 'registro repetido, idêntico a outro', 'registros repetidos, idênticos a outros')}.`,
+    'topic-orphan':          n => `${plural(n, 'tópico', 'tópicos')} de uma disciplina que não existe no arquivo.`,
+    'session-orphan':        n => `${plural(n, 'estudo', 'estudos')} de uma disciplina que não existe no arquivo.`,
+    'session-no-date':       n => `${plural(n, 'estudo', 'estudos')} sem nenhuma data recuperável.`,
+    'deadline-no-date':      n => `${plural(n, 'prazo', 'prazos')} sem data legível.`,
+    'week-invalid':          n => `${plural(n, 'semana registrada', 'semanas registradas')} sem data de início válida.`,
+    'alloc-orphan':          n => `${plural(n, 'divisão de tempo', 'divisões de tempo')} de plano para uma disciplina que não existe no arquivo.`,
+    'alloc-dup':             n => `${plural(n, 'divisão de tempo repetida', 'divisões de tempo repetidas')} dentro do mesmo plano.`
+  },
+
+  /**
+   * Valida e normaliza um conjunto de coleções.
+   * `raw` = objeto do backup já lido. Devolve { data, report } ou lança `fatal`.
+   */
+  analyzeBackup(raw){
+    if(!raw || typeof raw !== 'object' || Array.isArray(raw)) throw this.fatal('O arquivo tem uma estrutura inesperada.', 'Arquivo inválido');
+
+    const isV3 = Number(raw.schemaVersion) >= 3 || Array.isArray(raw.disciplines);  // cobre v3 em diante
+    const isV2 = !isV3 && (Array.isArray(raw.subjects) || Array.isArray(raw.logs));
+    if(!isV3 && !isV2) throw this.fatal('O arquivo não parece um backup do Ciclo.', 'Arquivo inválido');
+
+    // Um backup de uma versão futura pode ter campos e regras que esta versão não conhece:
+    // restaurar "o que der" perderia dados sem ninguém perceber.
+    const sv = Number(raw.schemaVersion);
+    if(isV3 && isFinite(sv) && sv > APP_SCHEMA_VERSION){
+      throw this.fatal('Este backup foi criado por uma versão mais nova do Ciclo. Atualize o Ciclo (recarregue a página) e tente restaurar de novo. Seus dados atuais não foram alterados.',
+        'Backup de uma versão mais nova');
+    }
+
+    // Coleções presentes precisam ser listas de verdade: um campo corrompido não
+    // pode virar silenciosamente uma restauração vazia (que apagaria tudo).
+    if(isV3){
+      ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines'].forEach(k => {
+        if(k in raw && raw[k] !== null && raw[k] !== undefined && !Array.isArray(raw[k])){
+          throw this.fatal(`A parte "${this.STORE_LABELS[k]}" do arquivo está corrompida.`, 'Arquivo corrompido');
+        }
+      });
+    }
+
+    let source, notes = [];
+    if(isV2){
+      const c = convertV2(raw, { keepRawDate:true });
+      source = { areas:c.areas, disciplines:c.disciplines, topics:[], sessions:c.sessions, plans:[], weeklyPlans:[], deadlines:[], settings:c.settings };
+      notes.push('Backup no formato da V2 (Diário de Estudos): convertido automaticamente.');
+      const out = this.analyze(source);
+      if(c.orphanLogs){ out.report.ignoredCodes['session-orphan'] = (out.report.ignoredCodes['session-orphan'] || 0) + c.orphanLogs; out.report.counts.sessions.found += c.orphanLogs; out.report.counts.sessions.ignored += c.orphanLogs; }
+      return this._finish(out, { format:'v2', notes, raw });
+    }
+    const arr = v => Array.isArray(v) ? v : [];
+    source = {
+      areas: arr(raw.areas), disciplines: arr(raw.disciplines), topics: arr(raw.topics), sessions: arr(raw.sessions),
+      plans: arr(raw.plans), weeklyPlans: arr(raw.weeklyPlans), deadlines: arr(raw.deadlines),
+      settings: Object.assign({}, DEFAULT_SETTINGS, (raw.settings && typeof raw.settings === 'object' && !Array.isArray(raw.settings)) ? raw.settings : {})
+    };
+    return this._finish(this.analyze(source), { format:'v3', notes, raw });
+  },
+
+  _finish(out, meta){
+    const r = out.report, d = out.data;
+    r.format = meta.format;
+    r.notes = meta.notes;
+    r.schemaVersion = isFinite(Number(meta.raw.schemaVersion)) ? Number(meta.raw.schemaVersion) : null;
+    r.appVersion = typeof meta.raw.appVersion === 'string' ? meta.raw.appVersion.slice(0, 20) : null;
+    r.exportedAt = this.instant(meta.raw.exportedAt);
+    const list = codes => Object.keys(codes).map(code => ({ code, count: codes[code], text: (this.TEXT[code] || (n => `${n} × ${code}`))(codes[code]) }));
+    r.repaired = list(r.repairedCodes);
+    r.ignored = list(r.ignoredCodes);
+    if(d.disciplines.length === 0 && d.sessions.length === 0 && d.areas.length === 0){
+      throw this.fatal('O arquivo não contém dados para restaurar.', 'Backup vazio');
+    }
+    return out;
+  },
+
+  /**
+   * O núcleo: coleções brutas → coleções normalizadas + relatório.
+   * Também é usado pelo diagnóstico, sobre os dados que já estão no banco.
+   */
+  analyze(src){
+    const self = this;
+    const report = { counts:{}, repairedCodes:{}, ignoredCodes:{} };
+    const now = nowISO();
+    let touched = false;                                   // o registro em análise sofreu algum reparo?
+    const fix = code => { report.repairedCodes[code] = (report.repairedCodes[code] || 0) + 1; touched = true; };
+    const drop = code => { report.ignoredCodes[code] = (report.ignoredCodes[code] || 0) + 1; return null; };
+    const stamp = v => { const t = self.instant(v); if(t) return t; fix('stamp'); return now; };
+    const name = (v, fallback) => { const t = str(v).trim(); if(t) return str(v); fix('name-empty'); return fallback; };
+    const oneOf = (v, list, fallback) => {
+      if(list.includes(v)) return v;
+      if(v !== undefined && v !== null && v !== '') fix('option');
+      return fallback;
+    };
+    const priority = (v, legacy) => {
+      const n = Number(v);
+      if(v !== undefined && v !== null && v !== '' && !(Number.isFinite(n) && n >= 1 && n <= 5)) fix('priority');
+      return normalizePriority(v, legacy);
+    };
+    const sameRecord = (a, b, id) => {
+      try { return JSON.stringify(Object.assign({}, a, { id })) === JSON.stringify(Object.assign({}, b, { id })); }
+      catch(_){ return false; }
+    };
+
+    /** Percorre uma coleção aplicando `build`; cuida de id, duplicatas e contagens. */
+    function collect(store, list, idOf, build){
+      const out = [], seen = new Map();
+      let repaired = 0;
+      (list || []).forEach(rec => {
+        if(!rec || typeof rec !== 'object' || Array.isArray(rec)){ drop('no-id'); return; }
+        const id = idOf(rec);
+        if(!id){ drop('no-id'); return; }
+        if(seen.has(id)){
+          if(sameRecord(seen.get(id), rec, id)){ drop('duplicate'); return; }
+          throw self.fatal(`O arquivo tem dois registros diferentes com o mesmo identificador em ${self.STORE_LABELS[store]} ("${id.slice(0, 40)}"). ` +
+            'Restaurar escolheria um deles às cegas, então nada foi alterado.', 'Identificadores repetidos no backup');
+        }
+        seen.set(id, rec);
+        touched = false;
+        const built = build(rec, id);
+        if(!built) return;
+        out.push(built);
+        if(touched) repaired++;
+      });
+      report.counts[store] = { found: (list || []).length, accepted: out.length, repaired, ignored: (list || []).length - out.length };
+      return out;
+    }
+    const byId = rec => self.normId(rec.id);
+    const ref = v => self.normId(v);
+
+    /* ---------- áreas ---------- */
+    const areas = collect('areas', src.areas, byId, (a, id) => ({
+      id, name: name(a.name, 'Área'), archived: !!a.archived, createdAt: stamp(a.createdAt), updatedAt: stamp(a.updatedAt)
+    }));
+    const areaIds = new Set(areas.map(a => a.id));
+
+    /* ---------- disciplinas ---------- */
+    const strategies = ['inherit'].concat(REVIEW_STRATEGIES.map(x => x.v));
+    const methods = ['inherit'].concat(REVIEW_METHODS.map(x => x.v));
+    const disciplines = collect('disciplines', src.disciplines, byId, (d, id) => {
+      let areaId = ref(d.areaId) || null;
+      if(areaId && !areaIds.has(areaId)){ areaId = null; fix('area-missing'); }
+      return {
+        id, areaId, name: name(d.name, 'Disciplina'),
+        priority: priority(d.priority),
+        // v6.4: `minutesPerCredit` e `legacyWeeklyMinutes` de backups antigos são aceitos e ignorados
+        contentNature: oneOf(d.contentNature, CONTENT_NATURES.map(n => n.v), 'mixed'),
+        reviewStrategy: oneOf(d.reviewStrategy, strategies, 'inherit'),
+        preferredReviewMethod: oneOf(d.preferredReviewMethod, methods, 'inherit'),
+        archived: !!d.archived, createdAt: stamp(d.createdAt), updatedAt: stamp(d.updatedAt)
+      };
+    });
+    const discIds = new Set(disciplines.map(d => d.id));
+
+    /* ---------- tópicos ---------- */
+    const topicDate = v => {
+      if(v === null || v === undefined || v === '') return null;
+      const c = self.civilDate(v);
+      if(!c.value){ fix('topic-date'); return null; }
+      if(c.trimmed) fix('date-trimmed');
+      return c.value;
+    };
+    const count = v => {
+      if(v === null || v === undefined) return 0;
+      if(isNum(v) && v >= 0) return Math.round(v);
+      fix('topic-number'); return 0;
+    };
+    const topics = collect('topics', src.topics, byId, (t, id) => {
+      const disciplineId = ref(t.disciplineId);
+      if(!discIds.has(disciplineId)) return drop('topic-orphan');
+      let interval = null;
+      if(isNum(t.reviewIntervalDays) && t.reviewIntervalDays >= 1) interval = clamp(Math.round(t.reviewIntervalDays), 1, REVIEW_MAX_INTERVAL);
+      else if(t.reviewIntervalDays !== null && t.reviewIntervalDays !== undefined) fix('topic-number');
+      let mastery = null;
+      if(isNum(t.masteryLevel) && t.masteryLevel >= 1 && t.masteryLevel <= 5) mastery = Math.round(t.masteryLevel);
+      else if(t.masteryLevel !== null && t.masteryLevel !== undefined) fix('topic-number');
+      return Object.assign({
+        id, disciplineId, name: name(t.name, 'Tópico'),
+        sortOrder: isNum(t.sortOrder) ? t.sortOrder : 0, archived: !!t.archived,
+        reviewEnabled: t.reviewEnabled !== false,
+        firstStudiedAt: topicDate(t.firstStudiedAt),
+        lastStudiedAt: topicDate(t.lastStudiedAt),
+        reviewDueDate: topicDate(t.reviewDueDate),
+        reviewIntervalDays: interval,
+        lastReviewedAt: topicDate(t.lastReviewedAt),
+        reviewRepetitions: count(t.reviewRepetitions),
+        masteryLevel: mastery,
+        consecutiveSuccessfulReviews: count(t.consecutiveSuccessfulReviews),
+        // v5.2: prioridade 1–5; backups antigos trazem `importance` (low/normal/high)
+        priority: priority(t.priority, t.importance),
+        reviewStrategy: oneOf(t.reviewStrategy, strategies, 'inherit'),
+        preferredReviewMethod: oneOf(t.preferredReviewMethod, methods, 'inherit'),
+        reviewCycleStep: isNum(t.reviewCycleStep) ? clamp(Math.round(t.reviewCycleStep), 0, 10) : 0,
+        reviewFailures: count(t.reviewFailures),
+        lastReviewOutcome: oneOf(t.lastReviewOutcome, REVIEW_OUTCOMES.map(o => o.v), null)
+      },
+      // v6.3: o último jeito de revisar (gravado pelo motor de revisão) também volta no backup
+      CONCRETE_METHODS.includes(t.lastReviewMethod) ? { lastReviewMethod: t.lastReviewMethod } : {},
+      { createdAt: stamp(t.createdAt), updatedAt: stamp(t.updatedAt) });
+    });
+    const topicDisc = new Map(topics.map(t => [t.id, t.disciplineId]));
+
+    /* ---------- estudos ---------- */
+    const sessions = collect('sessions', src.sessions, byId, (s, id) => {
+      const disciplineId = ref(s.disciplineId);
+      if(!discIds.has(disciplineId)) return drop('session-orphan');
+
+      // Instantes primeiro: eles podem socorrer uma data ilegível.
+      let startedAt = self.instant(s.startedAt), endedAt = self.instant(s.endedAt);
+      const hadClock = (s.startedAt !== null && s.startedAt !== undefined && s.startedAt !== '') || (s.endedAt !== null && s.endedAt !== undefined && s.endedAt !== '');
+      if(hadClock && (!startedAt || !endedAt || Date.parse(endedAt) <= Date.parse(startedAt))){
+        startedAt = null; endedAt = null; fix('session-clock');
+      }
+      const createdAt = self.instant(s.createdAt);
+
+      // A data do estudo NUNCA vira "hoje": ou é a gravada, ou sai de um instante do próprio registro, ou o estudo fica de fora.
+      const c = self.civilDate(s.date);
+      let date = c.value;
+      if(date && c.trimmed) fix('date-trimmed');
+      if(!date){
+        date = localDateOfStamp(startedAt) || localDateOfStamp(createdAt);
+        if(!date) return drop('session-no-date');
+        fix('session-date-derived');
+      }
+
+      let topicId = ref(s.topicId) || null;
+      if(topicId && !topicDisc.has(topicId)){ topicId = null; fix('session-topic-missing'); }
+      else if(topicId && topicDisc.get(topicId) !== disciplineId){ topicId = null; fix('session-topic-foreign'); }
+
+      // tempo de estudo: nunca recalculado na importação
+      let minutes = 0;
+      if(isNum(s.minutes) && s.minutes >= 0) minutes = Math.round(s.minutes);
+      else if(typeof s.minutes === 'string' && s.minutes.trim() !== '' && isFinite(Number(s.minutes)) && Number(s.minutes) >= 0){ minutes = Math.round(Number(s.minutes)); fix('minutes-text'); }
+      else fix('minutes-invalid');
+
+      // v6.4: descansos do estudo. Backups anteriores não têm o campo → []. `credits` antigo é ignorado.
+      const breaks = sanitizeBreaks(s.breaks);
+      const rawBreaks = Array.isArray(s.breaks) ? Math.min(s.breaks.length, MAX_BREAKS_PER_STUDY) : 0;
+      for(let i = breaks.length; i < rawBreaks; i++) fix('breaks');
+
+      return {
+        id, disciplineId, topicId, legacyTopicText: str(s.legacyTopicText),
+        date, startedAt, endedAt, minutes, breaks,
+        type: oneOf(s.type, SESSION_TYPES.map(t => t.v), null),
+        difficulty: (isNum(s.difficulty) && s.difficulty >= 1 && s.difficulty <= 5) ? Math.round(s.difficulty) : null,
+        comment: str(s.comment),
+        reviewOutcome: oneOf(s.reviewOutcome, REVIEW_OUTCOMES.map(o => o.v), null),
+        reviewMethod: oneOf(s.reviewMethod, REVIEW_METHODS.map(m => m.v), null),
+        reviewStrategyAtTime: oneOf(s.reviewStrategyAtTime, REVIEW_STRATEGIES.map(x => x.v), null),
+        createdAt: createdAt || stamp(s.createdAt), updatedAt: stamp(s.updatedAt)
+      };
+    });
+
+    /* ---------- planos ---------- */
+    const allocations = list => {
+      const seen = new Set(), out = [];
+      (Array.isArray(list) ? list : []).forEach(a => {
+        if(!a || typeof a !== 'object'){ drop('alloc-orphan'); return; }
+        const disciplineId = ref(a.disciplineId);
+        if(!discIds.has(disciplineId)){ drop('alloc-orphan'); return; }
+        if(seen.has(disciplineId)){ drop('alloc-dup'); return; }
+        seen.add(disciplineId);
+        out.push({
+          disciplineId,
+          priority: clamp(Number(a.priority) || 3, 1, 5),
+          minWeeklyMinutes: isNum(a.minWeeklyMinutes) ? Math.max(0, Math.round(a.minWeeklyMinutes)) : 0,
+          targetMinutes: isNum(a.targetMinutes) ? Math.max(0, Math.round(a.targetMinutes)) : 0
+        });
+      });
+      return out;
+    };
+    let activeSeen = false;
+    const plans = collect('plans', src.plans, byId, (p, id) => {
+      let active = !!p.active;
+      if(active && activeSeen){ active = false; fix('plan-active'); }
+      else if(active) activeSeen = true;
+      return {
+        id, name: name(p.name, 'Plano'),
+        weeklyAvailableMinutes: isNum(p.weeklyAvailableMinutes) ? Math.max(0, Math.round(p.weeklyAvailableMinutes)) : 0,
+        active, allocations: allocations(p.allocations),
+        createdAt: stamp(p.createdAt), updatedAt: stamp(p.updatedAt)
+      };
+    });
+
+    /* ---------- semanas (o id é o primeiro dia da semana) ---------- */
+    const weeklyPlans = collect('weeklyPlans', src.weeklyPlans,
+      w => self.civilDate(w.weekStart).value || '',
+      (w, id) => {
+        const end = self.civilDate(w.weekEnd);
+        return {
+          id, weekStart: id,
+          weekEnd: (end.value && !end.trimmed) ? end.value : addDaysISO(id, 6),
+          basePlanId: ref(w.basePlanId) || null,
+          availableMinutes: isNum(w.availableMinutes) ? Math.max(0, Math.round(w.availableMinutes)) : 0,
+          allocations: allocations(w.allocations),
+          createdAt: stamp(w.createdAt), updatedAt: stamp(w.updatedAt)
+        };
+      });
+    // semanas sem data válida caíram em "sem identificador": o motivo certo é a data
+    const badWeeks = (src.weeklyPlans || []).filter(w => w && typeof w === 'object' && !Array.isArray(w) && !self.civilDate(w.weekStart).value).length;
+    if(badWeeks){
+      report.ignoredCodes['week-invalid'] = (report.ignoredCodes['week-invalid'] || 0) + badWeeks;
+      report.ignoredCodes['no-id'] -= badWeeks;
+      if(!(report.ignoredCodes['no-id'] > 0)) delete report.ignoredCodes['no-id'];
+    }
+
+    /* ---------- prazos ---------- */
+    const deadlines = collect('deadlines', src.deadlines, byId, (d, id) => {
+      // v5.2: tipo, status, início, orientações e anotações. Backups antigos
+      // (date/importance/completed) são convertidos aqui, sem perda.
+      let c = self.civilDate(d.date);
+      if(!c.value) c = self.civilDate(d.dueDate);
+      if(!c.value) return drop('deadline-no-date');          // antes virava "hoje" em silêncio
+      if(c.trimmed) fix('date-trimmed');
+
+      let disciplineId = ref(d.disciplineId) || null;
+      let topicId = ref(d.topicId) || null;
+      if(disciplineId && !discIds.has(disciplineId)){ disciplineId = null; fix('deadline-link'); }
+      if(topicId && !topicDisc.has(topicId)){ topicId = null; fix('deadline-link'); }
+      if(topicId && !disciplineId) disciplineId = topicDisc.get(topicId) || null;
+      if(topicId && topicDisc.get(topicId) !== disciplineId){ topicId = null; fix('deadline-link'); }   // tópico precisa ser da disciplina
+
+      let status = d.completed ? 'completed' : 'pending';       // formato antigo: só `completed`
+      if(DEADLINE_STATUSES.some(x => x.v === d.status)) status = d.status;
+      else if(d.status !== undefined && d.status !== null && d.status !== '') fix('option');
+      let startDate = null;
+      if(d.startDate !== null && d.startDate !== undefined && d.startDate !== ''){
+        const sd = self.civilDate(d.startDate);
+        if(sd.value){ startDate = sd.value; if(sd.trimmed) fix('date-trimmed'); } else fix('deadline-field');
+      }
+      // `completedAt` é um instante; versões antigas podem ter gravado só o dia — os dois são aceitos
+      let completedAt = null;
+      if(status === 'completed' && d.completedAt !== null && d.completedAt !== undefined && d.completedAt !== ''){
+        completedAt = (typeof d.completedAt === 'string' && isStrictISODate(d.completedAt)) ? d.completedAt : self.instant(d.completedAt);
+        if(!completedAt) fix('deadline-field');
+      }
+      return {
+        id, title: name(str(d.title).slice(0, 160), 'Prazo'),
+        type: oneOf(d.type, DEADLINE_TYPES.map(x => x.v), 'other'),
+        date: c.value, startDate, disciplineId, topicId,
+        priority: priority(d.priority, d.importance),
+        status,
+        instructions: str(d.instructions).slice(0, 5000),
+        notes: str(d.notes).slice(0, 5000),
+        completedAt,
+        createdAt: stamp(d.createdAt), updatedAt: stamp(d.updatedAt)
+      };
+    });
+
+    const data = { areas, disciplines, topics, sessions, plans, weeklyPlans, deadlines, settings: sanitizeSettings(src.settings) };
+    return { data, report };
+  },
+
+  /**
+   * Diagnóstico dos dados que já estão no navegador: mesma validação da
+   * restauração, sem alterar nada. Devolve { ok, total, repaired[], ignored[], counts }.
+   */
+  diagnose(collections){
+    try {
+      const out = this.analyze(collections);
+      const r = out.report;
+      const list = codes => Object.keys(codes).map(code => ({ code, count: codes[code], text: (this.TEXT[code] || (n => `${n} × ${code}`))(codes[code]) }));
+      const repaired = list(r.repairedCodes), ignored = list(r.ignoredCodes);
+      /* Duas conferências que só fazem sentido sobre dados em uso (não são erro de
+         arquivo): horário que não fecha com a duração e tópico com marcas de
+         estudo sem nenhum estudo no histórico. Vêm de edições e exclusões feitas
+         antes da v6.5; o Ciclo convive com elas e as corrige quando o estudo ou o
+         tópico é editado. */
+      const observations = [];
+      const mismatch = out.data.sessions.filter(x => { const c = TimeRules.clockInfo(x); return c.mode === 'clock' && !c.consistent; }).length;
+      if(mismatch) observations.push({ code:'clock-mismatch', count:mismatch,
+        text:`${plural(mismatch, 'estudo tem', 'estudos têm')} um horário gravado que não fecha com a duração. O Ciclo mostra e conta a duração.` });
+      const withHistory = new Set(out.data.sessions.map(x => x.topicId).filter(Boolean));
+      const ghosts = out.data.topics.filter(t => !withHistory.has(t.id) && (t.lastReviewedAt || t.reviewDueDate || t.firstStudiedAt)).length;
+      if(ghosts) observations.push({ code:'topic-ghost', count:ghosts,
+        text:`${plural(ghosts, 'tópico guarda', 'tópicos guardam')} datas de estudo ou de revisão sem nenhum estudo no histórico (provavelmente de estudos excluídos em versões anteriores).` });
+      return { ok: !repaired.length && !ignored.length && !observations.length, repaired, ignored, observations, counts: r.counts, fatal:null };
+    } catch(err){
+      if(err && err.fatal) return { ok:false, repaired:[], ignored:[], observations:[], counts:{}, fatal: err.message };
+      throw err;
+    }
   }
 };
 
@@ -3284,7 +3985,11 @@ async function loadAll(){
   ]);
   state.meta = {};
   (meta || []).forEach(m => { state.meta[m.key] = m.value; });
-  state.settings = sanitizeSettings(settingsRec ? settingsRec.value : null);
+  // v6.5: a identidade de `state.settings` é preservada também aqui (ver saveSettings) —
+  // com duas abas a recarga acontece mais vezes, e um objeto novo deixaria closures escrevendo num órfão.
+  const cleanSettings = sanitizeSettings(settingsRec ? settingsRec.value : null);
+  Object.keys(state.settings).forEach(k => { if(!(k in cleanSettings)) delete state.settings[k]; });
+  Object.assign(state.settings, cleanSettings);
   state.areas = areas || [];
   state.disciplines = disciplines || [];
   state.topics = topics || [];
@@ -3337,10 +4042,348 @@ function saveSettings(){
   return settingsWriteChain;
 }
 
-async function persist(store, entity){
-  entity.updatedAt = nowISO();
-  await DB.put(store, entity);
+
+/* =========================================================================
+   v6.5 — GRAVAR SEM PISAR EM NADA
+
+   `patchEntity` é o caminho de toda edição de um registro que já existe
+   (área, disciplina, tópico, prazo): dentro de UMA transação ele lê o registro
+   como está no banco AGORA, aplica só os campos que a pessoa mudou e grava.
+
+   Concorrência otimista, por campo:
+     · `base` é o registro como estava quando o formulário abriu;
+     · só entram os campos em que o formulário difere de `base`;
+     · se algum DESSES campos foi alterado no banco depois de `base` (outra
+       aba), nada é gravado e volta { reason:'conflict' } — a pessoa escolhe;
+     · campos que o formulário não tocou nunca são sobrescritos: arquivar um
+       tópico numa aba não desfaz a revisão registrada na outra.
+   ========================================================================= */
+async function patchEntity(store, id, changes, opts){
+  const o = opts || {};
+  try {
+    return await DB.atomic([store], async api => {
+      const cur = await api.get(store, id);
+      if(!cur) return { ok:false, reason:'missing' };
+      const base = o.base || cur;
+      const keys = Object.keys(changes || {}).filter(k => !sameStored(changes[k], base[k]));
+      if(!keys.length) return { ok:true, unchanged:true, entity:cur };
+      if(o.base && !o.force){
+        const clash = keys.filter(k => !sameStored(base[k], cur[k]) && !sameStored(changes[k], cur[k]));
+        if(clash.length) return { ok:false, reason:'conflict', current:cur, fields:clash };
+      }
+      const next = Object.assign({}, cur);
+      keys.forEach(k => { next[k] = changes[k]; });
+      next.updatedAt = nowISO();
+      api.put(store, next);
+      return { ok:true, entity:next, previous:cur };
+    });
+  } catch(err){
+    console.error(`Falha ao gravar em ${store}:`, err);
+    return { ok:false, reason:'error', error:err };
+  }
 }
+
+/**
+ * Pergunta o que fazer quando o registro mudou em outra aba durante a edição.
+ * Abre como subtela do próprio formulário: o que foi digitado continua lá.
+ * Resolve com 'keep' (gravar a minha edição), 'discard' (ficar com a outra) ou 'back'.
+ */
+function askConflict(close, what){
+  return new Promise(resolve => {
+    let done = false;
+    const finish = (v) => { if(done) return; done = true; if(v !== 'discard') close.pop(); resolve(v); };
+    close.push({
+      title:'Os dados mudaram em outra aba.',
+      content: h('div',
+        h('p', { class:'modal-sub', text:`Enquanto você editava, ${what} foi alterado em outra aba ou janela do Ciclo.` }),
+        h('p', { class:'hint', text:'Manter a sua edição grava o que você preencheu por cima dessa alteração. Descartar fecha o formulário e mostra os dados como estão agora.' })),
+      actions:[
+        h('button', { class:'btn ghost', type:'button', text:'Voltar à edição', onclick:() => finish('back') }),
+        h('button', { class:'btn ghost', type:'button', text:'Descartar a minha edição', onclick:() => finish('discard') }),
+        h('button', { class:'btn primary', type:'button', text:'Manter a minha edição', onclick:() => finish('keep') })
+      ],
+      onEsc:() => finish('back')
+    });
+  });
+}
+
+/**
+ * Edita um registro a partir de um formulário aberto num modal.
+ * Grava, trata conflito e registro removido, e SÓ ENTÃO devolve — quem chama
+ * fecha a janela depois de { ok:true }. Em qualquer falha o formulário fica
+ * aberto com tudo o que foi digitado.
+ *   o = { store, id, changes, base, close, what:'este tópico' }
+ */
+async function saveEntityEdit(o){
+  let res = await patchEntity(o.store, o.id, o.changes, { base:o.base });
+  if(!res.ok && res.reason === 'conflict'){
+    const choice = await askConflict(o.close, o.what || 'este item');
+    if(choice === 'back') return { ok:false, reason:'back' };
+    if(choice === 'discard'){ o.close(); await safeRefresh(); toast('Os dados mostrados são os mais recentes.', 'info', { title:'Edição descartada' }); return { ok:false, reason:'discarded' }; }
+    res = await patchEntity(o.store, o.id, o.changes, { base:o.base, force:true });
+  }
+  if(!res.ok && res.reason === 'missing'){
+    o.close(); await safeRefresh();
+    toast('Ele foi removido em outra aba. Nada foi gravado.', 'info', { title:'Este item não existe mais' });
+    return res;
+  }
+  if(!res.ok) toast('Tente novamente. O que você preencheu continua aqui.', 'err', { title:'Não foi possível salvar' });
+  return res;
+}
+
+/** Ação direta (sem formulário) sobre um registro: arquivar, mudar prioridade… Devolve true se gravou. */
+async function quickPatch(store, id, changes, failTitle){
+  const res = await patchEntity(store, id, changes);
+  if(res.ok) return true;
+  if(res.reason === 'missing'){ await safeRefresh(); toast('Ele foi removido em outra aba.', 'info', { title:'Este item não existe mais' }); }
+  else toast('Tente novamente. Nada foi alterado.', 'err', { title: failTitle || 'Não foi possível salvar' });
+  return false;
+}
+
+/**
+ * Várias gravações numa transação só, sempre sobre o registro COMO ESTÁ NO BANCO:
+ *   { op:'patch', store, id, changes, required? }  muda só os campos indicados
+ *   { op:'put', store, value }                      cria (ou regrava) um registro
+ *   { op:'delete', store, id }
+ * Um `patch` de registro que não existe mais é pulado (ou, com `required`,
+ * cancela tudo). Lança se a gravação falhar — nada fica pela metade.
+ */
+async function writeBatch(ops){
+  const stores = Array.from(new Set(ops.map(o => o.store)));
+  if(!stores.length) return { ok:true };
+  return DB.atomic(stores, async api => {
+    const ts = nowISO();
+    for(const o of ops){
+      if(o.op === 'patch'){
+        const cur = await api.get(o.store, o.id);
+        if(!cur){
+          if(o.required){ const e = new Error('registro ausente'); e.missing = true; throw e; }
+          continue;
+        }
+        api.put(o.store, Object.assign({}, cur, o.changes, { updatedAt: ts }));
+      } else if(o.op === 'put') api.put(o.store, o.value);
+      else if(o.op === 'delete') api.delete(o.store, o.id);
+    }
+    return { ok:true };
+  });
+}
+
+/* v6.5 — planos: "qual é o plano ativo" é decidido dentro da transação, lendo
+   todos os planos do banco. Antes a memória era alterada primeiro e gravada
+   depois: uma falha deixava a tela dizendo uma coisa e o banco outra. */
+const PlanCommands = {
+  /** Grava `plan` como o plano ATIVO. Qualquer outro plano ativo é desativado junto. */
+  async saveActive(plan, weeklyPlan, opts){
+    const o = opts || {};
+    return DB.atomic(weeklyPlan ? ['plans','weeklyPlans'] : ['plans'], async api => {
+      const all = await api.getAll('plans');
+      const cur = all.find(p => p.id === plan.id) || null;
+      // edição de um plano que mudou em outra aba: não grava por cima sem a pessoa saber
+      if(cur && o.baseUpdatedAt !== undefined && !o.force && (cur.updatedAt || null) !== (o.baseUpdatedAt || null)) return { ok:false, reason:'conflict' };
+      const ts = nowISO();
+      all.forEach(p => { if(p.id !== plan.id && p.active) api.put('plans', Object.assign({}, p, { active:false, updatedAt:ts })); });
+      api.put('plans', Object.assign({}, plan, { active:true, updatedAt:ts }));
+      if(weeklyPlan) api.put('weeklyPlans', weeklyPlan);
+      return { ok:true };
+    });
+  },
+  async activate(id){
+    return DB.atomic(['plans'], async api => {
+      const all = await api.getAll('plans');
+      if(!all.some(p => p.id === id)) return { ok:false, reason:'missing' };
+      const ts = nowISO();
+      all.forEach(p => { const want = p.id === id; if(!!p.active !== want) api.put('plans', Object.assign({}, p, { active:want, updatedAt:ts })); });
+      return { ok:true };
+    });
+  },
+  async remove(id){
+    return DB.atomic(['plans'], async api => { api.delete('plans', id); return { ok:true }; });
+  }
+};
+
+/* =========================================================================
+   v6.5 — DATA SYNC: duas abas (ou janelas) do Ciclo abertas ao mesmo tempo.
+
+   Toda gravação concluída avisa as outras abas: "os dados mudaram". O aviso
+   leva só o TIPO do que mudou, quem avisou e a hora — nunca conteúdo do
+   usuário. Quem recebe relê tudo do banco, que é a única fonte de verdade.
+
+   Canal: BroadcastChannel; onde ele não existe, um carimbo no localStorage
+   (o evento "storage" chega às outras abas). As duas vias ficam dentro do
+   próprio navegador: nada sai do aparelho.
+
+   Regra de ouro: um rascunho aberto NUNCA é atropelado. Se a pessoa está com
+   um formulário aberto ou digitando, a tela não é redesenhada: aparece
+   "Os dados mudaram em outra aba." com [Atualizar] e [Continuar editando].
+   Ao salvar, a concorrência otimista (patchEntity/SessionCommands) decide.
+   ========================================================================= */
+const DataSync = {
+  CHANNEL: 'ciclo:data',
+  LS_KEY: 'ciclo:v6.5:sync',          // só um sinal entre abas; não guarda dado nenhum do usuário
+  tabId: uid(),
+  channel: null,
+  pending: false,
+  pendingKind: 'data',
+  pendingStores: new Set(),
+  running: false,
+  timer: null,
+  watch: null,
+  notice: null,
+  dismissed: false,
+
+  start(){
+    try {
+      if(typeof BroadcastChannel === 'function'){
+        this.channel = new BroadcastChannel(this.CHANNEL);
+        this.channel.onmessage = (ev) => this.receive(ev.data);
+      }
+    } catch(_){ this.channel = null; }
+    window.addEventListener('storage', (e) => {
+      if(e.key !== this.LS_KEY || !e.newValue) return;
+      try { this.receive(JSON.parse(e.newValue)); } catch(_){ /* sinal ilegível: ignora */ }
+    });
+  },
+
+  /** Chamado pela camada de banco depois de cada gravação concluída. */
+  committed(stores){
+    const list = (stores || []).filter(s => s !== 'meta');     // `meta` é conveniência de interface de cada aba
+    if(list.length) this.send('data', list);
+  },
+  /** Mudanças grandes, que pedem mais do que reler: backup restaurado, tudo apagado. */
+  announce(kind){ this.send(kind, []); },
+
+  send(kind, stores){
+    const msg = { v:1, src:this.tabId, at:Date.now(), kind, stores };
+    try {
+      if(this.channel) this.channel.postMessage(msg);
+      else localStorage.setItem(this.LS_KEY, JSON.stringify(msg));
+    } catch(_){ /* sem canal: esta aba continua funcionando sozinha */ }
+  },
+
+  receive(msg){
+    if(!msg || typeof msg !== 'object' || msg.v !== 1 || msg.src === this.tabId) return;
+    if(typeof state === 'undefined' || !state.ready) return;
+    if(msg.kind === 'backup-restored' || msg.kind === 'data-wiped') this.pendingKind = msg.kind;
+    (Array.isArray(msg.stores) ? msg.stores : []).forEach(st => { if(typeof st === 'string') this.pendingStores.add(st); });
+    this.pending = true;
+    this.dismissed = false;
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.flush(), 200);       // várias gravações seguidas viram uma atualização só
+  },
+
+  /** Há um rascunho que não pode ser atropelado? */
+  draftOpen(){
+    const top = Overlay.top;
+    // Busca de comandos e modo foco não têm rascunho: a tela atrás pode ser atualizada.
+    if(top && top.root && (top.root.id === 'palette-root' || top.root.id === 'focus-root') && Overlay.stack.length === 1) return false;
+    if(Overlay.isOpen) return true;
+    const a = document.activeElement;
+    return !!(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable));
+  },
+
+  /** Mudança que não afeta nenhum formulário (tema, densidade, a semana nova criada sozinha): espera em silêncio. */
+  quiet(){
+    if(this.pendingKind !== 'data') return false;
+    for(const st of this.pendingStores){ if(st !== 'settings' && st !== 'weeklyPlans') return false; }
+    return true;
+  },
+
+  flush(){
+    if(!this.pending || this.running) return;
+    if(this.draftOpen()){
+      if(!this.dismissed && !this.quiet()) this.showNotice();
+      this.armWatch();
+      return;
+    }
+    return this.apply();
+  },
+
+  /** Enquanto houver atualização esperando, confere de tempos em tempos se o rascunho já fechou. */
+  armWatch(){
+    if(this.watch) return;
+    this.watch = setInterval(() => {
+      if(!this.pending){ clearInterval(this.watch); this.watch = null; return; }
+      if(!this.draftOpen()){ clearInterval(this.watch); this.watch = null; this.flush(); }
+      else if(!this.dismissed && !this.quiet()) this.showNotice();   // o formulário pode ter trocado de camada
+    }, 1500);
+  },
+
+  async apply(){
+    if(this.running) return;
+    this.running = true;
+    this.pending = false;
+    const kind = this.pendingKind;
+    const settingsChanged = this.pendingStores.has('settings');
+    this.pendingKind = 'data';
+    this.pendingStores = new Set();
+    this.hideNotice();
+    const y = window.scrollY;
+    try {
+      if(kind !== 'data'){
+        // os dados foram trocados por inteiro: lugares abertos, buscas e rascunhos apontavam para o que não existe mais
+        ui.planDraft = null;
+        ui.reviewQueue = null;
+        Nav.resetForNewData();
+      }
+      await refresh();
+      // tema, densidade e animações escolhidos na outra aba passam a valer aqui também
+      if(kind !== 'data' || settingsChanged){ try { applySettingsEffects(); syncThemeControls(); } catch(err){ console.error(err); } }
+      // o cronômetro vive no localStorage: confere se o que esta aba mostra ainda é o que está gravado
+      const stored = TimerService.storedRunId();
+      const mine = TimerService.isActive ? TimerService.data.runId : null;
+      if(stored !== undefined && stored !== mine && TimerService.persisted){ TimerService.stopTicking(); TimerService.restore(); renderTimerBar(); }
+      if(Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y);
+      if(kind === 'backup-restored') toast('Um backup foi restaurado em outra aba. Esta aba já mostra os dados novos.', 'info', { title:'Dados atualizados' });
+      else if(kind === 'data-wiped') toast('Os dados foram apagados em outra aba.', 'info', { title:'Dados atualizados' });
+    } catch(err){
+      console.error('Falha ao atualizar com os dados de outra aba:', err);
+      this.pending = true;                                 // tenta de novo na próxima oportunidade
+      this.armWatch();
+    } finally {
+      this.running = false;
+      // um aviso que chegou DURANTE esta atualização não pode ficar esperando o próximo: atualiza de novo
+      if(this.pending && !this.watch) setTimeout(() => this.flush(), 60);
+    }
+  },
+
+  showNotice(){
+    const top = Overlay.top;
+    const inLayer = !!(top && top.panel);
+    // Fora de uma janela, o aviso fica fixo no alto da tela, mas mora no começo do conteúdo:
+    // assim o Tab chega nele logo, sem atravessar a página inteira.
+    const host = inLayer ? top.panel : (document.getElementById('main') || document.body);
+    if(this.notice && this.notice.parentNode === host) return;
+    this.hideNotice();
+    const n = h('div', { class:'sync-notice' + (inLayer ? ' in-layer' : ' is-page'), role:'status' },
+      h('span', { class:'sync-text', text:'Os dados mudaram em outra aba.' }),
+      h('span', { class:'sync-actions' },
+        h('button', { class:'btn sm primary', type:'button', text:'Atualizar', title: inLayer ? 'Fecha esta janela sem salvar e mostra os dados atuais' : 'Mostra os dados atuais',
+          onclick:() => this.updateNow() }),
+        h('button', { class:'btn sm ghost', type:'button', text:'Continuar editando', onclick:() => { this.dismissed = true; this.hideNotice(); } })),
+      inLayer ? h('span', { class:'sync-hint', text:'Atualizar fecha esta janela sem salvar.' }) : null);
+    this.notice = n;
+    host.insertBefore(n, host.firstChild);
+  },
+  hideNotice(){
+    if(this.notice && this.notice.parentNode) this.notice.parentNode.removeChild(this.notice);
+    this.notice = null;
+  },
+
+  /** "Atualizar": a pessoa escolheu ver os dados novos — as janelas abertas fecham sem salvar. */
+  updateNow(){
+    this.hideNotice();
+    try {
+      if(typeof modalCloser === 'function' && modalCloser){ const c = modalCloser; modalCloser = null; c(null); }
+      if(Drawer.isOpen) Drawer.close();
+      if(Palette.isOpen) Palette.close();
+    } catch(err){ console.error(err); }
+    if(document.activeElement && typeof document.activeElement.blur === 'function' && !Overlay.isOpen){
+      const a = document.activeElement;
+      if(a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT') a.blur();
+    }
+    return this.apply();
+  }
+};
 
 /** Recarrega tudo do banco e redesenha a tela atual. */
 async function refresh(){
@@ -3448,8 +4491,17 @@ function guardModalActions(container){
    ========================================================================= */
 const OVERLAY_BASE_Z = 100;
 const OVERLAY_STEP_Z = 5;
+/* v6.5 — candidatos a foco. O seletor é só a primeira peneira; quem decide é
+   `Overlay.focusables`, que tira o que o teclado não alcança de verdade:
+   desabilitado, tabindex negativo, escondido (`hidden`, display:none, dentro
+   de um <details> fechado) ou dentro de algo inerte. Antes, um campo oculto
+   podia ser tratado como "o último" e o Tab escapava da janela. */
 const FOCUSABLE_SELECTOR =
-  'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
+  'a[href],button,input:not([type="hidden"]),select,textarea,summary,[tabindex],[contenteditable="true"]';
+/* Regiões que continuam vivas com uma camada aberta: avisos, anúncios para
+   leitor de tela, dica flutuante e o popover do glossário (aberto de dentro
+   de uma janela, mas preso ao <body>). */
+const OVERLAY_KEEP_ALIVE = ['toasts','sr-live','tooltip-root'];
 
 const Overlay = {
   stack: [],
@@ -3476,8 +4528,49 @@ const Overlay = {
 
   focusables(panel){
     if(!panel) return [];
-    return $$(FOCUSABLE_SELECTOR, panel)
-      .filter(el => el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement);
+    return $$(FOCUSABLE_SELECTOR, panel).filter(el => {
+      if(el.disabled || el.tabIndex < 0) return false;
+      if(el.closest('[hidden],[inert]')) return false;
+      // <summary>: só o primeiro de cada <details> é o controle de abrir/fechar
+      if(el.tagName === 'SUMMARY' && el.parentNode && el.parentNode.querySelector(':scope > summary') !== el) return false;
+      // dentro de um <details> fechado (só o <summary> dele continua alcançável). O navegador
+      // esconde esse conteúdo sem tirar a caixa do elemento, então a medida de tamanho não basta.
+      for(let d = el.parentElement && el.parentElement.closest('details:not([open])'); d; d = d.parentElement && d.parentElement.closest('details:not([open])')){
+        if(!(el.tagName === 'SUMMARY' && el.parentNode === d)) return false;
+      }
+      // sem caixa na tela = não recebe foco (display:none)
+      if(!el.getClientRects().length) return false;
+      try { if(getComputedStyle(el).visibility === 'hidden') return false; } catch(_){}
+      return true;
+    });
+  },
+
+  /**
+   * v6.5 — o que está ATRÁS da camada de cima fica inerte: não recebe foco, não
+   * é lido por leitor de tela, não reage a clique. Antes, só o Tab era
+   * interceptado; a navegação por leitor de tela (que não usa Tab) passeava
+   * pela página por baixo da janela.
+   * `inert` é o atributo nativo; onde ele não existe, `aria-hidden` cobre a
+   * leitura e a armadilha de Tab continua cobrindo o foco.
+   */
+  _syncInert(){
+    const top = this.top;
+    const keep = top ? top.root : null;
+    const native = 'inert' in HTMLElement.prototype;
+    Array.from(document.body.children).forEach(el => {
+      const tag = el.tagName;
+      if(tag === 'SCRIPT' || tag === 'STYLE' || tag === 'svg' || tag === 'SVG') return;
+      const alive = !keep || el === keep || OVERLAY_KEEP_ALIVE.includes(el.id) || el.classList.contains('gloss-pop');
+      const marked = el.hasAttribute('data-ov-inert');
+      if(!alive && !marked){
+        el.setAttribute('data-ov-inert', el.getAttribute('aria-hidden') === 'true' ? 'was-hidden' : '');
+        if(native) el.inert = true; else el.setAttribute('aria-hidden', 'true');
+      } else if(alive && marked){
+        const was = el.getAttribute('data-ov-inert');
+        el.removeAttribute('data-ov-inert');
+        if(native) el.inert = false; else if(was !== 'was-hidden') el.removeAttribute('aria-hidden');
+      }
+    });
   },
 
   /**
@@ -3496,6 +4589,7 @@ const Overlay = {
     this.stack.push(entry);
     if(root) root.style.zIndex = String(OVERLAY_BASE_Z + (this.stack.length - 1) * OVERLAY_STEP_Z);
     this._lockScroll();
+    this._syncInert();
     return entry;
   },
 
@@ -3505,10 +4599,13 @@ const Overlay = {
     this.stack.splice(i, 1);
     if(entry.root) entry.root.style.zIndex = '';
     this._unlockScroll();
+    this._syncInert();                                  // antes de devolver o foco: o destino não pode estar inerte
     const back = entry.opener;
     if(back && typeof back.focus === 'function' && document.contains(back)){
       try { back.focus({ preventScroll:true }); } catch(_){ try { back.focus(); } catch(__){} }
     }
+    // v6.5: a última janela fechou — se os dados mudaram em outra aba enquanto ela estava aberta, a tela se atualiza agora
+    if(!this.stack.length && typeof DataSync !== 'undefined' && DataSync.pending) setTimeout(() => DataSync.flush(), 80);
   },
 
   get top(){ return this.stack.length ? this.stack[this.stack.length - 1] : null; },
@@ -3911,6 +5008,7 @@ function renderTimerBar(opts){
   const subText = resting ? `Estudo pausado em ${fmtTimer(TimerService.getElapsed())}`
     : (restDone > 0 ? `${fmtDurationWords(restDone)} de descanso` : '');
 
+  const safe = TimerService.persisted;
   // anima só quando a barra aparece ou muda de estado; re-renderizações não repetem a entrada
   const isNew = !slot.querySelector('.timerbar');
   const hadFocus = !isNew && slot.contains(document.activeElement);
@@ -3934,15 +5032,24 @@ function renderTimerBar(opts){
       h('button', { class:'btn ghost sm', type:'button', text:'Foco', onclick:() => FocusMode.enter() }),
       h('button', { class:'btn sm ' + (resting ? 'ghost' : 'primary'), type:'button', text:'Finalizar estudo', onclick:openFinishModal }),
       h('button', { class:'linkbtn muted', type:'button', text:'descartar', onclick:discardTimer })
-    )
+    ),
+    /* v6.5 — o cronômetro conta na memória, mas só sobrevive a fechar a página se
+       couber no armazenamento do navegador. Quando não cabe, a pessoa fica sabendo. */
+    safe ? null : h('p', { class:'tb-warn', role:'status' },
+      icon('i-alert'), h('span', { text:'Não foi possível garantir a recuperação deste cronômetro se a página for fechada.' }),
+      h('span', { class:'tb-warn-x', text:' Finalize o estudo antes de fechar ou recarregar.' }))
   );
   mount(slot, bar);
   if(hadFocus){ const b = bar.querySelector('[data-fk="tb-toggle"]'); if(b) b.focus({ preventScroll:true }); }
 
+  let ticks = 0;
   TimerService.startTicking(() => {
     if(!TimerService.isActive){ TimerService.stopTicking(); return; }
     // outra aba pode ter trocado o estado: o desenho acompanha, sem esperar um clique aqui
     if(TimerService.isOnBreak !== resting){ renderTimerBar({ switched:true }); return; }
+    // gravação que falhou: tenta de novo a cada 10 s; o aviso some sozinho quando der certo
+    if(!safe && (++ticks % 10) === 0) TimerService.retryPersist();
+    if(TimerService.persisted !== safe){ renderTimerBar(); if(FocusMode.isOpen) FocusMode.render(); return; }
     const ct = clockText();
     if(clock.textContent !== ct) clock.textContent = ct;
     if(!resting){ const lt = labelText(); if(labelEl.textContent !== lt) labelEl.textContent = lt; }   // só escreve quando muda
@@ -3950,24 +5057,39 @@ function renderTimerBar(opts){
 }
 
 async function discardTimer(){
+  if(!TimerService.isActive) return;
+  const runId = TimerService.data.runId;
   const ok = await confirmModal('Descartar este estudo sem registrar o tempo?', { title:'Descartar o tempo', confirmLabel:'Descartar' });
   if(!ok) return;
-  TimerService.discard();
+  // Enquanto a pergunta estava aberta, outra aba pode ter finalizado este estudo: aí não há o que descartar.
+  if(!TimerService.isActive || TimerService.data.runId !== runId){
+    renderTimerBar();
+    toast('Ele foi encerrado em outra aba.', 'info', { title:'Este estudo não está mais em andamento' });
+    return;
+  }
+  TimerService.release(runId);
   renderTimerBar();
   toast('Nada foi registrado.', 'info', { title:'Tempo descartado' });
 }
 
 /* ---------- INICIAR SESSÃO ---------- */
 function startTimer(disciplineId, topicId, presetType, presetMethod, targetMinutes){
+  // v6.5: um estudo iniciado em outra aba também conta — o armazenamento é consultado antes de começar outro.
+  if(!TimerService.isActive && TimerService.storedRunId()){ TimerService.restore(); renderTimerBar(); }
   if(TimerService.isActive){
     toast('Termine o estudo atual antes de começar outro.', 'err', { title:'Você já está estudando' });
-    return;
+    return false;
   }
   TimerService.start(disciplineId, topicId, presetType, presetMethod, targetMinutes);
   renderTimerBar();
+  if(!TimerService.persisted){
+    toast('Se a página for fechada, este estudo não poderá ser recuperado. Finalize antes de sair.', 'warn',
+      { title:'Não foi possível garantir a recuperação deste cronômetro', duration:7000 });
+  }
   const d = getDiscipline(disciplineId), t = topicId ? getTopic(topicId) : null;
   toast((d ? d.name : '') + (t ? ' · ' + t.name : '') + ' — o tempo já está contando.', 'ok',
     { title: presetType === 'revisao' ? 'Revisão iniciada' : 'Estudo iniciado' });
+  return true;
 }
 
 /* =========================================================================
@@ -4610,6 +5732,11 @@ function timeLabel(forId, text){
 const CLOCK_SR_HELP = 'Horário no formato 24 horas, de 00:00 a 23:59. Digite as horas e os minutos; os dois pontos entram sozinhos.';
 const CLOCK_RANGE_ERROR = 'Use um horário entre 00:00 e 23:59.';
 const CLOCK_PARTIAL_ERROR = 'Horário incompleto. Digite as horas e os minutos — 0950 vira 09:50.';
+const CLOCK_EXTRA_ERROR = 'Há números demais. Um horário tem só horas e minutos — 2350 vira 23:50.';
+/** Mensagem certa para um horário impossível: dígitos sobrando ou fora de 00:00–23:59. */
+function clockErrorText(text){
+  return str(text).replace(/\D/g, '').length > 4 ? CLOCK_EXTRA_ERROR : CLOCK_RANGE_ERROR;
+}
 
 /**
  * Descansos de um estudo.
@@ -4727,7 +5854,7 @@ function breaksEditor(o){
     // Um horário impossível (27:89) é apontado mesmo antes de existir o horário do estudo.
     for(const r of rows){
       const sa = clockState(r.start), sz = clockState(r.end);
-      if(sa === 'invalid' || sz === 'invalid') return fail(r, CLOCK_RANGE_ERROR, sa === 'invalid' ? 0 : 1);
+      if(sa === 'invalid' || sz === 'invalid') return fail(r, clockErrorText(sa === 'invalid' ? r.start : r.end), sa === 'invalid' ? 0 : 1);
     }
     if(!ctx){
       if(lenient || !rows.length) return { ok:true, breaks:[], total:0 };
@@ -4763,6 +5890,8 @@ function breaksEditor(o){
   return {
     node, read, addButton: addBtn,
     get count(){ return rows.length; },
+    /** Retrato do que está digitado (para saber se algo mudou desde a abertura). */
+    get signature(){ return mode + '|' + rows.map(r => mode === 'time' ? r.start + '>' + r.end : r.minutes).join(','); },
     /** Trocar de modo aproveita o que dá: horários viram minutos; minutos não viram horários. */
     setMode(m){
       const next = m === 'time' ? 'time' : 'minutes';
@@ -4799,47 +5928,73 @@ function breaksEditor(o){
  */
 function studyWhenFields(o){
   const p = o.idPrefix;
-  let mode = 'time';
+  /* v6.5 — o mesmo componente serve à EDIÇÃO de um estudo: `o.initial` traz o
+     que está gravado ({ date, mode, start, end, minutes, breaks, startedAt,
+     endedAt, clockLabel }). Enquanto a pessoa não mexe em horário, duração ou
+     descansos, o resultado mostrado é exatamente o gravado — nada é recalculado
+     a partir de horários arredondados para o minuto. */
+  const init = o.initial || null;
+  let mode = (init && init.mode === 'duration') ? 'duration' : 'time';
   const tISO = todayISO();
   const clockHelpId = p + '-clock-help', resultId = p + '-when-result';
-  const dateIn = h('input', { type:'date', id:p + '-date', value: (o.date && parseISO(o.date) && o.date <= tISO) ? o.date : tISO, max:tISO });
+  const maxDate = (init && init.date > tISO) ? init.date : tISO;      // um estudo já gravado no futuro pode manter a data
+  const dateIn = h('input', { type:'date', id:p + '-date', max:maxDate,
+    value: init ? init.date : ((o.date && isStrictISODate(o.date) && o.date <= tISO) ? o.date : tISO) });
   const onEdit = () => { dateIn.removeAttribute('aria-invalid'); minIn.removeAttribute('aria-invalid'); refresh(); };
-  const startF = timeField({ id:p + '-start', describedBy: clockHelpId + ' ' + resultId, enterHint:'next', onInput:onEdit, onEnter:() => endF.focus() });
-  const endF = timeField({ id:p + '-end', describedBy: clockHelpId + ' ' + resultId, onInput:onEdit });
-  const minIn = h('input', { type:'number', class:'no-spin', id:p + '-min', min:'1', step:'1', inputmode:'numeric', value:String(state.settings.defaultSessionMinutes || 40) });
+  const startF = timeField({ id:p + '-start', value: init ? init.start : '', describedBy: clockHelpId + ' ' + resultId, enterHint:'next', onInput:onEdit, onEnter:() => endF.focus() });
+  const endF = timeField({ id:p + '-end', value: init ? init.end : '', describedBy: clockHelpId + ' ' + resultId, onInput:onEdit });
+  const minIn = h('input', { type:'number', class:'no-spin', id:p + '-min', min:'1', step:'1', inputmode:'numeric',
+    value:String(init ? init.minutes : (state.settings.defaultSessionMinutes || 40)) });
+  const minHuman = h('p', { class:'hint min-human num', 'aria-live':'polite' });
   const result = h('p', { class:'when-result', id:resultId, 'aria-live':'polite', 'aria-atomic':'true' });
   const detail = h('p', { class:'when-detail num', hidden:true });
   const helper = h('p', { class:'when-help' });
   const fixBtn = h('button', { class:'linkbtn', type:'button', hidden:true });
   const note = h('p', { class:'when-note', 'aria-live':'polite' });
   const modeBtn = h('button', { class:'linkbtn muted', type:'button', onclick:() => setMode(mode === 'time' ? 'duration' : 'time') });
-  const breaks = breaksEditor({ idPrefix:p, mode:'time', breaks:[], compact:true, footExtra:modeBtn, clockHelpId, onChange:() => refresh() });
+  const breaks = breaksEditor({ idPrefix:p, mode: mode === 'time' ? 'time' : 'minutes', breaks: init ? init.breaks : [], compact:true, footExtra:modeBtn, clockHelpId, onChange:() => refresh() });
 
   const quick = h('div', { class:'chips', role:'group', 'aria-label':'Durações comuns' },
     [20, 30, 40, 60].map(v => h('button', { class:'chip', type:'button', text:v + ' min',
       onclick:() => { minIn.value = String(v); minIn.removeAttribute('aria-invalid'); refresh(); } })));
   const startField = h('div', { class:'field' }, timeLabel(startF.input.id, 'Comecei'), startF.input);
   const endField = h('div', { class:'field' }, timeLabel(endF.input.id, 'Terminei'), endF.input);
-  const durField = h('div', { class:'field when-dur', hidden:true }, h('label', { for:minIn.id, text:'Tempo estudado, em minutos' }), minIn, quick);
+  const durField = h('div', { class:'field when-dur', hidden:true }, h('label', { for:minIn.id, text:'Tempo estudado, em minutos' }), minIn, minHuman, init ? null : quick);
+
+  // retrato inicial: serve para saber o que a pessoa realmente mexeu
+  const start0 = startF.text, end0 = endF.text, minText0 = minIn.value, mode0 = mode, breaks0 = breaks.signature;
+  const timeTouched = () => mode !== mode0 || startF.text !== start0 || endF.text !== end0 || minIn.value !== minText0 || breaks.signature !== breaks0;
 
   function evaluate(lenient){
     const date = dateIn.value;
-    const out = { mode, date, complete:false, error:null, missing:null, errorEl:null, fixDate:null };
-    if(!date || !parseISO(date)){ out.missing = 'Escolha a data do estudo.'; out.errorEl = dateIn; return out; }
-    if(date > todayISO()){ out.error = 'Escolha hoje ou um dia que já passou.'; out.errorTitle = 'Data no futuro'; out.errorEl = dateIn; return out; }
+    const out = { mode, date, complete:false, error:null, missing:null, errorEl:null, fixDate:null, pristine:false };
+    if(!date || !isStrictISODate(date)){ out.missing = 'Escolha a data do estudo.'; out.errorEl = dateIn; return out; }
+    if(date > todayISO() && !(init && date === init.date)){ out.error = 'Escolha hoje ou um dia que já passou.'; out.errorTitle = 'Data no futuro'; out.errorEl = dateIn; return out; }
+
+    // Edição sem mexer no tempo: vale o que está gravado, sem recalcular nada.
+    if(init && !timeTouched()){
+      const restMin = sum(init.breaks, b => (isNum(b.minutes) && b.minutes > 0) ? b.minutes : 0);
+      return Object.assign(out, { complete:true, pristine:true, minutes:init.minutes, breakMinutes:restMin, breaks:init.breaks,
+        elapsed: init.minutes + restMin, startedAt:init.startedAt || null, endedAt:init.endedAt || null,
+        nextDay: !!(init.startedAt && init.endedAt && localDateOfStamp(init.startedAt) !== localDateOfStamp(init.endedAt)),
+        needsConfirm:false });
+    }
 
     if(mode === 'duration'){
       const m = Math.round(Number(minIn.value));
       if(!(m > 0)){ out.missing = 'Informe quanto tempo você estudou.'; out.errorEl = minIn; return out; }
+      if(m > 1440 * 2){ out.error = 'Esse tempo passa de dois dias. Confira os minutos.'; out.errorEl = minIn; return out; }
       const br = breaks.read(null, lenient);
       if(!br.ok){ out.error = br.msg; out.errorEl = br.el; return out; }
-      return Object.assign(out, { complete:true, minutes:m, breakMinutes:br.total, breaks:br.breaks, startedAt:null, endedAt:null,
-        nextDay:false, needsConfirm: m > LONG_STUDY_CONFIRM_MIN });
+      // MODO DURAÇÃO: nenhum horário é guardado — nem o do estudo, nem o dos descansos
+      const plain = br.breaks.map(b => Object.assign({}, b, { startedAt:null, endedAt:null }));
+      return Object.assign(out, { complete:true, minutes:m, breakMinutes:br.total, breaks:plain, startedAt:null, endedAt:null,
+        nextDay:false, needsConfirm: TimeRules.isSuspicious(m) });
     }
 
     // Horário impossível: apontado na hora. Horário pela metade: só depois de sair do campo (ou ao registrar).
     const wrong = [startF, endF].find(f => f.state === 'invalid');
-    if(wrong){ out.error = CLOCK_RANGE_ERROR; out.errorEl = wrong.input; return out; }
+    if(wrong){ out.error = clockErrorText(wrong.text); out.errorEl = wrong.input; return out; }
     const half = [startF, endF].find(f => f.state === 'partial');
     if(half){
       if(lenient && half.focused) out.missing = CLOCK_PARTIAL_ERROR; else out.error = CLOCK_PARTIAL_ERROR;
@@ -4852,8 +6007,9 @@ function studyWhenFields(o){
       out.errorEl = s === null ? startF.input : endF.input;
       return out;
     }
-    if(s === e){ out.error = 'O início e o fim estão no mesmo horário.'; out.errorEl = endF.input; return out; }
-    const endAbs = e > s ? e : e + 1440;                    // terminou "antes" de começar = dia seguinte
+    const span = TimeRules.span(s, e);
+    if(!span.ok){ out.error = 'O início e o fim estão no mesmo horário.'; out.errorEl = endF.input; return out; }
+    const endAbs = span.endAbs;                             // terminou "antes" de começar = dia seguinte
     const a = localDateTime(date, s), z = localDateTime(date, endAbs);
     const elapsed = Math.round((z - a) / 60000);
     const now = Date.now();
@@ -4869,10 +6025,10 @@ function studyWhenFields(o){
     }
     const br = breaks.read({ date, startMin:s, endAbs }, lenient);
     if(!br.ok){ out.error = br.msg; out.errorEl = br.el; return out; }
-    const net = elapsed - br.total;
+    const net = TimeRules.netMinutes(elapsed, br.total);
     if(!(net > 0)){ out.error = 'Os descansos ocupam todo o tempo do estudo.'; out.errorEl = breaks.addButton; return out; }
     return Object.assign(out, { complete:true, minutes:net, breakMinutes:br.total, breaks:br.breaks, elapsed,
-      startedAt:a.toISOString(), endedAt:z.toISOString(), nextDay: endAbs >= 1440, needsConfirm: net > LONG_STUDY_CONFIRM_MIN });
+      startedAt:a.toISOString(), endedAt:z.toISOString(), nextDay: span.nextDay, needsConfirm: TimeRules.isSuspicious(net) });
   }
 
   let shown = null;                                          // o que está escrito agora (só redesenha quando muda)
@@ -4889,10 +6045,15 @@ function studyWhenFields(o){
           ? `${fmtDurationWords(r.elapsed)} decorridos · ${fmtDurationWords(r.breakMinutes)} de descanso`
           : `${fmtDurationWords(r.breakMinutes)} de descanso, guardado à parte`;
       }
-      if(r.needsConfirm) extra = `São ${fmtDuration(r.minutes)} de estudo. Confira ${mode === 'time' ? 'os horários' : 'a duração'} antes de registrar.`;
+      if(r.needsConfirm) extra = `São ${fmtDuration(r.minutes)} de estudo. Confira ${mode === 'time' ? 'os horários' : 'a duração'} antes de ${init ? 'salvar' : 'registrar'}.`;
+      // Edição: a pessoa trocou o horário pela duração — o horário gravado deixa de existir ao salvar.
+      else if(init && init.clockLabel && mode === 'duration' && !r.pristine) extra = `Ao salvar, o horário gravado (${init.clockLabel}) deixa de ser guardado: o estudo passa a valer pela duração.`;
     } else if(r.error){
       err = r.error;
     }
+    const human = mode === 'duration' ? humanMinutesHint(minIn.value) : '';
+    if(minHuman.textContent !== human) minHuman.textContent = human;
+    minHuman.hidden = !human;
     const key = [main, tail, err].join('|');
     if(key !== shown){
       const hadValue = !!shown && shown[0] !== '|';
@@ -4942,17 +6103,19 @@ function studyWhenFields(o){
       startField, endField, durField),
     h('div', { class:'when-out' }, result, detail, helper, fixBtn, note),
     breaks.node);
-  setMode('time');
+  setMode(mode);
   modeBtn.addEventListener('click', () => {
     const f = mode === 'time' ? startF.input : minIn;
     swapIn(f.parentNode); f.focus();
   });
 
-  const date0 = dateIn.value, min0 = minIn.value;
+  const date0 = dateIn.value;
   return {
     node, evaluate: () => evaluate(false), refresh, firstField: dateIn,
     /** Algo já foi preenchido aqui? (para a janela não fechar com um clique fora) */
-    isDirty: () => !!(startF.text || endF.text || breaks.count || dateIn.value !== date0 || mode !== 'time' || minIn.value !== min0)
+    isDirty: () => dateIn.value !== date0 || (init ? timeTouched() : !!(startF.text || endF.text || breaks.count || mode !== 'time' || minIn.value !== minText0)),
+    /** Edição: a pessoa mexeu em horário, duração ou descansos? E na data? */
+    timeTouched, dateChanged: () => dateIn.value !== date0
   };
 }
 
@@ -4978,8 +6141,18 @@ function registerContext(){
  */
 function openRegisterModal(preset){
   const p = (preset && !(preset instanceof Event)) ? preset : {};
+  if(!TimerService.isActive && TimerService.storedRunId()){ TimerService.restore(); renderTimerBar(); }   // estudo iniciado em outra aba
   const timerBusy = TimerService.isActive;                 // já há um estudo no cronômetro: só dá para registrar um passado
-  let mode = (p.mode === 'timer' && !timerBusy) ? 'timer' : 'manual';
+  /* v6.5 — "Começar a estudar" com um estudo já em andamento não abre mais o
+     formulário de registrar (a pessoa pediu para começar e recebia outra coisa):
+     ela é levada ao cronômetro que já está contando. */
+  if(p.mode === 'timer' && timerBusy){
+    toast('Finalize ou descarte o estudo atual para começar outro.', 'info', { title:'Você já está estudando' });
+    const bar = $('#timerbar-slot .timerbar');
+    if(bar){ revealElement(bar); const b = bar.querySelector('[data-fk="tb-toggle"]'); if(b) b.focus({ preventScroll:true }); }
+    return;
+  }
+  let mode = p.mode === 'timer' ? 'timer' : 'manual';
 
   const ctx = p.disciplineId ? null : registerContext();
   const wantDisc = p.disciplineId || (ctx && ctx.disciplineId) || null;
@@ -5116,8 +6289,8 @@ function openRegisterModal(preset){
         const topicId = target.topicId;
 
         if(mode === 'timer'){
-          close();
-          startTimer(discId, topicId, type, null, targetMin);
+          // v6.5: só fecha se o cronômetro começou (outra aba pode ter iniciado um estudo neste meio-tempo)
+          if(startTimer(discId, topicId, type, null, targetMin)) close();
           return;
         }
         if(w.needsConfirm && !(await confirmLong(w))) return;
@@ -5188,6 +6361,7 @@ function openQuickStart(preset){
 function openFinishModal(){
   if(!TimerService.isActive) return;
   const d = TimerService.data;
+  const runId = d.runId;                         // v6.5: a identidade deste cronômetro; vira o id do estudo
   const snap = TimerService.snapshot();
   const studyMin = Math.max(1, Math.round(snap.studyMs / 60000));
   const snapBreaks = timerBreaksToSession(snap.breaks);
@@ -5210,14 +6384,26 @@ function openFinishModal(){
       h('div', { class:'fs-item' }, studyV, h('span', { class:'fs-l', text:'de estudo' })),
       restBox,
       h('p', { class:'fs-clock num', text: startedLabel }));
+    const minHuman = h('span', { class:'min-human num', 'aria-live':'polite' });
+    /* v6.5 — MODO HORÁRIO × MODO DURAÇÃO. O cronômetro mediu início e fim. Se a
+       pessoa corrige o tempo e a conta deixa de fechar com esse intervalo, o
+       estudo é guardado só pela duração — e ela fica sabendo antes de registrar. */
+    const clockNote = h('p', { class:'hint clock-note', 'aria-live':'polite', hidden:true });
+    const startISO = new Date(snap.startedAt).toISOString(), endISO = new Date(snap.endedAt).toISOString();
     function drawSummary(){
       const m = Math.round(Number(minInput.value));
       studyV.textContent = m > 0 ? fmtDurationWords(m) : '—';
+      minHuman.textContent = humanMinutesHint(minInput.value);
       const br = breaks.read(null, true);
       const total = br.ok ? br.total : 0, count = br.ok ? br.breaks.length : 0;
       restBox.hidden = !(total > 0);
       restV.textContent = fmtDurationWords(total);
       restL.textContent = 'de descanso' + (count > 1 ? ` · ${count} descansos` : '');
+      const fits = !(m > 0) || !br.ok || TimeRules.clockInfo({ minutes:m, breaks:br.breaks, startedAt:startISO, endedAt:endISO }).consistent;
+      clockNote.hidden = fits;
+      const text = fits ? '' : `Esse tempo não fecha com ${startedLabel}. O estudo será guardado só com a duração, sem o horário.`;
+      if(clockNote.textContent !== text) clockNote.textContent = text;
+      summary.classList.toggle('is-duration-only', !fits);
     }
     minInput.addEventListener('input', () => { minInput.removeAttribute('aria-invalid'); drawSummary(); });
     const fixToggle = h('summary', null, 'Corrigir o tempo');
@@ -5225,8 +6411,9 @@ function openFinishModal(){
       fixToggle,
       h('div', { class:'advanced-body' },
         h('div', { class:'field' }, h('label', { for:'fin-min', text:'Tempo estudado, em minutos' }), minInput,
-          h('p', { class:'hint', text:'Descanso não entra aqui: ele é guardado à parte.' })),
-        breaks.node));
+          h('p', { class:'hint' }, 'Descanso não entra aqui: ele é guardado à parte. ', minHuman)),
+        breaks.node,
+        clockNote));
 
     const target = studyTargetFields({ close, idPrefix:'fin', discId:d.disciplineId, topicId:d.topicId || '',
       onChange: () => renderOutcome() });
@@ -5270,32 +6457,52 @@ function openFinishModal(){
       if(!(minutes > 0)){ fix.open = true; minInput.setAttribute('aria-invalid','true'); minInput.focus(); toast('Informe um tempo de estudo válido.', 'err'); return; }
       const br = breaks.read(null, false);
       if(!br.ok){ fix.open = true; if(br.el){ if('value' in br.el) br.el.setAttribute('aria-invalid','true'); br.el.focus(); } toast(br.msg, 'err'); return; }
+      saving = true;                                 // v6.5: trava já aqui — `ensure()` é assíncrono e um 2º Enter passaria
+      saveBtn.disabled = true; saveBtn.setAttribute('aria-busy','true'); saveBtn.textContent = 'Registrando…';
+      const unlock = () => { saving = false; saveBtn.disabled = false; saveBtn.removeAttribute('aria-busy'); saveBtn.textContent = 'Registrar estudo'; };
       const discId = await target.ensure();
-      if(!discId) return;
-      // Outra aba pode ter finalizado este estudo (o evento "storage" mantém a memória em dia).
-      if(!TimerService.isActive){
-        close(); renderTimerBar();
-        toast('Ele já foi finalizado em outra aba — nada foi gravado de novo.', 'info', { title:'Este estudo já foi registrado' });
-        return;
-      }
+      if(!discId){ unlock(); return; }
       const topicId = target.topicId;
 
-      saving = true;
-      saveBtn.disabled = true; saveBtn.setAttribute('aria-busy','true'); saveBtn.textContent = 'Registrando…';
+      /* v6.5 — este cronômetro ainda é o que está valendo? Outra aba pode ter
+         finalizado, descartado ou começado outro estudo. A memória desta aba é
+         só uma pista; quem decide é o armazenamento e, no fim, o banco. */
+      const stored = TimerService.storedRunId();
+      const live = TimerService.isActive && TimerService.data.runId === runId;
+      if(!live || (TimerService.persisted && stored !== undefined && stored !== runId)){
+        let already = null;
+        try { already = await DB.get('sessions', runId); } catch(_){ /* sem leitura: trata como descartado */ }
+        if(live) TimerService.release(runId);
+        close(); renderTimerBar();
+        await safeRefresh();
+        if(already) toast('Ele foi finalizado em outra aba. Nada foi gravado de novo.', 'info', { title:'Esse estudo já foi registrado.' });
+        else toast('O cronômetro foi encerrado em outra aba sem registrar. Nada foi gravado.', 'info', { title:'Este estudo não está mais em andamento' });
+        return;
+      }
+
       /* v6.3 — grava ANTES de encerrar o cronômetro. Se a gravação falhar, o
          cronômetro continua e o modal fica aberto: nenhum minuto se perde.
          v6.4 — a data do estudo é o dia em que ele COMEÇOU; início e fim vêm do
-         retrato (o fim é o momento em que a pessoa pediu para finalizar). */
-      const ok = await saveSession({
+         retrato (o fim é o momento em que a pessoa pediu para finalizar).
+         v6.5 — o id do estudo é o runId do cronômetro: o banco aceita UM. */
+      const res = await registerStudy({
         disciplineId: discId, topicId, date: dateToISO(new Date(snap.startedAt)),
         minutes, breaks: br.breaks, type, difficulty, comment: comment.value,
         reviewOutcome: (type === 'revisao' && topicId) ? outcome : null,
         reviewMethod: (type === 'revisao' && topicId) ? method : null,
-        startedAt: new Date(snap.startedAt).toISOString(), endedAt: new Date(snap.endedAt).toISOString()
-      });
+        startedAt: startISO, endedAt: endISO
+      }, { timerRunId: runId });
+      if(!res.ok && res.reason === 'duplicate'){
+        // Já estava no banco (outra aba, ou a página fechou logo depois de gravar): nada é aplicado de novo.
+        TimerService.release(runId);
+        close(); renderTimerBar();
+        await safeRefresh();
+        toast('Nada foi gravado de novo.', 'info', { title:'Esse estudo já foi registrado.' });
+        return;
+      }
+      if(!res.ok){ unlock(); return; }
       saving = false;
-      if(!ok){ saveBtn.disabled = false; saveBtn.removeAttribute('aria-busy'); saveBtn.textContent = 'Registrar estudo'; return; }
-      TimerService.finish();
+      TimerService.release(runId);
       close();
       renderTimerBar();
       announce('Estudo finalizado.');
@@ -5332,128 +6539,563 @@ function offerStaleSession(){
     ),
     actions:[
       h('button', { class:'btn ghost', type:'button', text:'Continuar', onclick:() => close() }),
-      h('button', { class:'btn danger', type:'button', text:'Descartar', onclick: async () => { close(); TimerService.discard(); renderTimerBar(); toast('Nada foi registrado.', 'info', { title:'Tempo descartado' }); } }),
+      h('button', { class:'btn danger', type:'button', text:'Descartar', onclick: async () => { close(); if(TimerService.isActive) TimerService.release(TimerService.data.runId); renderTimerBar(); toast('Nada foi registrado.', 'info', { title:'Tempo descartado' }); } }),
       h('button', { class:'btn primary', type:'button', text:'Finalizar', onclick:() => { close(); openFinishModal(); } })
     ]
   }), { dismissible:false });
 }
 
 /* =========================================================================
-   AÇÕES DE DOMÍNIO — gravação com transações quando há efeitos relacionados
+   v6.5 — TOPIC RECONCILER: o estado derivado de um tópico, num lugar só.
+
+   Um tópico guarda um resumo do próprio histórico: quando foi estudado pela
+   primeira e pela última vez, quantas vezes foi revisado, em que pé está a
+   revisão. Esse resumo só pode mudar aqui. As funções são PURAS — recebem o
+   tópico, os estudos dele e as regras em vigor (`ctx`) e devolvem uma cópia;
+   nada lê `state`, nada grava. Quem grava é SessionCommands, na mesma
+   transação do estudo.
+
+   POLÍTICA (uma só, para criar, editar, mover e excluir):
+
+     "O estado atual de revisão de um tópico pertence à revisão MAIS RECENTE
+      dele. O que aconteceu antes dela é histórico."
+
+   1. Estudo novo, sem revisão anterior mais recente → vale como sempre valeu:
+      agenda a primeira revisão ou aplica o resultado ao estado atual.
+   2. Revisão registrada com data ANTERIOR à revisão mais recente do tópico →
+      entra no histórico e nas contagens ("vezes revisado", "vezes que
+      esqueceu"), mas NÃO mexe na próxima revisão, no intervalo, no domínio
+      nem na sequência de acertos. O presente não é empurrado para o passado.
+   3. Correção (editar, mover, excluir) que NÃO troca a revisão mais recente →
+      só datas de primeiro/último estudo e contagens acompanham o histórico.
+   4. Correção que troca ou remove a revisão mais recente → o estado é refeito
+      a partir do histórico que sobrou:
+        · sem nenhum estudo  → tópico "não iniciado", sem revisão marcada;
+        · sem nenhuma revisão → volta ao primeiro agendamento, contado do
+          estudo mais antigo que sobrou;
+        · com revisões → o estado é refeito percorrendo, em ordem, as
+          revisões que ficaram no histórico, cada uma com a estratégia que
+          estava em vigor quando foi feita (gravada no próprio estudo, em
+          `reviewStrategyAtTime`). O resultado é o mesmo tópico que existiria
+          se o histórico sempre tivesse sido esse.
+          Limites, ditos com clareza: a prioridade usada é a de HOJE (a da
+          época não fica gravada), o ajuste por prazo próximo não é refeito
+          (prazos mudam), e estudos anteriores à v4 sem estratégia gravada
+          usam a estratégia atual. Isso só acontece quando a própria revisão
+          mais recente é corrigida — nunca "por tabela" (regras 2 e 3).
+   5. Contagens mudam pela DIFERENÇA entre o histórico antes e depois, nunca
+      por recontagem do zero: um histórico antigo incompleto não é "consertado"
+      em silêncio só porque um estudo foi editado.
    ========================================================================= */
-/**
- * Salva uma sessão. Quando há tópico envolvido, atualiza revisão/domínio
- * na MESMA transação — ou tudo grava, ou nada.
- * v6.3: devolve true quando gravou e false quando não — quem chama só fecha
- * o formulário depois de gravar, para nada do que foi digitado se perder.
- */
-async function saveSession(input){
-  const disc = getDiscipline(input.disciplineId);
-  if(!disc){ toast('Escolha outra disciplina e tente de novo.', 'err', { title:'Disciplina não encontrada' }); return false; }
-
-  /* Integridade (v6.4): `minutes` é tempo de ESTUDO e precisa ser positivo; o
-     tópico tem de ser da disciplina; descansos são saneados e ficam à parte. */
-  const minutes = Math.max(0, Math.round(Number(input.minutes) || 0));
-  if(!(minutes > 0)){ toast('Informe quanto tempo você estudou.', 'err', { title:'Falta o tempo de estudo' }); return false; }
-  const topicIn = input.topicId ? getTopic(input.topicId) : null;
-  const breaks = sanitizeBreaks(input.breaks);
-  const session = newSession({
-    disciplineId: disc.id,
-    topicId: (topicIn && topicIn.disciplineId === disc.id) ? topicIn.id : null,
-    date: input.date || todayISO(),
-    minutes,
-    breaks,
-    type: input.type || null,
-    difficulty: input.difficulty || null,
-    comment: str(input.comment),
-    reviewOutcome: input.reviewOutcome || null,
-    reviewMethod: input.reviewMethod || null,
-    reviewStrategyAtTime: null,
-    startedAt: input.startedAt || null,
-    endedAt: input.endedAt || null
-  });
-
-  let topic = session.topicId ? getTopic(session.topicId) : null;
-  let topicCopy = null;
-  if(topic){
-    topicCopy = Object.assign({}, topic);
-    // guarda a estratégia vigente para as análises continuarem legíveis depois
-    session.reviewStrategyAtTime = ReviewEngine.effectiveStrategy(topicCopy);
-    const isFirst = !topicCopy.firstStudiedAt && !topicCopy.reviewDueDate;
-    if(isFirst) ReviewEngine.scheduleFirstReview(topicCopy, session.date);
-    if(session.reviewOutcome) ReviewEngine.applyReviewOutcome(topicCopy, session.reviewOutcome, session.date, session.reviewMethod);
-    if(!topicCopy.lastStudiedAt || session.date > topicCopy.lastStudiedAt) topicCopy.lastStudiedAt = session.date;
-    topicCopy.updatedAt = nowISO();
-  }
-
-  try {
-    await DB.transactional(topicCopy ? ['sessions','topics'] : ['sessions'], api => {
-      api.put('sessions', session);
-      if(topicCopy) api.put('topics', topicCopy);
+const TopicReconciler = {
+  /** Ordem cronológica estável: dia, depois o instante de início/criação, depois o id. */
+  order(sessions){
+    const key = s => str(s.startedAt) || str(s.createdAt);
+    return (sessions || []).slice().sort((a, b) =>
+      (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) ||
+      (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0) ||
+      (str(a.id) < str(b.id) ? -1 : str(a.id) > str(b.id) ? 1 : 0));
+  },
+  reviewsOf(sessions){ return this.order((sessions || []).filter(s => s && s.reviewOutcome && REVIEW[s.reviewOutcome])); },
+  latestReview(sessions){ const r = this.reviewsOf(sessions); return r.length ? r[r.length - 1] : null; },
+  bounds(sessions){
+    let first = null, last = null;
+    (sessions || []).forEach(s => {
+      if(!s || !s.date) return;
+      if(first === null || s.date < first) first = s.date;
+      if(last === null || s.date > last) last = s.date;
     });
-  } catch(err){
-    console.error(err);
-    toast('Tente novamente. Nada foi perdido.', 'err', { title:'Não foi possível salvar o estudo' });
-    return false;
+    return { first, last };
+  },
+  sameReview(a, b){
+    if(!a && !b) return true;
+    if(!a || !b) return false;
+    return a.id === b.id && a.date === b.date && a.reviewOutcome === b.reviewOutcome;
+  },
+
+  /**
+   * Percorre as revisões em ordem e devolve o estado em que o tópico fica depois
+   * da última: { interval, cycleStep, mastery, streak }. É a mesma sequência de
+   * contas que `afterCreate` faz revisão a revisão — por isso, com o mesmo
+   * histórico, chega ao mesmo resultado.
+   */
+  replay(reviews, ctx){
+    const valid = v => REVIEW_STRATEGIES.some(x => x.v === v);
+    const first = reviews.length && valid(reviews[0].reviewStrategyAtTime) ? reviews[0].reviewStrategyAtTime : ctx.strategy;
+    let interval = ReviewEngine.firstInterval(first), cycleStep = 0, mastery = REVIEW_INITIAL_MASTERY, streak = 0;
+    reviews.forEach(s => {
+      const next = ReviewEngine.computeNext({
+        strategy: valid(s.reviewStrategyAtTime) ? s.reviewStrategyAtTime : ctx.strategy,
+        prevInterval: interval, cycleStep, outcome: s.reviewOutcome, intervalModifier: ctx.intervalModifier, deadlineDays: null
+      });
+      const m = ReviewEngine.nextMastery(mastery, streak, s.reviewOutcome);
+      interval = next.interval; cycleStep = next.cycleStep; mastery = m.mastery; streak = m.streak;
+    });
+    return { interval, cycleStep, mastery, streak };
+  },
+
+  /** Tópico sem nenhum estudo: nenhum vestígio de revisão. Configuração (prioridade, estratégia, revisões ligadas) fica. */
+  pristine(topic){
+    const t = Object.assign({}, topic, {
+      firstStudiedAt:null, lastStudiedAt:null,
+      reviewDueDate:null, reviewIntervalDays:null, lastReviewedAt:null, reviewRepetitions:0,
+      masteryLevel:null, consecutiveSuccessfulReviews:0, reviewCycleStep:0, reviewFailures:0, lastReviewOutcome:null
+    });
+    delete t.lastReviewMethod;
+    return t;
+  },
+
+  /**
+   * Um estudo NOVO entrou no histórico do tópico.
+   * ctx = { strategy, firstInterval, intervalModifier, deadlineDays }
+   * → { topic (cópia), effect: 'study' | 'first' | 'applied' | 'historical' }
+   */
+  afterCreate(topic, session, ctx){
+    const t = Object.assign({}, topic);
+    const date = session.date;
+    let effect = 'study';
+
+    // Primeira revisão: só quando as revisões estão ligadas e nada foi marcado nem feito ainda.
+    if(t.reviewEnabled && !t.reviewDueDate && !t.lastReviewedAt){
+      t.reviewIntervalDays = ctx.firstInterval;
+      t.reviewDueDate = addDaysISO(date, ctx.firstInterval);
+      t.masteryLevel = REVIEW_INITIAL_MASTERY;
+      t.consecutiveSuccessfulReviews = 0;
+      t.reviewRepetitions = 0;
+      t.reviewCycleStep = 0;
+      effect = 'first';
+    }
+
+    const outcome = session.reviewOutcome;
+    if(outcome && REVIEW[outcome]){
+      if(t.lastReviewedAt && date < t.lastReviewedAt){
+        // Regra 2 — revisão do passado: histórico e contagens; o estado atual não muda.
+        t.reviewRepetitions = (t.reviewRepetitions || 0) + 1;
+        if(outcome === 'forgot') t.reviewFailures = (t.reviewFailures || 0) + 1;
+        effect = 'historical';
+      } else {
+        const next = ReviewEngine.computeNext({
+          strategy: ctx.strategy, prevInterval: t.reviewIntervalDays || 1, cycleStep: t.reviewCycleStep,
+          outcome, intervalModifier: ctx.intervalModifier, deadlineDays: ctx.deadlineDays
+        });
+        const m = ReviewEngine.nextMastery(t.masteryLevel, t.consecutiveSuccessfulReviews, outcome);
+        t.reviewCycleStep = next.cycleStep;
+        t.reviewIntervalDays = next.interval;
+        t.masteryLevel = m.mastery;
+        t.consecutiveSuccessfulReviews = m.streak;
+        t.reviewRepetitions = (t.reviewRepetitions || 0) + 1;
+        if(outcome === 'forgot') t.reviewFailures = (t.reviewFailures || 0) + 1;
+        t.lastReviewedAt = date;
+        t.lastReviewOutcome = outcome;
+        t.reviewDueDate = addDaysISO(date, next.interval);
+        if(CONCRETE_METHODS.includes(session.reviewMethod)) t.lastReviewMethod = session.reviewMethod;
+        effect = 'applied';
+      }
+    }
+    if(!t.firstStudiedAt || date < t.firstStudiedAt) t.firstStudiedAt = date;
+    if(!t.lastStudiedAt || date > t.lastStudiedAt) t.lastStudiedAt = date;
+    t.updatedAt = nowISO();
+    return { topic:t, effect };
+  },
+
+  /**
+   * O histórico do tópico foi CORRIGIDO (um estudo editado, movido ou excluído).
+   * `before` e `after` são os estudos do tópico antes e depois da correção.
+   * → { topic (cópia), effect: 'history' | 'reset' | 'reanchored' | 'rescheduled' }
+   */
+  afterCorrection(topic, before, after, ctx){
+    if(!after || !after.length) return { topic: Object.assign(this.pristine(topic), { updatedAt: nowISO() }), effect:'reset' };
+
+    const t = Object.assign({}, topic);
+    const b = this.bounds(after);
+    t.firstStudiedAt = b.first;
+    t.lastStudiedAt = b.last;
+
+    const rb = this.reviewsOf(before), ra = this.reviewsOf(after);
+    const forgot = list => list.filter(s => s.reviewOutcome === 'forgot').length;
+    t.reviewRepetitions = Math.max(0, (t.reviewRepetitions || 0) + ra.length - rb.length);
+    t.reviewFailures = Math.max(0, (t.reviewFailures || 0) + forgot(ra) - forgot(rb));
+
+    const lb = rb.length ? rb[rb.length - 1] : null;
+    const la = ra.length ? ra[ra.length - 1] : null;
+    let effect = 'history';
+
+    if(this.sameReview(lb, la)){
+      if(la){
+        // a revisão mais recente é a mesma; só o jeito de revisar pode ter sido corrigido
+        if(la.reviewMethod !== lb.reviewMethod && CONCRETE_METHODS.includes(la.reviewMethod)) t.lastReviewMethod = la.reviewMethod;
+      } else if(!t.lastReviewedAt && t.reviewEnabled && t.reviewDueDate && isNum(t.reviewIntervalDays)){
+        // Sem revisões: o primeiro agendamento nasceu de um estudo. Se esse estudo
+        // saiu do histórico (ou mudou de dia), o agendamento passa a contar do mais antigo que sobrou.
+        const anchor = addDaysISO(t.reviewDueDate, -t.reviewIntervalDays);
+        const had = (before || []).some(s => s.date === anchor), has = after.some(s => s.date === anchor);
+        if(had && !has){
+          t.reviewIntervalDays = ctx.firstInterval;
+          t.reviewDueDate = addDaysISO(b.first, ctx.firstInterval);
+          effect = 'reanchored';
+        }
+      }
+    } else if(!la){
+      // Não sobrou nenhuma revisão: o tópico volta a "em estudo", com o primeiro agendamento.
+      t.lastReviewedAt = null;
+      t.lastReviewOutcome = null;
+      delete t.lastReviewMethod;
+      t.reviewRepetitions = 0;
+      t.reviewFailures = 0;
+      t.consecutiveSuccessfulReviews = 0;
+      t.reviewCycleStep = 0;
+      if(t.reviewEnabled){
+        t.masteryLevel = REVIEW_INITIAL_MASTERY;
+        t.reviewIntervalDays = ctx.firstInterval;
+        t.reviewDueDate = addDaysISO(b.first, ctx.firstInterval);
+      } else {
+        t.masteryLevel = null;
+        t.reviewIntervalDays = null;
+        t.reviewDueDate = null;
+      }
+      effect = 'rescheduled';
+    } else {
+      // A revisão mais recente mudou: o estado é refeito pelas revisões que ficaram (regra 4).
+      const r = this.replay(ra, ctx);
+      t.masteryLevel = r.mastery;
+      t.consecutiveSuccessfulReviews = r.streak;
+      t.reviewCycleStep = r.cycleStep;
+      t.reviewIntervalDays = r.interval;
+      t.lastReviewedAt = la.date;
+      t.lastReviewOutcome = la.reviewOutcome;
+      t.reviewDueDate = addDaysISO(la.date, r.interval);
+      if(CONCRETE_METHODS.includes(la.reviewMethod)) t.lastReviewMethod = la.reviewMethod; else delete t.lastReviewMethod;
+      effect = 'rescheduled';
+    }
+    t.updatedAt = nowISO();
+    return { topic:t, effect };
   }
+};
 
-  // Gravado. Se redesenhar falhar, o estudo já está salvo: não pedir para repetir.
-  try { await refresh(); } catch(err){ console.error('Falha ao atualizar a tela depois de salvar:', err); }
+/** Regras de revisão em vigor para um tópico (lê `state`: estratégia herdada, prioridade, prazo ligado). */
+function reviewContextOf(topic){
+  const strategy = ReviewEngine.effectiveStrategy(topic);
+  const dl = DeadlineEngine.forTopic(topic);
+  return {
+    strategy,
+    firstInterval: ReviewEngine.firstInterval(strategy),
+    intervalModifier: PriorityEngine.reviewIntervalModifier(topic),
+    deadlineDays: (dl.specific && dl.days !== null) ? dl.days : null
+  };
+}
 
-  const topicName = topicCopy ? topicCopy.name : '';
-  const prog = PlannerEngine.getCurrentWeekProgress();
-  if(session.reviewOutcome && topicCopy){
+/** Comparação de valores gravados (campos simples e listas/objetos pequenos, como `breaks`). */
+function sameStored(a, b){
+  if(a === b) return true;
+  const empty = v => v === null || v === undefined || v === '';
+  if(empty(a) && empty(b)) return true;
+  if(typeof a === 'object' && typeof b === 'object' && a && b){
+    try { return JSON.stringify(a) === JSON.stringify(b); } catch(_){ return false; }
+  }
+  return false;
+}
+
+/* =========================================================================
+   v6.5 — SESSION COMMANDS: todo estudo entra, muda ou sai por aqui.
+
+   Cada comando é UMA transação que lê o estado real do banco, decide e grava
+   o estudo e o tópico juntos. Não mexe na tela, não mostra aviso: devolve
+   { ok:true, … } ou { ok:false, reason } e quem chamou conversa com a pessoa.
+
+     create(input)                 novo estudo
+     finalizeTimer(input, runId)   novo estudo cujo id É a identidade do
+                                   cronômetro — o banco recusa o segundo
+     update(id, changes, {base})   edição (inclui trocar de tópico/disciplina)
+     remove(id)                    exclusão
+
+   reason: 'no-minutes' | 'bad-date' | 'no-discipline' | 'duplicate' |
+           'missing' | 'conflict' | 'error'
+   ========================================================================= */
+const SessionCommands = {
+  STORES: ['sessions','topics','disciplines'],
+
+  async create(input, opts){
+    const o = opts || {};
+    const minutes = Math.max(0, Math.round(Number(input.minutes) || 0));
+    if(!(minutes > 0)) return { ok:false, reason:'no-minutes' };
+    const date = input.date || todayISO();
+    if(!isStrictISODate(date)) return { ok:false, reason:'bad-date' };
+
+    /* Integridade (v6.4): `minutes` é tempo de ESTUDO; descansos ficam à parte.
+       v6.5: horário e duração nunca se contradizem no que é gravado. */
+    const time = TimeRules.settle({ minutes, breaks: sanitizeBreaks(input.breaks), startedAt: input.startedAt || null, endedAt: input.endedAt || null });
+    const session = newSession({
+      disciplineId: str(input.disciplineId), topicId: input.topicId || null, date, minutes,
+      breaks: sanitizeBreaks(time.breaks), type: input.type || null, difficulty: input.difficulty || null,
+      comment: str(input.comment), reviewOutcome: input.reviewOutcome || null, reviewMethod: input.reviewMethod || null,
+      reviewStrategyAtTime: null, startedAt: time.startedAt, endedAt: time.endedAt
+    });
+    if(o.id) session.id = str(o.id);
+
+    try {
+      return await DB.atomic(this.STORES, async api => {
+        const disc = await api.get('disciplines', session.disciplineId);
+        if(!disc) return { ok:false, reason:'no-discipline' };
+        if(o.unique){
+          const dup = await api.get('sessions', session.id);
+          if(dup) return { ok:false, reason:'duplicate', session:dup };
+        }
+        let topic = session.topicId ? await api.get('topics', session.topicId) : null;
+        let topicDropped = false;
+        if(session.topicId && (!topic || topic.disciplineId !== session.disciplineId)){
+          // o tópico saiu (ou mudou de disciplina) em outra aba: o estudo não some, fica só na disciplina
+          session.topicId = null; session.reviewOutcome = null; session.reviewMethod = null;
+          topic = null; topicDropped = true;
+        }
+        let rec = null;
+        if(topic){
+          const ctx = reviewContextOf(topic);
+          // guarda a estratégia vigente para as análises continuarem legíveis depois
+          session.reviewStrategyAtTime = ctx.strategy;
+          rec = TopicReconciler.afterCreate(topic, session, ctx);
+        }
+        // `add` recusa um id repetido: é a garantia final de que o mesmo cronômetro não vira dois estudos.
+        if(o.unique) await api.add('sessions', session); else api.put('sessions', session);
+        if(rec) api.put('topics', rec.topic);
+        return { ok:true, session, topic: rec ? rec.topic : null, effect: rec ? rec.effect : null, topicDropped, clockDropped: time.clockDropped };
+      });
+    } catch(err){
+      if(err && err.name === 'ConstraintError') return { ok:false, reason:'duplicate' };
+      console.error('Falha ao gravar o estudo:', err);
+      return { ok:false, reason:'error', error:err };
+    }
+  },
+
+  finalizeTimer(input, runId){
+    return this.create(input, { id: runId, unique:true });
+  },
+
+  /**
+   * Edita um estudo. `changes` traz os valores do formulário; `opts.base` é o
+   * estudo como estava quando o formulário abriu. Só os campos que a pessoa
+   * realmente mudou são gravados — e, se algum deles foi alterado em outra aba
+   * nesse meio-tempo, nada é gravado: volta { reason:'conflict', current }.
+   * `opts.force` grava mesmo assim (a pessoa viu o aviso e escolheu manter a edição).
+   */
+  async update(id, changes, opts){
+    const o = opts || {};
+    try {
+      return await DB.atomic(this.STORES, async api => {
+        const cur = await api.get('sessions', id);
+        if(!cur) return { ok:false, reason:'missing' };
+        const base = o.base || cur;
+        const keys = Object.keys(changes || {}).filter(k => !sameStored(changes[k], base[k]));
+        if(!keys.length) return { ok:true, unchanged:true, session:cur };
+        if(o.base && !o.force){
+          const clash = keys.filter(k => !sameStored(base[k], cur[k]) && !sameStored(changes[k], cur[k]));
+          if(clash.length) return { ok:false, reason:'conflict', current:cur, fields:clash };
+        }
+        const updated = Object.assign({}, cur);
+        keys.forEach(k => { updated[k] = changes[k]; });
+        updated.updatedAt = nowISO();
+        updated.minutes = Math.max(0, Math.round(Number(updated.minutes) || 0));
+        if(!(updated.minutes > 0)) return { ok:false, reason:'no-minutes' };
+        if(!isStrictISODate(updated.date)) return { ok:false, reason:'bad-date' };
+        updated.breaks = sanitizeBreaks(updated.breaks);
+
+        let clockDropped = false;
+        if(keys.some(k => k === 'minutes' || k === 'breaks' || k === 'startedAt' || k === 'endedAt')){
+          const time = TimeRules.settle(updated);
+          updated.startedAt = time.startedAt; updated.endedAt = time.endedAt; updated.breaks = sanitizeBreaks(time.breaks);
+          clockDropped = time.clockDropped;
+        }
+        // crédito antigo calculado sobre outro tempo/disciplina deixaria de ser verdade: não acompanha a edição
+        if('credits' in updated && (updated.minutes !== cur.minutes || updated.disciplineId !== cur.disciplineId)) delete updated.credits;
+
+        const disc = await api.get('disciplines', updated.disciplineId);
+        if(!disc) return { ok:false, reason:'no-discipline' };
+        // o tópico precisa existir e ser da disciplina do estudo
+        let topicNow = updated.topicId ? await api.get('topics', updated.topicId) : null;
+        if(!topicNow || topicNow.disciplineId !== updated.disciplineId){ updated.topicId = null; topicNow = null; }
+        if(!updated.topicId && cur.topicId){ updated.reviewOutcome = null; updated.reviewMethod = null; }   // a revisão era daquele tópico
+
+        const touchesTopic = ['topicId','date','reviewOutcome','reviewMethod'].some(k => !sameStored(cur[k], updated[k]));
+        const effects = [];
+        if(touchesTopic){
+          if(cur.topicId && cur.topicId === updated.topicId){
+            const before = await api.getAllByIndex('sessions', 'topicId', cur.topicId);
+            const after = before.map(s => s.id === id ? updated : s);
+            const rec = TopicReconciler.afterCorrection(topicNow, before, after, reviewContextOf(topicNow));
+            api.put('topics', rec.topic);
+            effects.push({ topic:rec.topic, effect:rec.effect, role:'same' });
+          } else {
+            if(cur.topicId){
+              const oldTopic = await api.get('topics', cur.topicId);
+              if(oldTopic){
+                const before = await api.getAllByIndex('sessions', 'topicId', cur.topicId);
+                const rec = TopicReconciler.afterCorrection(oldTopic, before, before.filter(s => s.id !== id), reviewContextOf(oldTopic));
+                api.put('topics', rec.topic);
+                effects.push({ topic:rec.topic, effect:rec.effect, role:'from' });
+              }
+            }
+            if(topicNow){
+              const ctx = reviewContextOf(topicNow);
+              if(updated.reviewOutcome) updated.reviewStrategyAtTime = ctx.strategy;
+              const rec = TopicReconciler.afterCreate(topicNow, updated, ctx);
+              api.put('topics', rec.topic);
+              effects.push({ topic:rec.topic, effect:rec.effect, role:'to' });
+            }
+          }
+        }
+        api.put('sessions', updated);
+        return { ok:true, session:updated, previous:cur, effects, clockDropped };
+      });
+    } catch(err){
+      console.error('Falha ao atualizar o estudo:', err);
+      return { ok:false, reason:'error', error:err };
+    }
+  },
+
+  async remove(id){
+    try {
+      return await DB.atomic(this.STORES, async api => {
+        const cur = await api.get('sessions', id);
+        if(!cur) return { ok:true, already:true, effects:[] };
+        const effects = [];
+        if(cur.topicId){
+          const topic = await api.get('topics', cur.topicId);
+          if(topic){
+            const before = await api.getAllByIndex('sessions', 'topicId', cur.topicId);
+            const rec = TopicReconciler.afterCorrection(topic, before, before.filter(s => s.id !== id), reviewContextOf(topic));
+            api.put('topics', rec.topic);
+            effects.push({ topic:rec.topic, effect:rec.effect, role:'same' });
+          }
+        }
+        api.delete('sessions', id);
+        return { ok:true, session:cur, effects };
+      });
+    } catch(err){
+      console.error('Falha ao remover o estudo:', err);
+      return { ok:false, reason:'error', error:err };
+    }
+  }
+};
+
+/** O que dizer quando uma correção mexeu (ou não) na agenda de revisão de um tópico. */
+function reconcileNote(effects){
+  const e = (effects || []).find(x => x.effect && x.effect !== 'history' && x.effect !== 'study');
+  if(!e) return '';
+  const name = e.topic ? e.topic.name : 'o tópico';
+  if(e.effect === 'reset') return `${name} voltou a "não iniciado": não há mais estudos dele.`;
+  if(e.effect === 'reanchored' || e.effect === 'rescheduled' || e.effect === 'applied' || e.effect === 'first'){
+    return e.topic && e.topic.reviewDueDate
+      ? `Próxima revisão de ${name}: ${fmtRelativeFuture(e.topic.reviewDueDate)}.`
+      : `A revisão de ${name} foi atualizada.`;
+  }
+  if(e.effect === 'historical') return `A agenda de ${name} não mudou: ele já tem uma revisão mais recente.`;
+  return '';
+}
+
+/* =========================================================================
+   AÇÕES DE DOMÍNIO — a ponte entre os formulários e os comandos.
+   Aqui ficam os avisos na tela; a gravação é de SessionCommands.
+   ========================================================================= */
+/** Atualiza a tela depois de uma gravação. Se redesenhar falhar, o dado já está salvo: não pedir para repetir. */
+async function safeRefresh(){
+  try { await refresh(); return true; }
+  catch(err){ console.error('Falha ao atualizar a tela depois de gravar:', err); return false; }
+}
+
+function sessionFailureToast(reason, action){
+  if(reason === 'no-minutes') toast('Informe quanto tempo você estudou.', 'err', { title:'Falta o tempo de estudo' });
+  else if(reason === 'bad-date') toast('Escolha uma data válida para o estudo.', 'err', { title:'Data inválida' });
+  else if(reason === 'no-discipline') toast('Ela pode ter sido removida em outra aba. Escolha outra disciplina e tente de novo.', 'err', { title:'Disciplina não encontrada' });
+  else if(reason === 'missing') toast('Ele pode ter sido removido em outra aba.', 'err', { title:'Estudo não encontrado' });
+  else if(action === 'update') toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a edição' });
+  else if(action === 'remove') toast('Tente novamente. O estudo continua no histórico.', 'err', { title:'Não foi possível remover' });
+  else toast('Tente novamente. Nada foi perdido.', 'err', { title:'Não foi possível salvar o estudo' });
+}
+
+/**
+ * Registra um estudo e avisa a pessoa. Devolve o resultado do comando
+ * ({ ok, reason, … }). Com `opts.timerRunId`, o estudo é a finalização daquele
+ * cronômetro: se ele já foi registrado (outra aba, clique repetido), volta
+ * { ok:false, reason:'duplicate' } SEM aviso — quem chamou explica.
+ */
+async function registerStudy(input, opts){
+  const o = opts || {};
+  const res = o.timerRunId
+    ? await SessionCommands.finalizeTimer(input, o.timerRunId)
+    : await SessionCommands.create(input);
+  if(!res.ok){
+    if(res.reason !== 'duplicate') sessionFailureToast(res.reason, 'create');
+    return res;
+  }
+  await safeRefresh();
+
+  const session = res.session, topic = res.topic;
+  const disc = getDiscipline(session.disciplineId);
+  const topicName = topic ? topic.name : '';
+  if(session.reviewOutcome && topic && res.effect === 'historical'){
+    toastRich('Revisão registrada no histórico', [
+      topicName,
+      ['Você respondeu', reviewOutcomeLabel(session.reviewOutcome)],
+      'A agenda de revisão deste tópico não mudou: ele já tem uma revisão mais recente.'
+    ], 'info');
+  } else if(session.reviewOutcome && topic){
     toastRich('Revisão concluída', [
       topicName,
       ['Você respondeu', reviewOutcomeLabel(session.reviewOutcome)],
-      ['Volta a aparecer', topicCopy.reviewDueDate ? fmtRelativeFuture(topicCopy.reviewDueDate) : '—'],
-      ['Quanto você retém', (topicCopy.masteryLevel || '—') + ' de 5']
+      ['Volta a aparecer', topic.reviewDueDate ? fmtRelativeFuture(topic.reviewDueDate) : '—'],
+      ['Consolidação estimada', (topic.masteryLevel || '—') + ' de 5']
     ]);
   } else {
+    const prog = PlannerEngine.getCurrentWeekProgress();
     const rows = [
-      disc.name + (topicName ? ' · ' + topicName : ''),
-      ['Tempo estudado', fmtDuration(minutes)]
+      (disc ? disc.name : '') + (topicName ? ' · ' + topicName : ''),
+      ['Tempo estudado', fmtDuration(session.minutes)]
     ];
     const restMin = breakMinutesOf(session);
     if(restMin > 0) rows.push(['Descanso', fmtDuration(restMin)]);
-    if(prog.plannedTotal > 0) rows.push(['Semana', `${fmtDuration(prog.realizedTotal)} / ${fmtDuration(prog.plannedTotal)}`]);
-    if(topicCopy && topicCopy.reviewDueDate) rows.push(['Próxima revisão', fmtRelativeFuture(topicCopy.reviewDueDate)]);
+    if(prog.plannedTotal > 0) rows.push(['Plano da semana', `${fmtDuration(prog.countedTotal)} de ${fmtDuration(prog.plannedTotal)}`]);
+    if(topic && topic.reviewDueDate) rows.push(['Próxima revisão', fmtRelativeFuture(topic.reviewDueDate)]);
     toastRich('Estudo registrado', rows);
   }
-  return true;
+  if(res.topicDropped) toast('O tópico escolhido não existe mais. O estudo foi registrado só na disciplina.', 'warn', { title:'Tópico não encontrado' });
+  return res;
 }
 
-async function updateSession(id, changes){
-  const s = state.sessions.find(x => x.id === id);
-  if(!s){ toast('Ele pode ter sido removido em outra aba.', 'err', { title:'Estudo não encontrado' }); return false; }
-  const updated = Object.assign({}, s, changes, { updatedAt: nowISO() });
-  updated.minutes = Math.max(0, Math.round(Number(updated.minutes) || 0));
-  updated.breaks = sanitizeBreaks(updated.breaks);
-  // crédito antigo calculado sobre outro tempo/disciplina deixaria de ser verdade: não acompanha a edição
-  if('credits' in updated && (updated.minutes !== s.minutes || updated.disciplineId !== s.disciplineId)) delete updated.credits;
-  // v6.4: o tópico precisa ser da disciplina do estudo
-  const tp = updated.topicId ? getTopic(updated.topicId) : null;
-  if(!tp || tp.disciplineId !== updated.disciplineId) updated.topicId = null;
-  try { await DB.put('sessions', updated); }
-  catch(err){
-    console.error('Falha ao atualizar o estudo:', err);
-    toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a edição' });
-    return false;
+/**
+ * Salva um estudo. v6.3: devolve true quando gravou e false quando não — quem
+ * chama só fecha o formulário depois de gravar, para nada do que foi digitado
+ * se perder.
+ */
+async function saveSession(input){
+  const res = await registerStudy(input);
+  return !!res.ok;
+}
+
+/**
+ * Edita um estudo. Devolve o resultado do comando. Em caso de conflito
+ * ({ reason:'conflict' }) nada é gravado e nenhum aviso é mostrado: o
+ * formulário mostra a escolha à pessoa.
+ */
+async function updateSession(id, changes, opts){
+  const res = await SessionCommands.update(id, changes, opts);
+  if(!res.ok){
+    if(res.reason !== 'conflict') sessionFailureToast(res.reason, 'update');
+    if(res.reason === 'missing') await safeRefresh();
+    return res;
   }
-  try { await refresh(); } catch(err){ console.error(err); }
-  toast('Estudo atualizado.', 'ok');
-  return true;
+  await safeRefresh();
+  if(res.unchanged){ toast('Nada foi alterado.', 'info'); return res; }
+  const note = [reconcileNote(res.effects), res.clockDropped ? 'O horário antigo não fechava com a nova duração e deixou de ser guardado.' : ''].filter(Boolean).join(' ');
+  toast(note, 'ok', { title:'Estudo atualizado', duration: note ? 5200 : undefined });
+  return res;
 }
 
 async function deleteSession(id){
-  try { await DB.delete('sessions', id); }
-  catch(err){
-    console.error('Falha ao remover o estudo:', err);
-    toast('Tente novamente. O estudo continua no histórico.', 'err', { title:'Não foi possível remover' });
-    return false;
-  }
-  try { await refresh(); } catch(err){ console.error(err); }
-  toast('Estudo removido do histórico.');
+  const res = await SessionCommands.remove(id);
+  if(!res.ok){ sessionFailureToast(res.reason, 'remove'); return false; }
+  await safeRefresh();
+  if(res.already){ toast('Ele já tinha sido removido.', 'info', { title:'Estudo removido' }); return true; }
+  const note = reconcileNote(res.effects);
+  toast(note, 'ok', { title:'Estudo removido do histórico', duration: note ? 5200 : undefined });
   return true;
 }
 
@@ -5609,13 +7251,17 @@ function todayNext(){
   const todayMin = sum(state.sessions.filter(s => s.date === todayISO()), s => s.minutes);
   if(PlannerEngine.activePlan() && prog.plannedTotal > 0){
     const pct = clamp(prog.pct || 0, 0, 999);
+    /* v6.5 — a barra mostra o plano CUMPRIDO (por disciplina). O que foi estudado
+       além do planejado aparece à parte e não enche a barra. */
+    const extraText = prog.extraTotal >= 1 ? ` · ${fmtDuration(prog.extraTotal)} além do plano` : '';
     rows.push(nextRow({
       label:'Semana',
-      title:`${fmtDuration(prog.realizedTotal)} de ${fmtDuration(prog.plannedTotal)} nesta semana`,
-      sub: (prog.remainingTotal > 0 ? `Faltam ${fmtDuration(prog.remainingTotal)}` : 'Plano da semana concluído') + ` · hoje ${fmtDuration(todayMin)}`,
+      title:`${fmtDuration(prog.countedTotal)} de ${fmtDuration(prog.plannedTotal)} do plano desta semana`,
+      sub: (prog.remainingTotal > 0 ? `Faltam ${fmtDuration(prog.remainingTotal)}` : 'Plano da semana concluído') + extraText + ` · hoje ${fmtDuration(todayMin)}`,
       bar: barWithTip(pct, pct >= 100 ? 'done' : null, 'Semana', [
-        ['Planejado', fmtDuration(prog.plannedTotal)], ['Realizado', fmtDuration(prog.realizedTotal)],
-        ['Restante', fmtDuration(prog.remainingTotal)], ['Plano cumprido', fmtPct(pct)]], 'today-week'),
+        ['Planejado', fmtDuration(prog.plannedTotal)], ['Estudado no total', fmtDuration(prog.realizedTotal)],
+        ['Dentro do plano', fmtDuration(prog.countedTotal)], ['Além do plano', fmtDuration(prog.extraTotal)],
+        ['Falta', fmtDuration(prog.remainingTotal)], ['Plano cumprido', fmtPct(pct)]], 'today-week'),
       value: fmtPct(pct),
       open:() => setView('plan')
     }));
@@ -5848,7 +7494,7 @@ function startReview(topicId, presetMethod){
         h('button', { class:'btn ghost', type:'button', text:'Registrar sem cronômetro',
           onclick:() => { close(); openReviewOutcomeModal(t.id, method, ReviewEngine.estimateMinutes(t, method)); } }),
         h('button', { class:'btn primary', type:'button', text:'Começar revisão',
-          onclick:() => { close(); startTimer(t.disciplineId, t.id, 'revisao', method); } })
+          onclick:() => { if(startTimer(t.disciplineId, t.id, 'revisao', method)) close(); } })
       ]
     };
   }, { size:'wide' });
@@ -5871,14 +7517,20 @@ function openReviewOutcomeModal(topicId, method, suggestedMinutes){
         h('div', { class:'field' }, h('label', { for:'ro-comment', text:'Comentário (opcional)' }), h('textarea', { id:'ro-comment' }))),
       actions:[
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
-        h('button', { class:'btn primary', type:'button', text:'Registrar revisão', onclick: async () => {
+        h('button', { class:'btn primary', type:'button', text:'Registrar revisão', onclick: once(async () => {
           if(!outcome){ toast('Escolha como foi a revisão.', 'err'); return; }
-          const minutes = Math.max(1, Number(minInput.value) || 10);
+          const minutes = Math.round(Number(minInput.value));
+          if(!(minutes > 0)){ minInput.setAttribute('aria-invalid', 'true'); minInput.focus(); toast('Informe quantos minutos durou a revisão.', 'err'); return; }
           const comment = (($('#ro-comment') || {}).value || '').trim();
-          close();
-          await saveSession({ disciplineId:t.disciplineId, topicId:t.id, date:todayISO(), minutes,
+          /* v6.5 — SALVAR PRIMEIRO, FECHAR DEPOIS. Antes a janela fechava antes de
+             gravar: se a gravação falhasse, o resultado e o comentário se perdiam. */
+          const ok = await saveSession({ disciplineId:t.disciplineId, topicId:t.id, date:todayISO(), minutes,
             type:'revisao', reviewOutcome:outcome, reviewMethod:method, comment });
-        } })
+          if(!ok) return;
+          close();
+          // se veio de uma sessão de revisão montada, segue para o próximo item (como no cronômetro)
+          if(ui.reviewQueue && ui.reviewQueue.length) setTimeout(runNextQueuedReview, 400);
+        }) })
       ]
     };
   });
@@ -6007,6 +7659,8 @@ function ensurePlanDraft(){
   const existing = new Map((plan ? plan.allocations : []).map(a => [a.disciplineId, a]));
   ui.planDraft = {
     planId: plan ? plan.id : null,
+    baseUpdatedAt: plan ? (plan.updatedAt || null) : null,   // v6.5: para notar se o plano mudou em outra aba
+
     name: plan ? plan.name : 'Meu plano',
     availableMinutes: plan ? plan.weeklyAvailableMinutes : 300,
     allocations: discs.map(d => {
@@ -6163,7 +7817,8 @@ function planOverview(plan){
     h('p', { class:'tf-eyebrow', text: plan.name && plan.name !== 'Meu plano' ? `Plano: ${plan.name}` : 'Seu tempo semanal' }),
     h('h3', { class:'tf-title', id:'pl-title' }, h('span', { class:'num', text: fmtDuration(plan.weeklyAvailableMinutes) }), ' por semana'),
     pct !== null ? h('div', { class:'tf-progress' },
-      h('p', { class:'tf-reason', text:`Nesta semana: ${fmtDuration(prog.realizedTotal)} de ${fmtDuration(prog.plannedTotal)}` + (prog.remainingTotal > 0 ? ` · faltam ${fmtDuration(prog.remainingTotal)}` : ' · semana concluída') }),
+      h('p', { class:'tf-reason', text:`Nesta semana: ${fmtDuration(prog.countedTotal)} de ${fmtDuration(prog.plannedTotal)} do plano` + (prog.remainingTotal > 0 ? ` · faltam ${fmtDuration(prog.remainingTotal)}` : ' · plano concluído')
+        + (prog.extraTotal >= 1 ? ` · ${fmtDuration(prog.extraTotal)} além do plano` : '') }),
       h('div', { class:'nr-bar' }, progressBar(pct, pct >= 100 ? 'done' : null, 'plan-week'), h('span', { class:'nr-value num', text: fmtPct(pct) }))) : null,
     h('div', { class:'tf-actions' },
       h('button', { class:'btn primary', type:'button', text:'Ajustar', onclick:() => { ui.planEditing = true; ui.planDraft = null; renderPlan(); } }),
@@ -6242,22 +7897,21 @@ function createSimplePlan(minutes){
         ui.planDraft = { planId:null, name:'Meu plano', availableMinutes:minutes, allocations:res.allocations.map(a => ({ ...a })) };
         renderPlan();
       } }),
-      h('button', { class:'btn primary', type:'button', text:'Usar esta divisão', onclick: async () => {
-        close();
-        try {
-          const plan = newPlan('Meu plano', minutes);
-          plan.allocations = res.allocations;
-          state.plans.forEach(x => { x.active = false; });
-          if(state.plans.length) await DB.putMany('plans', state.plans);
-          await DB.put('plans', plan);
-          ui.planDraft = null; ui.planExpanded = false;
-          await refresh();
-          toast(`${fmtDuration(minutes)} por semana. A tela Hoje já usa esse plano.`, 'ok', { title:'Semana organizada' });
-        } catch(err){
+      h('button', { class:'btn primary', type:'button', text:'Usar esta divisão', onclick: once(async () => {
+        // v6.5: grava primeiro, fecha depois; nada na memória muda antes de o banco confirmar
+        const plan = newPlan('Meu plano', minutes);
+        plan.allocations = res.allocations;
+        try { await PlanCommands.saveActive(plan); }
+        catch(err){
           console.error('Falha ao criar o plano:', err);
-          toast('Não foi possível salvar o plano.', 'err');
+          toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar o plano' });
+          return;
         }
-      } })
+        close();
+        ui.planDraft = null; ui.planExpanded = false;
+        await safeRefresh();
+        toast(`${fmtDuration(minutes)} por semana. A tela Hoje já usa esse plano.`, 'ok', { title:'Semana organizada' });
+      }) })
     ]
   }), { size:'wide' });
 }
@@ -6283,7 +7937,6 @@ async function savePlanDraft(applyToCurrentWeek){
        banco nem a memória ficam com um plano desativado pela metade. */
     const current = PlannerEngine.activePlan();
     const plan = current ? Object.assign({}, current) : newPlan(draft.name, draft.availableMinutes);
-    const others = current ? [] : state.plans.filter(p => p.active).map(p => Object.assign({}, p, { active:false, updatedAt: nowISO() }));
     plan.name = str(draft.name).trim() || 'Meu plano';
     plan.weeklyAvailableMinutes = draft.availableMinutes;
     plan.allocations = draft.allocations.map(a => ({ ...a }));
@@ -6302,11 +7955,16 @@ async function savePlanDraft(applyToCurrentWeek){
     }
 
     try {
-      await DB.transactional(wp ? ['plans','weeklyPlans'] : ['plans'], api => {
-        others.forEach(p => api.put('plans', p));
-        api.put('plans', plan);
-        if(wp) api.put('weeklyPlans', wp);
-      });
+      // v6.5: os outros planos ativos são desativados DENTRO da transação, lidos do banco
+      const base = current ? { baseUpdatedAt: draft.baseUpdatedAt } : {};
+      let res = await PlanCommands.saveActive(plan, wp, base);
+      if(!res.ok && res.reason === 'conflict'){
+        const keep = await confirmModal('Este plano foi alterado em outra aba enquanto você editava. Salvar a sua versão por cima dessa alteração?',
+          { title:'Os dados mudaram em outra aba.', confirmLabel:'Salvar a minha versão', cancelLabel:'Voltar', danger:false });
+        if(!keep) return;
+        res = await PlanCommands.saveActive(plan, wp, { force:true });
+      }
+      if(!res.ok) throw new Error('plano não gravado: ' + res.reason);
     } catch(err){
       console.error('Falha ao salvar o plano:', err);
       toast('Tente novamente. Seu plano anterior continua valendo.', 'err', { title:'Não foi possível salvar o plano' });
@@ -6315,7 +7973,7 @@ async function savePlanDraft(applyToCurrentWeek){
 
     ui.planDraft = null;
     ui.planEditing = false;
-    try { await refresh(); } catch(err){ console.error(err); }
+    await safeRefresh();
     toast(applyToCurrentWeek ? 'Já vale para esta semana.' : 'Vale a partir da próxima semana. Para usar agora, escolha "Salvar e aplicar nesta semana".', 'ok',
       { title:'Plano salvo' });
   } finally {
@@ -6336,38 +7994,53 @@ function openNewPlanModal(){
       ),
       actions:[
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
-        h('button', { class:'btn primary', type:'button', text:'Criar', onclick: async () => {
+        h('button', { class:'btn primary', type:'button', text:'Criar', onclick: once(async () => {
           const minutes = Math.round((Number(hoursIn.value) || 0) * 60);
-          if(minutes <= 0){ toast('Informe as horas por semana.', 'err'); return; }
-          close();
+          if(minutes <= 0){ hoursIn.setAttribute('aria-invalid', 'true'); hoursIn.focus(); toast('Informe as horas por semana.', 'err'); return; }
           const plan = newPlan(nameIn.value, minutes);
           const res = PlannerEngine.generatePlan(minutes, activeDisciplines().map(d => ({ disciplineId:d.id, priority:d.priority, minWeeklyMinutes:0 })));
           plan.allocations = res.allocations;
-          state.plans.forEach(p => { p.active = false; });
-          await DB.putMany('plans', state.plans);
-          await DB.put('plans', plan);
+          // v6.5: grava primeiro, fecha depois — se falhar, o formulário continua aberto e o plano atual continua valendo
+          try { await PlanCommands.saveActive(plan); }
+          catch(err){
+            console.error('Falha ao criar o plano:', err);
+            toast('Tente novamente. Seu plano atual continua valendo.', 'err', { title:'Não foi possível criar o plano' });
+            return;
+          }
+          close();
           ui.planDraft = null;
-          await refresh();
+          await safeRefresh();
           toast(`${plan.name} · ${fmtDuration(minutes)} por semana.`, 'ok', { title:'Plano criado e ativado' });
-        } })
+        }) })
       ]
     };
   });
 }
 
 async function activatePlan(id){
-  state.plans.forEach(p => { p.active = (p.id === id); p.updatedAt = nowISO(); });
-  await DB.putMany('plans', state.plans);
+  let res;
+  try { res = await PlanCommands.activate(id); }
+  catch(err){
+    console.error('Falha ao ativar o plano:', err);
+    toast('Tente novamente. O plano ativo não mudou.', 'err', { title:'Não foi possível ativar o plano' });
+    return;
+  }
   ui.planDraft = null;
-  await refresh();
-  toast('Plano ativado.', 'ok');
+  await safeRefresh();
+  if(!res.ok) toast('Ele foi excluído em outra aba.', 'info', { title:'Este plano não existe mais' });
+  else toast('Plano ativado.', 'ok');
 }
 async function deletePlan(id){
   const ok = await confirmModal('Excluir este plano? As semanas já registradas continuam com os valores históricos delas.', { confirmLabel:'Excluir' });
   if(!ok) return;
-  await DB.delete('plans', id);
+  try { await PlanCommands.remove(id); }
+  catch(err){
+    console.error('Falha ao excluir o plano:', err);
+    toast('Tente novamente. O plano continua aqui.', 'err', { title:'Não foi possível excluir o plano' });
+    return;
+  }
   ui.planDraft = null;
-  await refresh();
+  await safeRefresh();
   toast('Plano excluído.');
 }
 
@@ -7769,13 +9442,15 @@ function topicDetailContent(t, ctx){
   const add = (k, v) => kv.append(h('div', null, h('dt', { text:k }), h('dd', { text:v })));
   add('Situação', TOPIC_STATUS_LABEL[st]);
   add('Próxima revisão', t.reviewEnabled ? (t.reviewDueDate ? `${capFirst(fmtRelativeFuture(t.reviewDueDate))} · ${fmtDateBR(t.reviewDueDate)}` : 'depois do primeiro estudo') : 'revisões desligadas');
-  add('Consolidação', t.masteryLevel ? `${t.masteryLevel} de 5` : 'ainda não avaliada');
+  // v6.5: é uma ESTIMATIVA tirada das respostas da pessoa nas revisões — dita assim, não como medida de memória
+  add('Consolidação estimada', t.masteryLevel ? `${t.masteryLevel} de 5 · pelas suas respostas nas revisões` : 'ainda sem revisões');
   add('Tempo estudado', sess.length ? `${fmtDuration(totalMin)} em ${plural(sess.length, 'vez', 'vezes')}` : 'nenhum estudo ainda');
 
   const actions = h('div', { class:'level-actions' },
     t.archived
       ? h('button', { class:'btn primary sm', type:'button', text:'Reativar tópico', onclick: once(async () => {
-          await persist('topics', Object.assign({}, t, { archived:false })); await refresh(); toast(t.name, 'ok', { title:'Tópico reativado' }); }) })
+          if(!(await quickPatch('topics', t.id, { archived:false }, 'Não foi possível reativar o tópico'))) return;
+          await safeRefresh(); toast(t.name, 'ok', { title:'Tópico reativado' }); }) })
       : h('button', { class:'btn primary sm', type:'button', 'data-fk':'study', onclick:() => { leave(); startTimer(t.disciplineId, t.id, null); } }, icon('i-play'), 'Começar a estudar'),
     !t.archived && t.reviewEnabled ? h('button', { class:'btn ghost sm', type:'button', text:'Revisar agora', onclick:() => { leave(); startReview(t.id); } }) : null,
     h('button', { class:'btn ghost sm', type:'button', text:'Editar', 'data-fk':'edit', onclick:() => { leave(); openTopicModal(t.disciplineId, t); } }),
@@ -7839,29 +9514,18 @@ function openTopicDrawer(topicId){
 async function setDisciplinePriority(id, p){
   const d = getDiscipline(id);
   if(!d || PriorityEngine.clamp(d.priority) === p) return;
-  try {
-    await DB.put('disciplines', Object.assign({}, d, { priority:p, updatedAt: nowISO() }));
-    ui.planDraft = null;
-    await refresh();
-    toast(`${d.name} · ${priorityText(p)}`, 'ok', { title:'Prioridade atualizada' });
-  } catch(err){
-    console.error('Falha ao salvar a prioridade:', err);
-    toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a prioridade' });
-  }
+  // v6.5: só o campo `priority` é gravado, sobre o registro como está no banco
+  if(!(await quickPatch('disciplines', id, { priority:p }, 'Não foi possível salvar a prioridade'))) return;
+  ui.planDraft = null;
+  await safeRefresh();
+  toast(`${d.name} · ${priorityText(p)}`, 'ok', { title:'Prioridade atualizada' });
 }
 async function setTopicPriority(id, p){
   const t = getTopic(id);
   if(!t || PriorityEngine.clamp(t.priority) === p) return;
-  try {
-    const updated = Object.assign({}, t, { priority:p, updatedAt: nowISO() });
-    delete updated.importance;
-    await DB.put('topics', updated);
-    await refresh();
-    toast(`${t.name} · ${priorityText(p)}`, 'ok', { title:'Prioridade atualizada' });
-  } catch(err){
-    console.error('Falha ao salvar a prioridade:', err);
-    toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a prioridade' });
-  }
+  if(!(await quickPatch('topics', id, { priority:p }, 'Não foi possível salvar a prioridade'))) return;
+  await safeRefresh();
+  toast(`${t.name} · ${priorityText(p)}`, 'ok', { title:'Prioridade atualizada' });
 }
 
 /* ---------- incentivo gentil a organizar em Áreas (nunca bloqueia) ---------- */
@@ -7935,23 +9599,38 @@ function openAreaModal(area, opts){
     );
     nameIn.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); saveBtn.click(); } });
 
+    let savingArea = false;
     const saveBtn = h('button', { class:'btn primary', type:'button', text: area ? 'Salvar' : 'Criar área', onclick: async () => {
+      if(savingArea) return;
       const name = nameIn.value.trim();
       if(!name){ nameIn.setAttribute('aria-invalid','true'); nameIn.focus(); toast('Escreva o nome da área.', 'err'); return; }
       const dup = state.areas.find(x => x.name.toLowerCase() === name.toLowerCase() && (!area || x.id !== area.id));
       if(dup){ nameIn.setAttribute('aria-invalid','true'); toast(`Você já tem a área "${dup.name}".`, 'err'); return; }
-      const target = area ? Object.assign({}, area, { name, updatedAt: nowISO() }) : newArea(name);
+      const target = area ? Object.assign({}, area, { name }) : newArea(name);
       const changed = [];
       checks.forEach(({ d, c }) => {
         const want = c.checked ? target.id : (d.areaId === target.id ? null : d.areaId);
-        if((d.areaId || null) !== (want || null)) changed.push(Object.assign({}, d, { areaId: want || null, updatedAt: nowISO() }));
+        if((d.areaId || null) !== (want || null)) changed.push({ id:d.id, areaId: want || null });
       });
+      /* v6.5 — grava primeiro, fecha depois. Cada disciplina recebe só o campo
+         `areaId`, sobre o registro como está no banco: uma prioridade alterada
+         em outra aba não é desfeita por esta janela. */
+      savingArea = true;
+      saveBtn.disabled = true; saveBtn.setAttribute('aria-busy', 'true');
+      try {
+        await writeBatch([
+          area ? { op:'patch', store:'areas', id:area.id, changes:{ name }, required:true } : { op:'put', store:'areas', value:target }
+        ].concat(changed.map(d => ({ op:'patch', store:'disciplines', id:d.id, changes:{ areaId:d.areaId } }))));
+      } catch(err){
+        savingArea = false;
+        saveBtn.disabled = false; saveBtn.removeAttribute('aria-busy');
+        if(err && err.missing){ close(); await safeRefresh(); toast('Ela foi excluída em outra aba. Nada foi gravado.', 'info', { title:'Esta área não existe mais' }); return; }
+        console.error('Falha ao salvar a área:', err);
+        toast('Tente novamente. O que você preencheu continua aqui.', 'err', { title:'Não foi possível salvar a área' });
+        return;
+      }
       close();
       try {
-        await DB.transactional(changed.length ? ['areas','disciplines'] : ['areas'], api => {
-          api.put('areas', target);
-          changed.forEach(d => api.put('disciplines', d));
-        });
         ui.planDraft = null;
         await refresh();
         const moved = changed.filter(d => d.areaId === target.id).length;
@@ -7964,8 +9643,8 @@ function openAreaModal(area, opts){
           toast(moved ? `${plural(moved, 'disciplina organizada', 'disciplinas organizadas')} nela.` : '', 'ok', { title:`${name} criada` });
         }
       } catch(err){
-        console.error('Falha ao salvar a área:', err);
-        toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a área' });
+        // a área JÁ foi gravada; o que falhou foi só redesenhar a tela
+        console.error('Falha ao atualizar a tela depois de salvar a área:', err);
       }
     } });
 
@@ -7984,12 +9663,15 @@ async function deleteArea(id){
     : `Excluir a área "${area.name}"?`, { confirmLabel:'Excluir área' });
   if(!ok) return;
   try {
-    await DB.transactional(['areas','disciplines'], api => {
+    // v6.5: as disciplinas da área são lidas DENTRO da transação (outra aba pode ter movido alguma)
+    await DB.atomic(['areas','disciplines'], async api => {
+      const discs = await api.getAllByIndex('disciplines', 'areaId', area.id);
+      const ts = nowISO();
       api.delete('areas', area.id);
-      inside.forEach(d => api.put('disciplines', Object.assign({}, d, { areaId:null, updatedAt: nowISO() })));
+      discs.forEach(d => api.put('disciplines', Object.assign({}, d, { areaId:null, updatedAt: ts })));
     });
     ui.planDraft = null;
-    await refresh();
+    await safeRefresh();
     // a área não existe mais: o lugar atual é corrigido (sem deixar um "voltar" para ela)
     if(ui.view === 'disciplines') navDisc(inside.length && usesAreas() ? { level:'area', areaId:NO_AREA } : { level:'root' }, 'back', { replace:true });
     toast(inside.length ? `As disciplinas continuam disponíveis em "${NO_AREA_LABEL}".` : area.name, 'info', { title:'Área excluída' });
@@ -8013,13 +9695,10 @@ async function archiveArea(id){
     { confirmLabel:'Arquivar', danger:false });
   if(!ok) return;
   try {
-    const ts = nowISO();
-    await DB.transactional(inside.length ? ['areas','disciplines'] : ['areas'], api => {
-      api.put('areas', Object.assign({}, area, { archived:true, updatedAt:ts }));
-      inside.forEach(d => api.put('disciplines', Object.assign({}, d, { archived:true, updatedAt:ts })));
-    });
+    await writeBatch([{ op:'patch', store:'areas', id:area.id, changes:{ archived:true } }]
+      .concat(inside.map(d => ({ op:'patch', store:'disciplines', id:d.id, changes:{ archived:true } }))));
     ui.planDraft = null;
-    await refresh();
+    await safeRefresh();
     if(ui.view === 'disciplines') navDisc({ level:'root' }, 'back', { replace:true });
     toast(inside.length ? `${plural(inside.length, 'disciplina arquivada', 'disciplinas arquivadas')} junto. Nada foi apagado.` : area.name, 'ok', { title:'Área arquivada' });
   } catch(err){
@@ -8038,13 +9717,10 @@ async function unarchiveArea(id){
       { title:'Reativar área', confirmLabel:'Reativar tudo', cancelLabel:'Só a área', danger:false });
   }
   try {
-    const ts = nowISO();
-    await DB.transactional(alsoDiscs ? ['areas','disciplines'] : ['areas'], api => {
-      api.put('areas', Object.assign({}, area, { archived:false, updatedAt:ts }));
-      if(alsoDiscs) archivedInside.forEach(d => api.put('disciplines', Object.assign({}, d, { archived:false, updatedAt:ts })));
-    });
+    await writeBatch([{ op:'patch', store:'areas', id:area.id, changes:{ archived:false } }]
+      .concat(alsoDiscs ? archivedInside.map(d => ({ op:'patch', store:'disciplines', id:d.id, changes:{ archived:false } })) : []));
     ui.planDraft = null;
-    await refresh();
+    await safeRefresh();
     toast(alsoDiscs ? `${plural(archivedInside.length, 'disciplina reativada', 'disciplinas reativadas')} junto.` : area.name, 'ok', { title:'Área reativada' });
   } catch(err){
     console.error('Falha ao reativar a área:', err);
@@ -8131,7 +9807,9 @@ function openDisciplineModal(disc, opts){
     );
     nameIn.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); saveBtn.click(); } });
 
+    let savingDisc = false;
     const saveBtn = h('button', { class:'btn primary', type:'button', text: disc ? 'Salvar' : 'Criar disciplina', onclick: async () => {
+      if(savingDisc) return;
       const name = nameIn.value.trim();
       if(!name){ nameIn.setAttribute('aria-invalid','true'); nameIn.focus(); toast('Escreva o nome da disciplina.', 'err'); return; }
       const dup = state.disciplines.find(x => !x.archived && x.name.toLowerCase() === name.toLowerCase() && (!disc || x.id !== disc.id));
@@ -8146,35 +9824,44 @@ function openDisciplineModal(disc, opts){
         if(existing) areaId = existing.id;
         else { createdArea = newArea(areaName); areaId = createdArea.id; }
       }
-      close();
+
+      /* v6.5 — SALVAR PRIMEIRO, FECHAR DEPOIS. Se a gravação falhar, a janela
+         continua aberta com tudo o que foi preenchido. Na edição, só os campos
+         alterados são gravados, sobre o registro como está no banco. */
+      savingDisc = true;
+      saveBtn.disabled = true; saveBtn.setAttribute('aria-busy', 'true');
+      const unlock = () => { savingDisc = false; saveBtn.disabled = false; saveBtn.removeAttribute('aria-busy'); };
+      let entity;
       try {
-        let entity;
         if(disc){
-          entity = Object.assign({}, disc, { name, areaId, priority,
-            contentNature:nature, reviewStrategy:dStrategy, preferredReviewMethod:dMethod, updatedAt: nowISO() });
+          if(createdArea) await DB.put('areas', createdArea);
+          const res = await saveEntityEdit({ store:'disciplines', id:disc.id, base:disc, close, what:'esta disciplina',
+            changes:{ name, areaId, priority, contentNature:nature, reviewStrategy:dStrategy, preferredReviewMethod:dMethod } });
+          if(!res.ok){ if(!close.isClosed()) unlock(); return; }
+          entity = res.entity;
         } else {
           entity = newDiscipline(name, areaId, priority);
           Object.assign(entity, { contentNature:nature, reviewStrategy:dStrategy, preferredReviewMethod:dMethod });
-        }
-        await DB.transactional(createdArea ? ['areas','disciplines'] : ['disciplines'], api => {
-          if(createdArea) api.put('areas', createdArea);
-          api.put('disciplines', entity);
-        });
-        ui.planDraft = null;
-        if(!disc) ui.justCreated = 'disc-' + entity.id;     // a linha nova entra com um fade breve
-        await refresh();
-        const areaName = areaId && getArea(areaId) ? getArea(areaId).name : null;
-        if(disc){
-          const moved = (disc.areaId || null) !== (areaId || null);
-          toast(moved ? `Agora em ${areaName || NO_AREA_LABEL}. Tópicos, estudos e revisões continuam ligados a ela.` : `Prioridade ${priorityText(priority)}.`, 'ok',
-            { title:`${name} atualizada` });
-        } else {
-          toast(`${areaName ? 'Em ' + areaName : NO_AREA_LABEL} · prioridade ${priorityText(priority)}. Adicione tópicos quando quiser.`, 'ok',
-            { title:`${name} criada` });
+          await writeBatch((createdArea ? [{ op:'put', store:'areas', value:createdArea }] : []).concat([{ op:'put', store:'disciplines', value:entity }]));
         }
       } catch(err){
         console.error('Falha ao salvar a disciplina:', err);
-        toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar a disciplina' });
+        unlock();
+        toast('Tente novamente. O que você preencheu continua aqui.', 'err', { title:'Não foi possível salvar a disciplina' });
+        return;
+      }
+      close();
+      ui.planDraft = null;
+      if(!disc) ui.justCreated = 'disc-' + entity.id;     // a linha nova entra com um fade breve
+      await safeRefresh();
+      const areaName = areaId && getArea(areaId) ? getArea(areaId).name : null;
+      if(disc){
+        const moved = (disc.areaId || null) !== (areaId || null);
+        toast(moved ? `Agora em ${areaName || NO_AREA_LABEL}. Tópicos, estudos e revisões continuam ligados a ela.` : `Prioridade ${priorityText(priority)}.`, 'ok',
+          { title:`${name} atualizada` });
+      } else {
+        toast(`${areaName ? 'Em ' + areaName : NO_AREA_LABEL} · prioridade ${priorityText(priority)}. Adicione tópicos quando quiser.`, 'ok',
+          { title:`${name} criada` });
       }
     } });
 
@@ -8197,11 +9884,12 @@ async function toggleArchiveDiscipline(id){
       { confirmLabel:'Arquivar', danger:false });
     if(!ok) return;
   }
-  d.archived = !d.archived;
-  await persist('disciplines', d);
+  // v6.5: a memória só muda depois que o banco confirma (antes, `d.archived` virava antes de gravar)
+  const archived = !d.archived;
+  if(!(await quickPatch('disciplines', id, { archived }, archived ? 'Não foi possível arquivar a disciplina' : 'Não foi possível reativar a disciplina'))) return;
   ui.planDraft = null;
-  await refresh();
-  toast(d.archived ? 'O histórico continua intacto.' : d.name, 'ok', { title: d.archived ? 'Disciplina arquivada' : 'Disciplina reativada' });
+  await safeRefresh();
+  toast(archived ? 'O histórico continua intacto.' : d.name, 'ok', { title: archived ? 'Disciplina arquivada' : 'Disciplina reativada' });
 }
 
 async function deleteDisciplineForever(id){
@@ -8212,16 +9900,33 @@ async function deleteDisciplineForever(id){
     `Excluir "${d.name}" DEFINITIVAMENTE apaga ${plural(sess, 'registro de estudo', 'registros de estudo')} e ${plural(tps, 'tópico', 'tópicos')}. Arquivar preserva tudo. Continuar mesmo assim?`,
     { confirmLabel:'Excluir definitivamente' });
   if(!ok) return;
-  const topicIds = topicsOf(id, true).map(t => t.id);
-  const sessionIds = sessionsOf(id).map(s => s.id);
-  await DB.transactional(['disciplines','topics','sessions','deadlines'], api => {
-    api.delete('disciplines', id);
-    topicIds.forEach(t => api.delete('topics', t));
-    sessionIds.forEach(s => api.delete('sessions', s));
-    state.deadlines.filter(dl => dl.disciplineId === id).forEach(dl => api.delete('deadlines', dl.id));
-  });
+  // Um estudo no cronômetro desta disciplina ficaria sem dono: resolve-se ele antes.
+  if(TimerService.isActive && TimerService.data.disciplineId === id){
+    toast('Finalize ou descarte o estudo em andamento desta disciplina antes de excluí-la.', 'err', { title:'Há um estudo em andamento' });
+    return;
+  }
+  try {
+    /* v6.5 — o que será apagado é lido DENTRO da transação, pelos índices do
+       banco: um tópico ou estudo criado em outra aba um instante antes não
+       sobra órfão. Ou tudo sai, ou nada sai. */
+    await DB.atomic(['disciplines','topics','sessions','deadlines'], async api => {
+      const [tps2, sess2, dls] = [
+        await api.getAllByIndex('topics', 'disciplineId', id),
+        await api.getAllByIndex('sessions', 'disciplineId', id),
+        await api.getAllByIndex('deadlines', 'disciplineId', id)
+      ];
+      api.delete('disciplines', id);
+      tps2.forEach(t => api.delete('topics', t.id));
+      sess2.forEach(x => api.delete('sessions', x.id));
+      dls.forEach(dl => api.delete('deadlines', dl.id));
+    });
+  } catch(err){
+    console.error('Falha ao excluir a disciplina:', err);
+    toast('Nada foi apagado. Tente novamente.', 'err', { title:'Não foi possível excluir a disciplina' });
+    return;
+  }
   ui.planDraft = null;
-  await refresh();
+  await safeRefresh();
   toast('Disciplina excluída definitivamente.');
 }
 
@@ -8233,11 +9938,20 @@ async function moveTopic(topicId, dir){
   const j = i + dir;
   if(i < 0 || j < 0 || j >= list.length) return;
   const a = list[i], b = list[j];
-  const tmp = a.sortOrder; a.sortOrder = b.sortOrder; b.sortOrder = tmp;
-  if(a.sortOrder === b.sortOrder){ a.sortOrder = i * 10; b.sortOrder = j * 10; }
-  a.updatedAt = nowISO(); b.updatedAt = nowISO();
-  await DB.putMany('topics', [a, b]);
-  await refresh();
+  // v6.5: a troca é calculada em variáveis e gravada só no campo `sortOrder`; a memória muda depois de gravar
+  let orderA = b.sortOrder, orderB = a.sortOrder;
+  if(orderA === orderB){ orderA = j * 10; orderB = i * 10; }
+  try {
+    await writeBatch([
+      { op:'patch', store:'topics', id:a.id, changes:{ sortOrder: orderA } },
+      { op:'patch', store:'topics', id:b.id, changes:{ sortOrder: orderB } }
+    ]);
+  } catch(err){
+    console.error('Falha ao reordenar os tópicos:', err);
+    toast('Tente novamente. A ordem não mudou.', 'err', { title:'Não foi possível mover o tópico' });
+    return;
+  }
+  await safeRefresh();
 }
 
 
@@ -8305,6 +10019,7 @@ function topicEditor(o){
   const topic = (o.topic && typeof o.topic.id === 'string') ? o.topic : null;
   let discId = o.disciplineId;
   let saving = false;
+  let forceNext = false;              // v6.5: a pessoa viu o aviso de conflito e decidiu manter a edição
   let acceptedArchivedTwin = null;    // id do arquivado homônimo que o usuário decidiu ignorar
 
   const nameIn = h('input', { type:'text', id:'tm-name', value: topic ? topic.name : (o.name || ''), placeholder:'Ex.: Derivadas',
@@ -8350,7 +10065,7 @@ function topicEditor(o){
     rev.node,
     advWrap,
     topic && topic.reviewDueDate ? h('p', { class:'hint', style:'margin-top:12px',
-      text:`Próxima revisão ${fmtRelativeFuture(topic.reviewDueDate)} · consolidação ${topic.masteryLevel || '—'} de 5` }) : null,
+      text:`Próxima revisão ${fmtRelativeFuture(topic.reviewDueDate)} · consolidação estimada ${topic.masteryLevel || '—'} de 5` }) : null,
     (!topic && !o.inRegistration && o.close) ? h('button', { class:'linkbtn muted', type:'button', style:'margin-top:12px', text:'Prefere adicionar vários tópicos de uma vez?',
       onclick:() => { o.close(); openBulkTopicModal(discId); } }) : null
   );
@@ -8383,15 +10098,11 @@ function topicEditor(o){
   async function reactivate(t){
     if(saving) return;
     saving = true; setBusy(true, 'Reativando…');
-    try {
-      await persist('topics', Object.assign({}, t, { archived:false }));
-    } catch(err){
-      console.error('Falha ao reativar o tópico:', err);
+    if(!(await quickPatch('topics', t.id, { archived:false }, 'Não foi possível reativar o tópico'))){
       saving = false; setBusy(false);
-      toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível reativar o tópico' });
       return;
     }
-    try { await refresh(); } catch(err){ console.error(err); }
+    await safeRefresh();
     saving = false; setBusy(false);
     toast(t.name, 'ok', { title:'Tópico reativado' });
     const fresh = getTopic(t.id) || t;
@@ -8415,10 +10126,26 @@ function topicEditor(o){
     let saved;
     try {
       if(topic){
-        saved = Object.assign({}, topic, { name, priority, reviewEnabled: rev.chk.checked,
-          reviewStrategy: advanced.strategy, preferredReviewMethod: advanced.method, updatedAt: nowISO() });
-        delete saved.importance;
-        await DB.put('topics', saved);
+        /* v6.5 — só os campos do formulário são gravados, sobre o tópico como está
+           no banco. Uma revisão registrada em outra aba enquanto este editor
+           estava aberto (próxima data, domínio, contagens) não é desfeita. */
+        const changes = { name, priority, reviewEnabled: rev.chk.checked, reviewStrategy: advanced.strategy, preferredReviewMethod: advanced.method };
+        let res = await patchEntity('topics', topic.id, changes, { base:topic, force:forceNext });
+        if(!res.ok && res.reason === 'conflict'){
+          saving = false; setBusy(false);
+          forceNext = true;
+          mount(msg, h('p', { class:'err', role:'alert', text:'Os dados mudaram em outra aba: este tópico foi alterado enquanto você editava. Salve de novo para manter a sua edição, ou cancele para ficar com a outra.' }));
+          return;
+        }
+        if(!res.ok && res.reason === 'missing'){
+          saving = false; setBusy(false);
+          if(o.close) o.close(); else if(o.onCancel) o.onCancel();
+          await safeRefresh();
+          toast('Ele foi removido em outra aba. Nada foi gravado.', 'info', { title:'Este tópico não existe mais' });
+          return;
+        }
+        if(!res.ok) throw (res.error || new Error('tópico não gravado'));
+        saved = res.entity;
       } else {
         const existing = topicsOf(discId, true);
         const order = existing.length ? Math.max(...existing.map(t => t.sortOrder || 0)) + 10 : 10;
@@ -8453,8 +10180,8 @@ function topicEditor(o){
       o.close();
       const ok = await confirmModal('Arquivar este tópico? Ele sai das opções ativas e a revisão fica pausada — o histórico é preservado.', { confirmLabel:'Arquivar', danger:false });
       if(!ok) return;
-      await persist('topics', Object.assign(topic, { archived:true }));
-      await refresh();
+      if(!(await quickPatch('topics', topic.id, { archived:true }, 'Não foi possível arquivar o tópico'))) return;
+      await safeRefresh();
       toast(topic.name, 'info', { title:'Tópico arquivado' });
     } }));
   }
@@ -8496,7 +10223,7 @@ function openBulkTopicModal(disciplineId){
         rev.node),
       actions:[
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
-        h('button', { class:'btn primary', type:'button', text:'Adicionar tópicos', onclick: async () => {
+        h('button', { class:'btn primary', type:'button', text:'Adicionar tópicos', onclick: once(async () => {
           const known = new Set(topicsOf(disciplineId).map(t => t.name.toLowerCase()));
           const seen = new Set();
           const lines = area.value.split('\n').map(x => x.trim()).filter(x => {
@@ -8505,23 +10232,24 @@ function openBulkTopicModal(disciplineId){
             seen.add(k); return true;
           });
           if(!lines.length){ area.setAttribute('aria-invalid','true'); area.focus(); toast('Escreva ao menos um tópico novo, um por linha.', 'err'); return; }
-          close();
           const existing = topicsOf(disciplineId, true);
           let order = existing.length ? Math.max(...existing.map(t => t.sortOrder || 0)) : 0;
           const created = lines.map(name => {
             order += 10;
             return Object.assign(newTopic(disciplineId, name, order), { priority, reviewEnabled: rev.chk.checked });
           });
-          try {
-            await DB.putMany('topics', created);
-            await refresh();
-            toast(created.slice(0, 3).map(t => t.name).join(', ') + (created.length > 3 ? ` e mais ${created.length - 3}` : '') + ` · ${disc.name}`,
-              'ok', { title: created.length === 1 ? 'Tópico adicionado' : `${created.length} tópicos adicionados` });
-          } catch(err){
-            console.error(err);
-            toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível adicionar os tópicos' });
+          // v6.5: grava primeiro, fecha depois — se falhar, a lista digitada continua na janela
+          try { await DB.putMany('topics', created); }
+          catch(err){
+            console.error('Falha ao adicionar os tópicos:', err);
+            toast('Tente novamente. A lista que você escreveu continua aqui.', 'err', { title:'Não foi possível adicionar os tópicos' });
+            return;
           }
-        } })
+          close();
+          await safeRefresh();
+          toast(created.slice(0, 3).map(t => t.name).join(', ') + (created.length > 3 ? ` e mais ${created.length - 3}` : '') + ` · ${disc.name}`,
+            'ok', { title: created.length === 1 ? 'Tópico adicionado' : `${created.length} tópicos adicionados` });
+        }) })
       ]
     };
   }, { size:'wide' });
@@ -8597,12 +10325,19 @@ async function setDeadlineStatus(id, status){
   if(!dl || !DEADLINE_STATUSES.some(x => x.v === status)) return;
   const updated = Object.assign({}, dl, {
     status,
-    completedAt: status === 'completed' ? (dl.completedAt || nowISO()) : null,
-    updatedAt: nowISO()
+    completedAt: status === 'completed' ? (dl.completedAt || nowISO()) : null
   });
   try {
-    await DB.put('deadlines', updated);
-    await refresh();
+    // v6.5: só `status` e `completedAt` são gravados, sobre o prazo como está no banco
+    const res = await patchEntity('deadlines', id, { status: updated.status, completedAt: updated.completedAt });
+    if(!res.ok && res.reason === 'missing'){
+      if(Drawer.isOpen && ui.openDeadlineId === id) Drawer.close();
+      await safeRefresh();
+      toast('Ele foi excluído em outra aba.', 'info', { title:'Este prazo não existe mais' });
+      return;
+    }
+    if(!res.ok) throw (res.error || new Error('prazo não gravado'));
+    await safeRefresh();
     if(Drawer.isOpen && ui.openDeadlineId === id) openDeadlineDrawer(id);
     const msg = {
       completed:  ['Prazo concluído', 'Ele deixa de influenciar suas recomendações e continua no histórico.'],
@@ -8624,7 +10359,7 @@ async function deleteDeadline(id){
   try {
     await DB.delete('deadlines', id);
     if(Drawer.isOpen && ui.openDeadlineId === id) Drawer.close();
-    await refresh();
+    await safeRefresh();
     toast(dl.title, 'info', { title:'Prazo excluído' });
   } catch(err){
     console.error(err);
@@ -8769,12 +10504,14 @@ function openDeadlineModal(dl, preset){
 
     const actions = [
       h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
-      h('button', { class:'btn primary', type:'button', text: dl ? 'Salvar' : 'Adicionar prazo', onclick: async () => {
+      h('button', { class:'btn primary', type:'button', text: dl ? 'Salvar' : 'Adicionar prazo', onclick: once(async () => {
         [titleIn, dateIn, startIn].forEach(x => x.removeAttribute('aria-invalid'));
+        errBox.textContent = '';
         const title = titleIn.value.trim();
         if(!title) return fail('Dê um título ao prazo. Ex.: Prova de Redes.', titleIn);
-        if(!parseISO(dateIn.value)) return fail(`Informe a ${deadlineTypeInfo(type).dateLabel.toLowerCase()}.`, dateIn);
-        const start = startIn.value && parseISO(startIn.value) ? startIn.value : null;
+        if(!isStrictISODate(dateIn.value)) return fail(`Informe a ${deadlineTypeInfo(type).dateLabel.toLowerCase()}.`, dateIn);
+        if(startIn.value && !isStrictISODate(startIn.value)) return fail('A data de início não é uma data válida.', startIn);
+        const start = startIn.value || null;
         if(start && start > dateIn.value) return fail('A data de início precisa ser anterior ou igual à data do prazo.', startIn);
         const data = {
           title, type, date: dateIn.value, startDate: start,
@@ -8783,18 +10520,27 @@ function openDeadlineModal(dl, preset){
           instructions: instrIn.value.trim(), notes: notesIn.value.trim(),
           completedAt: status === 'completed' ? ((dl && dl.completedAt) || nowISO()) : null
         };
-        close();
-        try {
-          const entity = dl ? Object.assign({}, dl, data, { updatedAt: nowISO() }) : newDeadline(data);
-          await DB.put('deadlines', entity);
-          await refresh();
-          toast(`${deadlineTypeInfo(type).label} · ${DeadlineEngine.dueText(entity)} · prioridade ${PriorityEngine.text(priority)}`, 'ok',
-            { title: dl ? 'Prazo atualizado' : `${title} adicionado` });
-        } catch(err){
-          console.error('Falha ao salvar o prazo:', err);
-          toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível salvar o prazo' });
+        /* v6.5 — SALVAR PRIMEIRO, FECHAR DEPOIS. Antes a janela fechava e, se a
+           gravação falhasse, tudo o que foi digitado (orientações, anotações) sumia. */
+        let entity;
+        if(dl){
+          const res = await saveEntityEdit({ store:'deadlines', id:dl.id, base:dl, changes:data, close, what:'este prazo' });
+          if(!res.ok) return;
+          entity = res.entity;
+        } else {
+          entity = newDeadline(data);
+          try { await DB.put('deadlines', entity); }
+          catch(err){
+            console.error('Falha ao salvar o prazo:', err);
+            fail('Não foi possível salvar o prazo. Tente novamente — o que você preencheu continua aqui.');
+            return;
+          }
         }
-      } })
+        close();
+        await safeRefresh();
+        toast(`${deadlineTypeInfo(type).label} · ${DeadlineEngine.dueText(entity)} · prioridade ${PriorityEngine.text(priority)}`, 'ok',
+          { title: dl ? 'Prazo atualizado' : `${title} adicionado` });
+      }) })
     ];
     if(dl) actions.unshift(h('button', { class:'linkbtn danger', type:'button', text:'excluir', onclick: async () => { close(); await deleteDeadline(dl.id); } }));
     return { title: dl ? 'Editar prazo' : 'Novo prazo', content, actions };
@@ -9036,6 +10782,23 @@ function cancelAnalyticsSelector(){
 /** Chamado pelo setView ao ENTRAR em Análises vindo de outra tela. */
 function onEnterAnalytics(){
   if(ui.analyticsKeepMode){ ui.analyticsKeepMode = false; return; }
+  /* v6.5 — sair de Análises e voltar não joga fora a análise montada nesta
+     sessão: a pessoa reencontra o resultado onde deixou (com o período relativo
+     recalculado para hoje). Se o que estava sendo analisado deixou de existir,
+     a tela volta para a escolha. "Alterar análise" continua a um clique. */
+  if(ui.analyticsQuery){
+    const q = normalizeAnalyticsQuery(ui.analyticsQuery);
+    if(!analyticsQueryMissing(q)){
+      const range = analyticsQueryRange(q);
+      ui.analyticsQuery = q;
+      ui.analyticsDraft = null;
+      ui.analyticsMode = 'result';
+      ui.period = { start:range.start, end:range.end };
+      ui.analyticsScope = analyticsQueryScope(q);
+      return;
+    }
+    ui.analyticsQuery = null;
+  }
   ui.analyticsMode = 'select';
   ui.analyticsDraft = defaultAnalyticsQuery();
   ui.anPick = { search:'', month:null, editing:false, revealed:'all' };
@@ -9532,7 +11295,8 @@ function analyticsFocusSummary(a, focus){
     pushComparison(a, out);
   } else if(focus === 'planning'){
     const pa = a.planAdherence;
-    out.push(`Você realizou ${safePct(pa.pct)} do tempo planejado: ${fmtDuration(pa.realized)} de ${fmtDuration(pa.planned)}.`);
+    out.push(`Você cumpriu ${safePct(pa.pct)} do plano: ${fmtDuration(pa.counted)} das ${fmtDuration(pa.planned)} planejadas, contando cada disciplina até o que foi planejado para ela.`);
+    if(pa.extra >= 1) out.push(`Além disso, estudou ${fmtDuration(pa.extra)} fora do planejado — tempo a mais numa disciplina ou em disciplinas sem plano. No total foram ${fmtDuration(pa.realized)}.`);
     const planned = pa.perDiscipline.filter(x => x.planned > 0 && !x.archived);
     const below = planned.filter(x => x.pct !== null && x.pct < 70).slice(0, 2);
     const above = planned.filter(x => x.pct !== null && x.pct > 110).slice(0, 1);
@@ -9578,6 +11342,16 @@ function analyticsFocusSummary(a, focus){
   return out;
 }
 /** Descansos em frases: quanto, quantos e a relação com o estudo. Só descreve. */
+/**
+ * v6.5 — política de datas, dita só quando importa: se algum estudo do período
+ * atravessou a meia-noite, a pessoa fica sabendo em que dia ele foi contado.
+ */
+function midnightNote(a){
+  const crossed = (a.sessions || []).filter(x => { const c = sessionClockRange(x); return !!(c && c.nextDay); }).length;
+  if(!crossed) return null;
+  return h('p', { class:'hint', style:'margin-top:10px', text:
+    `${plural(crossed, 'estudo deste período atravessou', 'estudos deste período atravessaram')} a meia-noite. Um estudo conta inteiro no dia em que começou.` });
+}
 function restSentences(a){
   const rs = a.rest, out = [];
   if(!rs.count) return out;
@@ -9598,20 +11372,27 @@ function pushComparison(a, out){
 }
 
 /* ---------- 2. métricas essenciais (3–4, só as úteis para o foco) ---------- */
+const METRIC_WHEN = { period:'No período', now:'Situação atual', all:'Histórico inteiro' };
 function metricCard(o){
   const val = String(o.value);
   const prev = UiMemory.stats.get('an:' + o.key);
   UiMemory.stats.set('an:' + o.key, val);
   const changed = prev !== undefined && prev !== val && !prefersReducedMotion();
+  /* v6.5 — toda métrica diz A QUE TEMPO se refere. Algumas contam o que aconteceu
+     no período escolhido; outras mostram como as coisas estão agora (e não mudam
+     quando o período muda); poucas somam o histórico inteiro. Misturadas sem
+     rótulo, pareciam todas "do período". */
+  const whenText = METRIC_WHEN[o.when] || '';
   const inner = [
     h('span', { class:'an-metric-l', text:o.label }),
     h('span', { class:'an-metric-v' + (changed ? ' is-updated' : '') + (/\d/.test(val) ? '' : ' is-text') + (o.muted ? ' is-muted' : ''), text:val }),
     o.sub ? h('span', { class:'an-metric-s', text:o.sub }) : null,
-    o.delta ? h('span', { class:'an-metric-d ' + o.delta.dir, text:o.delta.text }) : null
+    o.delta ? h('span', { class:'an-metric-d ' + o.delta.dir, text:o.delta.text }) : null,
+    whenText ? h('span', { class:'an-metric-w', text:whenText }) : null
   ];
   if(!o.onOpen) return h('div', { class:'an-metric' }, inner);
   return h('button', { class:'an-metric is-action', type:'button', dataset:{ metric:o.key },
-      'aria-label': `${o.label}: ${val}${o.sub ? '. ' + o.sub : ''}. Ver detalhes`, onclick: o.onOpen },
+      'aria-label': `${o.label}${whenText ? ' (' + whenText.toLowerCase() + ')' : ''}: ${val}${o.sub ? '. ' + o.sub : ''}. Ver detalhes`, onclick: o.onOpen },
     inner, h('span', { class:'an-metric-go', 'aria-hidden':'true' }, icon('i-arrow', 'nav-icon')));
 }
 
@@ -9620,61 +11401,62 @@ function analyticsFocusMetrics(a, focus){
   const delta = v => (cmp.available && isNum(v)) ? { text:`${v >= 0 ? '+' : '−'}${fmtNumber(Math.abs(v), 0)}% vs. período anterior`, dir: v >= 0 ? 'up' : 'down' } : null;
   const open = kind => () => openAnalyticsDrawer(kind, a);
   const M = {
-    time:     () => ({ key:'time', label:'Tempo estudado', value:fmtDuration(t.minutes), sub: t.activeDays ? `${fmtDuration(t.avgPerActiveDay)} por dia de estudo` : null, delta: delta(cmp.minutesDelta), onOpen:open('time') }),
-    days:     () => ({ key:'days', label:'Dias com estudo', value:String(t.activeDays), sub:`de ${plural(a.days, 'dia', 'dias')}`, delta: delta(cmp.activeDaysDelta), onOpen:open('sessions') }),
-    sessions: () => ({ key:'sessions', label:'Estudos registrados', value:String(t.count), sub: t.count ? `média de ${fmtDuration(t.avgSession)}` : null, delta: focus === 'time' ? delta(cmp.sessionsDelta) : null, onOpen:open('sessions') }),
-    avgDay:   () => ({ key:'avgday', label:'Média por dia de estudo', value:fmtDuration(t.avgPerActiveDay), sub:`${fmtDuration(t.avgPerDay)} por dia do período`, onOpen:open('time') }),
+    time:     () => ({ key:'time', when:'period', label:'Tempo estudado', value:fmtDuration(t.minutes), sub: t.activeDays ? `${fmtDuration(t.avgPerActiveDay)} por dia de estudo` : null, delta: delta(cmp.minutesDelta), onOpen:open('time') }),
+    days:     () => ({ key:'days', when:'period', label:'Dias com estudo', value:String(t.activeDays), sub:`de ${plural(a.days, 'dia', 'dias')}`, delta: delta(cmp.activeDaysDelta), onOpen:open('sessions') }),
+    sessions: () => ({ key:'sessions', when:'period', label:'Estudos registrados', value:String(t.count), sub: t.count ? `média de ${fmtDuration(t.avgSession)}` : null, delta: focus === 'time' ? delta(cmp.sessionsDelta) : null, onOpen:open('sessions') }),
+    avgDay:   () => ({ key:'avgday', when:'period', label:'Média por dia de estudo', value:fmtDuration(t.avgPerActiveDay), sub:`${fmtDuration(t.avgPerDay)} por dia do período`, onOpen:open('time') }),
     // v6.4 — descanso é um número à parte: nunca somado ao tempo estudado
-    rest:     () => ({ key:'rest', label:'Descansos', value:fmtDuration(a.rest.minutes), sub: a.rest.count === 1 ? '1 descanso' : `${a.rest.count} descansos · média de ${fmtDurationWords(a.rest.avg)}`, onOpen:open('rest') }),
-    plan:     () => ({ key:'plan', label:METRIC_WORDS.adherence.title, value:safePct(a.planAdherence.pct), sub:`${fmtDuration(a.planAdherence.realized)} de ${fmtDuration(a.planAdherence.planned)}`, onOpen:open('plan') }),
-    reviews:  () => ({ key:'reviews', label:'Revisões concluídas', value:String(a.reviews.completed), sub: a.reviews.overdueNow ? `${plural(a.reviews.overdueNow, 'atrasada', 'atrasadas')} agora` : 'nenhuma atrasada agora', onOpen:open('reviews') }),
-    coverage: () => ({ key:'content', label:METRIC_WORDS.coverage.title, value:`${a.content.covered} de ${a.content.totalTopics}`, sub:`${safePct(a.content.coverage)} dos tópicos`, onOpen:open('content') })
+    rest:     () => ({ key:'rest', when:'period', label:'Descansos', value:fmtDuration(a.rest.minutes), sub: a.rest.count === 1 ? '1 descanso' : `${a.rest.count} descansos · média de ${fmtDurationWords(a.rest.avg)}`, onOpen:open('rest') }),
+    plan:     () => ({ key:'plan', when:'period', label:METRIC_WORDS.adherence.title, value:safePct(a.planAdherence.pct), sub:`${fmtDuration(a.planAdherence.counted)} de ${fmtDuration(a.planAdherence.planned)}`, onOpen:open('plan') }),
+    reviews:  () => ({ key:'reviews', when:'period', label:'Revisões concluídas', value:String(a.reviews.completed), sub: a.reviews.overdueNow ? `${plural(a.reviews.overdueNow, 'atrasada', 'atrasadas')} agora` : 'nenhuma atrasada agora', onOpen:open('reviews') }),
+    coverage: () => ({ key:'content', when:'now', label:METRIC_WORDS.coverage.title, value:`${a.content.covered} de ${a.content.totalTopics}`, sub:`${safePct(a.content.coverage)} dos tópicos`, onOpen:open('content') })
   };
   const topicObj = sc.type === 'topic' ? getTopic(sc.topicId) : null;
-  const masteryMetric = () => ({ key:'mastery', label:'Consolidação', value: topicObj && topicObj.masteryLevel ? `${topicObj.masteryLevel} de 5` : '—',
+  const masteryMetric = () => ({ key:'mastery', when:'now', label:'Consolidação estimada', value: topicObj && topicObj.masteryLevel ? `${topicObj.masteryLevel} de 5` : '—',
     sub: topicObj ? TOPIC_STATUS_LABEL[topicStatus(topicObj)] : null, muted: !(topicObj && topicObj.masteryLevel), onOpen:open('content') });
   const r = a.reviews, c = a.content, pa = a.planAdherence, dl = a.deadlines;
 
   if(focus === 'time') return [M.time(), M.days(), M.avgDay(), a.rest.count > 0 ? M.rest() : M.sessions()];
   if(focus === 'planning'){
-    const diff = pa.realized - pa.planned;
+    // v6.5 — volume e distribuição lado a lado, sem se confundirem: o que foi estudado no total
+    // e, à parte, o que passou do planejado (não entra em "Plano cumprido").
     return [M.plan(),
-      { key:'planned', label:'Planejado', value:fmtDuration(pa.planned), onOpen:open('plan') },
-      { key:'realized', label:'Realizado', value:fmtDuration(pa.realized), onOpen:open('plan') },
-      { key:'pdiff', label:'Diferença', value:(diff >= 0 ? '+' : '−') + fmtDuration(Math.abs(diff)), sub: diff >= 0 ? 'acima do planejado' : 'abaixo do planejado' }];
+      { key:'planned', when:'period', label:'Planejado', value:fmtDuration(pa.planned), onOpen:open('plan') },
+      { key:'realized', when:'period', label:'Estudado no total', value:fmtDuration(pa.realized), sub: pa.volumePct !== null ? `${safePct(pa.volumePct)} do tempo planejado` : null, onOpen:open('plan') },
+      { key:'pextra', when:'period', label:'Além do plano', value:fmtDuration(pa.extra), sub: pa.extra >= 1 ? 'não conta para o plano cumprido' : 'nada fora do planejado', muted: !(pa.extra >= 1), onOpen:open('plan') }];
   }
   if(focus === 'reviews'){
     return [
-      { key:'rdone', label:'Concluídas', value:String(r.completed), sub:'no período', onOpen:open('reviews') },
-      { key:'rlate', label:'Atrasadas agora', value:String(r.overdueNow), onOpen:open('reviews') },
-      { key:'rnext', label:'Próximos 7 dias', value:String(r.upcoming.length), onOpen:open('reviews') },
+      { key:'rdone', when:'period', label:'Concluídas', value:String(r.completed), onOpen:open('reviews') },
+      { key:'rlate', when:'now', label:'Atrasadas', value:String(r.overdueNow), onOpen:open('reviews') },
+      { key:'rnext', when:'now', label:'Próximos 7 dias', value:String(r.upcoming.length), onOpen:open('reviews') },
       sc.type === 'topic' ? masteryMetric()
-        : { key:'ravg', label:'Consolidação média', value: r.avgMastery !== null ? `${fmtNumber(r.avgMastery, 1)} de 5` : '—', sub:'dos tópicos em revisão', muted: r.avgMastery === null, onOpen:open('content') }
+        : { key:'ravg', when:'now', label:'Consolidação estimada', value: r.avgMastery !== null ? `${fmtNumber(r.avgMastery, 1)} de 5` : '—', sub:'média dos tópicos em revisão', muted: r.avgMastery === null, onOpen:open('content') }
     ];
   }
   if(focus === 'content'){
     if(topicObj){
       const s = sessionsOfTopic(topicObj.id);
       return [
-        { key:'tstatus', label:'Situação', value:TOPIC_STATUS_LABEL[topicStatus(topicObj)], onOpen:open('content') },
+        { key:'tstatus', when:'now', label:'Situação', value:TOPIC_STATUS_LABEL[topicStatus(topicObj)], onOpen:open('content') },
         masteryMetric(),
-        { key:'tsess', label:'Estudos registrados', value:String(s.length), sub:fmtDuration(sum(s, x => x.minutes || 0)) },
-        { key:'tnext', label:'Próxima revisão', value: topicObj.reviewEnabled && topicObj.reviewDueDate ? fmtRelativeFuture(topicObj.reviewDueDate) : '—', sub: topicObj.reviewEnabled && topicObj.reviewDueDate ? fmtDateBR(topicObj.reviewDueDate) : null }
+        { key:'tsess', when:'all', label:'Estudos registrados', value:String(s.length), sub:fmtDuration(sum(s, x => x.minutes || 0)) },
+        { key:'tnext', when:'now', label:'Próxima revisão', value: topicObj.reviewEnabled && topicObj.reviewDueDate ? fmtRelativeFuture(topicObj.reviewDueDate) : '—', sub: topicObj.reviewEnabled && topicObj.reviewDueDate ? fmtDateBR(topicObj.reviewDueDate) : null }
       ];
     }
     const cnt = k => (c.byStatus.find(x => x.key === k) || {}).count || 0;
     return [M.coverage(),
-      { key:'cmast', label:METRIC_WORDS.mastery.title, value:String(c.mastered), sub:safePct(c.masteryPct), onOpen:open('content') },
-      { key:'crev', label:'Em revisão', value:String(cnt('em_revisao')), onOpen:open('content') },
-      { key:'cns', label:'Não iniciados', value:String(cnt('nao_iniciado')), onOpen:open('content') }];
+      { key:'cmast', when:'now', label:METRIC_WORDS.mastery.title, value:String(c.mastered), sub:safePct(c.masteryPct), onOpen:open('content') },
+      { key:'crev', when:'now', label:'Em revisão', value:String(cnt('em_revisao')), onOpen:open('content') },
+      { key:'cns', when:'now', label:'Não iniciados', value:String(cnt('nao_iniciado')), onOpen:open('content') }];
   }
   if(focus === 'deadlines'){
     const soon = dl.upcoming.filter(x => x.days <= 14).length;
     return [
-      { key:'dopen', label:'Em aberto', value:String(dl.open.length), onOpen:open('deadlines') },
-      { key:'dsoon', label:'Próximos 14 dias', value:String(soon), onOpen:open('deadlines') },
-      { key:'dlate', label:'Data passou', value:String(dl.overdue.length), sub: dl.overdue.length ? 'ainda em aberto' : null, onOpen:open('deadlines') },
-      { key:'ddone', label:'Concluídos no período', value:String(dl.completedInRange.length), onOpen:open('deadlines') }
+      { key:'dopen', when:'now', label:'Em aberto', value:String(dl.open.length), onOpen:open('deadlines') },
+      { key:'dsoon', when:'now', label:'Próximos 14 dias', value:String(soon), onOpen:open('deadlines') },
+      { key:'dlate', when:'now', label:'Data passou', value:String(dl.overdue.length), sub: dl.overdue.length ? 'ainda em aberto' : null, onOpen:open('deadlines') },
+      { key:'ddone', when:'period', label:'Concluídos', value:String(dl.completedInRange.length), onOpen:open('deadlines') }
     ];
   }
   // visão geral
@@ -9772,7 +11554,7 @@ function contentStatusViz(a){
     const dl = h('dl', { class:'kv-list' });
     const kv = (k, v) => dl.append(h('div', null, h('dt', { text:k }), h('dd', { text:v })));
     kv('Situação', TOPIC_STATUS_LABEL[topicStatus(tp)]);
-    kv('Consolidação', tp.masteryLevel ? `${tp.masteryLevel} de 5` : 'ainda não avaliada');
+    kv('Consolidação estimada', tp.masteryLevel ? `${tp.masteryLevel} de 5` : 'ainda sem revisões');
     kv('Próxima revisão', tp.reviewEnabled ? (tp.reviewDueDate ? `${fmtRelativeFuture(tp.reviewDueDate)} (${fmtDateBR(tp.reviewDueDate)})` : 'depois do primeiro estudo') : 'revisões desligadas');
     kv('Vezes esquecido', String(tp.reviewFailures || 0));
     kv('Prioridade', PriorityEngine.text(tp.priority));
@@ -9917,7 +11699,7 @@ function analyticsExploreItems(a, focus){
     rest:         { label:'Descansos', meta:'quanto e quantos', show: a.rest.count > 0, build:() => h('div', { class:'an-explore-content' }, restDetail(a)) },
     plan:         { label:'Planejado × realizado', show: a.planAdherence.hasPlan && a.planAdherence.perDiscipline.length > 0, build:() => h('div', { class:'an-explore-content' }, planVsActualViz(a)) },
     weeks:        { label:'Semana a semana', show: sc.type !== 'topic', build:() => exploreContent(weeklyReportCard(sc)) },
-    reviews:      { label:'Revisões', show: a.reviews.expected > 0 || a.reviews.completed > 0 || a.reviews.overdueNow > 0, build:() => exploreContent(analyticsReviewsCard(a)) },
+    reviews:      { label:'Revisões', show: a.reviews.scheduled > 0 || a.reviews.completed > 0 || a.reviews.overdueNow > 0, build:() => exploreContent(analyticsReviewsCard(a)) },
     due:          { label:'Para revisar agora', show: a.reviews.dueList.length > 0, build:() => h('div', { class:'an-explore-content' }, dueReviewsViz(a)) },
     content:      { label:'Conteúdo', show: a.content.totalTopics > 0 && sc.type !== 'topic', build:() => exploreContent(analyticsContentCard(a)) },
     attention:    { label:'Tópicos que merecem atenção', show: hasTopics && a.attention.length > 0, build:() => exploreContent(analyticsAttentionCard(a)) },
@@ -10151,6 +11933,8 @@ function openAnalyticsDrawer(kind, a){
       body.append(drawerSection('Por dia da semana', a.byWeekday.map(x =>
         hbarRow(x.label, x.minutes / maxW * 100, fmtDuration(x.minutes)))));
     }
+    const mid = midnightNote(a);
+    if(mid) body.append(mid);
   }
 
   else if(kind === 'sessions'){
@@ -10181,6 +11965,8 @@ function openAnalyticsDrawer(kind, a){
       const maxT = Math.max(1, ...a.byType.map(x => x.count));
       body.append(drawerSection('Tipos de estudo', a.byType.filter(x => x.count > 0).map(x =>
         hbarRow(x.label, x.count / maxT * 100, `${x.count} · ${safePct(x.pct)}`))));
+      const mid = midnightNote(a);
+      if(mid) body.append(mid);
     }
   }
 
@@ -10193,7 +11979,7 @@ function openAnalyticsDrawer(kind, a){
   else if(kind === 'plan'){
     title = METRIC_WORDS.adherence.title;
     const pa = a.planAdherence;
-    body.append(drawerIntro('Quanto do tempo planejado para a semana foi realmente estudado. Cada semana é comparada com o plano que existia naquela semana.'));
+    body.append(drawerIntro('Quanto do que foi planejado para cada disciplina foi realmente estudado. Tempo a mais numa disciplina não compensa o que faltou em outra. Cada semana é comparada com o plano que existia naquela semana.'));
     if(!pa.applicable){
       body.append(h('p', { class:'influence-note', text:'O plano semanal distribui tempo entre disciplinas, não entre tópicos. Para ver o plano cumprido, analise a disciplina deste tópico.' }));
       if(a.scope.disciplineId) body.append(h('button', { class:'btn sm', type:'button', text:'Analisar a disciplina', onclick:() => analyzeOnly('discipline', a.scope.disciplineId) }));
@@ -10204,7 +11990,8 @@ function openAnalyticsDrawer(kind, a){
       body.append(h('div', { class:'stat-grid compact' },
         statBox(safePct(pa.pct), 'plano cumprido'),
         statBox(fmtDuration(pa.planned), 'planejado'),
-        statBox(fmtDuration(pa.realized), 'realizado')));
+        statBox(fmtDuration(pa.realized), 'estudado no total'),
+        pa.extra >= 1 ? statBox(fmtDuration(pa.extra), 'além do plano') : null));
       body.append(drawerSection('Por disciplina', pa.perDiscipline.filter(x => x.planned > 0 || x.realized > 0).map(x =>
         hbarRow(x.label, x.pct === null ? 0 : x.pct,
           x.pct === null ? `${fmtDuration(x.realized)} (sem plano)` : `${fmtDuration(x.realized)} de ${fmtDuration(x.planned)} · ${safePct(x.pct)}`,
@@ -10213,7 +12000,7 @@ function openAnalyticsDrawer(kind, a){
       const weeks = pa.weeks.filter(w => w.planned > 0 || w.realized > 0);
       if(weeks.length > 1) body.append(drawerSection('Por semana', weeks.map(w =>
         hbarRow(`Semana ${w.weekNumber}${w.coveredDays < 7 ? ` (${w.coveredDays} ${w.coveredDays === 1 ? 'dia' : 'dias'})` : ''}`,
-          w.pct === null ? 0 : w.pct, w.pct === null ? `${fmtDuration(w.realized)} (sem plano)` : `${safePct(w.pct)}`))));
+          w.pct === null ? 0 : w.pct, w.pct === null ? `${fmtDuration(w.realized)} (sem plano)` : `${safePct(w.pct)}` + (w.extra >= 1 ? ` · +${fmtDuration(w.extra)} além` : '')))));
       body.append(h('p', { class:'hint', style:'margin-top:8px', text:'Em semanas cortadas pelo período, o tempo planejado é proporcional aos dias incluídos.' }));
     }
   }
@@ -10221,10 +12008,10 @@ function openAnalyticsDrawer(kind, a){
   else if(kind === 'reviews'){
     title = 'Revisões';
     const r = a.reviews;
-    body.append(drawerIntro('Revisões concluídas no período, revisões que venciam no período e a situação de agora. Revisar faz o conteúdo voltar à memória antes de ser esquecido.'));
+    body.append(drawerIntro('Concluídas conta o que você fez no período. Marcadas, atrasadas e próximas mostram a situação de agora — o Ciclo guarda a próxima data de cada revisão, não a agenda de semanas passadas. Revisar faz o conteúdo voltar à memória antes de ser esquecido.'));
     body.append(h('div', { class:'stat-grid compact' },
-      statBox(String(r.completed), 'concluídas'),
-      statBox(String(r.scheduled), 'ainda previstas no período'),
+      statBox(String(r.completed), 'concluídas no período'),
+      statBox(String(r.scheduled), 'marcadas para o período'),
       statBox(String(r.overdueNow), 'atrasadas agora'),
       statBox(String(r.upcoming.length), 'nos próximos 7 dias')));
     if(r.completed){
@@ -10242,7 +12029,7 @@ function openAnalyticsDrawer(kind, a){
       body.append(drawerSection('Esquecidos com mais frequência', r.forgetful.map(tp =>
         hbarRow(tp.name, clamp((tp.reviewFailures / 5) * 100, 10, 100), `${tp.reviewFailures}×`, 'var(--danger)', () => openTopicFromAnalytics(tp)))));
     }
-    if(r.avgMastery !== null) body.append(h('p', { class:'hint', style:'margin-top:10px', text:`Consolidação média dos tópicos em revisão: ${fmtNumber(r.avgMastery, 1)} de 5.` }));
+    if(r.avgMastery !== null) body.append(h('p', { class:'hint', style:'margin-top:10px', text:`Consolidação estimada (média dos tópicos em revisão): ${fmtNumber(r.avgMastery, 1)} de 5 — calculada pelas suas respostas nas revisões.` }));
     body.append(h('div', { class:'row auto', style:'margin-top:14px' },
       h('button', { class:'btn sm', type:'button', text:'Abrir revisões', onclick:() => { Drawer.close(); setView('reviews'); } })));
   }
@@ -10259,7 +12046,7 @@ function openAnalyticsDrawer(kind, a){
         const kv = (k, v) => dl.append(h('div', null, h('dt', { text:k }), h('dd', { text:v })));
         kv('Situação', TOPIC_STATUS_LABEL[topicStatus(tp)]);
         kv('Prioridade', PriorityEngine.text(tp.priority));
-        kv('Consolidação', tp.masteryLevel ? `${tp.masteryLevel} de 5` : 'ainda não avaliada');
+        kv('Consolidação estimada', tp.masteryLevel ? `${tp.masteryLevel} de 5` : 'ainda sem revisões');
         kv('Revisões', tp.reviewEnabled ? (tp.reviewDueDate ? `próxima em ${fmtDateBR(tp.reviewDueDate)}` : 'ativadas, começam depois do primeiro estudo') : 'desativadas');
         kv('Estudos (total)', `${sess.length} · ${fmtDuration(sum(sess, s => s.minutes || 0))}`);
         kv('Vezes esquecido', String(tp.reviewFailures || 0));
@@ -10805,9 +12592,8 @@ function analyticsReviewsCard(a){
   const r = a.reviews;
   const rc = h('div', { class:'card' }, h('p', { class:'card-title' }, 'Revisões', helpDot('dominio')),
     h('div', { class:'stat-grid compact', style:'margin-bottom:10px' },
-      statBox(String(r.completed), 'concluídas'),
-      statBox(String(r.scheduled), 'ainda previstas'),
-      statBox(r.rate !== null ? safePct(r.rate) : '—', 'feitas / esperadas'),
+      statBox(String(r.completed), 'concluídas no período'),
+      statBox(String(r.scheduled), 'marcadas para o período'),
       statBox(String(r.overdueNow), 'atrasadas agora')));
   const outMax = Math.max(1, ...r.outcomes.map(o => o.count));
   if(r.completed > 0) r.outcomes.forEach(o => rc.append(hbarRow(o.label, o.count / outMax * 100, String(o.count))));
@@ -10871,7 +12657,12 @@ function weeklyReportCard(scope){
   const realized = sum(sess, s => s.minutes || 0);
   const reviews = sess.filter(s => s.type === 'revisao' || s.reviewOutcome).length;
   const a = dateToISO(ws), b = dateToISO(we);
-  const scheduled = ReviewEngine.allScheduled().filter(t => AnalyticsScope.hasTopic(sc, t) && t.reviewDueDate >= a && t.reviewDueDate <= b).length;
+  // v6.5 — plano cumprido da semana: de cada disciplina conta no máximo o planejado para ela (PlanRules)
+  const plannedByDisc = new Map();
+  allocs.forEach(al => plannedByDisc.set(al.disciplineId, (plannedByDisc.get(al.disciplineId) || 0) + (al.targetMinutes || 0)));
+  let weekCounted = 0;
+  plannedByDisc.forEach((pl, id) => { weekCounted += PlanRules.counted(pl, sum(sess.filter(x => x.disciplineId === id), x => x.minutes || 0)); });
+  const weekExtra = Math.max(0, realized - weekCounted);
 
   const nav = h('div', { class:'row auto' },
     h('button', { class:'btn ghost sm', type:'button', text:'‹', 'aria-label':'Semana anterior', onclick:() => { ui.weekOffset--; renderAnalytics(); } }),
@@ -10881,12 +12672,16 @@ function weeklyReportCard(scope){
 
   const c = cardWithAction('Semana a semana', nav);
   c.append(h('div', { class:'stat-grid compact' },
-    statBox(fmtDuration(realized), 'realizado'),
+    statBox(fmtDuration(realized), 'estudado'),
     statBox(planned > 0 ? fmtDuration(planned) : '—', 'planejado'),
-    statBox(planned > 0 ? safePct((realized / planned) * 100) : '—', 'plano cumprido'),
+    statBox(planned > 0 ? safePct((weekCounted / planned) * 100) : '—', 'plano cumprido'),
     statBox(String(sess.length), sess.length === 1 ? 'estudo' : 'estudos'),
     statBox(String(new Set(sess.map(s => s.date)).size), 'dias com estudo'),
-    statBox(`${reviews}/${scheduled + reviews}`, 'revisões')));
+    /* v6.5 — antes: "feitas/previstas". O "previstas" de uma semana passada não
+       pode ser reconstruído (o tópico só guarda a PRÓXIMA data), então a fração
+       era inventada. Fica o que é fato: quantas revisões foram feitas. */
+    statBox(String(reviews), reviews === 1 ? 'revisão feita' : 'revisões feitas')));
+  if(planned > 0 && weekExtra >= 1) c.append(h('p', { class:'hint', style:'margin-top:8px', text:`${fmtDuration(weekExtra)} além do plano nesta semana — tempo a mais numa disciplina ou fora do planejado. Não entra em "plano cumprido".` }));
   if(allocs.length){
     const perDisc = allocs.map(al => {
       const r = sum(sess.filter(s => s.disciplineId === al.disciplineId), s => s.minutes || 0);
@@ -10923,7 +12718,7 @@ function buildSummaryText(a){
   analyticsFocusSummary(a, reportFocus(a).v).forEach(s => L.push(`• ${s}`));
   L.push('');
   L.push(`Tempo: ${fmtDuration(a.totals.minutes)} · Estudos registrados: ${a.totals.count} · Dias com estudo: ${a.totals.activeDays} de ${a.days}`);
-  if(a.planAdherence.hasPlan) L.push(`Plano cumprido: ${safePct(a.planAdherence.pct)} (${fmtDuration(a.planAdherence.realized)} de ${fmtDuration(a.planAdherence.planned)})`);
+  if(a.planAdherence.hasPlan) L.push(`Plano cumprido: ${safePct(a.planAdherence.pct)} (${fmtDuration(a.planAdherence.counted)} de ${fmtDuration(a.planAdherence.planned)})` + (a.planAdherence.extra >= 1 ? ` · além do plano: ${fmtDuration(a.planAdherence.extra)}` : ''));
   if(a.reviews.completed || a.reviews.overdueNow) L.push(`Revisões: ${a.reviews.completed} concluídas · ${a.reviews.overdueNow} atrasadas agora`);
   if(a.deadlines.upcoming.length) L.push(`Próximos prazos: ${a.deadlines.upcoming.slice(0, 3).map(x => DeadlineEngine.phrase(x.dl)).join('; ')}`);
   const ins = analyticsFocusInsights(a, reportFocus(a).v);
@@ -11032,8 +12827,9 @@ function buildStudyReportText(a){
   else if(!pa.hasPlan) L.push('Sem tempo planejado para este período.');
   else {
     L.push(`Planejado: ${fmtDuration(pa.planned)}`);
-    L.push(`Realizado: ${fmtDuration(pa.realized)}`);
-    L.push(`Plano cumprido: ${safePct(pa.pct)}`);
+    L.push(`Estudado no total: ${fmtDuration(pa.realized)}`);
+    L.push(`Plano cumprido: ${safePct(pa.pct)} (${fmtDuration(pa.counted)} dentro do planejado para cada disciplina)`);
+    if(pa.extra >= 1) L.push(`Além do plano: ${fmtDuration(pa.extra)} (não entra no plano cumprido)`);
     L.push('Observação: semanas cortadas pelo período contam proporcionalmente.');
   }
 
@@ -11067,7 +12863,7 @@ function buildStudyReportText(a){
     ordered.slice(0, limit).forEach(tp => {
       const parts = [a.scope.type === 'discipline' || a.scope.type === 'topic' ? null : disciplineName(tp.disciplineId),
         `prioridade ${PriorityEngine.text(tp.priority)}`, TOPIC_STATUS_LABEL[a.content.status.get(tp.id) || topicStatus(tp)],
-        tp.masteryLevel ? `consolidação ${tp.masteryLevel} de 5` : null,
+        tp.masteryLevel ? `consolidação estimada ${tp.masteryLevel} de 5` : null,
         `tempo no período ${fmtDuration(mins.get(tp.id) || 0)}`].filter(Boolean);
       bullet(`${tp.name} — ${parts.join(' · ')}`);
     });
@@ -11079,7 +12875,7 @@ function buildStudyReportText(a){
   section('REVISÕES');
   const r = a.reviews;
   L.push(`Concluídas no período: ${r.completed}`);
-  L.push(`Ainda previstas no período: ${r.scheduled}`);
+  L.push(`Marcadas hoje para dentro do período: ${r.scheduled}`);
   L.push(`Atrasadas agora: ${r.overdueNow}`);
   L.push(`Previstas para os próximos 7 dias: ${r.upcoming.length}`);
   if(r.completed){
@@ -11091,7 +12887,7 @@ function buildStudyReportText(a){
     r.byMethod.forEach(m => bullet(`${m.label}: ${m.used}×`));
   }
   if(r.forgetful.length) L.push(`Esquecidos com mais frequência: ${r.forgetful.map(tp => `${tp.name} (${tp.reviewFailures}×)`).join(', ')}`);
-  if(r.avgMastery !== null) L.push(`Consolidação média dos tópicos em revisão: ${fmtNumber(r.avgMastery, 1)} de 5`);
+  if(r.avgMastery !== null) L.push(`Consolidação estimada (média dos tópicos em revisão): ${fmtNumber(r.avgMastery, 1)} de 5`);
 
   section('PRAZOS');
   const dls = a.deadlines;
@@ -11341,15 +13137,37 @@ function renderHistoryTable(){
 function openEditSessionModal(id){
   const s = state.sessions.find(x => x.id === id);
   if(!s) return;
+  /* v6.5 — MODO HORÁRIO × MODO DURAÇÃO.
+     O estudo abre em modo horário quando tem início e fim gravados, a conta
+     fecha com a duração e todos os descansos têm horário. Senão, abre em modo
+     duração. Sem mexer em nada do tempo, salvar não altera um segundo do que
+     está gravado. Mexendo, o que é gravado é coerente: ou horário (e a
+     duração sai dele), ou só a duração (e o horário antigo deixa de existir —
+     a pessoa é avisada antes de salvar). */
+  const clockInfo = TimeRules.clockInfo(s);
+  const hasClock = clockInfo.mode === 'clock';
+  const clockMode = hasClock && clockInfo.consistent && clockInfo.allBreaksTimed;
+  const rawClock = hasClock ? `${fmtClockOfDay(s.startedAt)} → ${fmtClockOfDay(s.endedAt)}` : '';
+  const storedBreaks = sanitizeBreaks(breaksOf(s));
+
   openModal(close => {
     let type = s.type, difficulty = s.difficulty, outcome = s.reviewOutcome;
-    const dateIn = h('input', { type:'date', id:'es-date', value:s.date, max: todayISO() > s.date ? todayISO() : s.date });
-    const minIn = h('input', { type:'number', class:'no-spin', id:'es-min', min:'1', step:'1', value:String(s.minutes), inputmode:'numeric' });
     const comment = commentField({ id:'es-comment', value:s.comment });      // já tem comentário? o campo abre à mostra
-    minIn.addEventListener('input', () => minIn.removeAttribute('aria-invalid'));
 
-    const clock = sessionClockRange(s);
-    const breaks = breaksEditor({ idPrefix:'es', mode:'minutes', breaks: sanitizeBreaks(breaksOf(s)) });
+    const when = studyWhenFields({ idPrefix:'es', initial:{
+      date: s.date, mode: clockMode ? 'time' : 'duration',
+      start: clockMode ? fmtClockOfDay(s.startedAt) : '', end: clockMode ? fmtClockOfDay(s.endedAt) : '',
+      minutes: s.minutes, breaks: storedBreaks,
+      startedAt: clockMode ? s.startedAt : null, endedAt: clockMode ? s.endedAt : null,
+      clockLabel: clockMode ? rawClock : ''
+    } });
+    // horário gravado que não fecha com a duração (edições anteriores à v6.5): dito com todas as letras
+    const staleClock = (hasClock && !clockMode)
+      ? h('p', { class:'hint clock-note', text: clockInfo.consistent
+          ? `Horário gravado: ${rawClock}. Os descansos deste estudo não têm horário, então ele é editado pela duração.`
+          : `O horário gravado (${rawClock}) não fecha com a duração deste estudo. Vale a duração; se você alterar o tempo, esse horário deixa de ser guardado.` })
+      : null;
+
     // v6.3: disciplina e tópico atuais aparecem mesmo se foram arquivados — antes
     // sumiam da lista e salvar a edição desligava o estudo do tópico sem aviso.
     const target = studyTargetFields({ close, idPrefix:'es', discId:s.disciplineId, topicId:s.topicId || '', includeArchived:true,
@@ -11358,13 +13176,26 @@ function openEditSessionModal(id){
     const legacyTopic = (!s.topicId && str(s.legacyTopicText)) ? str(s.legacyTopicText) : null;
 
     const outcomeField = h('div', { class:'field', hidden:true });
+    const outcomeHint = h('p', { class:'hint' });
+    /** O que mudar este resultado faz com a agenda do tópico — dito antes de salvar. */
+    function outcomeHintText(){
+      const topicId = target.topicId;
+      if(!topicId) return '';
+      if(topicId !== s.topicId) return 'Ao salvar, esta revisão passa a contar para o tópico escolhido.';
+      const latest = TopicReconciler.latestReview(sessionsOfTopic(topicId));
+      return (latest && latest.id === s.id)
+        ? 'Esta é a revisão mais recente do tópico: mudar o resultado recalcula a próxima revisão.'
+        : 'O tópico tem uma revisão mais recente: mudar aqui corrige o histórico, sem alterar a próxima revisão.';
+    }
     function renderOutcome(){
-      const show = type === 'revisao';
+      const show = type === 'revisao' && !!target.topicId;
       outcomeField.hidden = !show;
-      if(!show || outcomeField.firstChild) return;
+      if(!show) return;
+      outcomeHint.textContent = outcomeHintText();
+      if(outcomeField.firstChild) return;
       outcomeField.append(h('label', { text:'Resultado da revisão' }),
         pillGroup(REVIEW_OUTCOMES.map(x => ({ value:x.v, label:x.label })), outcome, v => { outcome = v; }, 'Resultado da revisão'),
-        h('p', { class:'hint', text:'Editar o resultado aqui não reprograma a revisão já aplicada ao tópico.' }));
+        outcomeHint);
     }
 
     const how = howGroup({ id:'es-g-how', type:typePick.node,
@@ -11374,12 +13205,8 @@ function openEditSessionModal(id){
       h('div', { class:'rm-grid' },
         h('section', { class:'rm-group rm-when', 'aria-labelledby':'es-g-when' },
           h('h4', { class:'rm-group-t', id:'es-g-when', text:'Quando' }),
-          clock ? h('p', { class:'es-clock' }, h('span', { class:'es-clock-l', text:'Horário' }),
-            h('span', { class:'num', text: clock.text + (clock.nextDay ? ' · terminou no dia seguinte' : '') })) : null,
-          h('div', { class:'when-grid is-edit' },
-            h('div', { class:'field' }, h('label', { for:'es-date', text:'Data' }), dateIn),
-            h('div', { class:'field' }, h('label', { for:'es-min', text:'Tempo estudado (min)' }), minIn)),
-          breaks.node),
+          when.node,
+          staleClock),
         h('section', { class:'rm-group rm-what', 'aria-labelledby':'es-g-what' },
           h('h4', { class:'rm-group-t', id:'es-g-what', text:'O que você estudou' }),
           target.node,
@@ -11396,40 +13223,97 @@ function openEditSessionModal(id){
       return d.toISOString();
     };
 
+    /** O que excluir este estudo faz com o tópico dele — dito na pergunta, antes de remover. */
+    function removalNote(){
+      const cur = state.sessions.find(x => x.id === id);
+      const topic = cur && cur.topicId ? getTopic(cur.topicId) : null;
+      if(!topic) return '';
+      const before = sessionsOfTopic(topic.id);
+      const rec = TopicReconciler.afterCorrection(topic, before, before.filter(x => x.id !== id), reviewContextOf(topic));
+      if(rec.effect === 'reset') return ` Era o único estudo de ${topic.name}: o tópico volta a "não iniciado", sem revisão marcada.`;
+      if(rec.effect === 'rescheduled' || rec.effect === 'reanchored'){
+        return rec.topic.reviewDueDate ? ` A próxima revisão de ${topic.name} passa a ser ${fmtRelativeFuture(rec.topic.reviewDueDate)}.` : ` A revisão de ${topic.name} é recalculada.`;
+      }
+      return '';
+    }
+
     return {
       title:'Editar estudo',
       content: body,
       actions:[
         h('button', { class:'linkbtn danger', type:'button', text:'remover estudo', onclick: async () => {
+          const note = removalNote();
           close();
-          const ok = await confirmModal('Remover este estudo do histórico?', { confirmLabel:'Remover' });
+          const ok = await confirmModal('Remover este estudo do histórico?' + note, { confirmLabel:'Remover' });
           if(ok) await deleteSession(id);
         } }),
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
         h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: once(async () => {
-          const minutes = Math.round(Number(minIn.value));
-          if(!(minutes > 0)){ minIn.setAttribute('aria-invalid','true'); minIn.focus(); toast('Informe um tempo de estudo válido.', 'err'); return; }
-          const date = dateIn.value || s.date;
-          if(date > todayISO() && date !== s.date){ dateIn.setAttribute('aria-invalid','true'); dateIn.focus(); toast('Escolha hoje ou um dia que já passou.', 'err', { title:'Data no futuro' }); return; }
-          const br = breaks.read(null, false);
-          if(!br.ok){ if(br.el){ if('value' in br.el) br.el.setAttribute('aria-invalid','true'); br.el.focus(); } toast(br.msg, 'err'); return; }
+          const w = when.evaluate();
+          if(!w.complete){
+            if(w.errorEl){ if('value' in w.errorEl) w.errorEl.setAttribute('aria-invalid', 'true'); w.errorEl.focus(); }
+            toast(w.error || w.missing, 'err', w.errorTitle ? { title:w.errorTitle } : undefined);
+            return;
+          }
           const discId = await target.ensure();
           if(!discId) return;
-          // a data mudou: os horários gravados (do estudo e dos descansos) acompanham
-          const from = parseISO(s.date), to = parseISO(date);
-          const days = (from && to) ? diffDays(to, from) : 0;
-          const ok = await updateSession(id, {
-            disciplineId: discId, topicId: target.topicId, date,
-            minutes, type, difficulty, comment: comment.value,
-            reviewOutcome: type === 'revisao' ? outcome : null,
-            startedAt: shiftISO(s.startedAt, days), endedAt: shiftISO(s.endedAt, days),
-            breaks: br.breaks.map(b => Object.assign({}, b, { startedAt: shiftISO(b.startedAt, days), endedAt: shiftISO(b.endedAt, days) }))
-          });
-          if(ok) close();          // falhou: a edição continua aberta, com tudo preenchido
+
+          /* Campos de tempo. Três casos, do mais conservador ao mais amplo:
+             1. nada do tempo mudou            → vão exatamente os valores gravados;
+             2. só a data mudou                → os instantes gravados andam o mesmo nº de dias;
+             3. horário/duração/descansos mudaram → o que o formulário calculou. */
+          let time;
+          if(w.pristine && !when.dateChanged()){
+            time = { minutes:s.minutes, startedAt:s.startedAt, endedAt:s.endedAt, breaks:s.breaks };
+          } else if(w.pristine){
+            const from = parseISO(s.date), to = parseISO(w.date);
+            const days = (from && to) ? diffDays(to, from) : 0;
+            time = { minutes:s.minutes, startedAt: shiftISO(s.startedAt, days), endedAt: shiftISO(s.endedAt, days),
+              breaks: breaksOf(s).map(b => Object.assign({}, b, { startedAt: shiftISO(b.startedAt, days), endedAt: shiftISO(b.endedAt, days) })) };
+          } else {
+            if(w.needsConfirm && !(await confirmLongEdit(w.minutes))) return;
+            time = { minutes:w.minutes, startedAt:w.startedAt, endedAt:w.endedAt, breaks:w.breaks };
+          }
+          const topicId = target.topicId || null;
+          const changes = {
+            disciplineId: discId, topicId, date: w.date,
+            minutes: time.minutes, startedAt: time.startedAt || null, endedAt: time.endedAt || null, breaks: time.breaks,
+            type, difficulty, comment: comment.value,
+            // sem tópico não há resultado a editar: um registro antigo sem tópico mantém o que tinha
+            reviewOutcome: type !== 'revisao' ? null : (topicId ? outcome : (s.reviewOutcome || null))
+          };
+          let res = await updateSession(id, changes, { base:s });
+          if(!res.ok && res.reason === 'conflict'){
+            const choice = await askConflict(close, 'este estudo');
+            if(choice === 'back') return;
+            if(choice === 'discard'){ close(); await safeRefresh(); toast('Os dados mostrados são os mais recentes.', 'info', { title:'Edição descartada' }); return; }
+            res = await updateSession(id, changes, { base:s, force:true });
+          }
+          if(res.ok || res.reason === 'missing') close();          // falhou: a edição continua aberta, com tudo preenchido
         }) })
       ]
     };
   }, { size:'study' });
+}
+
+/** Estudo muito longo numa edição: pergunta antes de gravar (não bloqueia). */
+function confirmLongEdit(minutes){
+  return new Promise(resolve => {
+    // A pergunta abre como subtela do próprio formulário: o que foi digitado continua lá.
+    const close = modalCloser;
+    if(typeof close !== 'function' || !close.push){ resolve(true); return; }
+    let done = false;
+    const finish = v => { if(done) return; done = true; close.pop(); resolve(v); };
+    close.push({
+      title:'Confira a duração',
+      content: h('p', { class:'modal-sub', style:'margin-bottom:0', text:`São ${fmtDuration(minutes)} de estudo neste registro. Está certo?` }),
+      actions:[
+        h('button', { class:'btn ghost', type:'button', text:'Voltar e corrigir', onclick:() => finish(false) }),
+        h('button', { class:'btn primary', type:'button', text:'Está certo, salvar', onclick:() => finish(true) })
+      ],
+      onEsc:() => finish(false)
+    });
+  });
 }
 
 /* =========================================================================
@@ -11441,22 +13325,58 @@ async function exportBackupWithFeedback(){
     await Backup.exportJSON();
   } catch(err){
     console.error('Falha ao exportar o backup:', err);
-    toast('Tente novamente. Seus dados continuam intactos.', 'err', { title:'Não foi possível exportar o backup' });
+    toast('Tente novamente. Seus dados continuam intactos.', 'err', { title:'Não foi possível gerar o backup' });
     return;
   }
-  await refresh();
-  toast(`ciclo_backup_${todayISO()}.json · guarde o arquivo fora deste computador também.`, 'ok', { title:'Backup exportado' });
+  await safeRefresh();
+  /* v6.5 — o Ciclo sabe que GEROU o arquivo; ele não tem como saber se o
+     navegador terminou de salvá-lo nem onde. O aviso diz exatamente isso. */
+  toast(`ciclo_backup_${todayISO()}.json · confira se ele está nos seus downloads e guarde uma cópia fora deste aparelho.`, 'ok', { title:'Backup gerado', duration:6000 });
+  if(TimerService.isActive) toast('Finalize o estudo e gere outro backup para incluí-lo.', 'warn', { title:'O estudo em andamento ainda não faz parte deste backup.', duration:7000 });
 }
 function exportCSVWithFeedback(){
   try { Backup.exportCSV(); }
   catch(err){ console.error(err); toast('Tente novamente.', 'err', { title:'Não foi possível exportar o CSV' }); return; }
   toast(`${plural(state.sessions.length, 'estudo', 'estudos')} em ciclo_sessoes_${todayISO()}.csv`, 'ok', { title:'Histórico exportado' });
 }
+
+/** v6.5 — diagnóstico somente leitura: as mesmas regras da restauração, sobre o que está no navegador. */
+async function runIntegrityCheck(){
+  let result, total = 0;
+  try {
+    const names = ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines'];
+    const lists = await Promise.all(names.map(n => DB.getAll(n)));
+    const src = { settings: state.settings };
+    names.forEach((n, i) => { src[n] = lists[i] || []; total += src[n].length; });
+    result = IntegrityValidator.diagnose(src);
+  } catch(err){
+    console.error('Falha ao verificar a integridade:', err);
+    toast('Tente novamente. Nada foi alterado.', 'err', { title:'Não foi possível verificar os dados' });
+    return;
+  }
+  const items = result.repaired.concat(result.ignored, result.observations);
+  openModal(close => ({
+    title:'Verificação dos dados',
+    content: h('div', { class:'restore' },
+      result.fatal
+        ? h('p', { class:'warn', text: result.fatal })
+        : h('p', { class:'modal-sub', text: result.ok
+            ? `${plural(total, 'registro conferido', 'registros conferidos')}. Nenhum problema encontrado.`
+            : `${plural(total, 'registro conferido', 'registros conferidos')}. ${plural(items.length, 'ponto merece', 'pontos merecem')} atenção:` }),
+      items.length ? h('ul', { class:'reasons' }, items.map(x => h('li', { text:x.text }))) : null,
+      h('p', { class:'hint', text: result.ok
+        ? 'A verificação confere identificadores, datas e vínculos entre áreas, disciplinas, tópicos, estudos, planos e prazos.'
+        : 'Nada foi alterado: a verificação só lê. Seus estudos continuam contando normalmente. Se quiser aplicar os ajustes, gere um backup e restaure o arquivo — a restauração mostra cada ajuste antes de gravar.' })),
+    actions:[ h('button', { class:'btn primary', type:'button', text:'Fechar', onclick:() => close() }) ]
+  }), { size:'wide' });
+}
+
 function renderData(){
   const root = $('#data-body');
   const lastBackup = state.meta.lastBackupAt;
-  const daysSinceBackup = lastBackup ? Math.floor((Date.now() - new Date(lastBackup).getTime()) / 86400000) : null;
-  const backupText = lastBackup ? (daysSinceBackup === 0 ? 'hoje' : `há ${plural(daysSinceBackup, 'dia', 'dias')}`) : null;
+  // v6.5: dias de CALENDÁRIO no fuso local — um backup de ontem à noite é "há 1 dia", não "hoje"
+  const daysSinceBackup = lastBackup ? daysSinceISO(localDateOfStamp(lastBackup)) : null;
+  const backupText = daysSinceBackup !== null ? (daysSinceBackup <= 0 ? 'hoje' : `há ${plural(daysSinceBackup, 'dia', 'dias')}`) : null;
   const stale = daysSinceBackup === null || daysSinceBackup >= 14;
 
   const fileIn = h('input', { type:'file', id:'import-file', class:'sr-only', tabindex:'-1', accept:'application/json,.json' });
@@ -11464,10 +13384,11 @@ function renderData(){
 
   const main = h('section', { class:'focus-block compact', 'aria-labelledby':'dt-title' },
     h('p', { class:'tf-eyebrow', text:'Seus dados ficam neste navegador' }),
-    h('h3', { class:'tf-title', id:'dt-title', text: backupText ? `Último backup: ${backupText}` : 'Você ainda não fez nenhum backup' }),
+    h('h3', { class:'tf-title', id:'dt-title', text: backupText ? `Último backup gerado: ${backupText}` : 'Você ainda não fez nenhum backup' }),
     h('p', { class:'tf-reason' + (stale ? ' is-attention' : ''), text: stale
-      ? 'Limpar os dados do navegador apaga o histórico. Um backup de vez em quando, guardado fora deste computador, evita isso.'
+      ? 'Limpar os dados do navegador apaga o histórico. Um backup de vez em quando, guardado fora deste aparelho, evita isso.'
       : 'Nenhum dado de estudo sai daqui: sem conta, sem servidor, sem sincronização.' }),
+    TimerService.isActive ? h('p', { class:'hint', text:'O estudo em andamento ainda não faz parte deste backup.' }) : null,
     h('div', { class:'tf-actions' },
       h('button', { class:'btn primary', type:'button', onclick: once(exportBackupWithFeedback) }, icon('i-data'), 'Fazer backup (.json)'),
       h('label', { class:'btn ghost', for:'import-file', tabindex:'0', role:'button',
@@ -11495,7 +13416,12 @@ function renderData(){
       h('li', { class:'line' },
         h('div', { class:'line-main static' },
           h('span', { class:'line-t', text:'Restauração segura' }),
-          h('span', { class:'line-s', text:'O arquivo é verificado antes de gravar e nada é executado. Backups de versões anteriores, inclusive do Diário de Estudos, são aceitos.' })))));
+          h('span', { class:'line-s', text:'O arquivo é conferido antes de gravar e você vê o que vai entrar. Nada é executado. Backups de versões anteriores, inclusive do Diário de Estudos, são aceitos.' }))),
+      h('li', { class:'line' },
+        h('div', { class:'line-main static' },
+          h('span', { class:'line-t', text:'Verificar os dados' }),
+          h('span', { class:'line-s', text:'Confere datas e vínculos do que está guardado aqui. Só lê; não altera nada.' })),
+        h('button', { class:'btn ghost sm', type:'button', text:'Verificar', onclick: once(runIntegrityCheck) }))));
 
   const v2 = readV2Raw();
   const v2Block = v2 ? h('section', { class:'list-block' },
@@ -11519,45 +13445,151 @@ function renderData(){
   mount(root, h('div', { class:'narrow-screen' }, main, more, v2Block, danger));
 }
 
-function onImportFile(e){
-  const file = e.target.files && e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = async () => {
-    e.target.value = '';
-    let parsed;
-    try { parsed = Backup.parseBackup(String(reader.result)); }
-    catch(err){ toast(err.message || 'Arquivo inválido.', 'err'); return; }
+/* ---------- RESTAURAR BACKUP (v6.5) ----------
+   1. o arquivo é lido e conferido por inteiro, sem gravar nada;
+   2. se não pode ser restaurado com segurança, a pessoa vê o motivo e os dados
+      atuais ficam como estão;
+   3. se há um estudo no cronômetro, ela decide o que fazer com ele ANTES;
+   4. ela vê a prévia — o que entra, o que foi ajustado, o que fica de fora;
+   5. só então tudo é trocado, numa única transação. A janela só fecha depois
+      de gravar; se a gravação falhar, o banco continua exatamente como estava. */
+const RESTORE_MAX_BYTES = 80 * 1024 * 1024;
 
-    const d = parsed.data;
-    const summary = `${plural(d.disciplines.length, 'disciplina', 'disciplinas')}, ${plural(d.topics.length, 'tópico', 'tópicos')} e ${plural(d.sessions.length, 'estudo registrado', 'estudos registrados')}.`;
-    openModal(close => ({
-      title:'Restaurar backup',
-      content: h('div',
-        h('p', { class:'modal-sub', text:`Backup no formato ${parsed.format.toUpperCase()} — ${summary}` }),
-        parsed.warnings.length ? h('ul', { class:'reasons' }, parsed.warnings.map(w => h('li', { text:w }))) : null,
-        h('p', { class:'warn', text:'Isto substitui TODOS os dados atuais desta versão. Exporte um backup antes se quiser manter o que está aqui.' })),
-      actions:[
-        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
-        h('button', { class:'btn danger', type:'button', text:'Substituir e restaurar', onclick: async () => {
-          close();
-          try {
-            await Backup.restoreInto(d);
-            ui.planDraft = null;
-            Nav.resetForNewData();        // v6.2: buscas, rolagens e níveis abertos apontavam para os dados antigos
-            await refresh();
-            // v5.2.1 — antes só tema e animações eram reaplicados; a densidade
-            // vinda do backup só valia depois de recarregar a página.
-            applySettingsEffects();
-            syncThemeControls();
-            toast(`${plural(d.disciplines.length, 'disciplina', 'disciplinas')} e ${plural(d.sessions.length, 'estudo', 'estudos')} de volta.`, 'ok', { title:'Backup restaurado' });
-          } catch(err){ console.error(err); toast('Falha ao restaurar o backup.', 'err'); }
-        } })
-      ]
-    }), { size:'wide' });
-  };
-  reader.onerror = () => toast('Não foi possível ler o arquivo.', 'err');
+function onImportFile(e){
+  const input = e.target;
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const name = str(file.name);
+  if(file.size > RESTORE_MAX_BYTES){
+    input.value = '';
+    restoreRefused({ title:'Arquivo grande demais', message:'Esse arquivo é muito maior que um backup do Ciclo. Confira se escolheu o arquivo certo.' });
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => { input.value = ''; beginRestore(String(reader.result), name); };
+  reader.onerror = () => { input.value = ''; restoreRefused({ title:'Não foi possível ler o arquivo', message:'O navegador não conseguiu abrir o arquivo escolhido. Tente selecioná-lo de novo.' }); };
   reader.readAsText(file);
+}
+
+function restoreRefused(err){
+  openModal(close => ({
+    title: err.title || 'Este backup não pode ser restaurado',
+    content: h('div', { class:'restore' },
+      h('p', { class:'modal-sub', text: err.message || 'O arquivo não pôde ser lido.' }),
+      h('p', { class:'hint', text:'Nada foi alterado: seus dados continuam como estavam.' })),
+    actions:[ h('button', { class:'btn primary', type:'button', text:'Entendi', onclick:() => close() }) ]
+  }), { size:'narrow' });
+}
+
+function beginRestore(text, fileName){
+  let parsed;
+  try { parsed = Backup.parseBackup(text); }
+  catch(err){
+    if(!(err && err.fatal)) console.error('Falha inesperada ao conferir o backup:', err);
+    restoreRefused(err && err.fatal ? err : { message:'O arquivo não pôde ser conferido. Ele pode estar danificado.' });
+    return;
+  }
+  if(TimerService.isActive) askTimerBeforeRestore(parsed, fileName);
+  else openRestorePreview(parsed, fileName, false);
+}
+
+/** Um estudo em andamento não está no banco nem no backup: a pessoa decide antes de trocar os dados. */
+function askTimerBeforeRestore(parsed, fileName){
+  const d = TimerService.data;
+  const what = disciplineName(d.disciplineId) + ' · ' + fmtDurationWords(Math.max(1, Math.round(TimerService.getElapsed() / 60000)));
+  openModal(close => ({
+    title:'Há um estudo em andamento',
+    content: h('div', { class:'restore' },
+      h('p', { class:'modal-sub', text:`${what} no cronômetro.` }),
+      h('p', { class:'hint', text:'Ele ainda não foi registrado, então não está nos dados atuais nem no backup. Restaurar troca todos os dados — decida antes o que fazer com esse tempo.' })),
+    actions:[
+      h('button', { class:'btn ghost', type:'button', text:'Cancelar a restauração', onclick:() => close() }),
+      h('button', { class:'btn ghost', type:'button', text:'Descartar o tempo e restaurar', onclick:() => { close(); openRestorePreview(parsed, fileName, true); } }),
+      h('button', { class:'btn primary', type:'button', text:'Finalizar o estudo primeiro', onclick:() => {
+        close(); openFinishModal();
+        toast('Depois de registrar, escolha o arquivo de backup de novo.', 'info', { title:'Restauração cancelada' });
+      } })
+    ]
+  }), { dismissible:false });
+}
+
+function openRestorePreview(parsed, fileName, discardTimer){
+  const d = parsed.data, r = parsed.report;
+  const order = [['disciplines','Disciplinas'], ['topics','Tópicos'], ['sessions','Estudos registrados'], ['areas','Áreas'],
+    ['deadlines','Prazos'], ['plans','Planos'], ['weeklyPlans','Semanas registradas']];
+  const rows = order.map(([k, label]) => {
+    const c = r.counts[k] || { found:0, accepted:0, repaired:0, ignored:0 };
+    if(!c.found) return null;
+    const bits = [c.accepted === c.found ? String(c.accepted) : `${c.accepted} de ${c.found}`];
+    if(c.repaired) bits.push(c.repaired === 1 ? '1 ajustado' : `${c.repaired} ajustados`);
+    if(c.ignored) bits.push(c.ignored === 1 ? '1 fica de fora' : `${c.ignored} ficam de fora`);
+    return h('div', { class:'restore-row' }, h('span', { class:'restore-k', text:label }), h('span', { class:'restore-v num', text: bits.join(' · ') }));
+  });
+  const origin = [fileName || null,
+    r.exportedAt ? `gerado em ${fmtDateBR(localDateOfStamp(r.exportedAt))} às ${fmtClockOfDay(r.exportedAt)}` : null,
+    r.appVersion ? `Ciclo ${r.appVersion}` : null].filter(Boolean).join(' · ');
+  const clean = !r.repaired.length && !r.ignored.length;
+  const here = `${plural(state.disciplines.length, 'disciplina', 'disciplinas')}, ${plural(state.topics.length, 'tópico', 'tópicos')} e ${plural(state.sessions.length, 'estudo registrado', 'estudos registrados')}`;
+  const hasData = state.disciplines.length || state.sessions.length || state.areas.length;
+  let saving = false;
+
+  openModal(close => {
+    const errorBox = h('p', { class:'warn', role:'alert', hidden:true });
+    const restoreBtn = h('button', { class:'btn danger', type:'button', text: hasData ? 'Substituir e restaurar' : 'Restaurar', onclick: async () => {
+      if(saving) return;
+      saving = true;
+      restoreBtn.disabled = true; cancelBtn.disabled = true; restoreBtn.setAttribute('aria-busy', 'true'); restoreBtn.textContent = 'Restaurando…';
+      errorBox.hidden = true;
+      try {
+        await Backup.restoreInto(d);
+      } catch(err){
+        // A transação é uma só: se algo falhou, NADA foi trocado.
+        console.error('Falha ao restaurar o backup:', err);
+        saving = false;
+        restoreBtn.disabled = false; cancelBtn.disabled = false; restoreBtn.removeAttribute('aria-busy');
+        restoreBtn.textContent = hasData ? 'Substituir e restaurar' : 'Restaurar';
+        errorBox.textContent = 'Não foi possível restaurar. Nada foi alterado: seus dados continuam como estavam. Tente de novo; se continuar, pode faltar espaço no navegador.';
+        errorBox.hidden = false;
+        return;
+      }
+      // Gravado. Daqui em diante é só colocar a tela em dia.
+      if(TimerService.isActive) TimerService.release(TimerService.data.runId);
+      DataSync.announce('backup-restored');
+      ui.planDraft = null;
+      ui.reviewQueue = null;
+      Nav.resetForNewData();        // v6.2: buscas, rolagens e níveis abertos apontavam para os dados antigos
+      close();
+      await safeRefresh();
+      // v5.2.1 — a densidade vinda do backup só valia depois de recarregar a página.
+      try { applySettingsEffects(); syncThemeControls(); } catch(err){ console.error(err); }
+      renderTimerBar();
+      toast(`${plural(d.disciplines.length, 'disciplina', 'disciplinas')} e ${plural(d.sessions.length, 'estudo', 'estudos')} de volta.`, 'ok', { title:'Backup restaurado' });
+    } });
+    const cancelBtn = h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => { if(!saving) close(); } });
+
+    return {
+      title:'Restaurar backup',
+      content: h('div', { class:'restore' },
+        origin ? h('p', { class:'modal-sub', text: origin }) : null,
+        (r.notes || []).map(n => h('p', { class:'hint', text:n })),
+        h('h4', { class:'restore-h', text:'O que vai entrar' }),
+        h('div', { class:'restore-table' }, rows),
+        clean ? h('p', { class:'hint restore-ok', text:'O arquivo foi conferido por inteiro: nenhum ajuste necessário.' }) : null,
+        r.repaired.length ? h('details', { class:'advanced', open: r.repaired.length <= 4 },
+          h('summary', null, `Ajustes que serão feitos (${sum(r.repaired, x => x.count)})`),
+          h('div', { class:'advanced-body' }, h('ul', { class:'reasons' }, r.repaired.map(x => h('li', { text:x.text }))))) : null,
+        r.ignored.length ? h('details', { class:'advanced', open: r.ignored.length <= 4 },
+          h('summary', null, `O que fica de fora (${sum(r.ignored, x => x.count)})`),
+          h('div', { class:'advanced-body' }, h('ul', { class:'reasons' }, r.ignored.map(x => h('li', { text:x.text }))))) : null,
+        hasData ? h('p', { class:'warn', text:`Isto substitui tudo o que está neste navegador agora: ${here}.` }) : null,
+        hasData ? h('p', { class:'hint' }, 'Quer guardar o que está aqui antes? ',
+          h('button', { class:'linkbtn', type:'button', text:'Fazer backup dos dados atuais', onclick: once(exportBackupWithFeedback) })) : null,
+        discardTimer ? h('p', { class:'hint', text:'O estudo que está no cronômetro será descartado ao restaurar.' }) : null,
+        errorBox),
+      actions:[ cancelBtn, restoreBtn ],
+      focus: cancelBtn                 // ação destrutiva: o foco começa no caminho seguro, com a prévia no topo
+    };
+  }, { size:'wide', dismissible:false });
 }
 
 async function wipeAll(){
@@ -11565,11 +13597,19 @@ async function wipeAll(){
   if(!ok1) return;
   const ok2 = await confirmModal('Esta ação é definitiva e não pode ser desfeita. Tem certeza?', { confirmLabel:'Apagar tudo' });
   if(!ok2) return;
-  await DB.clearStores(['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines']);
-  TimerService.discard();
+  try {
+    await DB.clearStores(['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines']);
+  } catch(err){
+    console.error('Falha ao apagar os dados:', err);
+    toast('Nada foi apagado. Tente novamente.', 'err', { title:'Não foi possível apagar os dados' });
+    return;
+  }
+  if(TimerService.isActive) TimerService.release(TimerService.data.runId);
+  DataSync.announce('data-wiped');
   ui.planDraft = null;
+  ui.reviewQueue = null;
   Nav.resetForNewData();
-  await refresh();
+  await safeRefresh();
   renderTimerBar();
   toast('Todos os dados foram apagados. A cópia antiga da V2, se existir, não foi tocada.');
 }
@@ -11618,6 +13658,15 @@ function bindEvents(){
           h('button', { class:'btn ghost block', type:'button', text:l, onclick:() => { close(); goView(v); } }))),
       actions:[ h('button', { class:'btn ghost', type:'button', text:'Fechar', onclick:() => close() }) ]
     }), { size:'narrow' });
+  });
+
+  /* v6.5 — "Ir para o conteúdo": o foco vai para o título da tela atual. É feito
+     aqui (e não pelo #main do link) para não criar uma entrada no histórico. */
+  const skip = $('#skip-link');
+  if(skip) skip.addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = $('.view.active .page-head h2') || $('#main');
+    if(target){ try { target.focus({ preventScroll:true }); } catch(_){ target.focus(); } try { target.scrollIntoView({ block:'start' }); } catch(_){} }
   });
 
   $('#theme-toggle').addEventListener('click', toggleTheme);
@@ -11716,24 +13765,53 @@ function bindEvents(){
   DayWatch.arm();
 
   /* v6.3 — cronômetro em duas abas: se uma aba finaliza, descarta ou inicia
-     um estudo, as outras acompanham. Antes, finalizar de novo na segunda aba
-     gravava o mesmo estudo duas vezes. */
+     um estudo, as outras acompanham.
+     v6.5 — isto é só para a TELA ficar em dia. Quem impede o estudo de ser
+     gravado duas vezes é o banco (SessionCommands.finalizeTimer): mesmo que
+     este evento nunca chegue, a segunda finalização é recusada. */
   window.addEventListener('storage', async (e) => {
-    if(e.key !== TIMER_LS_KEY) return;
-    const wasActive = TimerService.isActive;
-    if(e.newValue === null){
+    if(e.key !== TIMER_LS_KEY && e.key !== null) return;      // null = o armazenamento inteiro foi limpo
+    const before = TimerService.isActive ? TimerService.data.runId : null;
+    const stored = TimerService.storedRunId();
+    if(stored === undefined) return;                          // ilegível agora: não mexe em nada
+    if(stored === null){
+      if(!TimerService.persisted) return;                     // este cronômetro nunca chegou ao armazenamento: não é "encerrado em outra aba"
       // Só a memória desta aba: nada é escrito de volta no armazenamento.
-      TimerService.data = null;
-      TimerService.stopTicking();
-      if(wasActive && ui.reviewQueue) ui.reviewQueue = null;
+      TimerService.forget();
+      if(before && ui.reviewQueue) ui.reviewQueue = null;
     } else {
       // A outra aba pode ter criado a disciplina agora: recarrega os dados antes,
       // para esta aba não descartar um cronômetro válido por não conhecê-la.
-      try { await refresh(); } catch(err){ console.error(err); }
+      let discId = null;
+      try { discId = (JSON.parse(localStorage.getItem(TIMER_LS_KEY) || '{}') || {}).disciplineId || null; } catch(_){}
+      if(discId && !getDiscipline(discId)){
+        try { await loadAll(); } catch(err){ console.error(err); }
+      }
+      TimerService.stopTicking();
       TimerService.restore();
     }
     renderTimerBar();
-    if(wasActive && !TimerService.isActive) toast('Ele foi finalizado ou descartado em outra aba.', 'info', { title:'Cronômetro atualizado' });
+    if(FocusMode.isOpen) FocusMode.render();
+    if(before && !TimerService.isActive) toast('Ele foi finalizado ou descartado em outra aba.', 'info', { title:'Cronômetro atualizado' });
+  });
+
+  DataSync.start();
+
+  /* v6.5 — rede de segurança. Um erro que escape de qualquer handler não pode
+     passar em branco: a pessoa fica sabendo que a ÚLTIMA ação pode não ter sido
+     concluída (no máximo um aviso a cada 8 s; o detalhe técnico vai para o console). */
+  let lastCrashNotice = 0;
+  const crashNotice = (what) => {
+    console.error('Ciclo: erro não tratado.', what);
+    const now = Date.now();
+    if(now - lastCrashNotice < 8000) return;
+    lastCrashNotice = now;
+    try { toast('A última ação pode não ter sido concluída. Confira e tente de novo; seus dados gravados não foram alterados.', 'err', { title:'Algo não saiu como esperado' }); } catch(_){}
+  };
+  window.addEventListener('unhandledrejection', (ev) => { crashNotice(ev && ev.reason); });
+  window.addEventListener('error', (ev) => {
+    if(ev && ev.target && ev.target !== window) return;       // falha de recurso (imagem etc.): não é erro do aplicativo
+    crashNotice(ev && (ev.error || ev.message));
   });
 
   window.addEventListener('beforeunload', () => { TimerService.stopTicking(); });
@@ -11847,7 +13925,15 @@ async function init(){
       { title:'Não foi possível atualizar o formato dos estudos' });
   }
 
-  await loadAll();
+  try {
+    await loadAll();
+  } catch(err){
+    // v6.5: antes, uma falha aqui deixava a tela em branco, sem explicação.
+    console.error('Falha ao ler os dados:', err);
+    showFatalError('O banco local abriu, mas não foi possível ler os dados guardados nele.',
+      'Recarregue a página. Se continuar, feche as outras abas do Ciclo e tente de novo. Nada foi apagado.');
+    return;
+  }
   const vEl = $('#app-version');
   if(vEl) vEl.textContent = 'v' + APP_VERSION;     // uma única fonte de verdade
   applyTheme(state.settings.theme);
@@ -11856,9 +13942,18 @@ async function init(){
   // espelho inicial do período (usado pelo filtro do Histórico até a primeira análise)
   ui.period = presetRange(validPreset(state.settings.defaultPeriod));
 
-  await PlannerEngine.ensureWeeklyPlan();
+  try { await PlannerEngine.ensureWeeklyPlan(); }
+  catch(err){ console.error('Falha ao preparar a semana atual:', err); }   // a semana é criada de novo no próximo desenho
 
   TimerService.restore();
+  /* v6.5 — a página pode ter fechado logo depois de gravar o estudo e antes de
+     limpar o cronômetro. O estudo já está no histórico (o id dele é o runId):
+     o cronômetro é só encerrado, nunca registrado de novo. */
+  let timerAlreadySaved = false;
+  if(TimerService.isActive && state.sessions.some(x => x.id === TimerService.data.runId)){
+    TimerService.release(TimerService.data.runId);
+    timerAlreadySaved = true;
+  }
   bindEvents();
   state.ready = true;
 
@@ -11877,6 +13972,8 @@ async function init(){
   Nav.start();
 
   if(TimerService.isActive) offerStaleSession();
+  if(timerAlreadySaved) toast('O cronômetro que estava aberto já tinha sido salvo no histórico.', 'info', { title:'Esse estudo já foi registrado.' });
+  if(TimerService.isActive && !TimerService.persisted) renderTimerBar();
 
   // Onboarding: só para quem ainda não tem plano nem disciplinas configuradas.
   if(needsSetup){
@@ -12575,6 +14672,13 @@ const FocusMode = {
     document.getElementById('focus-topic').textContent = [topic ? topic.name : null, d.presetType ? sessionTypeLabel(d.presetType) : null].filter(Boolean).join(' · ');
     document.getElementById('focus-state').textContent = resting ? 'Descansando' : 'Estudando';
     document.getElementById('focus-sub').textContent = resting ? `Seu estudo está pausado em ${fmtTimer(TimerService.getElapsed())}.` : '';
+    // v6.5: o aviso de que o cronômetro não pôde ser guardado aparece também aqui (a barra fica escondida no modo foco)
+    const warn = document.getElementById('focus-warn');
+    if(warn){
+      const text = TimerService.persisted ? '' : 'Não foi possível garantir a recuperação deste cronômetro se a página for fechada. Finalize o estudo antes de sair.';
+      if(warn.textContent !== text) warn.textContent = text;
+      warn.hidden = !text;
+    }
     this.renderClock();
     const actions = document.getElementById('focus-actions');
     const hadFocus = actions.contains(document.activeElement);
@@ -13863,15 +15967,19 @@ function maybeShowWhatsNew(){
   const saw62 = /^6\.[2-9]/.test(seen);           // já viu a navegação da 6.2
   const saw63 = /^6\.[3-9]/.test(seen);           // já viu a captura de tópico da 6.3
   const saw64 = /^6\.[4-9]/.test(seen);           // já viu o fluxo de estudo da 6.4
-  /* v6.4.1 — refinamento. Quem já viu a 6.4 recebe só o que mudou agora, em
-     poucas linhas; quem vem de antes vê a 6.4 inteira, com o acabamento junto. */
-  const refinements = [
-    'Horário mais fácil de preencher: digite só os números (2350 vira 23:50), no formato 24h. A roda do mouse não muda mais a hora.',
-    'A duração aparece na hora, assim que você informa o início e o fim — com os descansos já descontados.',
-    'Registrar estudo aproveita a largura da tela: "Quando" e "O que você estudou" lado a lado, e "Como foi" reunindo tipo, dificuldade e comentário. Menos rolagem.',
-    'Tipografia revista: títulos e textos na mesma família, mais legíveis e com menos negrito.'
+  /* v6.5 — confiabilidade. Nada novo para aprender: quem já estava na 6.4.1 lê
+     em cinco linhas o que ficou mais seguro; quem vem de antes vê a novidade da
+     versão em que parou, com uma linha sobre a 6.5 no fim. */
+  const saw641 = /^6\.4\.[1-9]/.test(seen) || /^6\.[5-9]/.test(seen);
+  const hardening = [
+    'O mesmo estudo não é mais registrado duas vezes — nem com o Ciclo aberto em duas abas.',
+    'Editar, mover ou excluir um estudo atualiza o tópico junto: a próxima revisão acompanha o histórico, e um tópico sem estudos volta a "não iniciado".',
+    'Restaurar um backup mostra antes o que vai entrar, o que foi ajustado e o que fica de fora. Um arquivo com problema não troca os seus dados.',
+    '"Plano cumprido" agora mede a divisão do tempo: o que passa do planejado de uma disciplina aparece à parte, como "além do plano".',
+    'As janelas só fecham depois de gravar. Se algo falhar, o que você digitou continua lá.'
   ];
-  const items = saw64 ? refinements : [
+  if(saw64 && !saw641) hardening.push('Também da 6.4.1: horários digitando só os números (2350 vira 23:50) e o registro em duas colunas.');
+  const items = saw64 ? hardening : [
     '"Registrar estudo" guarda algo que você já estudou — de qualquer tela, sem sair dela. "Começar a estudar" liga o cronômetro.',
     'Em "Já estudei", diga a que horas começou e terminou: a duração sai sozinha, mesmo quando o estudo atravessa a meia-noite (23:50 → 00:12 são 22 minutos).',
     'Descansos: no cronômetro, "Descansar" pausa o estudo e conta o descanso à parte. Ele nunca entra no tempo estudado nem no plano da semana.',
@@ -13879,14 +15987,15 @@ function maybeShowWhatsNew(){
     'Créditos saíram do Ciclo: agora tudo é medido em tempo. Seus estudos e minutos continuam exatamente como estavam.',
     'Horários no formato 24h, digitando só os números (2350 vira 23:50), e uma tipografia mais legível em todo o Ciclo.'
   ];
-  if(saw64){ /* nada a acrescentar: a lista acima já é só o refinamento */ }
+  if(!saw64) items.push('E, na 6.5: o mesmo estudo nunca é registrado duas vezes, editar ou excluir um estudo atualiza o tópico junto, e restaurar um backup mostra antes o que vai entrar.');
+  if(saw64){ /* nada a acrescentar: a lista acima já é só o que ficou mais seguro */ }
   else if(cameFrom6 && !saw63) items.push('Também da 6.3: criar um tópico sem sair do registro e a frase do dia só com frases reais, com autor e obra.');
   if(!saw64 && cameFrom6 && !saw62) items.push('Também da 6.2: o Voltar do navegador volta dentro do Ciclo, e cada lista tem busca e ordenação próprias.');
   if(!cameFrom6) items.push('Também da 6.0 à 6.3: visual mais calmo, Disciplinas como um índice, Análises que começam por uma pergunta, Prazos numa aba própria e o Voltar do navegador funcionando dentro do Ciclo.');
   const cfg = {
-    title: saw64 ? 'Ciclo 6.4.1' : 'Ciclo 6.4',
+    title: 'Ciclo 6.5',
     sub: saw64
-      ? 'Uma versão de acabamento: nada novo para aprender, e nenhum dado foi alterado.'
+      ? 'Uma versão de confiabilidade: nada novo para aprender, e nenhum dado foi alterado.'
       : cameFrom5 || cameFrom6
       ? 'Estudar, registrar, descansar e acompanhar a constância ficaram mais simples. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
       : 'O Diário de Estudos agora se chama Ciclo — e ganhou uma interface nova. Seus dados, revisões e planos continuam como estavam.',
@@ -13965,9 +16074,12 @@ function openWelcome(){
         chips);
     }
 
+    let finishing = false;
     async function finish(){
+      if(finishing) return;                    // v6.5: Enter duas vezes não cria duas disciplinas
       const clean = str(name).trim();
       if(!clean){ toast('Escreva o que você está estudando.', 'err'); $('#wc-name') && $('#wc-name').focus(); return; }
+      finishing = true;
       try {
         // Sem área, sem prioridade, sem plano: só o mínimo, com bons padrões.
         const d = newDiscipline(clean, null, 3);
@@ -13975,12 +16087,14 @@ function openWelcome(){
         await setMeta('onboardingCompleted', true);
         await setMeta('firstDisciplineId', d.id);
         close();
-        await refresh();
+        await safeRefresh();
         setView('today');
         toast('Agora é só começar a estudar.', 'ok', { title: clean + ' adicionada' });
       } catch(err){
         console.error('Falha ao criar a primeira disciplina:', err);
         toast('Não foi possível salvar agora. Tente novamente.', 'err');
+      } finally {
+        finishing = false;
       }
     }
 
@@ -14322,11 +16436,11 @@ function renderSettings(){
 
   /* ---------- DADOS E PRIVACIDADE ---------- */
   const lastBackup = state.meta.lastBackupAt;
-  const daysBackup = lastBackup ? Math.floor((Date.now() - new Date(lastBackup).getTime()) / 86400000) : null;
+  const daysBackup = lastBackup ? daysSinceISO(localDateOfStamp(lastBackup)) : null;
   const dados = card('Dados e privacidade',
     h('p', { class:'set-lead', text:'Tudo fica neste navegador: sem conta, sem servidor, sem sincronização e sem rastreamento.' }),
     h('div', { class:'facts' },
-      fact(lastBackup ? (daysBackup === 0 ? 'Hoje' : `Há ${plural(daysBackup, 'dia', 'dias')}`) : 'Nunca', 'último backup'),
+      fact(daysBackup !== null ? (daysBackup <= 0 ? 'Hoje' : `Há ${plural(daysBackup, 'dia', 'dias')}`) : 'Nunca', 'último backup gerado'),
       fact(String(state.sessions.length), 'estudos guardados')),
     h('div', { class:'row auto' },
       h('button', { class:'btn primary sm', type:'button', text:'Fazer backup agora',
@@ -14343,7 +16457,7 @@ function renderSettings(){
         h('p', { class:'about-name', text:'Ciclo' }),
         h('p', { class:'hint', text:'Seu sistema de estudos · ', }, h('span', { class:'num', text:'v' + APP_VERSION }), ' · formato de dados ' + APP_SCHEMA_VERSION))),
     h('p', { class:'hint', style:'margin-top:10px', text:'Antes chamado Diário de Estudos. Desenvolvido por Filipe Santana. Aplicação local-first: seus dados ficam neste navegador.' }),
-    state.meta.v2MigrationDate ? h('p', { class:'hint', style:'margin-top:6px', text:'Dados da V2 migrados em ' + fmtDateBR(String(state.meta.v2MigrationDate).slice(0,10)) + '.' }) : null,
+    state.meta.v2MigrationDate ? h('p', { class:'hint', style:'margin-top:6px', text:'Dados da V2 migrados em ' + fmtDateBR(localDateOfStamp(state.meta.v2MigrationDate)) + '.' }) : null,
     h('p', { class:'hint', style:'margin-top:10px' }, 'Dúvidas, sugestões ou problemas: ', h('span', { class:'cc-inline num', text: CONTACT_EMAIL })),
     h('div', { class:'row auto', style:'margin-top:12px' },
       h('button', { class:'btn ghost sm', type:'button', onclick:() => openContactDrawer() }, icon('i-mail'), 'Entrar em contato'),
@@ -14451,15 +16565,14 @@ function renderDeadlineSuggestions(){
     box.append(h('div', { class:'inline-note suggestion-note', role:'note' },
       h('span', { class:'in-text', text:`Prazo de ${d.name}: ${DeadlineEngine.phrase(x.dl)}. Quer revisões mais próximas nessa disciplina até lá? Nada muda sem a sua confirmação.` }),
       h('span', { class:'in-actions' },
-        h('button', { class:'linkbtn', type:'button', text:'Usar revisão intensiva', onclick: async () => {
-          const disc = getDiscipline(d.id);
-          disc.reviewStrategy = 'intensive';
-          await persist('disciplines', disc);
+        h('button', { class:'linkbtn', type:'button', text:'Usar revisão intensiva', onclick: once(async () => {
+          // v6.5: a memória só muda depois que o banco confirma
+          if(!(await quickPatch('disciplines', d.id, { reviewStrategy:'intensive' }, 'Não foi possível mudar a revisão'))) return;
           // uma nova escolha de intensiva reabre a sugestão de voltar ao normal no futuro
-          if(state.meta['intensiveKeep_' + disc.id]) await setMeta('intensiveKeep_' + disc.id, false);
-          await refresh();
-          toast(`${disc.name} passou a usar revisão intensiva. Você pode voltar atrás quando quiser.`, 'ok');
-        } }),
+          try { if(state.meta['intensiveKeep_' + d.id]) await setMeta('intensiveKeep_' + d.id, false); } catch(err){ console.error(err); }
+          await safeRefresh();
+          toast(`${d.name} passou a usar revisão intensiva. Você pode voltar atrás quando quiser.`, 'ok');
+        }) }),
         h('button', { class:'linkbtn muted', type:'button', text:'Manter atual', onclick: async () => {
           await setMeta('intensiveDismissed_' + d.id, true);
           renderReviews();
@@ -14483,13 +16596,11 @@ function renderDeadlineSuggestions(){
     box.append(h('div', { class:'inline-note suggestion-note', role:'note' },
       h('span', { class:'in-text', text:`${d.name} continua em revisão intensiva, mas não há mais prazo próximo. Quer voltar ao ritmo normal?` }),
       h('span', { class:'in-actions' },
-        h('button', { class:'linkbtn', type:'button', text:'Voltar ao padrão', onclick: async () => {
-          const disc = getDiscipline(d.id);
-          disc.reviewStrategy = 'inherit';
-          await persist('disciplines', disc);
-          await refresh();
-          toast(`${disc.name} voltou ao ritmo normal de revisão.`, 'ok');
-        } }),
+        h('button', { class:'linkbtn', type:'button', text:'Voltar ao padrão', onclick: once(async () => {
+          if(!(await quickPatch('disciplines', d.id, { reviewStrategy:'inherit' }, 'Não foi possível mudar a revisão'))) return;
+          await safeRefresh();
+          toast(`${d.name} voltou ao ritmo normal de revisão.`, 'ok');
+        }) }),
         h('button', { class:'linkbtn muted', type:'button', text:'Continuar intensiva', onclick: async () => {
           await setMeta('intensiveKeep_' + d.id, true);
           renderReviews();

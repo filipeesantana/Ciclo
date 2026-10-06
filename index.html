@@ -8,10 +8,13 @@
 <meta name="description" content="Ciclo é um sistema de estudos que roda no seu navegador: organize o que você estuda, registre seus estudos, receba revisões no momento certo e acompanhe seu progresso — sem conta e sem servidor.">
 <meta name="application-name" content="Ciclo">
 <title>Ciclo — Seu sistema de estudos</title>
-<link rel="stylesheet" href="styles.css?v=6.4.1">
+<link rel="stylesheet" href="styles.css?v=6.5.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4a8 8 0 1 1-6.93 4' fill='none' stroke='%233FA793' stroke-width='2.6' stroke-linecap='round'/%3E%3Ccircle cx='5.07' cy='8' r='2.1' fill='%23D1A84E'/%3E%3C/svg%3E">
 </head>
 <body>
+
+<!-- v6.5 — primeiro item do Tab: pula a navegação e vai direto ao conteúdo da tela -->
+<a class="skip-link" id="skip-link" href="#main">Ir para o conteúdo</a>
 
 <!-- ícones SVG reutilizáveis -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -104,7 +107,7 @@
       </div>
     </header>
 
-    <main class="main" id="main">
+    <main class="main" id="main" tabindex="-1">
       <div class="toolbar" id="toolbar">
         <button class="toolbar-search" id="open-palette" type="button" aria-label="Buscar no Ciclo: disciplinas, tópicos, prazos, ações e ajuda" title="Buscar em todo o Ciclo (Ctrl + K)">
           <svg class="btn-icon" aria-hidden="true"><use href="#i-search"></use></svg>
@@ -218,13 +221,16 @@
   </div>
 </div>
 
-<div class="focus-mode" id="focus-root" data-state="study" hidden>
+<!-- v6.5 — o modo foco é uma camada modal de verdade: tem papel, nome, foco preso,
+     Esc para sair e a página atrás fica inerte enquanto ele está aberto. -->
+<div class="focus-mode" id="focus-root" data-state="study" role="dialog" aria-modal="true" aria-label="Modo foco" aria-describedby="focus-disc focus-state" hidden>
   <div class="focus-inner">
     <p class="focus-disc" id="focus-disc"></p>
     <p class="focus-topic" id="focus-topic"></p>
     <p class="focus-state" id="focus-state"></p>
-    <p class="focus-clock num" id="focus-clock">00:00</p>
+    <p class="focus-clock num" id="focus-clock" aria-live="off">00:00</p>
     <p class="focus-sub num" id="focus-sub"></p>
+    <p class="focus-warn" id="focus-warn" role="status" hidden></p>
     <div class="focus-actions" id="focus-actions"></div>
     <p class="focus-hint">Esc sai do modo foco sem encerrar o estudo.</p>
   </div>
@@ -237,7 +243,7 @@
 <p class="sr-only" id="sr-live" role="status" aria-live="polite"></p>
 
 <noscript><p style="padding:24px">Este aplicativo precisa de JavaScript para funcionar.</p></noscript>
-<script src="content.js?v=6.4.1"></script>
-<script src="app.js?v=6.4.1"></script>
+<script src="content.js?v=6.5.0"></script>
+<script src="app.js?v=6.5.0"></script>
 </body>
 </html>
