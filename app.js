@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v6.5.0 · Public Release Hardening
+   CICLO — v6.6.0 · Visual & Interaction Revival
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -28,7 +28,7 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '6.5.0';
+const APP_VERSION = '6.6.0';
 const APP_SCHEMA_VERSION = 6;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
@@ -93,11 +93,11 @@ const LONG_STUDY_CONFIRM_MIN = 480;    // acima de 8h o Ciclo pergunta antes de 
 const MAX_BREAKS_PER_STUDY = 60;       // teto defensivo para dados importados
 
 const DIFFICULTIES = [
-  { v:1, label:'Muito fácil',  color:'#4C8C7D' },
-  { v:2, label:'Fácil',        color:'#7FAE86' },
-  { v:3, label:'Mediano',      color:'#C9A227' },
-  { v:4, label:'Difícil',      color:'#C97A4A' },
-  { v:5, label:'Muito difícil',color:'#B33A3A' }
+  { v:1, label:'Muito fácil',  color:'#4F9686' },
+  { v:2, label:'Fácil',        color:'#83AE87' },
+  { v:3, label:'Mediano',      color:'#C6A23E' },
+  { v:4, label:'Difícil',      color:'#C78050' },
+  { v:5, label:'Muito difícil',color:'#B9493F' }
 ];
 
 const REVIEW_OUTCOMES = [
@@ -292,7 +292,7 @@ const MASTERED_MIN_LEVEL = 4;
 const MASTERED_MIN_STREAK = 2;
 
 /* Cores de dados (gráficos). Tons médios, legíveis nos dois temas. */
-const PALETTE = ['#45A895','#D0A64E','#6F9BD1','#D9776D','#9A89D0','#2F8373','#CC844E','#5A93B0','#B587B2','#83AE63'];
+const PALETTE = ['#4FA597','#C9A465','#7397C4','#D0837A','#958AC6','#3A8174','#C68A5A','#5F93AE','#AE87AB','#86A86A'];
 const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const MONTHS_ABBR = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
@@ -4525,6 +4525,7 @@ const Overlay = {
     document.documentElement.classList.remove('overlay-open');
     document.documentElement.style.removeProperty('--overlay-gap');
   },
+  _unlockTimer: null,
 
   focusables(panel){
     if(!panel) return [];
@@ -4593,12 +4594,26 @@ const Overlay = {
     return entry;
   },
 
-  close(entry){
+  /**
+   * v6.6 — `opts.unlockAfter`: enquanto a camada desenha a saída, a rolagem da
+   * página continua travada; liberar antes fazia a barra de rolagem voltar e o
+   * conteúdo de trás "pular" por baixo da janela que ainda some.
+   * O z-index também fica até o fim da saída (a camada não afunda atrás da página).
+   */
+  close(entry, opts){
+    const o = opts || {};
     const i = entry ? this.stack.indexOf(entry) : -1;
     if(i < 0) return;
     this.stack.splice(i, 1);
-    if(entry.root) entry.root.style.zIndex = '';
-    this._unlockScroll();
+    const later = o.unlockAfter && !prefersReducedMotion() ? o.unlockAfter : 0;
+    if(entry.root){
+      const root = entry.root;
+      if(later) setTimeout(() => { if(!this.stack.some(x => x.root === root)) root.style.zIndex = ''; }, later);
+      else root.style.zIndex = '';
+    }
+    clearTimeout(this._unlockTimer);
+    if(later) this._unlockTimer = setTimeout(() => this._unlockScroll(), later);
+    else this._unlockScroll();
     this._syncInert();                                  // antes de devolver o foco: o destino não pode estar inerte
     const back = entry.opener;
     if(back && typeof back.focus === 'function' && document.contains(back)){
@@ -4659,6 +4674,8 @@ let modalCloser = null;
 function openModal(build, opts){
   const root = $('#modal-root'), box = $('#modal-box');
   const options = opts || {};
+  // v6.6: havia uma janela na tela (aberta ou saindo)? Então é uma TROCA de conteúdo, não uma entrada nova.
+  const wasVisible = !root.hidden;
 
   // Só existe um #modal-root. Abrir um modal por cima de outro deixava os
   // ouvintes do primeiro pendurados no documento — e um Esc fechava os dois.
@@ -4677,14 +4694,34 @@ function openModal(build, opts){
   const views = [];
   const titleEl = $('#modal-title'), contentEl = $('#modal-content'), actionsEl = $('#modal-actions');
 
+  /* v6.6 — o que foi mexido na janela (digitado, escolhido) fica marcado: com
+     algo preenchido, clicar fora NUNCA fecha — em qualquer formulário, não só no
+     de registro. Esc e "Cancelar" continuam fechando. */
+  let touched = false;
+  const touchCtl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const touchOpts = touchCtl ? { signal: touchCtl.signal } : undefined;
+  const markTouched = (e) => { if(e.isTrusted) touched = true; };
+  if(touchOpts){
+    box.addEventListener('input', markTouched, touchOpts);
+    box.addEventListener('change', markTouched, touchOpts);
+    box.addEventListener('click', (e) => {
+      if(!e.isTrusted || !e.target || !e.target.closest) return;
+      const t = e.target.closest('[aria-pressed],[aria-checked],[role="radio"],[role="option"]');
+      // trocar de modo ("Estudar agora" × "Já estudei") é navegação dentro da janela, não um dado
+      if(t && contentEl.contains(t) && !t.closest('.mode-switch')) touched = true;
+    }, touchOpts);
+  }
+  let nudgedOnce = false;
+
   const close = (result) => {
     if(closed) return;                      // fechar duas vezes não desfaz o foco
     closed = true;
     views.length = 0;
-    root.hidden = true;
-    clear(contentEl); clear(actionsEl);
+    if(touchCtl) touchCtl.abort();
+    // v6.6: a lógica fecha agora; o desenho sai em seguida (e some de vez no fim da saída)
+    LayerFx.leave(root, MOTION.layerOut, () => { clear(contentEl); clear(actionsEl); });
     root.removeEventListener('mousedown', onBackdrop);
-    Overlay.close(layer);
+    Overlay.close(layer, { unlockAfter: MOTION.layerOut });
     if(modalCloser === close) modalCloser = null;
     if(options.onClose) options.onClose(result);
   };
@@ -4692,8 +4729,18 @@ function openModal(build, opts){
   // v6.4.1 — `keepOnBackdrop()` deixa um formulário já preenchido ignorar o clique fora (um
   // esbarrão no fundo não joga fora o que foi digitado). Esc e "Cancelar" continuam fechando.
   const onBackdrop = (e) => {
-    if(e.target !== root || views.length || options.dismissible === false) return;
-    if(typeof options.keepOnBackdrop === 'function' && options.keepOnBackdrop()) return;
+    if(e.target !== root) return;
+    const keep = views.length || options.dismissible === false || touched ||
+      (typeof options.keepOnBackdrop === 'function' && options.keepOnBackdrop());
+    if(keep){
+      // a janela fica: um pulso curto mostra isso e, na primeira vez, o caminho para sair
+      nudgeLayer(box);
+      if(!nudgedOnce && options.dismissible !== false){
+        nudgedOnce = true;
+        toast('Use "Cancelar" ou Esc para fechar sem salvar.', 'info', { title:'O que você preencheu continua aqui', duration:3800 });
+      }
+      return;
+    }
     close(null);
   };
 
@@ -4742,10 +4789,13 @@ function openModal(build, opts){
   if(cfg.title) box.removeAttribute('aria-label');
   else box.setAttribute('aria-label', options.ariaLabel || 'Janela do Ciclo');
 
+  LayerFx.cancel(root);                     // uma saída em andamento é interrompida: esta janela assume
   mount($('#modal-content'), cfg.content || null);
   mount($('#modal-actions'), ...(cfg.actions || []));
   guardModalActions($('#modal-actions'));
   root.hidden = false;
+  box.scrollTop = 0;
+  if(wasVisible) swapIn(box);               // troca de janela: o conteúdo muda no lugar, o fundo não pisca
   root.addEventListener('mousedown', onBackdrop);
   modalCloser = close;
   layer = Overlay.open(root, box, () => {
@@ -4792,7 +4842,15 @@ function resolveTheme(pref){
 /** Aplica o tema RESOLVIDO no documento. Não decide nada: só pinta. */
 function applyTheme(preference){
   const t = resolveTheme(preference);
-  document.documentElement.setAttribute('data-theme', t);
+  const docEl = document.documentElement;
+  /* v6.6 — sem isto, cada botão, linha e borda trocava de cor no próprio ritmo
+     (as transições de hover), e a tela "ondulava" por um instante. */
+  if(docEl.getAttribute('data-theme') !== t){
+    docEl.classList.add('theme-switching');
+    docEl.setAttribute('data-theme', t);
+    void docEl.offsetWidth;
+    requestAnimationFrame(() => requestAnimationFrame(() => docEl.classList.remove('theme-switching')));
+  }
   try { localStorage.setItem(THEME_LS_KEY, t); } catch(_){}   // evita piscar no próximo load
   const id = t === 'dark' ? '#i-sun' : '#i-moon';
   ['#theme-icon','#theme-icon-m'].forEach(sel => { const el = $(sel); if(el) el.setAttribute('href', id); });
@@ -4836,6 +4894,337 @@ function applyReduceMotion(on){ document.documentElement.classList.toggle('reduc
 function prefersReducedMotion(){
   if(state.settings && state.settings.reduceMotion) return true;
   return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+/* =========================================================================
+   v6.6 — MOVIMENTO, CAMADAS E SELEÇÃO (Visual & Interaction Revival)
+
+   Uma linguagem de movimento só. Os números espelham os tokens de
+   styles.css (01 · TOKENS, "movimento"); se um mudar, o outro muda junto.
+
+   Regras que valem para tudo aqui:
+     · é apresentação: nenhuma regra de dados depende de uma animação, e a
+       lógica de abrir/fechar continua síncrona (pilha de camadas, foco,
+       inércia, `isOpen`). Só o DESENHO sai devagar;
+     · interromper é sempre seguro: reabrir durante uma saída cancela a
+       saída; nada fica preso entre "aberto" e "fechado";
+     · com "Reduzir animações" (ou a preferência do sistema) o estado final
+       aparece na hora;
+     · transform e opacity sempre que possível; altura só em UM bloco por vez
+       (nunca em listas inteiras).
+   ========================================================================= */
+const MOTION = {
+  press: 110, select: 180, popIn: 170, popOut: 120, layerIn: 230, layerOut: 160, nav: 220,
+  ease: 'cubic-bezier(.2,.8,.2,1)', easeEmph: 'cubic-bezier(.16,1,.3,1)', easeExit: 'cubic-bezier(.4,0,.8,.2)'
+};
+
+/** Abrir/recolher um bloco (acordeão, resposta, detalhe opcional) pela altura. */
+const Motion = {
+  _run(el, frames, opts, onDone){
+    this._stop(el);
+    const rec = { overflow: el.style.overflow, anim: null };
+    el.style.overflow = 'hidden';
+    const a = el.animate(frames, opts);
+    rec.anim = a;
+    el._mo = rec;
+    a.onfinish = () => {
+      if(el._mo !== rec) return;
+      el._mo = null;
+      el.style.overflow = rec.overflow;
+      if(onDone) onDone();
+      try { a.cancel(); } catch(_){}
+    };
+  },
+  _stop(el){
+    const rec = el && el._mo;
+    if(!rec) return;
+    el._mo = null;
+    el.style.overflow = rec.overflow;
+    try { rec.anim.cancel(); } catch(_){}
+  },
+  /** Mostra um bloco escondido crescendo a partir de 0. */
+  expand(el){
+    if(!el) return;
+    this._stop(el);
+    el.hidden = false;
+    if(prefersReducedMotion() || typeof el.animate !== 'function') return;
+    const hgt = el.scrollHeight;
+    if(!hgt) return;
+    this._run(el, [{ height:'0px', opacity:0 }, { height:hgt + 'px', opacity:1 }],
+      { duration: Math.round(Math.min(260, 150 + hgt / 8)), easing: MOTION.ease });
+  },
+  /** Recolhe e, no fim, esconde. `after` roda uma vez (também sem animação). */
+  collapse(el, after){
+    if(!el) return;
+    this._stop(el);
+    const finish = () => { el.hidden = true; if(after) after(); };
+    if(el.hidden || prefersReducedMotion() || typeof el.animate !== 'function'){ finish(); return; }
+    const hgt = el.offsetHeight;
+    if(!hgt){ finish(); return; }
+    this._run(el, [{ height:hgt + 'px', opacity:1 }, { height:'0px', opacity:0 }],
+      { duration: Math.round(Math.min(200, 120 + hgt / 10)), easing: MOTION.easeExit, fill:'forwards' }, finish);
+  }
+};
+
+/**
+ * Saída das camadas (janela, painel, busca, modo foco, popover do glossário).
+ * Quem fecha continua decidindo tudo na hora; aqui só o elemento fica visível
+ * por alguns milissegundos com [data-leaving] (o CSS desenha a saída e tira
+ * os cliques) e depois recebe `hidden`. Reabrir antes disso chama `cancel`.
+ */
+const LayerFx = {
+  leave(root, ms, after){
+    if(!root) return;
+    this.cancel(root);
+    if(!ms || prefersReducedMotion()){ root.hidden = true; if(after) after(); return; }
+    const token = { timer:null };
+    root._leave = token;
+    root.setAttribute('data-leaving', '');
+    token.timer = setTimeout(() => {
+      if(root._leave !== token) return;
+      root._leave = null;
+      root.removeAttribute('data-leaving');
+      root.hidden = true;
+      if(after) after();
+    }, ms);
+  },
+  cancel(root){
+    if(!root) return;
+    if(root._leave){ clearTimeout(root._leave.timer); root._leave = null; }
+    root.removeAttribute('data-leaving');
+  },
+  isLeaving(root){ return !!(root && root._leave); }
+};
+
+/* ---------- menus pequenos: um comportamento só ----------
+   "Ordenar por", "Mais", "Adicionar", "Exportar". Abre ancorado ao botão e
+   dentro da tela (vira para cima perto do rodapé, encosta para dentro perto
+   das bordas); em tela estreita vira uma folha na parte de baixo, com fundo
+   escurecido. Clique dentro não fecha; clique fora fecha; Esc fecha e devolve
+   o foco ao botão; abrir outro menu fecha este. */
+const MENU_SHEET_QUERY = '(max-width: 600px)';
+let openMenuApi = null;
+function isSheetViewport(){ return !!(window.matchMedia && window.matchMedia(MENU_SHEET_QUERY).matches); }
+
+function placeMenu(menu, anchor){
+  menu.classList.remove('is-up');
+  menu.style.removeProperty('--menu-dx');
+  menu.style.maxHeight = '';
+  if(isSheetViewport()) return;                       // a folha é posicionada pelo CSS
+  // mede sem a animação de entrada (ela encolhe a caixa nos primeiros quadros)
+  menu.style.animation = 'none';
+  const r = menu.getBoundingClientRect(), a = anchor.getBoundingClientRect();
+  menu.style.animation = '';
+  const pad = 8;
+  const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+  const below = vh - a.bottom - pad - 6, above = a.top - pad - 6;
+  const up = r.height > below && above > below;
+  if(up) menu.classList.add('is-up');
+  let dx = 0;
+  if(r.left < pad) dx = pad - r.left;
+  else if(r.right > vw - pad) dx = (vw - pad) - r.right;
+  if(dx) menu.style.setProperty('--menu-dx', Math.round(dx) + 'px');
+  const room = Math.floor(up ? above : below);
+  if(r.height > room) menu.style.maxHeight = Math.max(160, room) + 'px';
+}
+
+/** Liga abrir/fechar de um menu. `menu` começa com [hidden]. */
+function menuPopover(wrap, btn, menu, hooks){
+  const hk = hooks || {};
+  let open = false, timer = null, removeEsc = null;
+  const onDoc = (e) => {
+    if(!wrap.isConnected){ api.close(false); return; }
+    // o fundo escurecido da folha (celular) é um pseudo-elemento do próprio wrap
+    if(e.target === wrap || !wrap.contains(e.target)) api.close(false);
+  };
+  const onResize = () => { if(open) placeMenu(menu, btn); };
+  const api = {
+    get isOpen(){ return open; },
+    open(){
+      if(open) return;
+      if(openMenuApi && openMenuApi !== api) openMenuApi.close(false);
+      openMenuApi = api;
+      Tooltip.hide();
+      open = true;
+      clearTimeout(timer); timer = null;
+      menu.classList.remove('is-leaving');
+      wrap.classList.remove('is-closing');
+      menu.hidden = false;
+      wrap.classList.add('is-open');
+      btn.setAttribute('aria-expanded', 'true');
+      placeMenu(menu, btn);
+      document.addEventListener('mousedown', onDoc, true);
+      window.addEventListener('resize', onResize, { passive:true });
+      removeEsc = Overlay.pushEsc(() => api.close(true), wrap);
+      if(hk.onOpen) hk.onOpen();
+    },
+    close(refocus){
+      if(!open) return;
+      open = false;
+      if(openMenuApi === api) openMenuApi = null;
+      btn.setAttribute('aria-expanded', 'false');
+      wrap.classList.remove('is-open');
+      document.removeEventListener('mousedown', onDoc, true);
+      window.removeEventListener('resize', onResize);
+      if(removeEsc){ removeEsc(); removeEsc = null; }
+      if(refocus && btn.isConnected){ try { btn.focus({ preventScroll:true }); } catch(_){ btn.focus(); } }
+      if(!wrap.isConnected || prefersReducedMotion()){ menu.hidden = true; return; }
+      menu.classList.add('is-leaving');
+      wrap.classList.add('is-closing');
+      timer = setTimeout(() => {
+        timer = null;
+        if(open) return;
+        menu.hidden = true;
+        menu.classList.remove('is-leaving');
+        wrap.classList.remove('is-closing');
+      }, MOTION.popOut);
+    }
+  };
+  return api;
+}
+
+/* ---------- indicador de seleção que desliza ----------
+   Em grupos de UMA linha (controle segmentado, abas, navegação, período,
+   modo de registro, prioridade), a marca do item escolhido é um elemento só
+   que se desloca até a nova posição — a escolha parece intencional, não uma
+   troca de cor. O próprio item continua dizendo o estado (aria + estilo),
+   então leitores de tela, alto contraste e "Reduzir animações" não dependem
+   do indicador. Listas redesenhadas pela tela (Análises, Configurações, abas)
+   deslizam a partir de onde a marca estava: a posição anterior fica guardada
+   por alguns instantes. Grades de cartões NÃO usam indicador (um quadro
+   atravessando a grade distrai): lá a marca do item assenta com um pulso curto. */
+const SLIDE_GROUPS = [
+  { sel:'#nav-desktop',                   item:'.nav-item',        on:'[aria-current="page"]', kind:'nav' },
+  { sel:'#nav-mobile',                    item:'.mb-item',         on:'[aria-current="page"]', kind:'pill', target:'.nav-icon' },
+  { sel:'.segmented',                     item:'button',           on:'[aria-pressed="true"]', kind:'thumb' },
+  { sel:'.help-switch',                   item:'.help-switch-btn', on:'[aria-selected="true"]', kind:'thumb' },
+  { sel:'.tabs[role="tablist"]',          item:'.tab',             on:'[aria-selected="true"]', kind:'line' },
+  { sel:'.set-nav',                       item:'.set-tab',         on:'[aria-selected="true"]', kind:'nav' },
+  { sel:'.an-chips[role="radiogroup"]',   item:'.an-chip',         on:'[aria-checked="true"]', kind:'choice' },
+  { sel:'.mode-switch',                   item:'.mode-opt',        on:'[aria-checked="true"]', kind:'choice' },
+  { sel:'.prio-options',                  item:'.prio-opt',        on:'[aria-checked="true"]', kind:'choice' }
+];
+const SLIDE_SEL = SLIDE_GROUPS.map(g => g.sel).join(',');
+const SLIDE_MEMORY_MS = 1500;
+
+const Slider = {
+  ok: false,
+  mem: new Map(),
+  init(){
+    if(this.ok) return;
+    if(typeof MutationObserver === 'undefined') return;
+    // alto contraste: o sistema redesenha as cores — o item marca a si mesmo, sem indicador
+    if(window.matchMedia && window.matchMedia('(forced-colors: active)').matches) return;
+    this.ok = true;
+    this.scan(document.body);
+    new MutationObserver(recs => {
+      for(const r of recs) for(const n of r.addedNodes) if(n.nodeType === 1 && !n.classList.contains('sel-ind')) this.scan(n);
+    }).observe(document.body, { childList:true, subtree:true });
+  },
+  scan(root){
+    if(root.matches && root.matches(SLIDE_SEL)) this.attach(root);
+    if(root.querySelectorAll && root.firstElementChild) root.querySelectorAll(SLIDE_SEL).forEach(g => this.attach(g));
+  },
+  attach(group){
+    if(group._slide) return;
+    const cfg = SLIDE_GROUPS.find(c => group.matches(c.sel));
+    if(!cfg) return;
+    const ind = h('span', { class:'sel-ind sel-ind-' + cfg.kind, 'aria-hidden':'true' });
+    const st = { cfg, ind, rect:null, sized:false,
+      key: cfg.sel + '|' + (group.id || group.getAttribute('aria-labelledby') || group.getAttribute('aria-label') || '') };
+    group._slide = st;
+    group.classList.add('has-slider');
+    group.append(ind);
+    const attr = (cfg.on.match(/\[([a-z-]+)/) || [])[1];
+    if(attr) new MutationObserver(() => this.place(group, true)).observe(group, { attributes:true, subtree:true, attributeFilter:[attr] });
+    if(typeof ResizeObserver !== 'undefined'){
+      new ResizeObserver(() => {
+        if(!st.sized){ st.sized = true; return; }       // a primeira notificação é só o tamanho inicial
+        this.place(group, false);
+      }).observe(group);
+    }
+    const prev = this.mem.get(st.key);
+    if(prev && Date.now() - prev.t < SLIDE_MEMORY_MS && !prefersReducedMotion()){
+      this.apply(st, prev, false);
+      requestAnimationFrame(() => this.place(group, true));
+    } else {
+      this.place(group, false);
+    }
+  },
+  /** Posição do item escolhido em relação ao grupo (layout, sem efeito de transform). */
+  measure(group, st){
+    const item = group.querySelector(':scope > ' + st.cfg.item + st.cfg.on) || group.querySelector(st.cfg.item + st.cfg.on);
+    if(!item) return null;
+    const el = st.cfg.target ? item.querySelector(st.cfg.target) : item;
+    if(!el) return null;
+    if(!st.cfg.target){
+      let x = 0, y = 0, n = el;
+      while(n && n !== group){ x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+      if(n === group){
+        if(!el.offsetWidth) return null;
+        return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+      }
+    }
+    const g = group.getBoundingClientRect(), r = el.getBoundingClientRect();
+    if(!r.width) return null;
+    return { x: r.left - g.left - group.clientLeft + group.scrollLeft, y: r.top - g.top - group.clientTop + group.scrollTop, w: r.width, h: r.height };
+  },
+  place(group, animate){
+    const st = group._slide;
+    if(!st || !group.isConnected) return;
+    const r = this.measure(group, st);
+    if(!r){ st.ind.classList.add('is-off'); st.rect = null; return; }
+    this.apply(st, r, animate && !!st.rect);
+  },
+  apply(st, r, animate){
+    const ind = st.ind;
+    const same = st.rect && st.rect.x === r.x && st.rect.y === r.y && st.rect.w === r.w && st.rect.h === r.h;
+    st.rect = { x:r.x, y:r.y, w:r.w, h:r.h };
+    this.mem.set(st.key, { x:r.x, y:r.y, w:r.w, h:r.h, t:Date.now() });
+    if(same && !ind.classList.contains('is-off')) return;
+    if(!animate) ind.classList.add('no-anim');
+    ind.classList.remove('is-off');
+    ind.style.width = Math.round(r.w) + 'px';
+    ind.style.height = Math.round(r.h) + 'px';
+    ind.style.transform = `translate(${Math.round(r.x)}px, ${Math.round(r.y)}px)`;
+    if(!animate){ void ind.offsetWidth; ind.classList.remove('no-anim'); }
+  }
+};
+
+/* ---------- a marca da escolha "assenta" ----------
+   Em grades de opções (o que analisar, o que ver, tipo de estudo, ordenar
+   por…), a marca do item recém-escolhido faz um pulso curto. Só depois de um
+   clique de verdade — desenhar a tela nunca anima marcas sozinho. */
+const PickFx = {
+  SEL: '[role="radio"],[role="menuitemradio"],[aria-pressed],[role="option"],[role="tab"]',
+  init(){
+    document.addEventListener('click', (e) => {
+      if(!e.isTrusted || prefersReducedMotion()) return;
+      const el = e.target && e.target.closest ? e.target.closest(this.SEL) : null;
+      if(!el) return;
+      const key = el.dataset.k ? `[data-k="${cssEsc(el.dataset.k)}"]` : (el.id ? '#' + cssEsc(el.id) : null);
+      setTimeout(() => {
+        const t = el.isConnected ? el : (key ? document.querySelector(key) : null);
+        if(!t || !this.isOn(t)) return;
+        t.classList.remove('is-picked');
+        void t.offsetWidth;
+        t.classList.add('is-picked');
+        clearTimeout(t._pickT);
+        t._pickT = setTimeout(() => t.classList.remove('is-picked'), 420);
+      }, 0);
+    }, true);
+  },
+  isOn(t){ return ['aria-checked','aria-pressed','aria-selected'].some(a => t.getAttribute(a) === 'true'); }
+};
+function cssEsc(v){ return (window.CSS && CSS.escape) ? CSS.escape(String(v)) : String(v).replace(/["\\#.:\[\]]/g, '\\$&'); }
+
+/** Janela que não fecha com clique fora: um pulso curto diz "estou aqui". */
+function nudgeLayer(box){
+  if(!box || prefersReducedMotion() || typeof box.animate !== 'function') return;
+  try {
+    box.animate([{ transform:'scale(1)' }, { transform:'scale(1.012)' }, { transform:'scale(1)' }],
+      { duration:240, easing:MOTION.ease });
+  } catch(_){}
 }
 
 function card(title, ...children){
@@ -5250,21 +5639,22 @@ function entityPicker(o){
     searchVisible = (o.count ? o.count() : 0) >= PICK_SEARCH_MIN;
     searchBox.hidden = !searchVisible;
     list.tabIndex = searchVisible ? -1 : 0;
-    panel.hidden = false;
     btn.setAttribute('aria-expanded', 'true');
     node.classList.add('is-open');
     drawList();
+    Motion.expand(panel);                    // v6.6: o painel cresce a partir do campo
     document.addEventListener('mousedown', onDoc, true);
     removeEsc = Overlay.pushEsc(() => closePanel(true), node);
     const target = searchVisible ? input : list;
     try { target.focus({ preventScroll:true }); } catch(_){ target.focus(); }
     panel.scrollIntoView({ block:'nearest' });
-    swapIn(panel);
   }
   function closePanel(refocus){
     if(!open) return;
     open = false;
-    panel.hidden = true;
+    // a lista some depressa; a escolha já está no campo
+    if(panel.contains(document.activeElement) && !refocus){ try { btn.focus({ preventScroll:true }); } catch(_){} }
+    Motion.collapse(panel);
     btn.setAttribute('aria-expanded', 'false');
     node.classList.remove('is-open');
     document.removeEventListener('mousedown', onDoc, true);
@@ -8512,29 +8902,18 @@ function choiceMenu(o){
     menu.append(grp);
   });
   const allItems = () => $$('[role="menuitemradio"]', menu);
-  function onDoc(e){
-    if(!wrap.isConnected){ document.removeEventListener('mousedown', onDoc, true); return; }
-    if(!wrap.contains(e.target)) close(false);
-  }
-  function close(refocus){
-    if(menu.hidden) return;
-    menu.hidden = true; btn.setAttribute('aria-expanded', 'false');
-    document.removeEventListener('mousedown', onDoc, true);
-    if(refocus) btn.focus();
-  }
-  function open(){
-    Tooltip.hide();
-    menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
-    document.addEventListener('mousedown', onDoc, true);
-    // no celular o menu pode nascer atrás da barra inferior: rola só o necessário, sem esconder o botão
-    const r = menu.getBoundingClientRect(), br = btn.getBoundingClientRect();
-    const limit = window.innerHeight - 96;
-    if(r.bottom > limit) window.scrollBy({ top: Math.max(0, Math.min(r.bottom - limit, br.top - 72)), behavior:'auto' });
-    const on = allItems().find(x => x.getAttribute('aria-checked') === 'true') || allItems()[0];
-    if(on){ try { on.focus({ preventScroll:true }); } catch(_){ on.focus(); } }
-  }
-  btn.addEventListener('click', () => { if(menu.hidden) open(); else close(true); });
-  btn.addEventListener('keydown', (e) => { if((e.key === 'ArrowDown' || e.key === 'ArrowUp') && menu.hidden){ e.preventDefault(); open(); } });
+  /* v6.6: abrir, fechar, posicionar e clicar dentro/fora seguem menuPopover —
+     o mesmo comportamento de todos os menus pequenos do Ciclo. */
+  const pop = menuPopover(wrap, btn, menu, {
+    onOpen(){
+      const on = allItems().find(x => x.getAttribute('aria-checked') === 'true') || allItems()[0];
+      if(on){ try { on.focus({ preventScroll:true }); } catch(_){ on.focus(); } }
+    }
+  });
+  const close = (refocus) => pop.close(refocus);
+  const open = () => pop.open();
+  btn.addEventListener('click', () => { if(!pop.isOpen) open(); else close(true); });
+  btn.addEventListener('keydown', (e) => { if((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !pop.isOpen){ e.preventDefault(); open(); } });
   menu.addEventListener('keydown', (e) => {
     const list = allItems();
     const i = list.indexOf(document.activeElement);
@@ -11732,8 +12111,8 @@ function analyticsExploreBlock(a, focus){
     const btn = h('button', { class:'an-explore-toggle', type:'button', id:bodyId + '-b', 'aria-expanded': open.has(it.id) ? 'true' : 'false', 'aria-controls':bodyId,
       onclick:() => {
         const isOpen = open.has(it.id);
-        if(isOpen){ open.delete(it.id); body.hidden = true; clear(body); }
-        else { open.add(it.id); mount(body, it.build()); body.hidden = false; }
+        if(isOpen){ open.delete(it.id); Motion.collapse(body, () => { if(!open.has(it.id)) clear(body); }); }
+        else { open.add(it.id); mount(body, it.build()); Motion.expand(body); }
         btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
       } },
       h('span', { class:'an-explore-l', text:it.label }),
@@ -11799,20 +12178,13 @@ function menuButton(label, items, opts){
   const menu = h('div', { class:'menu', role:'menu', hidden:true });
   const btn = h('button', { class: o.className || 'btn ghost sm', type:'button', 'aria-haspopup':'menu', 'aria-expanded':'false',
     'aria-label': o.ariaLabel || label, 'data-fk': o.fk || null }, o.icon ? icon(o.icon) : null, label, icon('i-chev', 'btn-icon menu-chev'));
-  const close = (refocus) => {
-    if(menu.hidden) return;
-    menu.hidden = true; btn.setAttribute('aria-expanded', 'false');
-    document.removeEventListener('mousedown', onDoc, true);
-    if(refocus) btn.focus();
-  };
-  const onDoc = (e) => { if(!wrap.contains(e.target)) close(false); };
-  const openMenu = () => {
-    menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
-    document.addEventListener('mousedown', onDoc, true);
-    const first = menu.querySelector('[role="menuitem"]'); if(first) first.focus();
-  };
-  btn.addEventListener('click', () => { if(menu.hidden) openMenu(); else close(true); });
-  btn.addEventListener('keydown', (e) => { if(e.key === 'ArrowDown' && menu.hidden){ e.preventDefault(); openMenu(); } });
+  const pop = menuPopover(wrap, btn, menu, {
+    onOpen(){ const first = menu.querySelector('[role="menuitem"]'); if(first){ try { first.focus({ preventScroll:true }); } catch(_){ first.focus(); } } }
+  });
+  const close = (refocus) => pop.close(refocus);
+  const openMenu = () => pop.open();
+  btn.addEventListener('click', () => { if(!pop.isOpen) openMenu(); else close(true); });
+  btn.addEventListener('keydown', (e) => { if(e.key === 'ArrowDown' && !pop.isOpen){ e.preventDefault(); openMenu(); } });
   items.forEach(it => menu.append(h('button', { class:'menu-item', type:'button', role:'menuitem', tabindex:'-1', text:it.label,
     onclick:() => { close(true); it.run(); } })));
   menu.addEventListener('keydown', (e) => {
@@ -13655,7 +14027,8 @@ function bindEvents(){
       title:'Mais',
       content: h('div', { class:'ob-list' },
         [['disciplines','Disciplinas'], ['history','Histórico'], ['help','Ajuda'], ['data','Dados'], ['settings','Configurações']].map(([v,l]) =>
-          h('button', { class:'btn ghost block', type:'button', text:l, onclick:() => { close(); goView(v); } }))),
+          h('button', { class:'btn ghost block more-item', type:'button', 'aria-current': ui.view === v ? 'page' : null, onclick:() => { close(); goView(v); } },
+            icon(NAV_ICONS[v], 'nav-icon'), h('span', { text:l }), ui.view === v ? h('span', { class:'more-here', text:'Você está aqui' }) : null))),
       actions:[ h('button', { class:'btn ghost', type:'button', text:'Fechar', onclick:() => close() }) ]
     }), { size:'narrow' });
   });
@@ -13955,6 +14328,8 @@ async function init(){
     timerAlreadySaved = true;
   }
   bindEvents();
+  Slider.init();      // v6.6: indicadores de seleção que deslizam
+  PickFx.init();      // v6.6: a marca da escolha assenta com um pulso curto
   state.ready = true;
 
   // v5: o primeiro acesso depende só de existir algo cadastrado. Plano não é pré-requisito.
@@ -14308,12 +14683,16 @@ const GlossaryPopover = {
         onclick:() => { this.close(); openHelpArticle(g.article); } }) : null,
       h('button', { class:'gp-close icon-btn', type:'button', 'aria-label':'Fechar explicação',
         onclick:() => this.close() }, icon('i-close')));
+    LayerFx.cancel(root);
     root.hidden = false;
     this.anchor = anchor;
     anchor.setAttribute('aria-expanded', 'true');
+    // v6.6: Esc fecha a explicação (e só ela — uma janela por baixo continua aberta)
+    if(this._esc) this._esc();
+    this._esc = Overlay.pushEsc(() => this.close(), root);
     this.position(anchor);
     const first = root.querySelector('button');
-    if(first) setTimeout(() => { if(!root.hidden) { try { first.focus({ preventScroll:true }); } catch(_){ first.focus(); } } }, 30);
+    if(first) setTimeout(() => { if(!root.hidden && !LayerFx.isLeaving(root)) { try { first.focus({ preventScroll:true }); } catch(_){ first.focus(); } } }, 30);
   },
 
   position(anchor){
@@ -14329,9 +14708,10 @@ const GlossaryPopover = {
   },
 
   close(){
-    if(!this.el || this.el.hidden) return;
-    this.el.hidden = true;
-    clear(this.el);
+    if(!this.el || this.el.hidden || LayerFx.isLeaving(this.el)) return;
+    const el = this.el;
+    LayerFx.leave(el, MOTION.popOut, () => clear(el));
+    if(this._esc){ this._esc(); this._esc = null; }
     const a = this.anchor;
     this.anchor = null;
     if(a){
@@ -14340,7 +14720,7 @@ const GlossaryPopover = {
     }
   },
 
-  get isOpen(){ return !!(this.el && !this.el.hidden); }
+  get isOpen(){ return !!(this.el && !this.el.hidden && !LayerFx.isLeaving(this.el)); }
 };
 
 /** Detecta ponteiro grosso (celular/tablet): lá o hover não existe. */
@@ -14392,7 +14772,9 @@ const Drawer = {
   open(title, contentNode, opts){
     const root = document.getElementById('drawer-root');
     const o = opts || {};
-    const wasOpen = !root.hidden;
+    const leaving = LayerFx.isLeaving(root);
+    LayerFx.cancel(root);                        // reabrir no meio da saída: o painel volta, sem ficar preso
+    const wasOpen = !root.hidden && !leaving;
     const opener = wasOpen ? undefined : document.activeElement;
     const content = document.getElementById('drawer-content');
     document.getElementById('drawer-title').textContent = title || '';
@@ -14410,24 +14792,23 @@ const Drawer = {
       this._layer = Overlay.open(root, document.getElementById('drawer-panel'), () => Drawer.close(), { opener });
     }
     const focusable = document.getElementById('drawer-panel').querySelector('button,a,input,select,textarea');
-    if(focusable) setTimeout(() => { if(!root.hidden) focusable.focus(); }, 40);
+    if(focusable) setTimeout(() => { if(Drawer.isOpen) focusable.focus(); }, 40);
     // trocar de conteúdo encerra o contexto anterior (ex.: prazo aberto no painel)
     if(wasOpen && this._onCloseCb){ const prev = this._onCloseCb; this._onCloseCb = null; prev(); }
     this._onCloseCb = o.onClose || null;
   },
   close(){
     const root = document.getElementById('drawer-root');
-    if(!root || root.hidden) return;
-    root.hidden = true;
-    clear(document.getElementById('drawer-content'));
+    if(!root || root.hidden || LayerFx.isLeaving(root)) return;
+    LayerFx.leave(root, MOTION.layerOut, () => clear(document.getElementById('drawer-content')));
     root.removeEventListener('mousedown', this._onBackdrop);
     Tooltip.hide();
     GlossaryPopover.close();
     if(this._onCloseCb){ const cb = this._onCloseCb; this._onCloseCb = null; cb(); }
-    Overlay.close(this._layer);                  // devolve o foco a quem abriu
+    Overlay.close(this._layer, { unlockAfter: MOTION.layerOut });   // devolve o foco a quem abriu
     this._layer = null;
   },
-  get isOpen(){ const r = document.getElementById('drawer-root'); return r && !r.hidden; },
+  get isOpen(){ const r = document.getElementById('drawer-root'); return !!r && !r.hidden && !LayerFx.isLeaving(r); },
   _onBackdrop(e){ if(e.target === document.getElementById('drawer-root')) Drawer.close(); }
 };
 
@@ -14507,6 +14888,7 @@ const Palette = {
     this.buildIndex();
     const root = document.getElementById('palette-root');
     const input = document.getElementById('palette-input');
+    LayerFx.cancel(root);
     root.hidden = false;
     input.value = '';
     this.filter('');
@@ -14521,15 +14903,15 @@ const Palette = {
 
   close(){
     const root = document.getElementById('palette-root');
-    if(!root || root.hidden) return;
-    root.hidden = true;
+    if(!root || root.hidden || LayerFx.isLeaving(root)) return;
+    LayerFx.leave(root, MOTION.layerOut);
     document.removeEventListener('keydown', this._onKey, true);
     root.removeEventListener('mousedown', this._onBackdrop);
-    Overlay.close(this._layer);
+    Overlay.close(this._layer, { unlockAfter: MOTION.layerOut });
     this._layer = null;
   },
 
-  get isOpen(){ const r = document.getElementById('palette-root'); return r && !r.hidden; },
+  get isOpen(){ const r = document.getElementById('palette-root'); return !!r && !r.hidden && !LayerFx.isLeaving(r); },
 
   filter(query){
     const q = normalizeText(query);
@@ -14640,24 +15022,26 @@ const FocusMode = {
     if(!TimerService.isActive){ toast('Comece a estudar para usar o modo foco.', 'info'); return; }
     if(this.isOpen) return;
     const root = document.getElementById('focus-root');
+    LayerFx.cancel(root);
     root.hidden = false;
     document.documentElement.classList.add('focus-active');
     this.render();
     this.tick = setInterval(() => this.renderClock(), 1000);
     this._layer = Overlay.open(root, root.querySelector('.focus-inner'), () => FocusMode.exit());
     const first = document.querySelector('#focus-actions button');
-    if(first) setTimeout(() => first.focus(), 40);
+    if(first) setTimeout(() => { if(FocusMode.isOpen) first.focus(); }, 40);
   },
   exit(){
     const root = document.getElementById('focus-root');
-    if(!root || root.hidden) return;
-    root.hidden = true;
+    if(!root || root.hidden || LayerFx.isLeaving(root)) return;
+    // a página volta a aparecer por baixo enquanto o modo foco se desfaz
     document.documentElement.classList.remove('focus-active');
+    LayerFx.leave(root, MOTION.layerOut);
     clearInterval(this.tick); this.tick = null;
-    Overlay.close(this._layer);
+    Overlay.close(this._layer, { unlockAfter: MOTION.layerOut });
     this._layer = null;
   },
-  get isOpen(){ const r = document.getElementById('focus-root'); return r && !r.hidden; },
+  get isOpen(){ const r = document.getElementById('focus-root'); return !!r && !r.hidden && !LayerFx.isLeaving(r); },
   render(opts){
     if(!TimerService.isActive){ this.exit(); return; }
     const o = opts || {};
@@ -14942,7 +15326,7 @@ function detailsBlock(d){
   btn.addEventListener('click', () => {
     const open = btn.getAttribute('aria-expanded') === 'true';
     btn.setAttribute('aria-expanded', open ? 'false' : 'true');
-    body.hidden = open;
+    if(open) Motion.collapse(body); else Motion.expand(body);
   });
   return h('div', { class:'help-details' }, btn, body);
 }
@@ -15059,7 +15443,7 @@ function faqNode(f, openByDefault){
   q.addEventListener('click', () => {
     const open = q.getAttribute('aria-expanded') === 'true';
     q.setAttribute('aria-expanded', open ? 'false' : 'true');
-    answer.hidden = open;
+    if(open) Motion.collapse(answer); else Motion.expand(answer);
     helpUi.openFaq = open ? null : f.id;
   });
   item.append(q, answer);
@@ -15979,7 +16363,18 @@ function maybeShowWhatsNew(){
     'As janelas só fecham depois de gravar. Se algo falhar, o que você digitou continua lá.'
   ];
   if(saw64 && !saw641) hardening.push('Também da 6.4.1: horários digitando só os números (2350 vira 23:50) e o registro em duas colunas.');
-  const items = saw64 ? hardening : [
+  /* v6.6 — acabamento visual e de interação. Quem já estava na 6.5 lê só isto;
+     quem vem de antes vê a novidade da versão em que parou e uma linha sobre a 6.6. */
+  const saw65 = /^6\.([5-9]|\d{2,})/.test(seen);
+  const revival = [
+    'Cores mais fechadas e sérias, no tema escuro e no claro. O verde-petróleo ficou reservado para a ação principal de cada tela.',
+    'Botões, linhas e opções respondem ao mouse e ao toque — e o que está escolhido continua marcado depois que você tira o mouse.',
+    'Ao escolher uma opção (tema, aba, período, prioridade), a marca desliza até ela.',
+    'Menus abrem junto do botão e sempre dentro da tela; no celular, viram uma folha na parte de baixo. Clicar fora ou apertar Esc fecha.',
+    'Janelas e painéis entram e saem com uma transição curta. Uma janela com algo preenchido não fecha mais com um clique fora.',
+    'Tudo isso respeita "Reduzir animações", em Configurações → Aparência.'
+  ];
+  const items = saw65 ? revival : saw64 ? hardening : [
     '"Registrar estudo" guarda algo que você já estudou — de qualquer tela, sem sair dela. "Começar a estudar" liga o cronômetro.',
     'Em "Já estudei", diga a que horas começou e terminou: a duração sai sozinha, mesmo quando o estudo atravessa a meia-noite (23:50 → 00:12 são 22 minutos).',
     'Descansos: no cronômetro, "Descansar" pausa o estudo e conta o descanso à parte. Ele nunca entra no tempo estudado nem no plano da semana.',
@@ -15988,14 +16383,17 @@ function maybeShowWhatsNew(){
     'Horários no formato 24h, digitando só os números (2350 vira 23:50), e uma tipografia mais legível em todo o Ciclo.'
   ];
   if(!saw64) items.push('E, na 6.5: o mesmo estudo nunca é registrado duas vezes, editar ou excluir um estudo atualiza o tópico junto, e restaurar um backup mostra antes o que vai entrar.');
+  if(!saw65) items.push('E, na 6.6: cores mais sóbrias, botões e opções que respondem ao toque, a marca da escolha deslizando até ela e menus e janelas com transições curtas.');
   if(saw64){ /* nada a acrescentar: a lista acima já é só o que ficou mais seguro */ }
   else if(cameFrom6 && !saw63) items.push('Também da 6.3: criar um tópico sem sair do registro e a frase do dia só com frases reais, com autor e obra.');
   if(!saw64 && cameFrom6 && !saw62) items.push('Também da 6.2: o Voltar do navegador volta dentro do Ciclo, e cada lista tem busca e ordenação próprias.');
   if(!cameFrom6) items.push('Também da 6.0 à 6.3: visual mais calmo, Disciplinas como um índice, Análises que começam por uma pergunta, Prazos numa aba própria e o Voltar do navegador funcionando dentro do Ciclo.');
   const cfg = {
-    title: 'Ciclo 6.5',
-    sub: saw64
-      ? 'Uma versão de confiabilidade: nada novo para aprender, e nenhum dado foi alterado.'
+    title: 'Ciclo 6.6',
+    sub: saw65
+      ? 'Uma versão de acabamento: a mesma ferramenta, mais clara de ver e mais agradável de usar. Nada para reaprender, e nenhum dado foi alterado.'
+      : saw64
+      ? 'Confiabilidade e acabamento: nada novo para aprender, e nenhum dado foi alterado.'
       : cameFrom5 || cameFrom6
       ? 'Estudar, registrar, descansar e acompanhar a constância ficaram mais simples. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
       : 'O Diário de Estudos agora se chama Ciclo — e ganhou uma interface nova. Seus dados, revisões e planos continuam como estavam.',

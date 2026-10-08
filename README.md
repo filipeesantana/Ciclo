@@ -218,14 +218,15 @@ O Ciclo é uma aplicação local-first feita em HTML, CSS e JavaScript puro, sem
 
 Curto e direto, para quem quer saber exatamente o que esperar.
 
-- **Navegadores.** A v6.5 foi testada de forma automatizada no Chromium 141, a base do Chrome e do Edge. Firefox e Safari não foram testados nesta versão: o Ciclo usa apenas recursos padrão da web, mas isso não é uma garantia.
+- **Navegadores.** A v6.6 foi testada de forma automatizada no Chromium 141, a base do Chrome e do Edge, em telas de 320 px a 1920 px, com zoom de 200%, nos dois temas e com animações reduzidas. Firefox e Safari não foram testados nesta versão: o Ciclo usa apenas recursos padrão da web, mas isso não é uma garantia.
+- **Animações.** São curtas e sempre opcionais: com *Reduzir animações* (em Configurações → Aparência) ou com a preferência do sistema ligada, tudo muda de estado na hora, sem trajeto. Nenhuma informação depende de uma animação para ser entendida.
 - **Onde os dados ficam.** No IndexedDB do navegador; o cronômetro em andamento e o tema ficam no `localStorage`. Cada navegador (e cada perfil) tem a sua cópia. Nada é enviado para fora.
 - **Internet.** O Ciclo é uma página comum: a rede serve só para abri-la. Ele não se instala como aplicativo e não guarda a si mesmo para uso sem conexão — sem rede, só abre se o navegador ainda tiver a página guardada ou se você abrir os arquivos direto do seu aparelho.
 - **O que as datas significam.** Datas de estudo, de prazo e de revisão são dias do calendário **no fuso do seu aparelho**. Um estudo pertence ao dia em que começou: 23:50 → 00:12 conta inteiro no dia das 23:50. Horários exatos (início, fim, descansos) são guardados como instantes e mostrados no seu fuso.
 - **Backup.** O arquivo `.json` contém tudo o que está registrado. O Ciclo sabe que gerou o arquivo, mas não tem como confirmar onde o navegador o salvou.
 - **Cronômetro e backup.** Um estudo em andamento só entra no histórico quando é finalizado — até lá, não faz parte do backup. Antes de restaurar um backup com o cronômetro ligado, o Ciclo pergunta o que fazer com esse tempo.
 - **Duas abas.** Pode usar. As abas compartilham os dados e se avisam quando algo muda; com um formulário aberto, o Ciclo avisa em vez de mexer no que você está digitando.
-- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v6.5 não muda o formato dos dados nem exige migração. Se a página parecer antiga, recarregue-a.
+- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v6.6 não muda o formato dos dados nem exige migração. Se a página parecer antiga, recarregue-a.
 - **Se algo der errado.** Recarregar a página é seguro: tudo o que foi registrado já está gravado. Se uma gravação falhar, o Ciclo diz isso e mantém a janela aberta com o que você digitou. Se os dados sumirem (navegador limpo, outro perfil), restaure o último backup em **Dados → Restaurar backup**.
 
 ## Contato
@@ -236,9 +237,23 @@ O endereço também está no aplicativo, em **Ajuda** e em **Configurações →
 
 ## Versão atual
 
-**v6.5.0 — Public Release Hardening**
+**v6.6.0 — Visual & Interaction Revival**
 
-Uma versão de confiabilidade: nenhuma função nova e nada para reaprender. O que mudou é o quanto se pode confiar no que está gravado.
+Uma versão de acabamento: o mesmo Ciclo, com as mesmas funções, mais claro de ver e mais agradável de usar. Nada para reaprender.
+
+- **Cores mais fechadas e sérias.** No escuro, grafite levemente azulado em vez de quase preto; no claro, um neutro levemente quente com superfícies bem separadas. O verde-petróleo ficou reservado para a ação principal de cada tela, e o mesmo significado tem sempre a mesma aparência: ação, escolha, foco do teclado, atenção, erro.
+- **Tudo responde.** Botões, linhas e opções reagem ao mouse, ao toque e ao teclado — sem pular nem piscar. Pressionar dá uma leve compressão; o foco do teclado tem um contorno próprio.
+- **O que está escolhido fica claro.** Escolher não é o mesmo que passar o mouse: a opção escolhida tem fundo, contorno e, quando cabe, um ✓, e continua marcada quando o mouse sai. Em controles de uma linha — tema, abas, período, prioridade, navegação — a marca desliza até a opção nova.
+- **Menus mais previsíveis.** *Ordenar por*, *Mais*, *Adicionar* e *Exportar* abrem junto do botão e sempre dentro da tela (perto do rodapé, abrem para cima). No celular, viram uma folha na parte de baixo, com opções maiores. Clicar dentro não fecha; clicar fora ou apertar Esc fecha e devolve o foco ao botão; abrir outro menu fecha o anterior.
+- **Janelas que entram e saem.** Janelas, painéis, a busca e o modo foco entram e saem com uma transição curta. Uma janela com algo preenchido não fecha mais com um clique fora — em nenhum formulário; Esc e *Cancelar* continuam fechando.
+- **Navegar com continuidade.** Entrar numa área, disciplina ou tópico desliza para a frente; voltar desliza de volta. Respostas da Ajuda, detalhes e *Explorar mais* abrem e recolhem suavemente.
+- **Explicações do glossário** fecham com Esc sem fechar a janela de baixo.
+
+Seus dados não mudam: o formato é o mesmo da v6.5, não há migração, e backups de qualquer versão anterior continuam sendo aceitos.
+
+### v6.5
+
+**Public Release Hardening.** Uma versão de confiabilidade: nenhuma função nova e nada para reaprender. O que mudou é o quanto se pode confiar no que está gravado.
 
 - **O mesmo estudo nunca é registrado duas vezes.** Nem com cliques repetidos, nem finalizando o cronômetro em duas abas ao mesmo tempo: a segunda aba avisa que o estudo já foi registrado.
 - **O tópico acompanha o histórico.** Editar, mover ou excluir um estudo atualiza o tópico junto. Excluir o único estudo de um tópico o devolve a *não iniciado*; uma revisão registrada com data antiga não empurra mais a próxima revisão para o passado.
@@ -251,7 +266,7 @@ Uma versão de confiabilidade: nenhuma função nova e nada para reaprender. O q
 - **CSV seguro para planilhas**, datas de conclusão de prazo no dia certo do seu fuso e pausas curtas do cronômetro que não somem do total.
 - **Navegação por teclado.** *Ir para o conteúdo* como primeiro item do Tab, modo foco como janela de verdade (foco preso, Esc, retorno do foco) e a página atrás de uma janela fica inerte. As marcações para leitores de tela foram reforçadas, mas esta versão não foi testada com um leitor de tela.
 
-Seus dados não mudam: o formato é o mesmo da v6.4, não há migração, e backups de qualquer versão anterior continuam sendo aceitos.
+Os dados não mudaram: o formato era o mesmo da v6.4, sem migração.
 
 ### v6.4.1
 
