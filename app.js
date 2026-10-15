@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v6.6.0 · Visual & Interaction Revival
+   CICLO — v6.7.0 · Weekly Planner & Flexible Study Records
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -21,6 +21,8 @@
      FLUXO DE ESTUDO (v6.4: estudar agora / já estudei, descansos, constância;
                       v6.4.1: campo de horário próprio, registro em duas colunas)
      CONFIABILIDADE (v6.5: comandos atômicos, reconciliação, sincronia entre abas)
+     UM ESTUDO, VÁRIOS TÓPICOS E TIPOS (v6.7: SessionModel, migração 6 → 7)
+     SEMANA EM DIAS (v6.7: WeekPlan, WeekCommands, quadro da semana com arrastar)
      HELP ENGINE (busca, rotas, glossário) · EVENT HANDLERS · INITIALIZATION
    ========================================================================= */
 'use strict';
@@ -28,8 +30,8 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '6.6.0';
-const APP_SCHEMA_VERSION = 6;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
+const APP_VERSION = '6.7.0';
+const APP_SCHEMA_VERSION = 7;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
                                        // ganham tipo, status, data de início, orientações e
@@ -62,6 +64,18 @@ const APP_SCHEMA_VERSION = 6;          // formato LÓGICO dos dados. A v5.2 mudo
                                        // localStorage do cronômetro e vira o `id` do estudo —
                                        // um campo que sempre existiu. Nenhum registro ganha
                                        // campo novo; nenhuma migração de dados é necessária.
+                                       // A v6.7 muda o formato (6 → 7). Um estudo passa a ter
+                                       // `topicEntries` (vários tópicos, cada um com a parte do
+                                       // tempo informada — ou nada, e a parte é estimada — e o
+                                       // resultado de revisão DAQUELE tópico) e `types` (vários
+                                       // tipos). `topicId`, `type`, `reviewOutcome` e
+                                       // `reviewStrategyAtTime` deixam de existir nos registros:
+                                       // a migração 6 → 7 converte cada estudo antigo em "um
+                                       // tópico, um tipo", sem mudar a duração (ver SessionModel).
+                                       // O plano ganha `template` (o modelo da semana por dia) e
+                                       // cada semana registrada ganha `blocks` (a semana em
+                                       // dias) e `rev` (revisão, contra gravação obsoleta de
+                                       // outra aba). As configurações ganham `studyDays`.
 
 /* Identificadores técnicos LEGADOS. O produto passou a se chamar "Ciclo" na v5.1,
    mas estes nomes ficam como estão: renomeá-los faria o navegador procurar um
@@ -71,6 +85,11 @@ const IDB_VERSION = 1;                 // schema FÍSICO do IndexedDB: v4 e v5.2
                                        // campos dentro dos objetos, nenhuma store ou
                                        // índice novo — por isso continua 1. O prazo mantém
                                        // `date` como data do prazo (há um índice nesse campo).
+                                       // v6.7: também continua 1. O índice `topicId` dos
+                                       // estudos fica onde está (não é usado nem apagado):
+                                       // a reconciliação de tópicos usa o índice
+                                       // `disciplineId`, que já existia — todo tópico de um
+                                       // estudo é da disciplina dele.
 const V2_LS_KEY = 'diarioEstudos:v1';  // chave usada pela V2 (preservada, nunca apagada)
 const TIMER_LS_KEY = 'diarioEstudos:v3:timer';
 const THEME_LS_KEY = 'diarioEstudos:v3:theme';
@@ -314,7 +333,11 @@ const DEFAULT_SETTINGS = {
   defaultReviewStrategy: 'adaptive',   // estratégia global (disciplina/tópico podem sobrescrever)
   defaultReviewMethod: 'auto',         // método global
   showDailyQuote: true,                // frase do dia na tela Hoje
-  seenWhatsNew: null                   // versão cujas novidades já foram vistas
+  seenWhatsNew: null,                  // versão cujas novidades já foram vistas
+  /* v6.7 — dias da semana que fazem parte do planejamento (0 = domingo … 6 = sábado).
+     Tirar um dia daqui só o recolhe do quadro da semana: estudos, prazos e blocos
+     daquele dia continuam existindo e aparecendo. */
+  studyDays: [0, 1, 2, 3, 4, 5, 6]
 };
 
 const VIEW_TITLES = {
@@ -1305,6 +1328,34 @@ async function runV64Migration(){
 }
 
 /* =========================================================================
+   MIGRATION V6.6 → V6.7 (schema 6 → 7) — UM ESTUDO, VÁRIOS TÓPICOS E TIPOS
+   Cada estudo antigo vira "um tópico, um tipo" (SessionModel.normalize):
+     topicId + reviewOutcome + reviewStrategyAtTime → topicEntries[0]
+     type → types[0]        resultado sem tópico → legacyReviewOutcome
+   `minutes`, `breaks`, datas, horários, comentário e dificuldade NÃO mudam.
+   Tópicos NÃO são tocados: a agenda de revisão continua exatamente onde
+   estava (a conversão preserva o resultado e a estratégia de cada revisão,
+   então refazer o histórico depois chega ao mesmo lugar).
+   Idempotente e sem marca de "já feito" como trava: rodar de novo só converte
+   o que ainda estiver no formato 6 — por exemplo, um estudo gravado depois da
+   atualização por uma aba que continuava aberta com a versão anterior.
+   Tudo numa transação: ou todos os estudos convertidos entram, ou nenhum.
+   ========================================================================= */
+async function runV67Migration(){
+  return DB.atomic(['sessions','meta'], async api => {
+    const [all, done] = [await api.getAll('sessions'), await api.get('meta', 'v67MigrationCompleted')];
+    const changed = (all || []).filter(x => x && typeof x === 'object' && !SessionModel.isCanonical(x)).map(x => SessionModel.normalize(x));
+    changed.forEach(x => api.put('sessions', x));
+    if(!(done && done.value)){
+      api.put('meta', { key:'v67MigrationCompleted', value:true });
+      api.put('meta', { key:'v67MigrationDate', value: nowISO() });
+      api.put('meta', { key:'v67MigrationSummary', value:{ sessions: changed.length } });
+    }
+    return { migrated: changed.length > 0, counts:{ sessions: changed.length } };
+  });
+}
+
+/* =========================================================================
    DOMAIN MODELS — fábricas e derivações. Estado em memória (`state`).
    ========================================================================= */
 const state = {
@@ -1354,14 +1405,16 @@ function newTopic(disciplineId, name, sortOrder){
 function newSession(data){
   const ts = nowISO();
   return Object.assign({
-    id:uid(), disciplineId:null, topicId:null, legacyTopicText:'',
+    id:uid(), disciplineId:null, legacyTopicText:'',
     date: todayISO(), startedAt:null, endedAt:null,
     /* `minutes` = tempo de ESTUDO. Descanso nunca entra aqui: fica em `breaks`,
        um registro por descanso — { id, startedAt, endedAt, minutes }. */
-    minutes:0, breaks:[], type:null, difficulty:null, comment:'', reviewOutcome:null,
-    /* v4 — guarda o contexto da revisão para as análises continuarem legíveis
-       mesmo se o usuário trocar a estratégia depois */
-    reviewMethod:null, reviewStrategyAtTime:null,
+    minutes:0, breaks:[], difficulty:null, comment:'',
+    /* v6.7 — vários tópicos (cada um com a parte do tempo informada e o resultado
+       de revisão DELE) e vários tipos. Ver SessionModel. */
+    topicEntries:[], types:[],
+    /* v4 — o jeito de revisar (a estratégia de cada tópico fica na entrada dele) */
+    reviewMethod:null,
     createdAt:ts, updatedAt:ts
   }, data);
 }
@@ -1414,10 +1467,12 @@ function rebuildIndexes(){
   state.sessions.forEach(s => {
     if(!idx.sessionsByDisc.has(s.disciplineId)) idx.sessionsByDisc.set(s.disciplineId, []);
     idx.sessionsByDisc.get(s.disciplineId).push(s);
-    if(s.topicId){
-      if(!idx.sessionsByTopic.has(s.topicId)) idx.sessionsByTopic.set(s.topicId, []);
-      idx.sessionsByTopic.get(s.topicId).push(s);
-    }
+    // v6.7: um estudo com vários tópicos entra na lista de CADA um (participação) —
+    // quem soma tempo por tópico usa a parte do tópico (SessionModel.topicShare), nunca `minutes`.
+    SessionModel.topicIds(s).forEach(tid => {
+      if(!idx.sessionsByTopic.has(tid)) idx.sessionsByTopic.set(tid, []);
+      idx.sessionsByTopic.get(tid).push(s);
+    });
   });
   state.topics.forEach(t => {
     if(!idx.topicsByDisc.has(t.disciplineId)) idx.topicsByDisc.set(t.disciplineId, []);
@@ -1433,17 +1488,331 @@ const activeDisciplines = () => state.disciplines.filter(d => !d.archived);
 const activeAreas = () => state.areas.filter(a => !a.archived);
 const topicsOf = (discId, includeArchived) => (state.idx.topicsByDisc.get(discId) || []).filter(t => includeArchived || !t.archived);
 const sessionsOf = discId => state.idx.sessionsByDisc.get(discId) || [];
+/** Estudos em que o tópico aparece (sozinho ou com outros). Para tempo, use a parte dele: `topicMinutesOf`. */
 const sessionsOfTopic = topicId => state.idx.sessionsByTopic.get(topicId) || [];
+/** v6.7: os estudos do tópico vistos por ele (resultado e parte do tempo DELE) — o que a reconciliação lê. */
+const topicViewsOf = topicId => SessionModel.viewsFor(sessionsOfTopic(topicId), topicId);
+/** v6.7: tempo de um tópico numa lista de estudos: { minutes, estimated (minutos estimados), count }. */
+function topicMinutesOf(topicId, sessions){
+  let minutes = 0, estimated = 0, count = 0;
+  (sessions || sessionsOfTopic(topicId)).forEach(s => {
+    const sh = SessionModel.topicShares(s).find(x => x.topicId === topicId);
+    if(!sh) return;
+    minutes += sh.minutes; count++;
+    if(sh.estimated) estimated += sh.minutes;
+  });
+  return { minutes, estimated, count };
+}
 
 function disciplineName(id){ const d = getDiscipline(id); return d ? d.name : '(disciplina removida)'; }
 function areaNameOf(disc){ const a = disc && disc.areaId ? getArea(disc.areaId) : null; return a ? a.name : 'Sem área'; }
-function topicLabelOf(session){
-  if(session.topicId){ const t = getTopic(session.topicId); if(t) return t.name; }
-  return str(session.legacyTopicText);
-}
+/** v6.7: os tópicos do estudo em poucas palavras ("Frações · Equações · +2"); sem tópico, o texto antigo (V2). */
+function topicLabelOf(session){ return SessionModel.topicsText(session, 2); }
 function sessionTypeLabel(v){ const t = SESSION_TYPES.find(x => x.v === v); return t ? t.label : 'Não informado'; }
 function difficultyInfo(v){ return DIFFICULTIES.find(d => d.v === v) || null; }
 function reviewOutcomeLabel(v){ const o = REVIEW_OUTCOMES.find(x => x.v === v); return o ? o.label : null; }
+
+/* =========================================================================
+   v6.7 — UM ESTUDO, VÁRIOS TÓPICOS, VÁRIOS TIPOS (SessionModel)
+
+   Um estudo continua sendo UM registro com UM tempo (`minutes`). O que muda é
+   o que ele descreve:
+
+     topicEntries: [{ topicId, minutes, outcome, strategy }]
+        · topicId  — tópico da MESMA disciplina do estudo (nunca repetido);
+        · minutes  — a parte do tempo que a pessoa INFORMOU para o tópico, ou
+                     null (não informou);
+        · outcome  — resultado da revisão DESTE tópico ('forgot'…'mastered') ou
+                     null. Um resultado nunca vale para outro tópico;
+        · strategy — estratégia de revisão em vigor para este tópico quando ele
+                     entrou no estudo (a reconciliação refaz a agenda com ela).
+     types: ['teoria', 'exercicios', …] — nenhum, um ou vários tipos.
+     legacyReviewOutcome — só em estudos antigos SEM tópico que tinham um
+                     resultado de revisão: o número continua nas Análises.
+
+   POLÍTICA DE TEMPO — uma só, usada por Análises, Disciplinas, Tópicos,
+   Histórico, plano da semana e relatórios:
+     1. O tempo do estudo é contado UMA vez. Disciplina, dia, semana e plano
+        somam `minutes`; tópicos e tipos nunca multiplicam nada.
+     2. Tempo por tópico: com um tópico, ele recebe o tempo todo (exato). Com
+        vários, cada um recebe a parte informada; o que não foi informado é
+        dividido em partes iguais entre os tópicos sem parte (a sobra de
+        minutos vai para os primeiros, na ordem do estudo) e essa parte é
+        marcada como ESTIMADA — a não ser que reste um tópico só em branco:
+        ele recebe exatamente o que sobrou, e isso é conta, não estimativa.
+        A soma das partes é sempre exatamente `minutes`.
+     3. Tempo por tipo: um tipo recebe o tempo todo; vários dividem em partes
+        iguais, marcadas como estimadas. Sem tipo → "Não informado".
+     4. Frequência por tipo conta ESTUDOS: um estudo com dois tipos aparece nos
+        dois. A soma das frequências pode passar do total de estudos — e a
+        tela diz isso.
+   Partes informadas que não fecham (somam mais que o estudo, ou todas
+   informadas com soma diferente) são descartadas: a divisão volta a ser
+   estimada em vez de mostrar uma precisão que não existe.
+   ========================================================================= */
+const SESSION_TYPE_VALUES = SESSION_TYPES.map(t => t.v);
+const REVIEW_OUTCOME_VALUES = REVIEW_OUTCOMES.map(o => o.v);
+/* Campos do formato 6 (um tópico, um tipo). Só são LIDOS, na conversão. */
+const LEGACY_SESSION_KEYS = ['topicId', 'type', 'reviewOutcome', 'reviewStrategyAtTime'];
+const MAX_TOPICS_PER_STUDY = 40;      // teto defensivo (dados importados); a interface não chega perto
+
+const SessionModel = {
+  hasLegacy(s){ return !!s && LEGACY_SESSION_KEYS.some(k => Object.prototype.hasOwnProperty.call(s, k)); },
+  isCanonical(s){ return !!s && Array.isArray(s.topicEntries) && Array.isArray(s.types) && !this.hasLegacy(s); },
+
+  _id(v){ return typeof v === 'string' ? v.trim() : (isNum(v) ? String(v) : ''); },
+
+  /** Uma entrada de tópico saneada, ou null. */
+  cleanEntry(e){
+    if(!e || typeof e !== 'object') return null;
+    const topicId = this._id(e.topicId);
+    if(!topicId) return null;
+    const m = Number(e.minutes);
+    const given = e.minutes !== null && e.minutes !== undefined && e.minutes !== '' && Number.isFinite(m) && m > 0;
+    return {
+      topicId,
+      minutes: given ? Math.round(m) : null,
+      outcome: REVIEW_OUTCOME_VALUES.includes(e.outcome) ? e.outcome : null,
+      strategy: REVIEW_STRATEGIES.some(x => x.v === e.strategy) ? e.strategy : null
+    };
+  },
+
+  /** Tipos saneados, sem repetição, na ordem da lista de tipos do Ciclo. */
+  cleanTypes(list){
+    const set = new Set((Array.isArray(list) ? list : []).filter(v => SESSION_TYPE_VALUES.includes(v)));
+    return SESSION_TYPE_VALUES.filter(v => set.has(v));
+  },
+
+  /**
+   * Partes informadas que não fecham com o estudo são descartadas (ver a
+   * política). Altera `entries` no lugar. Devolve true quando descartou.
+   * Com um tópico só, a parte é sempre o tempo todo: nada a guardar.
+   */
+  settleSplit(entries, minutes){
+    if(entries.length <= 1){ entries.forEach(e => { e.minutes = null; }); return false; }
+    const explicit = entries.filter(e => e.minutes !== null);
+    if(!explicit.length) return false;
+    const total = Math.max(0, Math.round(Number(minutes) || 0));
+    const sumEx = sum(explicit, e => e.minutes);
+    if(sumEx > total || (explicit.length === entries.length && sumEx !== total)){
+      entries.forEach(e => { e.minutes = null; });
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * Qualquer versão de um estudo → formato canônico (7). Puro: devolve um
+   * objeto NOVO (o original não muda). `report(code)`, opcional, recebe os
+   * ajustes feitos (relatório de importação).
+   * Conversão do formato 6, sem mudar a duração:
+   *   topicId → um tópico, com o resultado e a estratégia que o estudo tinha;
+   *   type    → um tipo;
+   *   resultado sem tópico → `legacyReviewOutcome` (continua nas Análises).
+   * Um registro com `topicEntries` E campos antigos foi gravado por uma aba
+   * ainda na versão anterior depois da migração: o que ela escreveu é SOMADO
+   * ao que já existia — nada é descartado por causa dela.
+   */
+  normalize(raw, report){
+    const rep = typeof report === 'function' ? report : () => {};
+    const s = Object.assign({}, raw);
+    let entries = Array.isArray(raw.topicEntries) ? raw.topicEntries.map(e => this.cleanEntry(e)).filter(Boolean) : [];
+    let types = this.cleanTypes(raw.types);
+    let legacyOutcome = REVIEW_OUTCOME_VALUES.includes(raw.legacyReviewOutcome) ? raw.legacyReviewOutcome : null;
+
+    if(this.hasLegacy(raw)){
+      const tid = this._id(raw.topicId);
+      const outcome = REVIEW_OUTCOME_VALUES.includes(raw.reviewOutcome) ? raw.reviewOutcome : null;
+      const strategy = REVIEW_STRATEGIES.some(x => x.v === raw.reviewStrategyAtTime) ? raw.reviewStrategyAtTime : null;
+      if(tid){
+        const cur = entries.find(e => e.topicId === tid);
+        if(cur){ if(outcome) cur.outcome = outcome; if(strategy && !cur.strategy) cur.strategy = strategy; }
+        else entries.unshift({ topicId:tid, minutes:null, outcome, strategy });
+      } else if(outcome && !entries.length){
+        legacyOutcome = outcome;
+      }
+      if(SESSION_TYPE_VALUES.includes(raw.type)) types = this.cleanTypes(types.concat([raw.type]));
+      LEGACY_SESSION_KEYS.forEach(k => { delete s[k]; });
+    }
+    // um tópico aparece uma vez só
+    const seen = new Set();
+    entries = entries.filter(e => {
+      if(seen.has(e.topicId)){ rep('session-topic-dup'); return false; }
+      seen.add(e.topicId);
+      return true;
+    }).slice(0, MAX_TOPICS_PER_STUDY);
+    if(this.settleSplit(entries, raw.minutes)) rep('session-split');
+    s.topicEntries = entries;
+    s.types = types;
+    if(legacyOutcome && !entries.length) s.legacyReviewOutcome = legacyOutcome; else delete s.legacyReviewOutcome;
+    if(!('reviewMethod' in s)) s.reviewMethod = null;
+    return s;
+  },
+
+  /* ---------- leitura: o Ciclo inteiro lê os estudos por aqui ---------- */
+  entries(s){
+    if(!s) return [];
+    if(Array.isArray(s.topicEntries) && !this.hasLegacy(s)) return s.topicEntries;
+    return this.normalize(s).topicEntries;           // registro antigo ainda não convertido: lido como seria
+  },
+  topicIds(s){ return this.entries(s).map(e => e.topicId); },
+  hasTopic(s, topicId){ return !!topicId && this.entries(s).some(e => e.topicId === topicId); },
+  entryOf(s, topicId){ return this.entries(s).find(e => e.topicId === topicId) || null; },
+  types(s){
+    if(!s) return [];
+    if(Array.isArray(s.types) && !this.hasLegacy(s)) return s.types;
+    return this.normalize(s).types;
+  },
+  hasType(s, v){ return this.types(s).includes(v); },
+  legacyOutcome(s){
+    if(!s || this.entries(s).length) return null;
+    if(REVIEW_OUTCOME_VALUES.includes(s.legacyReviewOutcome)) return s.legacyReviewOutcome;
+    if(this.hasLegacy(s) && !this._id(s.topicId) && REVIEW_OUTCOME_VALUES.includes(s.reviewOutcome)) return s.reviewOutcome;
+    return null;
+  },
+  /** Algum resultado de revisão registrado (de um tópico, ou o antigo sem tópico)? */
+  hasOutcome(s){ return this.entries(s).some(e => e.outcome) || !!this.legacyOutcome(s); },
+  /** Foi uma revisão? Tipo "Revisão" marcado ou algum resultado de revisão. */
+  isReview(s){ return this.hasType(s, 'revisao') || this.hasOutcome(s); },
+  /**
+   * Revisões contidas num estudo: uma por tópico com resultado. Um estudo de
+   * revisão sem resultado nenhum conta como UMA revisão, sem resultado.
+   * → [{ topicId|null, outcome|null }]
+   */
+  reviewItems(s){
+    const list = this.entries(s).filter(e => e.outcome).map(e => ({ topicId:e.topicId, outcome:e.outcome }));
+    if(list.length) return list;
+    const legacy = this.legacyOutcome(s);
+    if(legacy) return [{ topicId:null, outcome:legacy }];
+    return this.hasType(s, 'revisao') ? [{ topicId:null, outcome:null }] : [];
+  },
+
+  /* ---------- divisão do tempo ---------- */
+  _shareCache: new WeakMap(),
+  /** Inteiros que somam `total`, em `n` partes iguais (a sobra vai para as primeiras). */
+  evenSplit(total, n){
+    if(!(n > 0)) return [];
+    const t = Math.max(0, Math.round(Number(total) || 0));
+    const base = Math.floor(t / n), extra = t - base * n;
+    return Array.from({ length:n }, (_, i) => base + (i < extra ? 1 : 0));
+  },
+  /** Tempo de cada tópico do estudo; a soma é exatamente `minutes`. → [{ topicId, minutes, estimated }] */
+  topicShares(s){
+    const entries = this.entries(s);
+    if(!entries.length) return [];
+    const total = Math.max(0, Math.round(Number(s.minutes) || 0));
+    const hit = this._shareCache.get(s);
+    if(hit && hit.total === total && hit.entries === entries) return hit.list;
+    let list;
+    if(entries.length === 1){
+      list = [{ topicId: entries[0].topicId, minutes: total, estimated:false }];
+    } else {
+      const explicit = entries.filter(e => e.minutes !== null);
+      const sumEx = sum(explicit, e => e.minutes);
+      const valid = explicit.length > 0 && sumEx <= total && !(explicit.length === entries.length && sumEx !== total);
+      if(!valid){
+        const parts = this.evenSplit(total, entries.length);
+        list = entries.map((e, i) => ({ topicId:e.topicId, minutes:parts[i], estimated:true }));
+      } else {
+        // um tópico só em branco recebe exatamente o que sobrou (é conta, não estimativa); dois ou mais dividem — isso é estimado
+        const blanks = entries.length - explicit.length;
+        const parts = this.evenSplit(total - sumEx, blanks);
+        let k = 0;
+        list = entries.map(e => e.minutes !== null
+          ? { topicId:e.topicId, minutes:e.minutes, estimated:false }
+          : { topicId:e.topicId, minutes:parts[k++], estimated: blanks > 1 });
+      }
+    }
+    if(s && typeof s === 'object') this._shareCache.set(s, { total, entries, list });
+    return list;
+  },
+  /** { minutes, estimated } do tópico neste estudo (0 quando ele não faz parte). */
+  topicShare(s, topicId){
+    const x = this.topicShares(s).find(e => e.topicId === topicId);
+    return x ? { minutes:x.minutes, estimated:x.estimated } : { minutes:0, estimated:false };
+  },
+  /** Tempo de cada tipo. Sem tipo → [{ type:null }]. → [{ type, minutes, estimated }] */
+  typeShares(s){
+    const types = this.types(s);
+    const total = Math.max(0, Math.round(Number(s.minutes) || 0));
+    if(!types.length) return [{ type:null, minutes:total, estimated:false }];
+    if(types.length === 1) return [{ type:types[0], minutes:total, estimated:false }];
+    const parts = this.evenSplit(total, types.length);
+    return types.map((t, i) => ({ type:t, minutes:parts[i], estimated:true }));
+  },
+
+  /**
+   * O estudo visto por UM tópico — o que a reconciliação de revisões lê.
+   * O resultado, a estratégia e o método são os DESTE tópico.
+   */
+  topicView(s, topicId){
+    const e = this.entryOf(s, topicId);
+    if(!e) return null;
+    return {
+      id: s.id, date: s.date, startedAt: s.startedAt || null, createdAt: s.createdAt || null,
+      minutes: this.topicShare(s, topicId).minutes,
+      reviewOutcome: e.outcome || null,
+      reviewStrategyAtTime: e.strategy || null,
+      reviewMethod: e.outcome ? (s.reviewMethod || null) : null
+    };
+  },
+  /** Os estudos de um tópico (a partir de uma lista qualquer de estudos), vistos por ele. */
+  viewsFor(sessions, topicId){
+    const out = [];
+    (sessions || []).forEach(s => { const v = this.topicView(s, topicId); if(v) out.push(v); });
+    return out;
+  },
+
+  /**
+   * Análises de UM tópico: o estudo com o tempo DAQUELE tópico (exato ou
+   * estimado); os descansos acompanham na mesma proporção. Só leitura — uma
+   * projeção nunca é gravada (`_projected`).
+   */
+  projectToTopic(s, topicId){
+    const share = this.topicShare(s, topicId);
+    const total = Math.max(0, Math.round(Number(s.minutes) || 0));
+    const f = total > 0 ? share.minutes / total : 0;
+    const e = this.entryOf(s, topicId);
+    return Object.assign({}, s, {
+      minutes: share.minutes,
+      breaks: f >= 1 ? breaksOf(s) : breaksOf(s).map(b => Object.assign({}, b, { minutes: (Number(b.minutes) || 0) * f })),
+      topicEntries: e ? [Object.assign({}, e, { minutes:null })] : [],
+      _shareEstimated: share.estimated,
+      _projected: true
+    });
+  },
+
+  /* ---------- texto ---------- */
+  /** Nomes dos tópicos, na ordem do estudo (tópico que não existe mais não aparece). */
+  topicNames(s){
+    return this.topicIds(s).map(id => { const t = getTopic(id); return t ? t.name : null; }).filter(Boolean);
+  },
+  /** "Frações · Equações · +2" — compacto, para listas. Sem tópico: o texto antigo (V2), se houver. */
+  topicsText(s, max){
+    const names = this.topicNames(s);
+    const m = max || 2;
+    if(!names.length) return str(s && s.legacyTopicText);
+    if(names.length <= m + 1) return names.join(' · ');
+    return names.slice(0, m).join(' · ') + ' · +' + (names.length - m);
+  },
+  /** "Teoria · Exercícios" (vazio sem tipo). */
+  typesText(s){ return this.types(s).map(sessionTypeLabel).join(' · '); },
+  /** Resultado da revisão em poucas palavras: "Lembrei bem", "Lembrei bem (3 tópicos)" ou "3 resultados de revisão". */
+  outcomesText(s){
+    const items = this.reviewItems(s).filter(x => x.outcome);
+    if(!items.length) return '';
+    if(items.length === 1) return reviewOutcomeLabel(items[0].outcome);
+    const same = items.every(x => x.outcome === items[0].outcome);
+    return same ? `${reviewOutcomeLabel(items[0].outcome)} (${items.length} tópicos)` : `${items.length} resultados de revisão`;
+  },
+  /** Linha secundária de um estudo nas listas: tópicos · tipos · dificuldade · resultado. */
+  subline(s, o){
+    const opt = o || {};
+    const diff = difficultyInfo(s.difficulty);
+    return [opt.noTopics ? null : (this.topicsText(s, opt.maxTopics || 2) || null), this.typesText(s) || null,
+      opt.noDifficulty ? null : (diff ? diff.label : null), this.outcomesText(s) || null].filter(Boolean).join(' · ');
+  }
+};
 
 /* ---------- v6.4: descansos e constância ---------- */
 /** Descansos de um estudo (sempre uma lista; estudos antigos não têm nenhum). */
@@ -1825,15 +2194,8 @@ const PlannerEngine = {
     const ws = dateToISO(startOfWeek(dateRef || today()));
     const existing = state.weeklyPlans.find(w => w.weekStart === ws);
     if(existing) return existing;
-    const wp = {
-      id: ws,
-      weekStart: ws,
-      weekEnd: dateToISO(addDays(parseISO(ws), 6)),
-      basePlanId: base.id,
-      availableMinutes: base.weeklyAvailableMinutes,
-      allocations: base.allocations.map(a => ({ ...a })),
-      createdAt: nowISO(), updatedAt: nowISO()
-    };
+    // v6.7: a semana nasce com a organização do modelo (dias de cada disciplina), se houver um
+    const wp = WeekPlan.newSnapshot(base, ws);
     // v6.5: cria só se ainda não existe NO BANCO — duas abas na virada da semana não se sobrescrevem.
     const saved = await DB.atomic(['weeklyPlans'], async api => {
       const cur = await api.get('weeklyPlans', ws);
@@ -2410,7 +2772,7 @@ const AnalyticsScope = {
 
   hasSession(r, s){
     if(r.type === 'all') return true;
-    if(r.type === 'topic') return s.topicId === r.topicId;
+    if(r.type === 'topic') return SessionModel.hasTopic(s, r.topicId);
     return r.discIds.has(s.disciplineId);
   },
   hasDiscipline(r, id){ return r.type === 'all' || r.discIds.has(id); },
@@ -2428,9 +2790,17 @@ const AnalyticsScope = {
     }
     return dl.disciplineId && r.discIds.has(dl.disciplineId) ? 'own' : null;
   },
+  /**
+   * Estudos do escopo. v6.7: no escopo de UM tópico, cada estudo entra com a
+   * parte do tempo DAQUELE tópico (SessionModel.projectToTopic) — um estudo de
+   * 90 min com três tópicos conta 30 min aqui, não 90. Projeções nunca são
+   * gravadas; para abrir/editar, use sempre o `id`.
+   */
   sessions(r, range){
     const list = range ? sessionsInRange(range) : state.sessions;
-    return r.type === 'all' ? list : list.filter(s => this.hasSession(r, s));
+    if(r.type === 'all') return list;
+    if(r.type === 'topic') return list.filter(s => SessionModel.hasTopic(s, r.topicId)).map(s => SessionModel.projectToTopic(s, r.topicId));
+    return list.filter(s => this.hasSession(r, s));
   },
   disciplines(r){ return activeDisciplines().filter(d => this.hasDiscipline(r, d.id)); },
   topics(r){
@@ -2490,17 +2860,13 @@ const AnalyticsEngine = {
     const weeklyRhythm = this.weeklyRhythm(range, sessions);
     const previousComparison = this.compare(totals, this.totals(prevSessions, rangeDays(prevRange)), prevRange);
 
-    const topicKey = s => s.topicId || '__none__';
-    const topicLabel = id => {
-      if(id === '__none__') return 'Sem tópico definido';
-      const t = getTopic(id); return t ? t.name : '(tópico removido)';
-    };
     const byDiscipline = this.groupMinutes(sessions, s => s.disciplineId, id => disciplineName(id));
     const byArea = this.groupMinutes(sessions,
       s => { const d = getDiscipline(s.disciplineId); return d && d.areaId && getArea(d.areaId) ? d.areaId : NO_AREA_ID; },
       id => id === NO_AREA_ID ? NO_AREA_LABEL : (getArea(id) ? getArea(id).name : '(área removida)'));
-    const byTopic = this.groupMinutes(sessions, topicKey, topicLabel);
+    const byTopic = this.groupTopicMinutes(sessions);
     const byType = this.typeDistribution(sessions);
+    const typeStats = this.typeStats(sessions);
     const byWeekday = this.weekdayDistribution(sessions);
     const difficulty = this.difficulty(sessions);
     const planAdherence = this.planAdherence(range, scope);
@@ -2512,7 +2878,7 @@ const AnalyticsEngine = {
     const projection = this.projection(scope);
 
     const a = { range, days, scope, sessions, totals, rest, weeklyRhythm, previousComparison, byDiscipline, byArea, byTopic,
-                byType, byWeekday, difficulty, planAdherence, reviews, content, deadlines, priorities,
+                byType, typeStats, byWeekday, difficulty, planAdherence, reviews, content, deadlines, priorities,
                 attention, projection };
     a.summary = this.summary(a);
     // v6 — cada observação carrega um assunto (tag) para a tela priorizar
@@ -2619,14 +2985,62 @@ const AnalyticsEngine = {
       .sort((a,b) => (b.minutes - a.minutes) || str(a.label).localeCompare(str(b.label), 'pt-BR'));
   },
 
-  typeDistribution(sessions){
+  /**
+   * v6.7 — tempo por TÓPICO sem multiplicar nada: cada estudo distribui o próprio
+   * tempo entre os tópicos dele (SessionModel.topicShares); estudo sem tópico
+   * fica em "Sem tópico definido". A soma das linhas é o tempo total.
+   * `count` = em quantos estudos o tópico apareceu (participação);
+   * `estimated` = quantos dos minutos vieram de divisão estimada.
+   */
+  groupTopicMinutes(sessions){
     const map = new Map();
-    sessions.forEach(s => { const k = s.type || '__none__'; map.set(k, (map.get(k) || 0) + 1); });
+    const add = (k, m, est) => {
+      const cur = map.get(k) || { key:k, minutes:0, count:0, estimated:0 };
+      cur.minutes += m; cur.count++; if(est) cur.estimated += m;
+      map.set(k, cur);
+    };
+    sessions.forEach(s => {
+      const shares = SessionModel.topicShares(s);
+      if(!shares.length){ add('__none__', s.minutes || 0, false); return; }
+      shares.forEach(x => add(x.topicId, x.minutes, x.estimated));
+    });
+    const total = sum(Array.from(map.values()), x => x.minutes);
+    const label = id => { if(id === '__none__') return 'Sem tópico definido'; const t = getTopic(id); return t ? t.name : '(tópico removido)'; };
+    return Array.from(map.values())
+      .map(x => ({ ...x, label: label(x.key), pct: total > 0 ? (x.minutes / total) * 100 : 0 }))
+      .sort((a,b) => (b.minutes - a.minutes) || str(a.label).localeCompare(str(b.label), 'pt-BR'));
+  },
+
+  /**
+   * v6.7 — tipos de estudo, com duas leituras que NÃO se misturam:
+   *   count  — FREQUÊNCIA: em quantos estudos o tipo apareceu (um estudo com
+   *            dois tipos conta nos dois; `pct` = count ÷ estudos, e a soma das
+   *            linhas pode passar de 100%);
+   *   minutes — TEMPO: a parte do tempo de cada estudo atribuída ao tipo (um
+   *            tipo leva tudo; vários dividem igualmente). A soma das linhas é
+   *            o tempo total. `estimated` = minutos vindos de divisão estimada.
+   */
+  typeDistribution(sessions){
+    const count = new Map(), minutes = new Map(), estimated = new Map();
+    sessions.forEach(s => {
+      SessionModel.typeShares(s).forEach(x => {
+        const k = x.type || '__none__';
+        count.set(k, (count.get(k) || 0) + 1);
+        minutes.set(k, (minutes.get(k) || 0) + x.minutes);
+        if(x.estimated) estimated.set(k, (estimated.get(k) || 0) + x.minutes);
+      });
+    });
     const total = sessions.length;
-    const minutesOf = k => sum(sessions.filter(s => (s.type || '__none__') === k), s => s.minutes || 0);
-    const rows = SESSION_TYPES.map(t => ({ key:t.v, label:t.label, count: map.get(t.v) || 0, minutes: minutesOf(t.v) }));
-    if(map.get('__none__')) rows.push({ key:'__none__', label:'Não informado', count: map.get('__none__'), minutes: minutesOf('__none__') });
+    const row = (k, label) => ({ key:k, label, count: count.get(k) || 0, minutes: minutes.get(k) || 0, estimated: estimated.get(k) || 0 });
+    const rows = SESSION_TYPES.map(t => row(t.v, t.label));
+    if(count.get('__none__')) rows.push(row('__none__', 'Não informado'));
     return rows.map(r => ({ ...r, pct: total > 0 ? (r.count / total) * 100 : 0 }));
+  },
+  /** Quantos estudos têm tipo e quantos têm mais de um (para os textos dizerem o que a frequência significa). */
+  typeStats(sessions){
+    let typed = 0, multi = 0;
+    sessions.forEach(s => { const n = SessionModel.types(s).length; if(n) typed++; if(n > 1) multi++; });
+    return { sessions: sessions.length, typed, multi };
   },
 
   weekdayDistribution(sessions){
@@ -2651,7 +3065,14 @@ const AnalyticsEngine = {
     return {
       avg, count: withD.length, counts,
       perDiscipline: groupAvg(withD, s => s.disciplineId, id => disciplineName(id)),
-      perTopic: groupAvg(withD.filter(s => s.topicId), s => s.topicId, id => { const t = getTopic(id); return t ? t.name : '(tópico removido)'; })
+      // v6.7: a dificuldade é do estudo inteiro — cada tópico dele recebe a nota uma vez (média por participação)
+      perTopic: (() => {
+        const m = new Map();
+        withD.forEach(s => SessionModel.topicIds(s).forEach(id => { if(!m.has(id)) m.set(id, []); m.get(id).push(s.difficulty); }));
+        return Array.from(m.entries())
+          .map(([id, vals]) => { const t = getTopic(id); return { id, label: t ? t.name : '(tópico removido)', avg: sum(vals) / vals.length, count: vals.length }; })
+          .sort((a,b) => b.avg - a.avg);
+      })()
     };
   },
 
@@ -2731,22 +3152,28 @@ const AnalyticsEngine = {
 
   /** Revisões do escopo: concluídas no período + a situação de agora (marcadas, atrasadas, próximas). */
   reviewStats(range, scope, sessions){
-    const done = sessions.filter(s => s.type === 'revisao' || s.reviewOutcome);
+    /* v6.7 — uma revisão por TÓPICO revisado: um estudo que revisou três tópicos
+       conta três revisões (cada uma com o próprio resultado). O tempo das
+       revisões soma cada estudo UMA vez. */
+    const done = sessions.filter(s => SessionModel.isReview(s));
+    const items = [];
+    done.forEach(s => SessionModel.reviewItems(s).forEach(x => items.push({ session:s, topicId:x.topicId, outcome:x.outcome })));
     const a = dateToISO(range.start), b = dateToISO(range.end);
     const inScope = t => AnalyticsScope.hasTopic(scope, t);
     const scheduledTopics = ReviewEngine.allScheduled().filter(inScope);
     const scheduledInRange = scheduledTopics.filter(t => t.reviewDueDate >= a && t.reviewDueDate <= b).length;
     const due = ReviewEngine.getDueReviews().filter(inScope);
     const overdueList = due.filter(t => (daysUntilISO(t.reviewDueDate) || 0) < 0);
-    const outcomes = REVIEW_OUTCOMES.map(o => ({ ...o, count: done.filter(s => s.reviewOutcome === o.v).length }));
+    const outcomes = REVIEW_OUTCOMES.map(o => ({ ...o, count: items.filter(x => x.outcome === o.v).length }));
 
-    // uso e resultado por método — descritivo, nunca causal
+    // uso e resultado por método — descritivo, nunca causal (cada tópico revisado com aquele método conta uma vez)
     const methodMap = new Map();
-    done.filter(x => x.reviewMethod).forEach(x => {
-      if(!methodMap.has(x.reviewMethod)) methodMap.set(x.reviewMethod, { used:0, good:0 });
-      const m = methodMap.get(x.reviewMethod);
+    items.filter(x => x.session.reviewMethod).forEach(x => {
+      const k = x.session.reviewMethod;
+      if(!methodMap.has(k)) methodMap.set(k, { used:0, good:0 });
+      const m = methodMap.get(k);
       m.used++;
-      if(x.reviewOutcome === 'remembered' || x.reviewOutcome === 'mastered') m.good++;
+      if(x.outcome === 'remembered' || x.outcome === 'mastered') m.good++;
     });
     const byMethod = Array.from(methodMap.entries())
       .map(([k,v]) => ({ method:k, label:methodLabel(k), used:v.used, good:v.good, rate: v.used ? (v.good / v.used) * 100 : null }))
@@ -2767,7 +3194,7 @@ const AnalyticsEngine = {
          completed  → no período        scheduled → marcadas HOJE para dentro do período
          overdueNow, dueToday, upcoming → situação de agora */
     return {
-      completed: done.length, scheduled: scheduledInRange,
+      completed: items.length, studiesWithReview: done.length, scheduled: scheduledInRange,
       overdueNow: overdueList.length, overdueList, dueToday: due.length, dueList: due, upcoming,
       outcomes, minutes: sum(done, s => s.minutes || 0), sessionsList: done,
       byMethod, forgetful, avgMastery, scheduledCount: scheduledTopics.length
@@ -2810,10 +3237,10 @@ const AnalyticsEngine = {
     const a = dateToISO(range.start), b = dateToISO(range.end);
     const rel = new Map();
     const all = state.deadlines.filter(dl => { const r = AnalyticsScope.deadlineRelation(scope, dl); if(r) rel.set(dl.id, r); return !!r; });
+    // v6.7: prazo de um tópico conta a PARTE daquele tópico nos estudos (nunca o estudo inteiro de vários tópicos)
     const studiedFor = dl => {
-      const list = dl.topicId ? sessions.filter(s => s.topicId === dl.topicId)
-                 : dl.disciplineId ? sessions.filter(s => s.disciplineId === dl.disciplineId) : [];
-      return sum(list, s => s.minutes || 0);
+      if(dl.topicId) return topicMinutesOf(dl.topicId, sessions).minutes;
+      return dl.disciplineId ? sum(sessions.filter(s => s.disciplineId === dl.disciplineId), s => s.minutes || 0) : 0;
     };
     const open = all.filter(dl => !DeadlineEngine.isDone(dl))
       .sort((x,y) => str(x.date).localeCompare(str(y.date)))
@@ -2841,15 +3268,24 @@ const AnalyticsEngine = {
       const minutes = sum(sessions.filter(s => ids.has(s.disciplineId)), s => s.minutes || 0);
       return { p, minutes, pct: total > 0 ? minutes / total * 100 : 0, count: discs.filter(d => PriorityEngine.clamp(d.priority) === p).length };
     });
-    const withTopic = sessions.filter(s => s.topicId && getTopic(s.topicId));
-    const topicTotal = sum(withTopic, s => s.minutes || 0);
+    // v6.7: tempo por prioridade de TÓPICO = partes dos tópicos (exatas ou estimadas), nunca o estudo repetido
+    const byPrio = new Map([1,2,3,4,5].map(p => [p, 0]));
+    const studiedTopic = new Set();
+    let topicTotal = 0;
+    sessions.forEach(s => SessionModel.topicShares(s).forEach(x => {
+      const t = getTopic(x.topicId);
+      studiedTopic.add(x.topicId);
+      if(!t) return;
+      const p = PriorityEngine.clamp(t.priority);
+      byPrio.set(p, byPrio.get(p) + x.minutes);
+      topicTotal += x.minutes;
+    }));
     const topics = AnalyticsScope.topics(scope);
     const byTopic = [1,2,3,4,5].map(p => {
-      const minutes = sum(withTopic.filter(s => PriorityEngine.clamp(getTopic(s.topicId).priority) === p), s => s.minutes || 0);
+      const minutes = byPrio.get(p);
       return { p, minutes, pct: topicTotal > 0 ? minutes / topicTotal * 100 : 0, count: topics.filter(t => PriorityEngine.clamp(t.priority) === p).length };
     });
     const studiedDisc = new Set(sessions.map(s => s.disciplineId));
-    const studiedTopic = new Set(sessions.map(s => s.topicId).filter(Boolean));
     const highDiscNoTime = discs.length > 1
       ? discs.filter(d => PriorityEngine.clamp(d.priority) >= 4 && !studiedDisc.has(d.id)).sort(sortByName) : [];
     const highTopicNoTime = scope.type === 'topic' ? []
@@ -3056,12 +3492,13 @@ const AnalyticsEngine = {
       add('content', `Você já estudou ${a.content.covered} de ${plural(a.content.totalTopics, 'tópico cadastrado', 'tópicos cadastrados')} (${safePct(a.content.coverage)}); ${a.content.mastered} ${a.content.mastered === 1 ? 'está consolidado' : 'estão consolidados'}.`);
     }
 
-    // tipos
+    // tipos — v6.7: frequência é contada por ESTUDO (um estudo pode ter mais de um tipo)
     const typed = a.byType.filter(x => x.key !== '__none__' && x.count > 0);
-    const typedTotal = sum(typed, x => x.count);
-    if(typedTotal >= 3){
+    const typedTotal = a.typeStats ? a.typeStats.typed : sum(typed, x => x.count);
+    if(typedTotal >= 3 && typed.length){
       const top = typed.slice().sort((x,y) => y.count - x.count)[0];
-      add('types', `${fmtNumber((top.count / typedTotal) * 100, 0)}% dos estudos classificados foram do tipo "${top.label}".`);
+      add('types', `"${top.label}" apareceu em ${plural(top.count, 'estudo', 'estudos')} de ${typedTotal} com tipo informado` +
+        (a.typeStats && a.typeStats.multi ? ' (um estudo pode ter mais de um tipo).' : '.'));
     }
 
     if(a.projection.available && a.projection.target){
@@ -3118,8 +3555,11 @@ const AnalyticsEngine = {
    contas — e o tempo de estudo nunca corre escondido durante um descanso.
    ========================================================================= */
 const TimerService = {
-  data: null,          // { runId, disciplineId, topicId, presetType, presetMethod, openedAt, startedAt, accumulatedMs,
+  data: null,          // { runId, disciplineId, topicIds, presetTypes, presetMethod, openedAt, startedAt, accumulatedMs,
                        //   running, breaks:[{id,startedAt,endedAt}], breakStartedAt, targetMinutes? }
+                       // v6.7: `topicIds`/`presetTypes` (vários). `topicId`/`presetType` continuam
+                       // gravados ao lado (o primeiro de cada lista) só para uma aba ainda na versão
+                       // anterior conseguir mostrar o cronômetro; esta versão lê as listas.
   _tick: null,
   /* v6.5 — `runId` é a identidade deste cronômetro. Ela nasce em start(), fica
      no localStorage junto com o resto e vira o `id` do estudo ao finalizar.
@@ -3148,8 +3588,9 @@ const TimerService = {
         // cronômetro iniciado antes da v6.5 não tem identidade: recebe uma agora, uma única vez
         runId: (typeof d.runId === 'string' && d.runId) ? d.runId : uid(),
         disciplineId: str(d.disciplineId),
-        topicId: d.topicId ? str(d.topicId) : null,
-        presetType: SESSION_TYPES.some(t => t.v === d.presetType) ? d.presetType : null,
+        // v6.7: cronômetro iniciado na versão anterior tem um tópico e um tipo — viram listas de um item
+        topicIds: TimerService.cleanIds(Array.isArray(d.topicIds) ? d.topicIds : (d.topicId ? [d.topicId] : [])),
+        presetTypes: SessionModel.cleanTypes(Array.isArray(d.presetTypes) ? d.presetTypes : (d.presetType ? [d.presetType] : [])),
         presetMethod: CONCRETE_METHODS.includes(d.presetMethod) ? d.presetMethod : null,
         startedAt: isNum(d.startedAt) ? d.startedAt : now,
         accumulatedMs: (isNum(d.accumulatedMs) && d.accumulatedMs > 0) ? d.accumulatedMs : 0,
@@ -3173,9 +3614,18 @@ const TimerService = {
    * resultado em `persisted`: armazenamento cheio ou bloqueado não é mais
    * engolido em silêncio (a barra do cronômetro avisa e tenta de novo sozinha).
    */
+  /** Ids de tópico saneados, sem repetição. */
+  cleanIds(list){
+    const out = [];
+    (Array.isArray(list) ? list : []).forEach(v => { const id = typeof v === 'string' ? v.trim() : ''; if(id && !out.includes(id)) out.push(id); });
+    return out.slice(0, MAX_TOPICS_PER_STUDY);
+  },
   _persist(){
     try {
       if(this.data){
+        // espelho de compatibilidade para uma aba ainda na versão anterior (ver `data`)
+        this.data.topicId = this.data.topicIds && this.data.topicIds.length ? this.data.topicIds[0] : null;
+        this.data.presetType = this.data.presetTypes && this.data.presetTypes.length ? this.data.presetTypes[0] : null;
         const json = JSON.stringify(this.data);
         localStorage.setItem(TIMER_LS_KEY, json);
         this.persisted = localStorage.getItem(TIMER_LS_KEY) === json;
@@ -3204,9 +3654,26 @@ const TimerService = {
       return (d && typeof d.runId === 'string' && d.runId) ? d.runId : null;
     } catch(_){ return undefined; }
   },
-  start(disciplineId, topicId, presetType, presetMethod, targetMinutes){
+  /** v6.7: `topicIds` e `presetTypes` são listas (um id/tipo solto também é aceito). */
+  /**
+   * v6.7 — o que está sendo estudado mudou no fim do cronômetro (tópicos, tipos,
+   * disciplina já existente). Fica guardado junto do cronômetro: recarregar a
+   * página no meio da finalização não perde essas escolhas. Só vale para ESTE
+   * cronômetro (`runId`) — outra aba pode ter trocado de estudo.
+   */
+  updateSelection(runId, sel){
+    if(!this.data || this.data.runId !== runId || !sel) return false;
+    if(sel.disciplineId && getDiscipline(sel.disciplineId)) this.data.disciplineId = sel.disciplineId;
+    if(Array.isArray(sel.topicIds)) this.data.topicIds = this.cleanIds(sel.topicIds);
+    if(Array.isArray(sel.presetTypes)) this.data.presetTypes = SessionModel.cleanTypes(sel.presetTypes);
+    this._persist();
+    return true;
+  },
+  start(disciplineId, topicIds, presetTypes, presetMethod, targetMinutes){
     const now = Date.now();
-    this.data = { runId: uid(), disciplineId, topicId: topicId || null, presetType: presetType || null,
+    const ids = Array.isArray(topicIds) ? topicIds : (topicIds ? [topicIds] : []);
+    const types = Array.isArray(presetTypes) ? presetTypes : (presetTypes ? [presetTypes] : []);
+    this.data = { runId: uid(), disciplineId, topicIds: this.cleanIds(ids), presetTypes: SessionModel.cleanTypes(types),
                   presetMethod: presetMethod || null,
                   startedAt: now, accumulatedMs: 0, running: true, openedAt: now,
                   breaks: [], breakStartedAt: null,
@@ -3379,17 +3846,28 @@ const Backup = {
   },
 
   buildCSV(){
-    // `minutos` é o tempo de estudo; o descanso sai numa coluna própria e nunca é somado a ele.
-    const head = ['data','area','disciplina','topico','tipo','dificuldade','minutos','descanso_minutos','resultado_revisao','metodo_revisao','comentario'];
+    /* `minutos` é o tempo de estudo; o descanso sai numa coluna própria e nunca é somado a ele.
+       v6.7 — UMA linha por estudo, sempre: vários tópicos e tipos ficam na mesma célula,
+       separados por "; ". A parte de cada tópico sai em `minutos_por_topico` (última
+       coluna, para planilhas antigas continuarem lendo as outras no mesmo lugar),
+       com "(estimado)" quando a divisão não foi informada. */
+    const head = ['data','area','disciplina','topico','tipo','dificuldade','minutos','descanso_minutos','resultado_revisao','metodo_revisao','comentario','minutos_por_topico'];
     const T = v => this.csvText(v), N = v => this.csvNumber(v);
+    const topicName = id => { const t = getTopic(id); return t ? t.name : '(tópico removido)'; };
     const rows = state.sessions.slice().sort((a,b) => a.date.localeCompare(b.date)).map(s => {
       const d = getDiscipline(s.disciplineId);
       const diff = difficultyInfo(s.difficulty);
+      const ids = SessionModel.topicIds(s);
+      const topics = ids.length ? ids.map(topicName).join('; ') : str(s.legacyTopicText);
+      const items = SessionModel.reviewItems(s).filter(x => x.outcome);
+      const outcomes = items.length === 1 ? reviewOutcomeLabel(items[0].outcome)
+        : items.map(x => `${x.topicId ? topicName(x.topicId) : 'sem tópico'}: ${reviewOutcomeLabel(x.outcome)}`).join('; ');
+      const shares = ids.length > 1 ? SessionModel.topicShares(s).map(x => `${topicName(x.topicId)}: ${x.minutes}${x.estimated ? ' (estimado)' : ''}`).join('; ') : '';
       return [
-        T(s.date), T(d ? areaNameOf(d) : ''), T(d ? d.name : ''), T(topicLabelOf(s)),
-        T(s.type ? sessionTypeLabel(s.type) : ''), T(diff ? diff.label : ''),
-        N(s.minutes), N(breakMinutesOf(s)), T(reviewOutcomeLabel(s.reviewOutcome) || ''),
-        T(s.reviewMethod ? methodLabel(s.reviewMethod) : ''), T(s.comment)
+        T(s.date), T(d ? areaNameOf(d) : ''), T(d ? d.name : ''), T(topics),
+        T(SessionModel.types(s).map(sessionTypeLabel).join('; ')), T(diff ? diff.label : ''),
+        N(s.minutes), N(breakMinutesOf(s)), T(outcomes || ''),
+        T(s.reviewMethod ? methodLabel(s.reviewMethod) : ''), T(s.comment), T(shares)
       ].join(',');
     });
     // BOM: sem ele o Excel lê acentos errados. CRLF é o fim de linha do formato CSV (RFC 4180).
@@ -3507,8 +3985,13 @@ const IntegrityValidator = {
     'option':                n => `${plural(n, 'opção desconhecida voltou', 'opções desconhecidas voltaram')} ao padrão (tipo, estratégia, método ou situação).`,
     'topic-date':            n => `${plural(n, 'data ilegível de tópico ficou', 'datas ilegíveis de tópicos ficaram')} em branco.`,
     'topic-number':          n => `${plural(n, 'número inválido de revisão voltou', 'números inválidos de revisão voltaram')} ao valor inicial.`,
-    'session-topic-missing': n => `${plural(n, 'estudo apontava', 'estudos apontavam')} para um tópico que não existe no arquivo: ${n === 1 ? 'fica' : 'ficam'} só na disciplina.`,
-    'session-topic-foreign': n => `${plural(n, 'estudo apontava', 'estudos apontavam')} para um tópico de outra disciplina: ${n === 1 ? 'fica' : 'ficam'} só na disciplina.`,
+    'session-topic-missing': n => `${plural(n, 'ligação de estudo apontava', 'ligações de estudos apontavam')} para um tópico que não existe no arquivo: o estudo continua, sem ${n === 1 ? 'esse tópico' : 'esses tópicos'}.`,
+    'session-topic-foreign': n => `${plural(n, 'ligação de estudo apontava', 'ligações de estudos apontavam')} para um tópico de outra disciplina: o estudo continua, sem ${n === 1 ? 'esse tópico' : 'esses tópicos'}.`,
+    'session-topic-dup':     n => `${plural(n, 'tópico repetido dentro de um estudo foi contado', 'tópicos repetidos dentro de estudos foram contados')} uma vez só.`,
+    'session-split':         n => `${plural(n, 'divisão de tempo entre tópicos não fechava', 'divisões de tempo entre tópicos não fechavam')} com a duração do estudo e ${n === 1 ? 'passa' : 'passam'} a ser estimada${n === 1 ? '' : 's'}. A duração foi mantida.`,
+    'block-orphan':          n => `${plural(n, 'bloco da semana era', 'blocos da semana eram')} de uma disciplina que não existe no arquivo.`,
+    'block-date':            n => `${plural(n, 'bloco da semana tinha', 'blocos da semana tinham')} um dia fora daquela semana ou ilegível.`,
+    'block-fix':             n => `${plural(n, 'bloco da semana teve', 'blocos da semana tiveram')} duração ou horário ilegível em branco.`,
     'session-date-derived':  n => `${plural(n, 'estudo sem data legível recebe', 'estudos sem data legível recebem')} o dia do horário de início gravado ${n === 1 ? 'nele' : 'neles'} — ou, na falta, o dia em que ${n === 1 ? 'foi registrado' : 'foram registrados'}.`,
     'date-trimmed':          n => `${plural(n, 'data trazia', 'datas traziam')} horário junto e ${n === 1 ? 'ficou' : 'ficaram'} só com o dia.`,
     'session-clock':         n => `${plural(n, 'horário ilegível de estudo ficou', 'horários ilegíveis de estudo ficaram')} em branco. A duração foi mantida.`,
@@ -3743,9 +4226,19 @@ const IntegrityValidator = {
         fix('session-date-derived');
       }
 
-      let topicId = ref(s.topicId) || null;
-      if(topicId && !topicDisc.has(topicId)){ topicId = null; fix('session-topic-missing'); }
-      else if(topicId && topicDisc.get(topicId) !== disciplineId){ topicId = null; fix('session-topic-foreign'); }
+      /* v6.7 — tópicos e tipos. Um backup do formato 6 (topicId/type/reviewOutcome)
+         vira "um tópico, um tipo" pela MESMA conversão da migração — é migração,
+         não reparo. Cada tópico precisa existir e ser da disciplina do estudo. */
+      const norm = SessionModel.normalize(Object.assign({}, s, { minutes: isNum(s.minutes) ? s.minutes : Number(s.minutes) }), fix);
+      const typeRaw = Array.isArray(s.types) ? s.types : (s.type !== undefined && s.type !== null && s.type !== '' ? [s.type] : []);
+      if(typeRaw.some(v => !SESSION_TYPE_VALUES.includes(v))) fix('option');
+      const entries = [];
+      norm.topicEntries.forEach(e => {
+        const tid = ref(e.topicId);
+        if(!topicDisc.has(tid)){ fix('session-topic-missing'); return; }
+        if(topicDisc.get(tid) !== disciplineId){ fix('session-topic-foreign'); return; }
+        entries.push(Object.assign({}, e, { topicId: tid }));
+      });
 
       // tempo de estudo: nunca recalculado na importação
       let minutes = 0;
@@ -3758,17 +4251,22 @@ const IntegrityValidator = {
       const rawBreaks = Array.isArray(s.breaks) ? Math.min(s.breaks.length, MAX_BREAKS_PER_STUDY) : 0;
       for(let i = breaks.length; i < rawBreaks; i++) fix('breaks');
 
-      return {
-        id, disciplineId, topicId, legacyTopicText: str(s.legacyTopicText),
+      if(SessionModel.settleSplit(entries, minutes)) fix('session-split');
+      const out = {
+        id, disciplineId, legacyTopicText: str(s.legacyTopicText),
         date, startedAt, endedAt, minutes, breaks,
-        type: oneOf(s.type, SESSION_TYPES.map(t => t.v), null),
+        topicEntries: entries,
+        types: norm.types,
         difficulty: (isNum(s.difficulty) && s.difficulty >= 1 && s.difficulty <= 5) ? Math.round(s.difficulty) : null,
         comment: str(s.comment),
-        reviewOutcome: oneOf(s.reviewOutcome, REVIEW_OUTCOMES.map(o => o.v), null),
         reviewMethod: oneOf(s.reviewMethod, REVIEW_METHODS.map(m => m.v), null),
-        reviewStrategyAtTime: oneOf(s.reviewStrategyAtTime, REVIEW_STRATEGIES.map(x => x.v), null),
         createdAt: createdAt || stamp(s.createdAt), updatedAt: stamp(s.updatedAt)
       };
+      // resultado de revisão de um estudo sem tópico (antigo, ou cujo tópico não existe no arquivo): o número continua
+      const legacyOutcome = norm.legacyReviewOutcome
+        || (!entries.length && norm.topicEntries.length === 1 && norm.topicEntries[0].outcome ? norm.topicEntries[0].outcome : null);
+      if(legacyOutcome && !entries.length) out.legacyReviewOutcome = legacyOutcome;
+      return out;
     });
 
     /* ---------- planos ---------- */
@@ -3794,12 +4292,15 @@ const IntegrityValidator = {
       let active = !!p.active;
       if(active && activeSeen){ active = false; fix('plan-active'); }
       else if(active) activeSeen = true;
-      return {
+      const out = {
         id, name: name(p.name, 'Plano'),
         weeklyAvailableMinutes: isNum(p.weeklyAvailableMinutes) ? Math.max(0, Math.round(p.weeklyAvailableMinutes)) : 0,
         active, allocations: allocations(p.allocations),
         createdAt: stamp(p.createdAt), updatedAt: stamp(p.updatedAt)
       };
+      // v6.7 — o modelo da semana (dias de cada disciplina). Backups anteriores não têm: fica sem modelo.
+      if(Array.isArray(p.template)) out.template = WeekPlan.cleanTemplate(p.template, discIds, fix, drop);
+      return out;
     });
 
     /* ---------- semanas (o id é o primeiro dia da semana) ---------- */
@@ -3807,7 +4308,7 @@ const IntegrityValidator = {
       w => self.civilDate(w.weekStart).value || '',
       (w, id) => {
         const end = self.civilDate(w.weekEnd);
-        return {
+        const out = {
           id, weekStart: id,
           weekEnd: (end.value && !end.trimmed) ? end.value : addDaysISO(id, 6),
           basePlanId: ref(w.basePlanId) || null,
@@ -3815,6 +4316,13 @@ const IntegrityValidator = {
           allocations: allocations(w.allocations),
           createdAt: stamp(w.createdAt), updatedAt: stamp(w.updatedAt)
         };
+        /* v6.7 — a semana em dias. Semanas de backups anteriores não têm blocos: ficam
+           só com a meta semanal, como sempre foram. `rev` recomeça do que veio. */
+        if(Array.isArray(w.blocks)) out.blocks = WeekPlan.cleanBlocks(w.blocks, id, discIds, fix, drop);
+        if(isNum(w.rev) && w.rev >= 0) out.rev = Math.round(w.rev);
+        if(Array.isArray(w.keepExtra)) out.keepExtra = Array.from(new Set(w.keepExtra.map(ref).filter(x => discIds.has(x))));
+        if(typeof w.fromTemplate === 'boolean') out.fromTemplate = w.fromTemplate;
+        return out;
       });
     // semanas sem data válida caíram em "sem identificador": o motivo certo é a data
     const badWeeks = (src.weeklyPlans || []).filter(w => w && typeof w === 'object' && !Array.isArray(w) && !self.civilDate(w.weekStart).value).length;
@@ -3890,7 +4398,8 @@ const IntegrityValidator = {
       const mismatch = out.data.sessions.filter(x => { const c = TimeRules.clockInfo(x); return c.mode === 'clock' && !c.consistent; }).length;
       if(mismatch) observations.push({ code:'clock-mismatch', count:mismatch,
         text:`${plural(mismatch, 'estudo tem', 'estudos têm')} um horário gravado que não fecha com a duração. O Ciclo mostra e conta a duração.` });
-      const withHistory = new Set(out.data.sessions.map(x => x.topicId).filter(Boolean));
+      const withHistory = new Set();
+      out.data.sessions.forEach(x => SessionModel.topicIds(x).forEach(id => withHistory.add(id)));
       const ghosts = out.data.topics.filter(t => !withHistory.has(t.id) && (t.lastReviewedAt || t.reviewDueDate || t.firstStudiedAt)).length;
       if(ghosts) observations.push({ code:'topic-ghost', count:ghosts,
         text:`${plural(ghosts, 'tópico guarda', 'tópicos guardam')} datas de estudo ou de revisão sem nenhum estudo no histórico (provavelmente de estudos excluídos em versões anteriores).` });
@@ -3923,8 +4432,16 @@ function sanitizeSettings(s){
     defaultReviewStrategy: REVIEW_STRATEGIES.some(x => x.v === src.defaultReviewStrategy) ? src.defaultReviewStrategy : 'adaptive',
     defaultReviewMethod: REVIEW_METHODS.some(x => x.v === src.defaultReviewMethod) ? src.defaultReviewMethod : 'auto',
     showDailyQuote: src.showDailyQuote !== false,
-    seenWhatsNew: typeof src.seenWhatsNew === 'string' ? src.seenWhatsNew : null
+    seenWhatsNew: typeof src.seenWhatsNew === 'string' ? src.seenWhatsNew : null,
+    /* v6.7 — instalações e backups anteriores não têm o campo: todos os dias valem. */
+    studyDays: sanitizeStudyDays(src.studyDays)
   };
+}
+/** Dias de estudo: inteiros 0–6, sem repetição, em ordem. Lista vazia ou ilegível → todos os dias. */
+function sanitizeStudyDays(v){
+  if(!Array.isArray(v)) return DEFAULT_SETTINGS.studyDays.slice();
+  const set = new Set(v.filter(x => Number.isInteger(x) && x >= 0 && x <= 6));
+  return set.size ? Array.from(set).sort((a, b) => a - b) : DEFAULT_SETTINGS.studyDays.slice();
 }
 
 /* =========================================================================
@@ -3966,6 +4483,8 @@ const ui = {
   historyLimit: 150,          // v6: quantas sessões o Histórico desenha antes de "Mostrar mais"
   settingsGroup: 'appearance',// v6: grupo aberto em Configurações
   planEditing: false,         // v6: Planejamento em modo de ajuste
+  planWeekOffset: 0,          // v6.7: semana mostrada no quadro (0 = esta, -1 = anterior, 1 = próxima)
+  planTrayAll: false,         // v6.7: bandeja de disciplinas mostrando todas
   reviewsShowAll: false,      // v6: lista completa de revisões pendentes
   reviewsSearch: { q:'' },    // v6.2: busca só entre as revisões (tela Revisões)
   calMode: 'view',            // v5.2: 'view' (detalhes do dia) | 'select' (escolher intervalo)
@@ -3993,9 +4512,19 @@ async function loadAll(){
   state.areas = areas || [];
   state.disciplines = disciplines || [];
   state.topics = topics || [];
-  state.sessions = sessions || [];
-  // v6.4: se a migração não tiver rodado (falha de gravação), a memória ainda fica coerente
-  state.sessions.forEach(s => { if(!Array.isArray(s.breaks)) s.breaks = []; });
+  /* v6.4/v6.7: se uma migração não tiver rodado (falha de gravação, ou um estudo
+     gravado depois por uma aba ainda na versão anterior), a memória fica no
+     formato atual mesmo assim. Quantos vieram no formato antigo fica anotado:
+     `refresh` pede a conversão no banco. */
+  let legacy = 0;
+  state.sessions = (sessions || []).map(s => {
+    if(SessionModel.isCanonical(s) && Array.isArray(s.breaks)) return s;
+    legacy++;
+    const n = SessionModel.normalize(s);
+    if(!Array.isArray(n.breaks)) n.breaks = [];
+    return n;
+  });
+  state.legacySessions = legacy;
   state.plans = plans || [];
   state.weeklyPlans = weeklyPlans || [];
   state.deadlines = deadlines || [];
@@ -4173,26 +4702,57 @@ async function writeBatch(ops){
    depois: uma falha deixava a tela dizendo uma coisa e o banco outra. */
 const PlanCommands = {
   /** Grava `plan` como o plano ATIVO. Qualquer outro plano ativo é desativado junto. */
+  /**
+   * v6.7 — as METAS de uma semana registrada passam a ser as do plano, sem
+   * tocar na semana em dias (blocos, dias, horários): a meta semanal continua
+   * sendo a referência e o calendário continua sendo da pessoa.
+   */
+  _withGoals(week, plan, ts){
+    return Object.assign({}, week, {
+      basePlanId: plan.id, availableMinutes: plan.weeklyAvailableMinutes,
+      allocations: (plan.allocations || []).map(a => ({ ...a })),
+      rev: (Number(week.rev) || 0) + 1, updatedAt: ts
+    });
+  },
+  /** Semanas FUTURAS já criadas (porque alguém organizou os dias delas) acompanham o plano ativo. */
+  async _syncFuture(api, plan, ts){
+    const cw = dateToISO(startOfWeek(today()));
+    const weeks = await api.getAll('weeklyPlans');
+    weeks.filter(w => w && w.weekStart > cw).forEach(w => api.put('weeklyPlans', this._withGoals(w, plan, ts)));
+  },
+  /** Grava `plan` como o plano ATIVO. Qualquer outro plano ativo é desativado junto. */
   async saveActive(plan, weeklyPlan, opts){
     const o = opts || {};
-    return DB.atomic(weeklyPlan ? ['plans','weeklyPlans'] : ['plans'], async api => {
+    return DB.atomic(['plans','weeklyPlans'], async api => {
       const all = await api.getAll('plans');
       const cur = all.find(p => p.id === plan.id) || null;
       // edição de um plano que mudou em outra aba: não grava por cima sem a pessoa saber
       if(cur && o.baseUpdatedAt !== undefined && !o.force && (cur.updatedAt || null) !== (o.baseUpdatedAt || null)) return { ok:false, reason:'conflict' };
       const ts = nowISO();
       all.forEach(p => { if(p.id !== plan.id && p.active) api.put('plans', Object.assign({}, p, { active:false, updatedAt:ts })); });
-      api.put('plans', Object.assign({}, plan, { active:true, updatedAt:ts }));
-      if(weeklyPlan) api.put('weeklyPlans', weeklyPlan);
+      // o modelo da semana (dias) pertence ao plano: salvar as metas nunca o apaga
+      const saved = Object.assign({}, plan, { active:true, updatedAt:ts });
+      if(cur && Array.isArray(cur.template) && !Array.isArray(plan.template)) saved.template = cur.template;
+      api.put('plans', saved);
+      if(weeklyPlan){
+        /* "Salvar e aplicar nesta semana": até a v6.6 a semana registrada era
+           TROCADA pela nova — com a semana em dias, isso apagaria os blocos.
+           Agora só as metas mudam; os dias continuam como a pessoa deixou. */
+        const wk = await api.get('weeklyPlans', weeklyPlan.id);
+        api.put('weeklyPlans', wk ? this._withGoals(wk, saved, ts) : WeekPlan.newSnapshot(saved, weeklyPlan.weekStart));
+      }
+      await this._syncFuture(api, saved, ts);
       return { ok:true };
     });
   },
   async activate(id){
-    return DB.atomic(['plans'], async api => {
+    return DB.atomic(['plans','weeklyPlans'], async api => {
       const all = await api.getAll('plans');
-      if(!all.some(p => p.id === id)) return { ok:false, reason:'missing' };
+      const target = all.find(p => p.id === id);
+      if(!target) return { ok:false, reason:'missing' };
       const ts = nowISO();
       all.forEach(p => { const want = p.id === id; if(!!p.active !== want) api.put('plans', Object.assign({}, p, { active:want, updatedAt:ts })); });
+      await this._syncFuture(api, target, ts);
       return { ok:true };
     });
   },
@@ -4273,6 +4833,8 @@ const DataSync = {
 
   /** Há um rascunho que não pode ser atropelado? */
   draftOpen(){
+    // v6.7: um arraste em andamento no quadro da semana é um rascunho — a tela não é redesenhada por baixo dele
+    if(typeof PlanDnD !== 'undefined' && PlanDnD.active) return true;
     const top = Overlay.top;
     // Busca de comandos e modo foco não têm rascunho: a tela atrás pode ser atualizada.
     if(top && top.root && (top.root.id === 'palette-root' || top.root.id === 'focus-root') && Overlay.stack.length === 1) return false;
@@ -4386,8 +4948,18 @@ const DataSync = {
 };
 
 /** Recarrega tudo do banco e redesenha a tela atual. */
+let healRunning = false;
 async function refresh(){
   await loadAll();
+  /* v6.7 — um estudo chegou no formato antigo (aba com a versão anterior ainda
+     aberta): a memória já o lê no formato novo; o banco é convertido agora,
+     numa transação própria, e só uma vez por vez. */
+  if(state.legacySessions > 0 && !healRunning){
+    healRunning = true;
+    try { await runV67Migration(); await loadAll(); }
+    catch(err){ console.error('Falha ao converter estudos no formato antigo:', err); }
+    finally { healRunning = false; }
+  }
   await PlannerEngine.ensureWeeklyPlan();
   render();
   // v6.2: dados mudaram (entidade excluída, disciplina movida de área…): a
@@ -4915,6 +5487,7 @@ function prefersReducedMotion(){
    ========================================================================= */
 const MOTION = {
   press: 110, select: 180, popIn: 170, popOut: 120, layerIn: 230, layerOut: 160, nav: 220,
+  drop: 200, state: 180,          // v6.7: quadro da semana (soltar um cartão; mudar de estado)
   ease: 'cubic-bezier(.2,.8,.2,1)', easeEmph: 'cubic-bezier(.16,1,.3,1)', easeExit: 'cubic-bezier(.4,0,.8,.2)'
 };
 
@@ -5196,7 +5769,7 @@ const Slider = {
    por…), a marca do item recém-escolhido faz um pulso curto. Só depois de um
    clique de verdade — desenhar a tela nunca anima marcas sozinho. */
 const PickFx = {
-  SEL: '[role="radio"],[role="menuitemradio"],[aria-pressed],[role="option"],[role="tab"]',
+  SEL: '[role="radio"],[role="menuitemradio"],[role="checkbox"],[aria-pressed],[role="option"],[role="tab"]',
   init(){
     document.addEventListener('click', (e) => {
       if(!e.isTrusted || prefersReducedMotion()) return;
@@ -5315,7 +5888,7 @@ function setView(view, opts){
   const o = (opts && typeof opts === 'object' && !(opts instanceof Event)) ? opts : {};
   if(!VIEW_TITLES[view]) view = 'today';
   if(view === 'analytics' && ui.view !== 'analytics') onEnterAnalytics();
-  if(view === 'plan' && ui.view !== 'plan'){ ui.planEditing = false; }
+  if(view === 'plan' && ui.view !== 'plan'){ ui.planEditing = false; ui.planWeekOffset = 0; }
   if(ui.view !== view) ui.prevView = ui.view;
   ui.view = view;
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
@@ -5385,7 +5958,7 @@ function renderTimerBar(opts){
   if(!TimerService.isActive){ clear(slot); TimerService.stopTicking(); return; }
   const d = TimerService.data;
   const disc = getDiscipline(d.disciplineId);
-  const topic = d.topicId ? getTopic(d.topicId) : null;
+  const topicNames = (d.topicIds || []).map(id => (getTopic(id) || {}).name).filter(Boolean);
   const resting = TimerService.isOnBreak;
 
   const target = d.targetMinutes || null;
@@ -5403,7 +5976,8 @@ function renderTimerBar(opts){
   const hadFocus = !isNew && slot.contains(document.activeElement);
   const clock = h('span', { class:'tb-clock num', text: clockText(), 'aria-live':'off' });
   const labelEl = h('div', { class:'tb-label', text: labelText() });
-  const meta = [topic ? topic.name : null, d.presetType ? sessionTypeLabel(d.presetType) : null,
+  const topicsShort = topicNames.length > 2 ? topicNames.slice(0, 2).join(' · ') + ' · +' + (topicNames.length - 2) : topicNames.join(' · ');
+  const meta = [topicsShort || null, (d.presetTypes || []).map(sessionTypeLabel).join(' · ') || null,
     target ? `sugestão de ${fmtDuration(target)}` : null].filter(Boolean).join(' · ');
   const bar = h('div', { class:'timerbar' + (isNew ? ' is-entering' : '') + (o.switched && !isNew ? ' is-switching' : ''), role:'region',
       'aria-label': resting ? 'Descanso em andamento' : 'Estudo em andamento', 'data-state': resting ? 'rest' : 'study' },
@@ -5462,22 +6036,25 @@ async function discardTimer(){
 }
 
 /* ---------- INICIAR SESSÃO ---------- */
-function startTimer(disciplineId, topicId, presetType, presetMethod, targetMinutes){
+/** v6.7: `topicIds` e `presetTypes` podem ser listas ou um valor só (null = nenhum). */
+function startTimer(disciplineId, topicIds, presetTypes, presetMethod, targetMinutes){
   // v6.5: um estudo iniciado em outra aba também conta — o armazenamento é consultado antes de começar outro.
   if(!TimerService.isActive && TimerService.storedRunId()){ TimerService.restore(); renderTimerBar(); }
   if(TimerService.isActive){
     toast('Termine o estudo atual antes de começar outro.', 'err', { title:'Você já está estudando' });
     return false;
   }
-  TimerService.start(disciplineId, topicId, presetType, presetMethod, targetMinutes);
+  TimerService.start(disciplineId, topicIds, presetTypes, presetMethod, targetMinutes);
   renderTimerBar();
   if(!TimerService.persisted){
     toast('Se a página for fechada, este estudo não poderá ser recuperado. Finalize antes de sair.', 'warn',
       { title:'Não foi possível garantir a recuperação deste cronômetro', duration:7000 });
   }
-  const d = getDiscipline(disciplineId), t = topicId ? getTopic(topicId) : null;
-  toast((d ? d.name : '') + (t ? ' · ' + t.name : '') + ' — o tempo já está contando.', 'ok',
-    { title: presetType === 'revisao' ? 'Revisão iniciada' : 'Estudo iniciado' });
+  const d = getDiscipline(disciplineId);
+  const names = TimerService.data.topicIds.map(id => (getTopic(id) || {}).name).filter(Boolean);
+  const topicText = names.length > 2 ? names.slice(0, 2).join(' · ') + ' · +' + (names.length - 2) : names.join(' · ');
+  toast((d ? d.name : '') + (topicText ? ' · ' + topicText : '') + ' — o tempo já está contando.', 'ok',
+    { title: TimerService.data.presetTypes.includes('revisao') ? 'Revisão iniciada' : 'Estudo iniciado' });
   return true;
 }
 
@@ -5707,15 +6284,247 @@ function topicPickMeta(t){
 }
 
 /**
- * Disciplina + Tópico de um estudo. Serve ao registro, ao fim do cronômetro e
+ * v6.7 — TÓPICOS de um estudo: vários, da mesma disciplina.
+ *
+ * Os escolhidos aparecem como chips compactos — [Frações ×] [Porcentagem ×] —
+ * e "+ Adicionar tópico" abre, dentro do próprio formulário, a lista com busca.
+ * Na lista, clicar marca ou desmarca SEM fechar: dá para escolher vários de uma
+ * vez. Criar um tópico usa o editor canônico (subtela) e o novo entra marcado.
+ *
+ *   o = { id, label, value:[ids], options() → [topic], describe(topic) → texto,
+ *         canCreate(), onCreate(query), onChange(ids, reason) }
+ *
+ * Teclado: Enter/Espaço/↓ no botão abrem; ↑ ↓ percorrem; Enter marca/desmarca;
+ * Esc fecha só a lista; Tab fecha e segue. Cada chip tem um "remover" próprio.
+ * Lista com aria-multiselectable: `aria-selected` é a marca de escolhido; o
+ * item sob o teclado é o `aria-activedescendant` (e a classe .is-active).
+ */
+function topicMultiPicker(o){
+  let value = (Array.isArray(o.value) ? o.value : []).slice();
+  let open = false, act = -1, rows = [], removeEsc = null, searchVisible = false;
+  const lid = o.id + '-l', listId = o.id + '-list';
+
+  const labelEl = h('span', { class:'pick-label', id:lid }, o.label || 'Tópicos', h('span', { class:'optional', text:'opcional' }));
+  const chips = h('ul', { class:'tchips', 'aria-label':'Tópicos escolhidos' });
+  const empty = h('span', { class:'tchips-empty', text:'Sem tópico específico' });
+  const addText = h('span');
+  const btn = h('button', { class:'tpick-add', type:'button', id:o.id, 'aria-haspopup':'listbox', 'aria-expanded':'false',
+    'aria-controls':listId, 'aria-describedby':lid }, icon('i-plus', 'btn-icon'), addText);
+  const box = h('div', { class:'tpick-box' }, chips, empty, btn);
+  const input = h('input', { type:'search', class:'pick-q', id:o.id + '-q', autocomplete:'off', spellcheck:'false', enterkeyhint:'search',
+    placeholder:'Buscar tópico…', role:'combobox', 'aria-expanded':'true', 'aria-controls':listId, 'aria-autocomplete':'list',
+    'aria-label':'Buscar tópico' });
+  const searchBox = h('div', { class:'an-search pick-search' }, icon('i-search'), input);
+  const list = h('ul', { class:'pick-list', id:listId, role:'listbox', 'aria-multiselectable':'true', 'aria-labelledby':lid, tabindex:'-1' });
+  const more = h('p', { class:'pick-more', hidden:true });
+  const doneBtn = h('button', { class:'btn sm', type:'button', text:'Pronto', onclick:() => closePanel(true) });
+  const count = h('span', { class:'tpick-count', 'aria-live':'polite' });
+  const foot = h('div', { class:'tpick-foot' }, count, doneBtn);
+  const panel = h('div', { class:'pick-panel tpick-panel', hidden:true }, searchBox, list, more, foot);
+  const node = h('div', { class:'field pick tpick' }, labelEl, box, panel);
+
+  const nameOf = id => { const t = getTopic(id); return t ? t.name : null; };
+  const emit = (reason) => { if(o.onChange) o.onChange(value.slice(), reason); };
+
+  function drawChips(added){
+    clear(chips);
+    value.forEach(id => {
+      const name = nameOf(id);
+      if(!name) return;
+      const t = getTopic(id);
+      const x = h('button', { class:'tchip-x', type:'button', 'aria-label':`Remover ${name}`, title:'Remover',
+        onclick:() => remove(id) }, icon('i-close', 'btn-icon'));
+      const li = h('li', { class:'tchip' + (t && t.archived ? ' is-archived' : ''), 'data-id':id },
+        h('span', { class:'tchip-t', text:name }), t && t.archived ? h('span', { class:'tchip-tag', text:'arquivado' }) : null, x);
+      chips.append(li);
+      if(added && added.includes(id)) swapIn(li);
+    });
+    const n = value.filter(nameOf).length;
+    empty.hidden = n > 0;
+    chips.hidden = n === 0;
+    addText.textContent = n ? 'Adicionar tópico' : 'Escolher tópicos';
+    btn.classList.toggle('is-empty', n === 0);
+    count.textContent = n ? plural(n, 'tópico escolhido', 'tópicos escolhidos') : 'Nenhum tópico escolhido';
+  }
+
+  function remove(id){
+    const i = value.indexOf(id);
+    if(i < 0) return;
+    // o foco não se perde: vai para o chip seguinte (ou o anterior, ou o botão)
+    const ids = value.filter(nameOf);
+    const k = ids.indexOf(id);
+    const nextId = ids[k + 1] || ids[k - 1] || null;
+    value.splice(i, 1);
+    drawChips();
+    if(open) drawList(true);
+    const target = nextId ? chips.querySelector(`[data-id="${cssEsc(nextId)}"] .tchip-x`) : null;
+    try { (target || btn).focus({ preventScroll:true }); } catch(_){}
+    announce(`${nameOf(id) || 'Tópico'} removido.`);
+    emit('topics');
+  }
+  function toggle(id){
+    const i = value.indexOf(id);
+    if(i >= 0) value.splice(i, 1); else value.push(id);
+    drawChips(i >= 0 ? null : [id]);
+    emit('topics');
+  }
+
+  function setActive(i, scroll){
+    const prev = rows[act];
+    if(prev) prev.li.classList.remove('is-active');
+    act = i;
+    const cur = rows[act];
+    const holder = searchVisible ? input : list;
+    if(cur){
+      cur.li.classList.add('is-active');
+      holder.setAttribute('aria-activedescendant', cur.li.id);
+      if(scroll) cur.li.scrollIntoView({ block:'nearest' });
+    } else holder.removeAttribute('aria-activedescendant');
+  }
+
+  function drawList(keepActive){
+    const q = input.value;
+    const terms = normalizeText(q).split(' ').filter(Boolean);
+    const all = o.options() || [];
+    const hit = terms.length ? all.filter(t => matchesTerms(normalizeText(t.name), terms)) : all;
+    const prevAct = keepActive ? act : -1;
+    rows = []; act = -1;
+    clear(list);
+    let shown = 0;
+    hit.forEach(t => {
+      if(shown >= PICK_RENDER_LIMIT) return;
+      shown++;
+      const i = rows.length;
+      const on = value.includes(t.id);
+      const li = h('li', { class:'pick-opt tpick-opt' + (on ? ' is-on' : ''), role:'option', id: listId + '-' + i, 'aria-selected': on ? 'true' : 'false' },
+        h('span', { class:'tpick-box-mark', 'aria-hidden':'true' }, icon('i-check', 'btn-icon')),
+        h('span', { class:'pick-main' },
+          h('span', { class:'pick-t' }, terms.length ? highlightMatch(t.name, q) : t.name),
+          o.describe ? h('span', { class:'pick-s', text:o.describe(t) }) : null),
+        t.archived ? h('span', { class:'pick-tag', text:'arquivado' }) : null);
+      li.addEventListener('mousedown', (e) => e.preventDefault());
+      li.addEventListener('click', () => choose(i));
+      li.addEventListener('mousemove', () => { if(act !== i) setActive(i, false); });
+      list.append(li);
+      rows.push({ kind:'opt', id:t.id, li });
+    });
+    if(o.canCreate && o.canCreate()){
+      const name = q.trim();
+      const i = rows.length;
+      const li = h('li', { class:'pick-opt is-create', role:'option', id: listId + '-' + i, 'aria-selected':'false' },
+        icon('i-plus', 'btn-icon pick-plus'),
+        h('span', { class:'pick-main' }, h('span', { class:'pick-t', text: name ? `Criar o tópico “${name}”` : 'Criar novo tópico…' })));
+      li.addEventListener('mousedown', (e) => e.preventDefault());
+      li.addEventListener('click', () => choose(i));
+      li.addEventListener('mousemove', () => { if(act !== i) setActive(i, false); });
+      list.append(li);
+      rows.push({ kind:'create', li });
+    }
+    if(!hit.length){
+      list.insertBefore(h('li', { class:'pick-none', role:'presentation',
+        text: all.length ? 'Nenhum tópico encontrado.' : 'Esta disciplina ainda não tem tópicos.' }), list.firstChild);
+    }
+    more.hidden = !(hit.length > shown);
+    more.textContent = hit.length > shown ? `Mostrando ${shown} de ${hit.length}. Digite para refinar.` : '';
+    setActive(prevAct >= 0 && prevAct < rows.length ? prevAct : (rows.length ? 0 : -1), !keepActive);
+  }
+
+  function choose(i){
+    const x = rows[i];
+    if(!x) return;
+    if(x.kind === 'create'){
+      const q = input.value.trim();
+      closePanel(false);
+      if(o.onCreate) o.onCreate(q);
+      return;
+    }
+    toggle(x.id);
+    const on = value.includes(x.id);
+    x.li.setAttribute('aria-selected', on ? 'true' : 'false');
+    x.li.classList.toggle('is-on', on);
+    if(on && !prefersReducedMotion()){ x.li.classList.remove('is-picked'); void x.li.offsetWidth; x.li.classList.add('is-picked'); }
+  }
+
+  function onDoc(e){
+    if(!node.isConnected){ document.removeEventListener('mousedown', onDoc, true); return; }
+    if(!node.contains(e.target)) closePanel(false);
+  }
+  function openPanel(){
+    if(open || btn.disabled) return;
+    open = true;
+    input.value = '';
+    searchVisible = (o.options() || []).length >= PICK_SEARCH_MIN;
+    searchBox.hidden = !searchVisible;
+    list.tabIndex = searchVisible ? -1 : 0;
+    btn.setAttribute('aria-expanded', 'true');
+    node.classList.add('is-open');
+    drawList(false);
+    Motion.expand(panel);
+    document.addEventListener('mousedown', onDoc, true);
+    removeEsc = Overlay.pushEsc(() => closePanel(true), node);
+    const target = searchVisible ? input : list;
+    try { target.focus({ preventScroll:true }); } catch(_){ target.focus(); }
+    panel.scrollIntoView({ block:'nearest' });
+  }
+  function closePanel(refocus){
+    if(!open) return;
+    open = false;
+    if(panel.contains(document.activeElement) && !refocus){ try { btn.focus({ preventScroll:true }); } catch(_){} }
+    Motion.collapse(panel);
+    btn.setAttribute('aria-expanded', 'false');
+    node.classList.remove('is-open');
+    document.removeEventListener('mousedown', onDoc, true);
+    if(removeEsc){ removeEsc(); removeEsc = null; }
+    if(refocus && node.isConnected){ try { btn.focus({ preventScroll:true }); } catch(_){ btn.focus(); } }
+  }
+
+  btn.addEventListener('click', () => { if(open) closePanel(true); else openPanel(); });
+  btn.addEventListener('keydown', (e) => { if((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !open){ e.preventDefault(); openPanel(); } });
+  input.addEventListener('input', () => drawList(false));
+  panel.addEventListener('keydown', (e) => {
+    if(e.target === doneBtn) return;
+    const n = rows.length;
+    if(e.key === 'ArrowDown'){ e.preventDefault(); if(n) setActive((act + 1) % n, true); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); if(n) setActive((act - 1 + n) % n, true); }
+    else if(e.key === 'Home' && !searchVisible){ e.preventDefault(); if(n) setActive(0, true); }
+    else if(e.key === 'End' && !searchVisible){ e.preventDefault(); if(n) setActive(n - 1, true); }
+    else if(e.key === 'Enter' || (e.key === ' ' && !searchVisible)){ e.preventDefault(); if(act >= 0) choose(act); }
+    else if(e.key === 'Tab' && !e.shiftKey && document.activeElement !== doneBtn){ e.preventDefault(); doneBtn.focus(); }
+    else if(e.key === 'Tab'){ closePanel(false); }
+  });
+  doneBtn.addEventListener('keydown', (e) => { if(e.key === 'Tab' && !e.shiftKey) closePanel(false); });
+
+  drawChips();
+  return {
+    node, button: btn,
+    get value(){ return value.slice(); },
+    /** Troca a seleção por código (troca de disciplina, tópico criado). Não dispara onChange. */
+    set(ids, animate){
+      const before = value.slice();
+      value = (Array.isArray(ids) ? ids : []).slice();
+      drawChips(animate ? value.filter(id => !before.includes(id)) : null);
+      if(open) drawList(true);
+    },
+    refresh(){ drawChips(); if(open) drawList(true); },
+    open: openPanel, close: closePanel,
+    get isOpen(){ return open; }
+  };
+}
+
+/**
+ * Disciplina + Tópicos de um estudo. Serve ao registro, ao fim do cronômetro e
  * à edição.
  *   o.close               função de fechar do modal (com push/pop de subtela)
  *   o.idPrefix            prefixo dos ids ('rm', 'fin', 'es')
- *   o.discId / o.topicId  valores iniciais
+ *   o.discId / o.topicIds valores iniciais (v6.7: lista; `o.topicId` solto também vale)
  *   o.allowNewDiscipline  oferece "Nova disciplina…" (só o nome; padrões no resto)
  *   o.allowNewTopic       oferece "Criar novo tópico…" (editor canônico, em subtela)
  *   o.includeArchived     lista também disciplinas arquivadas (edição de estudo antigo)
- *   o.onChange({ discId, topicId, reason })   reason: 'discipline' | 'topic' | 'created'
+ *   o.onChange({ discId, topicIds, reason })   reason: 'discipline' | 'topics' | 'created'
+ *
+ * Coerência (v6.7): trocar a disciplina limpa os tópicos — nenhum tópico de
+ * outra disciplina fica escolhido. `topicIds` só devolve tópicos que existem e
+ * são da disciplina escolhida.
  *
  * `ensure()` devolve a disciplina escolhida — criando-a antes, se a pessoa
  * digitou um nome novo — ou null (com aviso) quando falta escolher.
@@ -5723,10 +6532,10 @@ function topicPickMeta(t){
 function studyTargetFields(o){
   const prefix = o.idPrefix;
   let discId = (o.discId && getDiscipline(o.discId)) ? o.discId : '';
-  let topicId = discId ? (o.topicId || '') : '';
+  const initialTopics = Array.isArray(o.topicIds) ? o.topicIds : (o.topicId ? [o.topicId] : []);
   let creating = false;
   let ready = false;         // durante a montagem ninguém é avisado (quem chama ainda não tem a referência)
-  const emit = (reason) => { if(ready && o.onChange) o.onChange({ discId: api.discId, topicId: api.topicId, reason }); };
+  const emit = (reason) => { if(ready && o.onChange) o.onChange({ discId: api.discId, topicIds: api.topicIds, reason }); };
 
   /* ---------- disciplina ---------- */
   function discList(){
@@ -5769,7 +6578,13 @@ function studyTargetFields(o){
       }
       return { rows, total };
     },
-    onChange: v => { discId = v; topicId = ''; topicPicker.set(''); syncTopic(true); emit('discipline'); }
+    onChange: v => {
+      const had = topicPicker.value.filter(id => getTopic(id)).length;
+      discId = v; topicPicker.set([]); syncTopic(true);
+      // os tópicos eram da disciplina anterior: saem, e a pessoa fica sabendo
+      if(had) announce(had === 1 ? 'O tópico escolhido era de outra disciplina e saiu da seleção.' : 'Os tópicos escolhidos eram de outra disciplina e saíram da seleção.');
+      emit('discipline');
+    }
   });
 
   /* Disciplina nova sem sair do registro: só o nome, com os padrões de sempre. */
@@ -5831,11 +6646,11 @@ function studyTargetFields(o){
         toast('Adicione tópicos quando quiser.', 'ok', { title: clean + ' criada' });
       }
       creating = false;
-      discId = disc.id; topicId = '';
+      discId = disc.id;
       newBox.hidden = true;
       discPicker.node.hidden = false;
       discPicker.set(discId, true);
-      topicPicker.set('');
+      topicPicker.set([]);
       syncTopic(true);
       emit('discipline');
       return discId;
@@ -5845,36 +6660,25 @@ function studyTargetFields(o){
     return ensuring;
   }
 
-  /* ---------- tópico (depende da disciplina) ---------- */
+  /* ---------- tópicos (dependem da disciplina) ---------- */
   function topicList(){
     const list = topicsOf(discId).slice();
-    if(topicId && !list.some(t => t.id === topicId)){
-      const t = getTopic(topicId);
-      if(t && t.disciplineId === discId) list.push(t);     // tópico arquivado depois: continua visível
-      else topicId = '';                                    // coerência acima de tudo
-    }
+    // tópico arquivado depois de escolhido (ou de um estudo antigo) continua na lista para poder sair
+    topicPicker && topicPicker.value.forEach(id => {
+      if(list.some(t => t.id === id)) return;
+      const t = getTopic(id);
+      if(t && t.disciplineId === discId) list.push(t);
+    });
     return list;
   }
-  const topicPicker = entityPicker({
-    id: prefix + '-topic', label:'Tópico', optional:true, placeholder:'Sem tópico específico',
-    searchPlaceholder:'Buscar tópico…', noResults:'Nenhum tópico encontrado.',
-    value: topicId, count: () => topicList().length,
-    describe: v => { const t = v ? getTopic(v) : null;
-      return (t && t.disciplineId === discId) ? { title:t.name, sub:topicPickMeta(t) } : { title:'Sem tópico específico', muted:true }; },
-    options: q => {
-      const all = topicList();
-      const terms = normalizeText(q).split(' ').filter(Boolean);
-      const hit = terms.length ? all.filter(t => matchesTerms(normalizeText(t.name), terms)) : all;
-      const rows = [];
-      if(!terms.length) rows.push({ kind:'opt', value:'', title:'Sem tópico específico', muted:true });
-      hit.forEach(t => rows.push({ kind:'opt', value:t.id, title:t.name, sub:topicPickMeta(t) }));
-      if(o.allowNewTopic !== false && o.close){
-        const name = q.trim();
-        rows.push({ kind:'create', title: name ? `Criar o tópico “${name}”` : 'Criar novo tópico…', run: text => openCreate(text) });
-      }
-      return { rows, total: hit.length + (terms.length ? 0 : 1) };
-    },
-    onChange: v => { topicId = v; emit('topic'); }
+  const canCreateTopic = () => o.allowNewTopic !== false && !!o.close && !!discId && !creating;
+  let topicPicker = null;
+  topicPicker = topicMultiPicker({
+    id: prefix + '-topics', label:'Tópicos',
+    value: discId ? initialTopics.filter(id => { const t = getTopic(id); return t && t.disciplineId === discId; }) : [],
+    options: topicList, describe: topicPickMeta,
+    canCreate: canCreateTopic, onCreate: q => openCreate(q),
+    onChange: () => emit('topics')
   });
   function syncTopic(animate){
     const show = !creating && !!discId;
@@ -5885,7 +6689,8 @@ function studyTargetFields(o){
   }
 
   /* Criar tópico: o EDITOR CANÔNICO numa subtela do mesmo modal. Ao salvar,
-     disciplina e tópico mudam JUNTOS — nunca um tópico de outra disciplina. */
+     o tópico novo entra marcado; se a pessoa escolheu outra disciplina no
+     editor, disciplina e tópicos mudam JUNTOS — nunca um tópico de outra. */
   function openCreate(name){
     const back = () => o.close.pop(topicPicker.button);
     const ed = topicEditor({
@@ -5897,10 +6702,11 @@ function studyTargetFields(o){
   }
   function adopt(t){
     const fresh = getTopic(t.id) || t;
+    const sameDisc = fresh.disciplineId === discId;
+    const keep = sameDisc ? topicPicker.value.filter(id => id !== fresh.id) : [];
     discId = fresh.disciplineId;
-    topicId = fresh.id;
     discPicker.set(discId);
-    topicPicker.set(topicId, true);
+    topicPicker.set(keep.concat([fresh.id]), true);
     syncTopic(false);
     o.close.pop(topicPicker.button);
     emit('created');
@@ -5911,12 +6717,13 @@ function studyTargetFields(o){
     node, ensure,
     discButton: discPicker.button, topicButton: topicPicker.button,
     get discId(){ return creating ? '' : discId; },
-    /** Só devolve o tópico se ele pertence à disciplina escolhida. */
-    get topicId(){
-      if(creating) return null;
-      const t = topicId ? getTopic(topicId) : null;
-      return (t && t.disciplineId === discId) ? t.id : null;
-    }
+    /** Só devolve tópicos que existem e pertencem à disciplina escolhida, na ordem em que foram escolhidos. */
+    get topicIds(){
+      if(creating || !discId) return [];
+      return topicPicker.value.filter(id => { const t = getTopic(id); return t && t.disciplineId === discId; });
+    },
+    /** Compatibilidade: o primeiro tópico (ou null). */
+    get topicId(){ const ids = api.topicIds; return ids.length ? ids[0] : null; }
   };
   syncTopic(false);
   if(o.allowNewDiscipline && !discId && !discList().length) startCreating('');
@@ -5925,32 +6732,242 @@ function studyTargetFields(o){
 }
 
 /**
- * Tipos de estudo: seis opções compactas, cada uma com um ícone discreto e uma
- * linha dizendo o que é. Opcional — clicar de novo na escolhida desmarca.
- * Grupo de rádio com setas (padrão ARIA) e um único ponto de parada do Tab.
+ * Tipos de estudo (v6.7: VÁRIOS). Seis opções compactas, cada uma com um ícone
+ * discreto e uma linha dizendo o que é. Clicar marca; clicar de novo desmarca;
+ * dá para marcar mais de um ("Teoria" e "Exercícios"). Opcional.
+ * Teclado: um ponto de parada do Tab; ← → ↑ ↓ percorrem; Espaço/Enter marcam.
+ * Cada opção é um checkbox (role) — `aria-checked` diz se está marcada.
  */
 function studyTypePicker(o){
-  let value = SESSION_TYPES.some(t => t.v === o.value) ? o.value : null;
-  const lid = o.id + '-l';
-  const group = h('div', { class:'type-grid', role:'radiogroup', 'aria-labelledby':lid });
+  let values = SessionModel.cleanTypes(Array.isArray(o.value) ? o.value : (o.value ? [o.value] : []));
+  const lid = o.id + '-l', hid = o.id + '-h';
+  const group = h('div', { class:'type-grid', role:'group', 'aria-labelledby':lid, 'aria-describedby':hid });
   const buttons = SESSION_TYPES.map(t => {
-    const b = h('button', { class:'type-opt', type:'button', role:'radio', 'aria-checked': t.v === value ? 'true' : 'false', 'data-v':t.v },
+    const b = h('button', { class:'type-opt', type:'button', role:'checkbox', 'aria-checked': values.includes(t.v) ? 'true' : 'false', 'data-v':t.v, 'data-k':o.id + '-' + t.v },
       h('span', { class:'type-ic', 'aria-hidden':'true' }, icon(t.icon, 'nav-icon')),
       h('span', { class:'type-text' }, h('span', { class:'type-t', text:t.label }), h('span', { class:'type-d', text:t.hint })));
     b.addEventListener('click', () => {
-      value = (value === t.v) ? null : t.v;
-      buttons.forEach(x => { x.setAttribute('aria-checked', x.dataset.v === value ? 'true' : 'false'); x.setAttribute('tabindex', x === b ? '0' : '-1'); });
-      if(o.onChange) o.onChange(value);
+      values = values.includes(t.v) ? values.filter(v => v !== t.v) : SessionModel.cleanTypes(values.concat([t.v]));
+      b.setAttribute('aria-checked', values.includes(t.v) ? 'true' : 'false');
+      buttons.forEach(x => x.setAttribute('tabindex', x === b ? '0' : '-1'));
+      if(o.onChange) o.onChange(values.slice());
     });
     group.append(b);
     return b;
   });
-  rovingInit(group);
+  // um ponto de parada do Tab; as setas andam pelo grupo
+  const first = buttons.find(b => b.getAttribute('aria-checked') === 'true') || buttons[0];
+  buttons.forEach(b => b.setAttribute('tabindex', b === first ? '0' : '-1'));
+  group.addEventListener('keydown', (e) => {
+    const i = buttons.indexOf(document.activeElement);
+    if(i < 0) return;
+    let n = null;
+    if(e.key === 'ArrowRight' || e.key === 'ArrowDown') n = (i + 1) % buttons.length;
+    else if(e.key === 'ArrowLeft' || e.key === 'ArrowUp') n = (i - 1 + buttons.length) % buttons.length;
+    else if(e.key === 'Home') n = 0;
+    else if(e.key === 'End') n = buttons.length - 1;
+    if(n === null) return;
+    e.preventDefault();
+    buttons.forEach((b, k) => b.setAttribute('tabindex', k === n ? '0' : '-1'));
+    buttons[n].focus();
+  });
   return {
     node: h('div', { class:'field' },
-      h('span', { class:'pick-label', id:lid }, 'Tipo de estudo', h('span', { class:'optional', text:'opcional' })), group),
-    get value(){ return value; }
+      h('span', { class:'pick-label', id:lid }, 'Tipo de estudo', h('span', { class:'optional', text:'opcional' })),
+      h('span', { class:'sr-only', id:hid, text:'Pode marcar mais de um. Use as setas para percorrer e Espaço para marcar ou desmarcar.' }),
+      group),
+    get value(){ return values.slice(); },
+    /** Compatibilidade: o primeiro tipo marcado (ou null). */
+    get first(){ return values.length ? values[0] : null; }
   };
+}
+
+/**
+ * v6.7 — "Dividir o tempo entre os tópicos" (opcional, só com dois ou mais).
+ * Fechado por padrão: sem divisão, o Ciclo reparte igualmente e mostra a parte
+ * de cada tópico como ESTIMATIVA. Aberto, cada tópico ganha um campo de
+ * minutos; o que ficar em branco recebe uma parte igual do que sobrou.
+ *
+ *   o = { idPrefix, initial: Map|obj topicId → minutes, total() → minutos do estudo ou null }
+ *   update(topicIds)  redesenha para os tópicos atuais (o que foi digitado fica)
+ *   read() → { ok, minutes: Map topicId → minutos|null } | { ok:false, msg, el }
+ */
+function topicSplitField(o){
+  const p = o.idPrefix;
+  const typed = new Map();                 // topicId → texto digitado (sobrevive a trocar tópicos)
+  const init = o.initial || {};
+  Object.keys(init).forEach(k => { if(init[k] !== null && init[k] !== undefined) typed.set(k, String(init[k])); });
+  let ids = [];
+  let opened = Array.from(typed.values()).some(v => v !== '');
+  const toggleBtn = h('button', { class:'linkbtn add-link', type:'button', 'aria-expanded':'false' });
+  const intro = h('p', { class:'hint split-intro' });
+  const rowsBox = h('div', { class:'split-rows' });
+  const status = h('p', { class:'split-status', 'aria-live':'polite' });
+  const clearBtn = h('button', { class:'linkbtn muted', type:'button', text:'Não dividir', onclick:() => {
+    typed.clear(); opened = false; draw(); toggleBtn.focus(); if(o.onChange) o.onChange();
+  } });
+  const body = h('div', { class:'split-body', hidden:true }, rowsBox, h('div', { class:'split-foot' }, status, clearBtn));
+  const node = h('div', { class:'field split', hidden:true }, toggleBtn, intro, body);
+
+  toggleBtn.addEventListener('click', () => {
+    opened = !opened;
+    draw();
+    if(opened){ Motion.expand(body); const f = rowsBox.querySelector('input'); if(f) f.focus(); }
+  });
+
+  function totalNow(){ const t = o.total ? o.total() : null; return isNum(t) && t > 0 ? Math.round(t) : null; }
+
+  function draw(){
+    const n = ids.length;
+    node.hidden = n < 2;
+    if(n < 2) return;
+    toggleBtn.textContent = opened ? 'Divisão do tempo entre os tópicos' : '+ Dividir o tempo entre os tópicos';
+    toggleBtn.setAttribute('aria-expanded', opened ? 'true' : 'false');
+    toggleBtn.classList.toggle('is-open', opened);
+    intro.textContent = opened
+      ? 'Informe quanto tempo foi de cada um. O que ficar em branco recebe uma parte igual do que sobrar.'
+      : 'Opcional. Sem divisão, o Ciclo reparte o tempo igualmente e mostra cada parte como estimativa.';
+    body.hidden = !opened;
+    if(!opened) return;
+    clear(rowsBox);
+    ids.forEach(id => {
+      const t = getTopic(id);
+      if(!t) return;
+      const input = h('input', { type:'number', class:'no-spin', min:'1', step:'1', inputmode:'numeric', id:`${p}-split-${id}`,
+        value: typed.get(id) || '', placeholder:'—', 'aria-label':`Minutos de ${t.name}` });
+      input.addEventListener('input', () => { typed.set(id, input.value); input.removeAttribute('aria-invalid'); drawStatus(); if(o.onChange) o.onChange(); });
+      rowsBox.append(h('div', { class:'split-row' },
+        h('label', { class:'split-name', for:input.id, text:t.name }),
+        h('span', { class:'split-input' }, input, h('span', { class:'split-unit', 'aria-hidden':'true', text:'min' }))));
+    });
+    drawStatus();
+  }
+
+  function values(){
+    const out = new Map();
+    ids.forEach(id => {
+      const raw = opened ? str(typed.get(id)).trim() : '';
+      const m = Math.round(Number(raw));
+      out.set(id, raw !== '' && Number.isFinite(m) && m > 0 ? m : (raw === '' ? null : NaN));
+    });
+    return out;
+  }
+  function drawStatus(){
+    const v = values(), total = totalNow();
+    const given = Array.from(v.values()).filter(x => isNum(x));
+    const bad = Array.from(v.values()).some(x => Number.isNaN(x));
+    const sumG = sum(given);
+    let text = '', cls = '';
+    if(bad){ text = 'Use minutos inteiros maiores que zero (ou deixe em branco).'; cls = 'is-error'; }
+    else if(!given.length) text = 'Nenhuma parte informada: a divisão será estimada.';
+    else if(total === null) text = `Informado: ${fmtDurationWords(sumG)}.`;
+    else if(sumG > total){ text = `As partes somam ${fmtDurationWords(sumG)}, mais que o estudo (${fmtDurationWords(total)}).`; cls = 'is-error'; }
+    else if(given.length === ids.length && sumG !== total){ text = `As partes somam ${fmtDurationWords(sumG)}; o estudo tem ${fmtDurationWords(total)}. Ajuste uma delas ou deixe uma em branco.`; cls = 'is-error'; }
+    else if(sumG === total) text = `Distribuído: ${fmtDurationWords(sumG)} de ${fmtDurationWords(total)}.`;
+    else {
+      const blanks = ids.length - given.length;
+      text = `Distribuído: ${fmtDurationWords(sumG)} de ${fmtDurationWords(total)}. ` + (blanks === 1
+        ? `O tópico em branco fica com os ${fmtDurationWords(total - sumG)} restantes.`
+        : `Os ${blanks} tópicos em branco dividem ${fmtDurationWords(total - sumG)} igualmente (estimativa).`);
+    }
+    if(status.textContent !== text) status.textContent = text;
+    status.className = 'split-status' + (cls ? ' ' + cls : '');
+  }
+
+  return {
+    node,
+    update(nextIds){ ids = (nextIds || []).slice(); draw(); },
+    refreshTotal(){ if(opened && ids.length >= 2) drawStatus(); },
+    get opened(){ return opened && ids.length >= 2; },
+    /** O que será gravado. Fechado (ou um tópico só) → todas as partes em branco (estimadas). */
+    read(){
+      const v = values(), total = totalNow();
+      const out = new Map(ids.map(id => [id, null]));
+      if(!(opened && ids.length >= 2)) return { ok:true, minutes:out };
+      const firstBad = ids.find(id => Number.isNaN(v.get(id)));
+      if(firstBad){ const el = rowsBox.querySelector(`#${cssEsc(p + '-split-' + firstBad)}`); return { ok:false, msg:'Use minutos inteiros maiores que zero na divisão do tempo (ou deixe em branco).', el }; }
+      const given = ids.filter(id => isNum(v.get(id)));
+      const sumG = sum(given, id => v.get(id));
+      if(total !== null && (sumG > total || (given.length === ids.length && sumG !== total))){
+        const el = rowsBox.querySelector('input');
+        return { ok:false, msg: sumG > total
+          ? `A divisão soma ${fmtDurationWords(sumG)}, mais que o tempo do estudo (${fmtDurationWords(total)}).`
+          : `A divisão soma ${fmtDurationWords(sumG)}, e o estudo tem ${fmtDurationWords(total)}. Ajuste uma parte ou deixe uma em branco.`, el };
+      }
+      ids.forEach(id => out.set(id, isNum(v.get(id)) ? v.get(id) : null));
+      return { ok:true, minutes:out };
+    },
+    get dirty(){ return opened && Array.from(typed.values()).some(x => str(x).trim() !== ''); }
+  };
+}
+
+/**
+ * v6.7 — "Como você se saiu?" por TÓPICO. Aparece quando o estudo é uma
+ * revisão ("Revisão" marcado) e há tópicos escolhidos.
+ *   · um tópico   → a mesma pergunta de sempre;
+ *   · vários      → uma linha por tópico, cada uma com o próprio resultado, e
+ *                   um atalho "Mesmo resultado para todos". Nada é aplicado a
+ *                   todos sem a pessoa pedir: tópico sem resposta conta como
+ *                   estudado, sem mexer na agenda de revisão dele.
+ *   o = { idPrefix, initial: { topicId: outcome }, note(topicId) → texto|'' }
+ */
+function reviewOutcomesField(o){
+  const p = o.idPrefix;
+  const outcomes = new Map(Object.entries(o.initial || {}).filter(([, v]) => REVIEW_OUTCOME_VALUES.includes(v)));
+  let ids = [];
+  const node = h('div', { class:'field outcomes', hidden:true });
+  const opts = REVIEW_OUTCOMES.map(x => ({ value:x.v, label:x.label }));
+
+  function draw(){
+    clear(node);
+    const list = ids.filter(id => getTopic(id));
+    if(!list.length){ node.hidden = true; return; }
+    node.hidden = false;
+    if(list.length === 1){
+      const id = list[0];
+      const note = o.note ? o.note(id) : '';
+      node.append(
+        h('label', { text:'Como você se saiu?' }),
+        pillGroup(opts, outcomes.get(id) || null, v => { if(v) outcomes.set(id, v); else outcomes.delete(id); if(o.onChange) o.onChange(); }, 'Como você se saiu'),
+        h('p', { class:'hint', text: note || 'Isso ajusta quando este tópico volta para revisão.' }));
+      return;
+    }
+    const lid = p + '-oc-l';
+    node.append(h('span', { class:'pick-label', id:lid, text:'Como você se saiu em cada tópico?' }));
+    const all = h('div', { class:'oc-all' }, h('span', { class:'oc-all-l', text:'Mesmo resultado para todos:' }),
+      h('span', { class:'oc-all-btns' }, REVIEW_OUTCOMES.map(x => h('button', { class:'linkbtn', type:'button', text:x.label,
+        'aria-label':`${x.label} para todos os tópicos`, onclick:() => { list.forEach(id => outcomes.set(id, x.v)); draw(); if(o.onChange) o.onChange();
+          const b = node.querySelector('.oc-all .linkbtn'); if(b) b.focus(); } }))));
+    node.append(all);
+    const rows = h('div', { class:'oc-rows', role:'group', 'aria-labelledby':lid });
+    list.forEach(id => {
+      const t = getTopic(id);
+      const note = o.note ? o.note(id) : '';
+      rows.append(h('div', { class:'oc-row' },
+        h('span', { class:'oc-name', text:t.name }),
+        pillGroup(opts, outcomes.get(id) || null, v => { if(v) outcomes.set(id, v); else outcomes.delete(id); if(o.onChange) o.onChange(); }, 'Resultado de ' + t.name),
+        note ? h('span', { class:'oc-note', text:note }) : null));
+    });
+    node.append(rows);
+    node.append(h('p', { class:'hint', text:'Cada resultado ajusta só o próprio tópico. Tópico sem resposta conta como estudado, sem mudar a agenda de revisão dele.' }));
+  }
+  return {
+    node,
+    update(nextIds, show){ ids = show ? (nextIds || []).slice() : []; draw(); },
+    /** Map topicId → resultado (só dos tópicos visíveis e respondidos). */
+    get values(){ const m = new Map(); ids.forEach(id => { if(outcomes.has(id)) m.set(id, outcomes.get(id)); }); return m; },
+    get dirty(){ return outcomes.size > 0; }
+  };
+}
+
+/** v6.7 — monta `topics` para os comandos: [{ topicId, minutes, outcome }] na ordem escolhida. */
+function topicEntriesFromForm(topicIds, split, outcomes, isReview){
+  const sp = split ? split.minutes : new Map();
+  return (topicIds || []).map(id => ({
+    topicId: id,
+    minutes: sp.has(id) ? sp.get(id) : null,
+    outcome: isReview && outcomes ? (outcomes.get(id) || null) : null
+  }));
 }
 
 /**
@@ -6554,9 +7571,10 @@ function openRegisterModal(preset){
   const presetTopic = wantTopic ? getTopic(wantTopic) : null;
   const topicId0 = (presetTopic && !presetTopic.archived && presetTopic.disciplineId === discId0) ? presetTopic.id : '';
 
-  let type = SESSION_TYPES.some(t => t.v === p.type) ? p.type : null;
-  const type0 = type;
-  let difficulty = null, outcome = null, targetMin = null;
+  // v6.7: vários tipos (um tipo solto no preset também vale)
+  let types = SessionModel.cleanTypes(Array.isArray(p.types) ? p.types : (p.type ? [p.type] : []));
+  const types0 = types.join(',');
+  let difficulty = null, targetMin = null;
   let saving = false;
   let isDirty = () => false;
 
@@ -6577,10 +7595,13 @@ function openRegisterModal(preset){
 
     /* Todos os campos são criados UMA vez. Trocar de modo só mostra ou esconde
        blocos — nada do que foi escolhido ou digitado se perde. */
-    const when = studyWhenFields({ idPrefix:'rm', date:p.date });
-    const target = studyTargetFields({ close, idPrefix:'rm', discId:discId0, topicId:topicId0, allowNewDiscipline:true,
+    // v6.7: a divisão do tempo entre tópicos acompanha a duração calculada em "Quando"
+    let lastWhen = null, split = null;
+    const when = studyWhenFields({ idPrefix:'rm', date:p.date, onChange: r => { lastWhen = r; if(split) split.refreshTotal(); } });
+    const target = studyTargetFields({ close, idPrefix:'rm', discId:discId0, topicIds: topicId0 ? [topicId0] : [], allowNewDiscipline:true,
       onChange: () => renderOutcome() });
-    const typePick = studyTypePicker({ id:'rm-type', value:type, onChange: v => { type = v; renderOutcome(); } });
+    const typePick = studyTypePicker({ id:'rm-type', value:types, onChange: v => { types = v; renderOutcome(); } });
+    split = topicSplitField({ idPrefix:'rm', total: () => (lastWhen && lastWhen.complete) ? lastWhen.minutes : null });
 
     /* estudar agora: uma duração de referência, opcional (o cronômetro nunca para sozinho) */
     const goalValues = Array.from(new Set([20, 30, 40, state.settings.defaultSessionMinutes || 40])).sort((a, b) => a - b).slice(0, 4);
@@ -6595,16 +7616,13 @@ function openRegisterModal(preset){
         h('div', { class:'chips', role:'group', 'aria-labelledby':'rm-goal-l' }, goalBtns),
         h('p', { class:'hint', text:'É só uma referência. O tempo continua contando até você finalizar — mesmo se recarregar ou fechar a aba — e você descansa quando quiser.' })));
 
-    /* já estudei: como foi */
-    const outcomeField = h('div', { class:'field', hidden:true });
+    /* já estudei: como foi — v6.7: um resultado POR tópico (as respostas dadas ficam ao trocar tópicos) */
+    const outcomes = reviewOutcomesField({ idPrefix:'rm' });
+    const outcomeField = outcomes.node;
     function renderOutcome(){
-      const show = mode === 'manual' && type === 'revisao' && !!target.topicId;
-      outcomeField.hidden = !show;
-      if(!show || outcomeField.firstChild) return;        // já desenhado: a resposta dada continua lá
-      outcomeField.append(
-        h('label', { text:'Como você se saiu?' }),
-        pillGroup(REVIEW_OUTCOMES.map(x => ({ value:x.v, label:x.label })), outcome, v => { outcome = v; }, 'Como você se saiu'),
-        h('p', { class:'hint', text:'Isso ajusta quando este tópico volta para revisão.' }));
+      const ids = target.topicIds;
+      outcomes.update(ids, mode === 'manual' && types.includes('revisao'));
+      split.update(mode === 'manual' ? ids : []);
     }
     const comment = commentField({ id:'rm-comment' });
     /* v6.4.1 — três perguntas, três grupos. "Quando" e "O que você estudou" são
@@ -6617,11 +7635,11 @@ function openRegisterModal(preset){
     const whenBlock = h('section', { class:'rm-group rm-when', 'aria-labelledby':'rm-g-when' },
       h('h4', { class:'rm-group-t', id:'rm-g-when', text:'Quando' }), when.node);
     const whatTitle = h('h4', { class:'rm-group-t', id:'rm-g-what', text:'O que você estudou' });
-    const whatBlock = h('section', { class:'rm-group rm-what', 'aria-labelledby':'rm-g-what' }, whatTitle, target.node);
+    const whatBlock = h('section', { class:'rm-group rm-what', 'aria-labelledby':'rm-g-what' }, whatTitle, target.node, split.node);
     const grid = h('div', { class:'rm-grid' }, whenBlock, whatBlock, howBlock, timerBlock);
     // Já há algo preenchido além do que veio pronto? Então um clique fora da janela não a fecha.
-    isDirty = () => when.isDirty() || !!comment.textarea.value.trim() || type !== type0 || difficulty !== null || outcome !== null
-      || target.discId !== discId0 || (target.topicId || '') !== topicId0 || targetMin !== null;
+    isDirty = () => when.isDirty() || !!comment.textarea.value.trim() || types.join(',') !== types0 || difficulty !== null || outcomes.dirty
+      || target.discId !== discId0 || target.topicIds.join(',') !== (topicId0 || '') || targetMin !== null || split.dirty;
 
     /* 8 horas ou mais: o Ciclo pergunta, não proíbe. Numa subtela — o formulário fica intacto. */
     function confirmLong(w){
@@ -6674,23 +7692,27 @@ function openRegisterModal(preset){
           return;
         }
 
+        // v6.7: a divisão do tempo entre tópicos (se aberta) precisa fechar antes de gravar
+        const sp = mode === 'manual' ? split.read() : { ok:true, minutes:new Map() };
+        if(!sp.ok){ if(sp.el){ sp.el.setAttribute('aria-invalid', 'true'); sp.el.focus(); } toast(sp.msg, 'err', { title:'Divisão do tempo' }); return; }
+
         const discId = await target.ensure();          // cria a disciplina digitada, se for o caso
         if(!discId) return;
-        const topicId = target.topicId;
+        const topicIds = target.topicIds;
 
         if(mode === 'timer'){
           // v6.5: só fecha se o cronômetro começou (outra aba pode ter iniciado um estudo neste meio-tempo)
-          if(startTimer(discId, topicId, type, null, targetMin)) close();
+          if(startTimer(discId, topicIds, types, null, targetMin)) close();
           return;
         }
         if(w.needsConfirm && !(await confirmLong(w))) return;
 
         setBusy(true);
         const ok = await saveSession({
-          disciplineId:discId, topicId, date:w.date, minutes:w.minutes, breaks:w.breaks,
-          startedAt:w.startedAt, endedAt:w.endedAt, type, difficulty,
+          disciplineId:discId, date:w.date, minutes:w.minutes, breaks:w.breaks,
+          startedAt:w.startedAt, endedAt:w.endedAt, types, difficulty,
           comment: comment.value,
-          reviewOutcome: (type === 'revisao' && topicId) ? outcome : null
+          topics: topicEntriesFromForm(topicIds, sp, outcomes.values, types.includes('revisao'))
         });
         if(ok){ close(); return; }
         // Falhou: a janela continua aberta com tudo o que foi preenchido.
@@ -6755,8 +7777,8 @@ function openFinishModal(){
   const snap = TimerService.snapshot();
   const studyMin = Math.max(1, Math.round(snap.studyMs / 60000));
   const snapBreaks = timerBreaksToSession(snap.breaks);
-  let type = d.presetType || null;
-  let difficulty = null, outcome = null;
+  let types = SessionModel.cleanTypes(d.presetTypes || []);       // v6.7: os tipos escolhidos ao começar
+  let difficulty = null;
   let method = d.presetMethod || null;
   let methodTouched = !!d.presetMethod;
   let saving = false;
@@ -6795,7 +7817,7 @@ function openFinishModal(){
       if(clockNote.textContent !== text) clockNote.textContent = text;
       summary.classList.toggle('is-duration-only', !fits);
     }
-    minInput.addEventListener('input', () => { minInput.removeAttribute('aria-invalid'); drawSummary(); });
+    minInput.addEventListener('input', () => { minInput.removeAttribute('aria-invalid'); drawSummary(); if(split) split.refreshTotal(); });
     const fixToggle = h('summary', null, 'Corrigir o tempo');
     const fix = h('details', { class:'advanced finish-fix' },
       fixToggle,
@@ -6805,26 +7827,32 @@ function openFinishModal(){
         breaks.node,
         clockNote));
 
-    const target = studyTargetFields({ close, idPrefix:'fin', discId:d.disciplineId, topicId:d.topicId || '',
+    // v6.7: os tópicos escolhidos ao começar (todos) voltam aqui — inclusive depois de recarregar a página
+    let split = null;
+    const target = studyTargetFields({ close, idPrefix:'fin', discId:d.disciplineId, topicIds: d.topicIds || [],
       onChange: () => renderOutcome() });
-    const typePick = studyTypePicker({ id:'fin-type', value:type, onChange: v => { type = v; renderOutcome(); } });
+    const typePick = studyTypePicker({ id:'fin-type', value:types, onChange: v => { types = v; renderOutcome(); } });
+    split = topicSplitField({ idPrefix:'fin', total: () => { const m = Math.round(Number(minInput.value)); return m > 0 ? m : null; } });
 
-    const outcomeField = h('div', { class:'field' });
+    const outcomes = reviewOutcomesField({ idPrefix:'fin' });
+    const methodBox = h('div', { class:'field', hidden:true });
+    const outcomeField = h('div', null, outcomes.node, methodBox);
     function renderOutcome(){
-      clear(outcomeField);
-      const topic = target.topicId ? getTopic(target.topicId) : null;
-      outcomeField.hidden = !(type === 'revisao' && topic);
-      if(outcomeField.hidden) return;
-      if(!methodTouched) method = ReviewEngine.effectiveMethod(topic).method;
+      const ids = target.topicIds;
+      const show = types.includes('revisao') && ids.length > 0;
+      outcomes.update(ids, show);
+      split.update(ids);
+      // F5 no meio da finalização não perde tópicos e tipos escolhidos aqui (o tempo nunca é tocado)
+      if(target.discId) TimerService.updateSelection(runId, { disciplineId: target.discId, topicIds: ids, presetTypes: types });
+      clear(methodBox);
+      methodBox.hidden = !show;
+      if(!show) return;
+      const first = getTopic(ids[0]);
+      if(!methodTouched && first) method = ReviewEngine.effectiveMethod(first).method;
       const sel = h('select', { id:'fin-method' });
       CONCRETE_METHODS.forEach(mv => sel.appendChild(h('option', { value:mv, selected: mv === method }, methodLabel(mv))));
       sel.addEventListener('change', () => { method = sel.value; methodTouched = true; });
-      outcomeField.append(
-        h('label', { text:'Como você se saiu?' }),
-        pillGroup(REVIEW_OUTCOMES.map(x => ({ value:x.v, label:x.label })), outcome, v => { outcome = v; }, 'Como você se saiu'),
-        h('p', { class:'hint', text:'Isso ajusta quando este tópico volta para revisão.' }),
-        h('label', { for:'fin-method', style:'margin-top:12px', text:'Como você revisou' }),
-        sel);
+      methodBox.append(h('label', { for:'fin-method', text:'Como você revisou' }), sel);
     }
     const comment = commentField({ id:'fin-comment' });
     const how = howGroup({ id:'fin-g-how', type:typePick.node,
@@ -6836,7 +7864,7 @@ function openFinishModal(){
         h('section', { class:'rm-group rm-when', 'aria-labelledby':'fin-g-time' },
           h('h4', { class:'rm-group-t', id:'fin-g-time', text:'Tempo' }), summary, fix),
         h('section', { class:'rm-group rm-what', 'aria-labelledby':'fin-g-what' },
-          h('h4', { class:'rm-group-t', id:'fin-g-what', text:'O que você estudou' }), target.node),
+          h('h4', { class:'rm-group-t', id:'fin-g-what', text:'O que você estudou' }), target.node, split.node),
         how.node));
     renderOutcome();
     drawSummary();
@@ -6847,12 +7875,15 @@ function openFinishModal(){
       if(!(minutes > 0)){ fix.open = true; minInput.setAttribute('aria-invalid','true'); minInput.focus(); toast('Informe um tempo de estudo válido.', 'err'); return; }
       const br = breaks.read(null, false);
       if(!br.ok){ fix.open = true; if(br.el){ if('value' in br.el) br.el.setAttribute('aria-invalid','true'); br.el.focus(); } toast(br.msg, 'err'); return; }
+      const sp = split.read();
+      if(!sp.ok){ if(sp.el){ sp.el.setAttribute('aria-invalid','true'); sp.el.focus(); } toast(sp.msg, 'err', { title:'Divisão do tempo' }); return; }
       saving = true;                                 // v6.5: trava já aqui — `ensure()` é assíncrono e um 2º Enter passaria
       saveBtn.disabled = true; saveBtn.setAttribute('aria-busy','true'); saveBtn.textContent = 'Registrando…';
       const unlock = () => { saving = false; saveBtn.disabled = false; saveBtn.removeAttribute('aria-busy'); saveBtn.textContent = 'Registrar estudo'; };
       const discId = await target.ensure();
       if(!discId){ unlock(); return; }
-      const topicId = target.topicId;
+      const topicIds = target.topicIds;
+      const isReview = types.includes('revisao');
 
       /* v6.5 — este cronômetro ainda é o que está valendo? Outra aba pode ter
          finalizado, descartado ou começado outro estudo. A memória desta aba é
@@ -6876,10 +7907,10 @@ function openFinishModal(){
          retrato (o fim é o momento em que a pessoa pediu para finalizar).
          v6.5 — o id do estudo é o runId do cronômetro: o banco aceita UM. */
       const res = await registerStudy({
-        disciplineId: discId, topicId, date: dateToISO(new Date(snap.startedAt)),
-        minutes, breaks: br.breaks, type, difficulty, comment: comment.value,
-        reviewOutcome: (type === 'revisao' && topicId) ? outcome : null,
-        reviewMethod: (type === 'revisao' && topicId) ? method : null,
+        disciplineId: discId, date: dateToISO(new Date(snap.startedAt)),
+        minutes, breaks: br.breaks, types, difficulty, comment: comment.value,
+        topics: topicEntriesFromForm(topicIds, sp, outcomes.values, isReview),
+        reviewMethod: (isReview && topicIds.length) ? method : null,
         startedAt: startISO, endedAt: endISO
       }, { timerRunId: runId });
       if(!res.ok && res.reason === 'duplicate'){
@@ -6909,7 +7940,7 @@ function openFinishModal(){
       ],
       focus: fixToggle          // o primeiro controle: a janela abre no resumo, não no fim do formulário
     };
-  }, { size:'study', dismissible:false });
+  }, { size:'study', dismissible:false, onClose: () => { if(TimerService.isActive) renderTimerBar(); } });
 }
 
 /** Sessão esquecida aberta por muito tempo. */
@@ -7204,6 +8235,34 @@ function sameStored(a, b){
 const SessionCommands = {
   STORES: ['sessions','topics','disciplines'],
 
+  /**
+   * v6.7 — tópicos de uma entrada de formulário. Aceita a lista nova
+   * (`topics: [{ topicId, minutes, outcome }]`) e, por compatibilidade, o
+   * formato de um tópico só (`topicId` + `reviewOutcome`). Sem repetição.
+   * A estratégia NUNCA vem de fora: é decidida aqui, pela regra em vigor.
+   */
+  _inputEntries(input){
+    const list = Array.isArray(input.topics) ? input.topics
+      : Array.isArray(input.topicEntries) ? input.topicEntries
+      : (input.topicId ? [{ topicId: input.topicId, minutes:null, outcome: input.reviewOutcome || null }] : []);
+    const seen = new Set();
+    return list.map(e => SessionModel.cleanEntry(e)).filter(e => {
+      if(!e || seen.has(e.topicId)) return false;
+      seen.add(e.topicId);
+      e.strategy = null;
+      return true;
+    }).slice(0, MAX_TOPICS_PER_STUDY);
+  },
+
+  /** Os estudos de uma disciplina, lidos do banco DENTRO da transação, no formato atual (com cache por comando). */
+  _discSessions(api, cache, discId){
+    if(!cache.has(discId)){
+      cache.set(discId, api.getAllByIndex('sessions', 'disciplineId', discId)
+        .then(list => (list || []).map(x => SessionModel.isCanonical(x) ? x : SessionModel.normalize(x))));
+    }
+    return cache.get(discId);
+  },
+
   async create(input, opts){
     const o = opts || {};
     const minutes = Math.max(0, Math.round(Number(input.minutes) || 0));
@@ -7215,10 +8274,12 @@ const SessionCommands = {
        v6.5: horário e duração nunca se contradizem no que é gravado. */
     const time = TimeRules.settle({ minutes, breaks: sanitizeBreaks(input.breaks), startedAt: input.startedAt || null, endedAt: input.endedAt || null });
     const session = newSession({
-      disciplineId: str(input.disciplineId), topicId: input.topicId || null, date, minutes,
-      breaks: sanitizeBreaks(time.breaks), type: input.type || null, difficulty: input.difficulty || null,
-      comment: str(input.comment), reviewOutcome: input.reviewOutcome || null, reviewMethod: input.reviewMethod || null,
-      reviewStrategyAtTime: null, startedAt: time.startedAt, endedAt: time.endedAt
+      disciplineId: str(input.disciplineId), date, minutes,
+      breaks: sanitizeBreaks(time.breaks), difficulty: input.difficulty || null,
+      comment: str(input.comment), reviewMethod: input.reviewMethod || null,
+      startedAt: time.startedAt, endedAt: time.endedAt,
+      topicEntries: this._inputEntries(input),
+      types: SessionModel.cleanTypes(Array.isArray(input.types) ? input.types : (input.type ? [input.type] : []))
     });
     if(o.id) session.id = str(o.id);
 
@@ -7230,24 +8291,35 @@ const SessionCommands = {
           const dup = await api.get('sessions', session.id);
           if(dup) return { ok:false, reason:'duplicate', session:dup };
         }
-        let topic = session.topicId ? await api.get('topics', session.topicId) : null;
-        let topicDropped = false;
-        if(session.topicId && (!topic || topic.disciplineId !== session.disciplineId)){
-          // o tópico saiu (ou mudou de disciplina) em outra aba: o estudo não some, fica só na disciplina
-          session.topicId = null; session.reviewOutcome = null; session.reviewMethod = null;
-          topic = null; topicDropped = true;
+        // cada tópico precisa existir e ser da disciplina do estudo (outra aba pode ter mudado algo)
+        const kept = [];
+        let dropped = 0;
+        for(const e of session.topicEntries){
+          const topic = await api.get('topics', e.topicId);
+          if(!topic || topic.disciplineId !== session.disciplineId){ dropped++; continue; }
+          kept.push({ e, topic });
         }
-        let rec = null;
-        if(topic){
-          const ctx = reviewContextOf(topic);
-          // guarda a estratégia vigente para as análises continuarem legíveis depois
-          session.reviewStrategyAtTime = ctx.strategy;
-          rec = TopicReconciler.afterCreate(topic, session, ctx);
+        session.topicEntries = kept.map(k => k.e);
+        SessionModel.settleSplit(session.topicEntries, session.minutes);
+        if(!session.topicEntries.length && dropped) session.reviewMethod = null;    // a revisão era daqueles tópicos
+
+        // cada tópico recebe o estudo com o resultado DELE — nunca o de outro
+        const recs = [];
+        for(const k of kept){
+          const ctx = reviewContextOf(k.topic);
+          k.e.strategy = ctx.strategy;          // a estratégia vigente fica gravada: a reconciliação refaz com ela
+          const rec = TopicReconciler.afterCreate(k.topic, SessionModel.topicView(session, k.topic.id), ctx);
+          recs.push({ topic: rec.topic, effect: rec.effect, outcome: k.e.outcome || null });
         }
         // `add` recusa um id repetido: é a garantia final de que o mesmo cronômetro não vira dois estudos.
         if(o.unique) await api.add('sessions', session); else api.put('sessions', session);
-        if(rec) api.put('topics', rec.topic);
-        return { ok:true, session, topic: rec ? rec.topic : null, effect: rec ? rec.effect : null, topicDropped, clockDropped: time.clockDropped };
+        recs.forEach(r => api.put('topics', r.topic));
+        return {
+          ok:true, session, effects: recs,
+          topics: recs.map(r => r.topic),
+          topic: recs.length ? recs[0].topic : null, effect: recs.length ? recs[0].effect : null,
+          topicDropped: dropped > 0, droppedCount: dropped, clockDropped: time.clockDropped
+        };
       });
     } catch(err){
       if(err && err.name === 'ConstraintError') return { ok:false, reason:'duplicate' };
@@ -7260,28 +8332,55 @@ const SessionCommands = {
     return this.create(input, { id: runId, unique:true });
   },
 
+  /** Comparação de um campo do formulário com o gravado. Tópicos: só o que a pessoa vê (tópico, parte, resultado). */
+  sameField(key, a, b){
+    if(key === 'topicEntries'){
+      const simple = list => (Array.isArray(list) ? list : []).map(e => SessionModel.cleanEntry(e)).filter(Boolean)
+        .map(e => ({ topicId:e.topicId, minutes:e.minutes, outcome:e.outcome }));
+      return JSON.stringify(simple(a)) === JSON.stringify(simple(b));
+    }
+    if(key === 'types') return JSON.stringify(SessionModel.cleanTypes(a)) === JSON.stringify(SessionModel.cleanTypes(b));
+    return sameStored(a, b);
+  },
+
   /**
    * Edita um estudo. `changes` traz os valores do formulário; `opts.base` é o
    * estudo como estava quando o formulário abriu. Só os campos que a pessoa
    * realmente mudou são gravados — e, se algum deles foi alterado em outra aba
    * nesse meio-tempo, nada é gravado: volta { reason:'conflict', current }.
    * `opts.force` grava mesmo assim (a pessoa viu o aviso e escolheu manter a edição).
+   *
+   * v6.7 — reconciliação tópico a tópico, na mesma transação:
+   *   · tópico que SAIU do estudo   → o histórico dele é refeito sem este estudo;
+   *   · tópico que ENTROU           → recebe o estudo como um estudo novo dele;
+   *   · tópico que FICOU            → só é refeito se a data, o resultado DELE
+   *                                   ou o jeito de revisar mudaram.
+   * Tópicos que não mudaram não são tocados — nenhuma revisão "por tabela".
    */
   async update(id, changes, opts){
     const o = opts || {};
     try {
       return await DB.atomic(this.STORES, async api => {
-        const cur = await api.get('sessions', id);
-        if(!cur) return { ok:false, reason:'missing' };
-        const base = o.base || cur;
-        const keys = Object.keys(changes || {}).filter(k => !sameStored(changes[k], base[k]));
+        const raw = await api.get('sessions', id);
+        if(!raw) return { ok:false, reason:'missing' };
+        const cur = SessionModel.normalize(raw);
+        const base = o.base ? SessionModel.normalize(o.base) : cur;
+        const keys = Object.keys(changes || {}).filter(k => !this.sameField(k, changes[k], base[k]));
         if(!keys.length) return { ok:true, unchanged:true, session:cur };
         if(o.base && !o.force){
-          const clash = keys.filter(k => !sameStored(base[k], cur[k]) && !sameStored(changes[k], cur[k]));
+          const clash = keys.filter(k => !this.sameField(k, base[k], cur[k]) && !this.sameField(k, changes[k], cur[k]));
           if(clash.length) return { ok:false, reason:'conflict', current:cur, fields:clash };
         }
         const updated = Object.assign({}, cur);
         keys.forEach(k => { updated[k] = changes[k]; });
+        if(keys.includes('topicEntries')){
+          // a estratégia de um tópico que continua no estudo é a que estava gravada
+          updated.topicEntries = this._inputEntries({ topics: changes.topicEntries }).map(e => {
+            const was = SessionModel.entryOf(cur, e.topicId);
+            return Object.assign(e, { strategy: was ? was.strategy : null });
+          });
+        }
+        if(keys.includes('types')) updated.types = SessionModel.cleanTypes(changes.types);
         updated.updatedAt = nowISO();
         updated.minutes = Math.max(0, Math.round(Number(updated.minutes) || 0));
         if(!(updated.minutes > 0)) return { ok:false, reason:'no-minutes' };
@@ -7299,41 +8398,61 @@ const SessionCommands = {
 
         const disc = await api.get('disciplines', updated.disciplineId);
         if(!disc) return { ok:false, reason:'no-discipline' };
-        // o tópico precisa existir e ser da disciplina do estudo
-        let topicNow = updated.topicId ? await api.get('topics', updated.topicId) : null;
-        if(!topicNow || topicNow.disciplineId !== updated.disciplineId){ updated.topicId = null; topicNow = null; }
-        if(!updated.topicId && cur.topicId){ updated.reviewOutcome = null; updated.reviewMethod = null; }   // a revisão era daquele tópico
 
-        const touchesTopic = ['topicId','date','reviewOutcome','reviewMethod'].some(k => !sameStored(cur[k], updated[k]));
+        // cada tópico precisa existir e ser da disciplina do estudo
+        const topicsById = new Map();
+        const topicOf = async tid => {
+          if(!topicsById.has(tid)) topicsById.set(tid, await api.get('topics', tid) || null);
+          return topicsById.get(tid);
+        };
+        const kept = [];
+        for(const e of (updated.topicEntries || [])){
+          const t = await topicOf(e.topicId);
+          if(t && t.disciplineId === updated.disciplineId) kept.push(e);
+        }
+        const droppedCount = (updated.topicEntries || []).length - kept.length;
+        updated.topicEntries = kept;
+        SessionModel.settleSplit(updated.topicEntries, updated.minutes);
+        // o resultado antigo "sem tópico" só existe enquanto o estudo não tem tópico
+        if(updated.topicEntries.length || !REVIEW_OUTCOME_VALUES.includes(updated.legacyReviewOutcome)) delete updated.legacyReviewOutcome;
+        // todos os tópicos saíram: o jeito de revisar era deles
+        if(!updated.topicEntries.length && SessionModel.topicIds(cur).length && !updated.legacyReviewOutcome) updated.reviewMethod = null;
+
+        const curIds = SessionModel.topicIds(cur), newIds = SessionModel.topicIds(updated);
+        const allIds = Array.from(new Set(curIds.concat(newIds)));
+        const dateChanged = cur.date !== updated.date;
+        const methodChanged = (cur.reviewMethod || null) !== (updated.reviewMethod || null);
+        const cache = new Map();
         const effects = [];
-        if(touchesTopic){
-          if(cur.topicId && cur.topicId === updated.topicId){
-            const before = await api.getAllByIndex('sessions', 'topicId', cur.topicId);
-            const after = before.map(s => s.id === id ? updated : s);
-            const rec = TopicReconciler.afterCorrection(topicNow, before, after, reviewContextOf(topicNow));
+        for(const tid of allIds){
+          const topic = await topicOf(tid);
+          if(!topic) continue;
+          const inCur = curIds.includes(tid), inNew = newIds.includes(tid);
+          if(inCur && inNew){
+            const ec = SessionModel.entryOf(cur, tid), eu = SessionModel.entryOf(updated, tid);
+            const touches = dateChanged || (ec.outcome || null) !== (eu.outcome || null) || (methodChanged && !!(ec.outcome || eu.outcome));
+            if(!touches) continue;
+            const before = SessionModel.viewsFor(await this._discSessions(api, cache, topic.disciplineId), tid);
+            const after = before.map(v => v.id === id ? SessionModel.topicView(updated, tid) : v);
+            const rec = TopicReconciler.afterCorrection(topic, before, after, reviewContextOf(topic));
             api.put('topics', rec.topic);
             effects.push({ topic:rec.topic, effect:rec.effect, role:'same' });
+          } else if(inCur){
+            const before = SessionModel.viewsFor(await this._discSessions(api, cache, topic.disciplineId), tid);
+            const rec = TopicReconciler.afterCorrection(topic, before, before.filter(v => v.id !== id), reviewContextOf(topic));
+            api.put('topics', rec.topic);
+            effects.push({ topic:rec.topic, effect:rec.effect, role:'from' });
           } else {
-            if(cur.topicId){
-              const oldTopic = await api.get('topics', cur.topicId);
-              if(oldTopic){
-                const before = await api.getAllByIndex('sessions', 'topicId', cur.topicId);
-                const rec = TopicReconciler.afterCorrection(oldTopic, before, before.filter(s => s.id !== id), reviewContextOf(oldTopic));
-                api.put('topics', rec.topic);
-                effects.push({ topic:rec.topic, effect:rec.effect, role:'from' });
-              }
-            }
-            if(topicNow){
-              const ctx = reviewContextOf(topicNow);
-              if(updated.reviewOutcome) updated.reviewStrategyAtTime = ctx.strategy;
-              const rec = TopicReconciler.afterCreate(topicNow, updated, ctx);
-              api.put('topics', rec.topic);
-              effects.push({ topic:rec.topic, effect:rec.effect, role:'to' });
-            }
+            const ctx = reviewContextOf(topic);
+            const eu = SessionModel.entryOf(updated, tid);
+            if(eu && !eu.strategy) eu.strategy = ctx.strategy;
+            const rec = TopicReconciler.afterCreate(topic, SessionModel.topicView(updated, tid), ctx);
+            api.put('topics', rec.topic);
+            effects.push({ topic:rec.topic, effect:rec.effect, role:'to' });
           }
         }
         api.put('sessions', updated);
-        return { ok:true, session:updated, previous:cur, effects, clockDropped };
+        return { ok:true, session:updated, previous:cur, effects, clockDropped, topicDropped: droppedCount > 0 };
       });
     } catch(err){
       console.error('Falha ao atualizar o estudo:', err);
@@ -7341,20 +8460,22 @@ const SessionCommands = {
     }
   },
 
+  /** Exclusão. v6.7: TODOS os tópicos do estudo são reconciliados, cada um com o próprio histórico. */
   async remove(id){
     try {
       return await DB.atomic(this.STORES, async api => {
-        const cur = await api.get('sessions', id);
-        if(!cur) return { ok:true, already:true, effects:[] };
+        const raw = await api.get('sessions', id);
+        if(!raw) return { ok:true, already:true, effects:[] };
+        const cur = SessionModel.normalize(raw);
         const effects = [];
-        if(cur.topicId){
-          const topic = await api.get('topics', cur.topicId);
-          if(topic){
-            const before = await api.getAllByIndex('sessions', 'topicId', cur.topicId);
-            const rec = TopicReconciler.afterCorrection(topic, before, before.filter(s => s.id !== id), reviewContextOf(topic));
-            api.put('topics', rec.topic);
-            effects.push({ topic:rec.topic, effect:rec.effect, role:'same' });
-          }
+        const cache = new Map();
+        for(const tid of SessionModel.topicIds(cur)){
+          const topic = await api.get('topics', tid);
+          if(!topic) continue;
+          const before = SessionModel.viewsFor(await this._discSessions(api, cache, topic.disciplineId), tid);
+          const rec = TopicReconciler.afterCorrection(topic, before, before.filter(v => v.id !== id), reviewContextOf(topic));
+          api.put('topics', rec.topic);
+          effects.push({ topic:rec.topic, effect:rec.effect, role:'same' });
         }
         api.delete('sessions', id);
         return { ok:true, session:cur, effects };
@@ -7366,10 +8487,18 @@ const SessionCommands = {
   }
 };
 
-/** O que dizer quando uma correção mexeu (ou não) na agenda de revisão de um tópico. */
+/** O que dizer quando uma correção mexeu (ou não) na agenda de revisão de um ou mais tópicos. */
 function reconcileNote(effects){
-  const e = (effects || []).find(x => x.effect && x.effect !== 'history' && x.effect !== 'study');
-  if(!e) return '';
+  const sig = (effects || []).filter(x => x.effect && x.effect !== 'history' && x.effect !== 'study');
+  if(!sig.length) return '';
+  // v6.7: vários tópicos mudaram de uma vez — uma frase só, sem lista
+  if(sig.length > 1){
+    const resets = sig.filter(x => x.effect === 'reset').length;
+    return resets === sig.length
+      ? `${plural(sig.length, 'tópico voltou', 'tópicos voltaram')} a "não iniciado": não há mais estudos deles.`
+      : `A agenda de revisão de ${plural(sig.length, 'tópico', 'tópicos')} foi atualizada.`;
+  }
+  const e = sig[0];
   const name = e.topic ? e.topic.name : 'o tópico';
   if(e.effect === 'reset') return `${name} voltou a "não iniciado": não há mais estudos dele.`;
   if(e.effect === 'reanchored' || e.effect === 'rescheduled' || e.effect === 'applied' || e.effect === 'first'){
@@ -7418,35 +8547,60 @@ async function registerStudy(input, opts){
   }
   await safeRefresh();
 
-  const session = res.session, topic = res.topic;
+  const session = res.session;
   const disc = getDiscipline(session.disciplineId);
-  const topicName = topic ? topic.name : '';
-  if(session.reviewOutcome && topic && res.effect === 'historical'){
-    toastRich('Revisão registrada no histórico', [
-      topicName,
-      ['Você respondeu', reviewOutcomeLabel(session.reviewOutcome)],
-      'A agenda de revisão deste tópico não mudou: ele já tem uma revisão mais recente.'
-    ], 'info');
-  } else if(session.reviewOutcome && topic){
-    toastRich('Revisão concluída', [
-      topicName,
-      ['Você respondeu', reviewOutcomeLabel(session.reviewOutcome)],
-      ['Volta a aparecer', topic.reviewDueDate ? fmtRelativeFuture(topic.reviewDueDate) : '—'],
-      ['Consolidação estimada', (topic.masteryLevel || '—') + ' de 5']
-    ]);
+  const reviewed = (res.effects || []).filter(x => x.outcome);
+  if(reviewed.length === 1){
+    const x = reviewed[0], topic = x.topic;
+    if(x.effect === 'historical'){
+      toastRich('Revisão registrada no histórico', [
+        topic.name,
+        ['Você respondeu', reviewOutcomeLabel(x.outcome)],
+        'A agenda de revisão deste tópico não mudou: ele já tem uma revisão mais recente.'
+      ], 'info');
+    } else {
+      toastRich('Revisão concluída', [
+        topic.name,
+        ['Você respondeu', reviewOutcomeLabel(x.outcome)],
+        ['Volta a aparecer', topic.reviewDueDate ? fmtRelativeFuture(topic.reviewDueDate) : '—'],
+        ['Consolidação estimada', (topic.masteryLevel || '—') + ' de 5']
+      ]);
+    }
+  } else if(reviewed.length > 1){
+    // v6.7: cada tópico recebeu o próprio resultado; o aviso diz quantos e quando o primeiro volta
+    const next = reviewed.map(x => x.topic.reviewDueDate).filter(Boolean).sort()[0] || null;
+    const hist = reviewed.filter(x => x.effect === 'historical').length;
+    const rows = [
+      (disc ? disc.name + ' · ' : '') + plural(reviewed.length, 'tópico revisado', 'tópicos revisados'),
+      ['Tempo estudado', fmtDuration(session.minutes)]
+    ];
+    if(next) rows.push(['Próxima revisão', fmtRelativeFuture(next)]);
+    if(hist) rows.push(`${plural(hist, 'tópico já tinha', 'tópicos já tinham')} uma revisão mais recente: a agenda ${hist === 1 ? 'dele' : 'deles'} não mudou.`);
+    toastRich('Revisão concluída', rows);
   } else {
     const prog = PlannerEngine.getCurrentWeekProgress();
+    const topicsText = SessionModel.topicsText(session, 2);
     const rows = [
-      (disc ? disc.name : '') + (topicName ? ' · ' + topicName : ''),
+      (disc ? disc.name : '') + (topicsText ? ' · ' + topicsText : ''),
       ['Tempo estudado', fmtDuration(session.minutes)]
     ];
     const restMin = breakMinutesOf(session);
     if(restMin > 0) rows.push(['Descanso', fmtDuration(restMin)]);
     if(prog.plannedTotal > 0) rows.push(['Plano da semana', `${fmtDuration(prog.countedTotal)} de ${fmtDuration(prog.plannedTotal)}`]);
-    if(topic && topic.reviewDueDate) rows.push(['Próxima revisão', fmtRelativeFuture(topic.reviewDueDate)]);
+    const topics = res.topics || [];
+    if(topics.length === 1 && topics[0].reviewDueDate) rows.push(['Próxima revisão', fmtRelativeFuture(topics[0].reviewDueDate)]);
+    else if(topics.length > 1){
+      const next = topics.map(t => t.reviewDueDate).filter(Boolean).sort()[0];
+      if(next) rows.push(['Próxima revisão', fmtRelativeFuture(next)]);
+    }
     toastRich('Estudo registrado', rows);
   }
-  if(res.topicDropped) toast('O tópico escolhido não existe mais. O estudo foi registrado só na disciplina.', 'warn', { title:'Tópico não encontrado' });
+  if(res.topicDropped){
+    const n = res.droppedCount || 1;
+    toast(n === 1 ? 'Um tópico escolhido não existe mais (ou não é desta disciplina). O estudo foi registrado sem ele.'
+                  : `${n} tópicos escolhidos não existem mais (ou não são desta disciplina). O estudo foi registrado sem eles.`,
+      'warn', { title: n === 1 ? 'Tópico não encontrado' : 'Tópicos não encontrados' });
+  }
   return res;
 }
 
@@ -7606,7 +8760,7 @@ function todayFocus(top, alts){
       h('span', { class:'num', text: fmtDuration(top.duration) }), h('span', { text: isReview ? ' de revisão sugeridos' : ' sugeridos' })),
     h('div', { class:'tf-actions' },
       h('button', { class:'btn primary lg', type:'button',
-        onclick:() => startTimer(top.discipline.id, top.topic ? top.topic.id : null, top.suggestedType) },
+        onclick:() => startTimer(top.discipline.id, top.topic ? [top.topic.id] : [], top.suggestedType ? [top.suggestedType] : []) },
         icon('i-play'), isReview ? 'Começar a revisar' : 'Começar a estudar'),
       h('button', { class:'linkbtn muted', type:'button', text:'Por quê?', onclick:() => explainAction(top) }),
       alts.length ? h('button', { class:'linkbtn muted', type:'button', text:'Outras opções', onclick:() => openAlternatives(alts) }) : null));
@@ -7705,7 +8859,7 @@ function openAlternatives(alts){
         h('span', { class:'line-t', text: a.discipline.name + (a.topic ? ' — ' + a.topic.name : '') }),
         h('span', { class:'line-s', text: capFirst(a.reasons[0] || '') })),
       h('button', { class:'btn ghost sm', type:'button', text:'Estudar', 'aria-label':'Estudar ' + a.discipline.name,
-        onclick:() => { Drawer.close(); startTimer(a.discipline.id, a.topic ? a.topic.id : null, a.suggestedType); } })))));
+        onclick:() => { Drawer.close(); startTimer(a.discipline.id, a.topic ? [a.topic.id] : [], a.suggestedType ? [a.suggestedType] : []); } })))));
   Drawer.open('Outras opções agora', body);
 }
 
@@ -7884,7 +9038,7 @@ function startReview(topicId, presetMethod){
         h('button', { class:'btn ghost', type:'button', text:'Registrar sem cronômetro',
           onclick:() => { close(); openReviewOutcomeModal(t.id, method, ReviewEngine.estimateMinutes(t, method)); } }),
         h('button', { class:'btn primary', type:'button', text:'Começar revisão',
-          onclick:() => { if(startTimer(t.disciplineId, t.id, 'revisao', method)) close(); } })
+          onclick:() => { if(startTimer(t.disciplineId, [t.id], ['revisao'], method)) close(); } })
       ]
     };
   }, { size:'wide' });
@@ -7914,8 +9068,8 @@ function openReviewOutcomeModal(topicId, method, suggestedMinutes){
           const comment = (($('#ro-comment') || {}).value || '').trim();
           /* v6.5 — SALVAR PRIMEIRO, FECHAR DEPOIS. Antes a janela fechava antes de
              gravar: se a gravação falhasse, o resultado e o comentário se perdiam. */
-          const ok = await saveSession({ disciplineId:t.disciplineId, topicId:t.id, date:todayISO(), minutes,
-            type:'revisao', reviewOutcome:outcome, reviewMethod:method, comment });
+          const ok = await saveSession({ disciplineId:t.disciplineId, date:todayISO(), minutes,
+            types:['revisao'], topics:[{ topicId:t.id, minutes:null, outcome }], reviewMethod:method, comment });
           if(!ok) return;
           close();
           // se veio de uma sessão de revisão montada, segue para o próximo item (como no cronômetro)
@@ -8040,6 +9194,449 @@ function openReviewPrimer(){
 }
 
 /* =========================================================================
+   v6.7 — A SEMANA EM DIAS (WeekPlan · WeekCommands)
+
+   O plano semanal continua sendo o núcleo: QUANTO estudar de cada disciplina
+   na semana (as metas, em `allocations`). A semana em dias é uma camada
+   OPCIONAL por cima dele — EM QUE DIA (e, se a pessoa quiser, em que horário).
+
+   Onde fica cada coisa:
+     plan.template        o MODELO da semana: [{ id, disciplineId, dow, minutes,
+                          start, order }] (dow 0 = domingo … 6 = sábado). Vale
+                          para as próximas semanas.
+     weeklyPlans[ws]      cada semana guarda o próprio registro (já era assim):
+       .allocations       as metas DAQUELA semana (o histórico não muda);
+       .blocks            a semana em dias: [{ id, disciplineId, date, minutes,
+                          start, order }] — `minutes` e `start` são opcionais
+                          (null = "só o dia" / "sem horário");
+       .rev               revisão da semana: cada mudança soma 1. Uma gravação
+                          feita a partir de uma versão velha (outra aba) é
+                          recusada em vez de apagar a outra em silêncio;
+       .keepExtra         disciplinas cuja distribuição acima da meta a pessoa
+                          disse que é intencional ("Manter assim");
+       .fromTemplate      a semana ainda está como o modelo a criou.
+     settings.studyDays   dias que aparecem no quadro (o resto fica numa faixa).
+
+   Regras:
+     · Arrastar, mover, mudar duração ou horário é PLANEJAMENTO. Nada disso
+       cria, muda ou apaga estudo — o progresso vem só dos estudos registrados.
+     · Semanas passadas são só consulta. Mexer nesta semana não muda o modelo
+       nem outras semanas; "Usar nas próximas semanas" é uma ação explícita.
+     · Nada é gravado durante o arraste: só a operação confirmada, uma vez.
+     · Estados derivados (parcial, concluído, sem dia) são calculados, nunca
+       gravados.
+   ========================================================================= */
+const WEEKDAY_NAMES = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const WEEKDAY_SHORT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const WEEKDAY_PLAIN = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+const BLOCK_MAX_MINUTES = 960;              // 16h num bloco só: teto defensivo, a interface sugere bem menos
+const MAX_BLOCKS_PER_WEEK = 200;
+
+const WeekPlan = {
+  /* ---------- datas ---------- */
+  currentStart(){ return dateToISO(startOfWeek(today())); },
+  startOf(iso){ return dateToISO(startOfWeek(parseISO(iso) || today())); },
+  datesOf(ws){ const d0 = parseISO(ws); return Array.from({ length:7 }, (_, i) => dateToISO(addDays(d0, i))); },
+  dowOf(iso){ const d = parseISO(iso); return d ? d.getDay() : null; },
+  /** "Segunda, 12 de outubro" */
+  dayLong(iso){ const d = parseISO(iso); return d ? `${WEEKDAY_NAMES[d.getDay()].replace('-feira', '')}, ${d.getDate()} de ${MONTHS[d.getMonth()]}` : iso; },
+  /** "Segunda-feira, 12 de outubro" (rótulos acessíveis) */
+  dayFull(iso){ const d = parseISO(iso); return d ? `${WEEKDAY_NAMES[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}` : iso; },
+  isStudyDay(iso){ return state.settings.studyDays.includes(this.dowOf(iso)); },
+
+  /* ---------- saneamento (backup, banco, formulários) ---------- */
+  cleanStart(v){ const t = str(v).trim(); return clockState(t) === 'valid' ? clockSettle(t) : null; },
+  cleanMinutes(v){ const n = Number(v); return (v !== null && v !== undefined && v !== '' && Number.isFinite(n) && n > 0) ? Math.min(BLOCK_MAX_MINUTES, Math.round(n)) : null; },
+  /** Blocos de uma semana registrada: só disciplinas existentes, só dias daquela semana, ids únicos. */
+  cleanBlocks(list, ws, discIds, fix, drop){
+    const f = fix || (() => {}), d = drop || (() => {});
+    const days = new Set(this.datesOf(ws));
+    const seen = new Set(), out = [];
+    (Array.isArray(list) ? list : []).forEach((b, i) => {
+      if(!b || typeof b !== 'object'){ d('block-date'); return; }
+      const disciplineId = typeof b.disciplineId === 'string' ? b.disciplineId.trim() : (isNum(b.disciplineId) ? String(b.disciplineId) : '');
+      if(!discIds.has(disciplineId)){ d('block-orphan'); return; }
+      if(!isStrictISODate(b.date) || !days.has(b.date)){ d('block-date'); return; }
+      let id = typeof b.id === 'string' && b.id.trim() ? b.id.trim() : '';
+      if(!id || seen.has(id)){ id = uid(); f('block-fix'); }
+      seen.add(id);
+      const minutes = this.cleanMinutes(b.minutes), start = this.cleanStart(b.start);
+      if(b.minutes !== null && b.minutes !== undefined && b.minutes !== '' && minutes === null) f('block-fix');
+      if(b.start !== null && b.start !== undefined && b.start !== '' && start === null) f('block-fix');
+      out.push({ id, disciplineId, date: b.date, minutes, start, order: isNum(b.order) ? b.order : i });
+    });
+    return this.reorder(out.slice(0, MAX_BLOCKS_PER_WEEK));
+  },
+  /** Modelo da semana (por dia da semana). */
+  cleanTemplate(list, discIds, fix, drop){
+    const f = fix || (() => {}), d = drop || (() => {});
+    const seen = new Set(), out = [];
+    (Array.isArray(list) ? list : []).forEach((b, i) => {
+      if(!b || typeof b !== 'object') return;
+      const disciplineId = typeof b.disciplineId === 'string' ? b.disciplineId.trim() : (isNum(b.disciplineId) ? String(b.disciplineId) : '');
+      if(!discIds.has(disciplineId)){ d('block-orphan'); return; }
+      if(!(Number.isInteger(b.dow) && b.dow >= 0 && b.dow <= 6)){ d('block-date'); return; }
+      let id = typeof b.id === 'string' && b.id.trim() ? b.id.trim() : '';
+      if(!id || seen.has(id)){ id = uid(); f('block-fix'); }
+      seen.add(id);
+      out.push({ id, disciplineId, dow: b.dow, minutes: this.cleanMinutes(b.minutes), start: this.cleanStart(b.start), order: isNum(b.order) ? b.order : i });
+    });
+    return out.slice(0, MAX_BLOCKS_PER_WEEK);
+  },
+  /** Ordem dentro de cada dia: 0, 1, 2… (estável). Devolve uma lista nova, ordenada por dia e posição. */
+  reorder(blocks){
+    const byDay = new Map();
+    blocks.slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || ((a.order || 0) - (b.order || 0)))
+      .forEach(b => { if(!byDay.has(b.date)) byDay.set(b.date, []); byDay.get(b.date).push(b); });
+    const out = [];
+    byDay.forEach(list => list.forEach((b, i) => out.push(Object.assign({}, b, { order:i }))));
+    return out;
+  },
+
+  /* ---------- modelo ↔ semana ---------- */
+  /** Os blocos que o modelo cria numa semana. Ids DETERMINÍSTICOS (modelo + semana): a prévia de uma
+      semana futura e a semana criada depois apontam para os mesmos blocos. */
+  blocksFromTemplate(template, ws){
+    const dates = this.datesOf(ws);
+    const byDow = new Map(dates.map(iso => [this.dowOf(iso), iso]));
+    return this.reorder((Array.isArray(template) ? template : []).filter(t => byDow.has(t.dow)).map(t => ({
+      id: t.id + '@' + ws, disciplineId: t.disciplineId, date: byDow.get(t.dow),
+      minutes: t.minutes === undefined ? null : t.minutes, start: t.start || null, order: t.order || 0
+    })));
+  },
+  /** O modelo a partir da organização de uma semana (ids novos: o modelo é outra coisa). */
+  templateFromBlocks(blocks){
+    return this.reorder(blocks).map(b => ({ id: uid(), disciplineId: b.disciplineId, dow: this.dowOf(b.date), minutes: b.minutes, start: b.start || null, order: b.order }));
+  },
+  /** A mesma organização? (para dizer se a semana está igual ao modelo) */
+  sameAsTemplate(blocks, template, ws){
+    const sig = list => this.reorder(list).map(b => [b.disciplineId, b.date, b.minutes || 0, b.start || ''].join('|')).join(';');
+    return sig(blocks || []) === sig(this.blocksFromTemplate(template, ws));
+  },
+  /** Semana registrada nova, a partir do plano ativo (metas + modelo). */
+  newSnapshot(plan, ws){
+    const ts = nowISO();
+    return {
+      id: ws, weekStart: ws, weekEnd: addDaysISO(ws, 6),
+      basePlanId: plan.id, availableMinutes: plan.weeklyAvailableMinutes,
+      allocations: (plan.allocations || []).map(a => ({ ...a })),
+      blocks: this.blocksFromTemplate(plan.template, ws),
+      rev: 0, fromTemplate: true, createdAt: ts, updatedAt: ts
+    };
+  },
+
+  /* ---------- leitura de uma semana ---------- */
+  /**
+   * Tudo o que a tela precisa saber de uma semana. Semana futura sem registro
+   * mostra a PRÉVIA do modelo (nada é criado só por olhar).
+   */
+  view(ws){
+    const cw = this.currentStart();
+    const snap = state.weeklyPlans.find(w => w.weekStart === ws) || null;
+    const plan = PlannerEngine.activePlan();
+    const kind = ws < cw ? 'past' : ws === cw ? 'current' : 'future';
+    let blocks = [], allocations = [], source = 'none', available = 0;
+    if(snap){
+      blocks = Array.isArray(snap.blocks) ? snap.blocks : [];
+      allocations = snap.allocations || [];
+      available = snap.availableMinutes || 0;
+      source = 'snapshot';
+    } else if(kind !== 'past' && plan){
+      blocks = this.blocksFromTemplate(plan.template, ws);
+      allocations = plan.allocations || [];
+      available = plan.weeklyAvailableMinutes || 0;
+      source = 'preview';
+    }
+    const goals = new Map();
+    allocations.forEach(a => goals.set(a.disciplineId, (goals.get(a.disciplineId) || 0) + (Number(a.targetMinutes) || 0)));
+    const dates = this.datesOf(ws);
+    // um bloco só aparece se a disciplina ainda existe (excluída = sai, como nas metas)
+    blocks = this.reorder(blocks.filter(b => getDiscipline(b.disciplineId) && dates.includes(b.date)));
+    const template = plan && Array.isArray(plan.template) ? plan.template : [];
+    return {
+      ws, we: dates[6], dates, kind, snap, plan, source, blocks, goals, allocations, available,
+      rev: snap ? (Number(snap.rev) || 0) : null,
+      editable: kind !== 'past' && !!plan,
+      keepExtra: new Set(snap && Array.isArray(snap.keepExtra) ? snap.keepExtra : []),
+      hasTemplate: template.length > 0,
+      matchesTemplate: template.length > 0 && this.sameAsTemplate(blocks, template, ws)
+    };
+  },
+
+  /**
+   * PROGRESSO — política única e determinística (sem estado gravado):
+   *   1. Para cada dia e disciplina, o tempo REAL é a soma dos estudos daquela
+   *      disciplina naquele dia (um estudo com três tópicos conta uma vez).
+   *      O horário planejado não precisa bater: 19:00 planejado, estudou às
+   *      16:00 — conta.
+   *   2. Esse tempo é distribuído pelos blocos da disciplina naquele dia, na
+   *      ordem em que aparecem: cada bloco com duração recebe até a própria
+   *      duração; o que sobrar vai para o primeiro bloco SEM duração ("só o
+   *      dia"), que fica realizado com qualquer tempo. Cada minuto real é
+   *      usado UMA vez.
+   *   3. O que sobra depois disso é "além do planejado" — aparece no último
+   *      bloco do dia, nunca vira tempo de outra disciplina.
+   * → { blocks: Map id → { planned, used, extra, state }, disc: Map discId → { goal, scheduled, realized, unscheduled, over }, dayPlanned: Map date → min }
+   *   state: 'done' | 'partial' | 'open' (ainda pela frente) | 'idle' (dia passou sem estudo registrado)
+   */
+  progress(view){
+    const key = 'weekProg:' + view.ws + ':' + view.source + ':' + (view.rev === null ? 'p' : view.rev) + ':' + todayISO() + ':' + view.blocks.length;
+    return DerivedCache.get(key, () => this._progress(view));
+  },
+  _progress(view){
+    const tISO = todayISO();
+    const real = new Map();          // date|disc → minutos estudados
+    const realWeek = new Map();      // disc → minutos na semana
+    state.sessions.forEach(s => {
+      if(s.date < view.ws || s.date > view.we) return;
+      const m = Number(s.minutes) || 0;
+      if(m <= 0) return;
+      const k = s.date + '|' + s.disciplineId;
+      real.set(k, (real.get(k) || 0) + m);
+      realWeek.set(s.disciplineId, (realWeek.get(s.disciplineId) || 0) + m);
+    });
+    const blocks = new Map();
+    const groups = new Map();
+    view.blocks.forEach(b => { const k = b.date + '|' + b.disciplineId; if(!groups.has(k)) groups.set(k, []); groups.get(k).push(b); });
+    groups.forEach((list, k) => {
+      let pool = real.get(k) || 0;
+      const timed = list.filter(b => isNum(b.minutes) && b.minutes > 0);
+      const loose = list.filter(b => !(isNum(b.minutes) && b.minutes > 0));
+      timed.forEach(b => { const used = Math.min(b.minutes, pool); pool -= used; blocks.set(b.id, { planned:b.minutes, used, extra:0 }); });
+      loose.forEach((b, i) => { const used = i === 0 ? pool : 0; if(i === 0) pool = 0; blocks.set(b.id, { planned:null, used, extra:0 }); });
+      if(pool > 0){ const last = timed.length ? timed[timed.length - 1] : list[list.length - 1]; blocks.get(last.id).extra = pool; }
+      list.forEach(b => {
+        const p = blocks.get(b.id);
+        const done = p.planned ? p.used >= p.planned : p.used > 0;
+        p.state = done ? 'done' : p.used > 0 ? 'partial' : (b.date < tISO ? 'idle' : 'open');
+      });
+    });
+    const disc = new Map();
+    const touch = id => { if(!disc.has(id)) disc.set(id, { goal:0, scheduled:0, blocks:0, loose:0, realized: realWeek.get(id) || 0 }); return disc.get(id); };
+    view.goals.forEach((g, id) => { touch(id).goal = g; });
+    view.blocks.forEach(b => { const d = touch(b.disciplineId); d.blocks++; if(isNum(b.minutes) && b.minutes > 0) d.scheduled += b.minutes; else d.loose++; });
+    disc.forEach(d => { d.unscheduled = Math.max(0, d.goal - d.scheduled); d.over = Math.max(0, d.scheduled - d.goal); });
+    const dayPlanned = new Map(view.dates.map(iso => [iso, 0]));
+    view.blocks.forEach(b => { if(isNum(b.minutes)) dayPlanned.set(b.date, (dayPlanned.get(b.date) || 0) + b.minutes); });
+    return { blocks, disc, dayPlanned, real };
+  },
+
+  /** Prazos de um dia (os MESMOS registros da tela Prazos — nada é copiado). */
+  deadlinesOn(iso){
+    return state.deadlines.filter(dl => dl.date === iso).sort((a, b) =>
+      (DeadlineEngine.isDone(a) - DeadlineEngine.isDone(b)) || (PriorityEngine.clamp(b.priority) - PriorityEngine.clamp(a.priority)) || str(a.title).localeCompare(str(b.title), 'pt-BR'));
+  },
+
+  /** Horário do bloco: "19:00–20:00", "19:00" (sem duração) ou ''. Com virada: "23:30–00:30". */
+  timeText(b){
+    if(!b.start) return '';
+    const s = parseClock(b.start);
+    if(s === null) return '';
+    if(!isNum(b.minutes) || !(b.minutes > 0)) return b.start;
+    const e = (s + b.minutes) % 1440;
+    return `${b.start}–${String(Math.floor(e / 60)).padStart(2, '0')}:${String(e % 60).padStart(2, '0')}`;
+  },
+  /** Termina no dia seguinte? */
+  crossesMidnight(b){ const s = parseClock(b.start); return s !== null && isNum(b.minutes) && s + b.minutes > 1440; },
+  /** Outros blocos COM horário no mesmo dia que se cruzam com este (só um aviso; nunca bloqueia). */
+  overlaps(blocks, b){
+    const s = parseClock(b.start);
+    if(s === null) return [];
+    const e = s + (isNum(b.minutes) && b.minutes > 0 ? b.minutes : 1);
+    return blocks.filter(x => x.id !== b.id && x.date === b.date && x.start).filter(x => {
+      const xs = parseClock(x.start), xe = xs + (isNum(x.minutes) && x.minutes > 0 ? x.minutes : 1);
+      return xs < e && s < xe;
+    });
+  },
+
+  /** Duração sugerida ao colocar uma disciplina num dia: o que falta distribuir dela (até 1h), senão nenhuma. */
+  suggestMinutes(view, disciplineId){
+    const d = this.progress(view).disc.get(disciplineId);
+    const left = d ? d.unscheduled : 0;
+    if(!(left > 0)) return null;
+    return Math.max(PLANNER.MIN_BLOCK, Math.min(60, roundTo(left, PLANNER.ROUND_TO)));
+  }
+};
+
+/**
+ * Gravações da semana em dias. Cada uma é UMA transação que lê a semana como
+ * está no banco, confere a revisão (`baseRev`) e aplica uma operação com
+ * sentido ("mover este bloco para quarta"), não um retrato inteiro da tela.
+ *   → { ok:true, week } | { ok:false, reason:'conflict'|'past'|'missing'|'no-plan'|'error' }
+ * `opts.force`: a pessoa viu "Seu planejamento foi alterado em outra aba." e
+ * escolheu aplicar a mudança sobre a versão atual (a operação é revalidada).
+ */
+const WeekCommands = {
+  async _mutate(ws, baseRev, apply, opts){
+    const o = opts || {};
+    if(ws < WeekPlan.currentStart()) return { ok:false, reason:'past' };
+    try {
+      return await DB.atomic(['weeklyPlans','plans'], async api => {
+        let wk = await api.get('weeklyPlans', ws);
+        if(!wk){
+          // semana futura ainda sem registro: nasce do plano ativo e do modelo (os ids da prévia batem)
+          const plans = await api.getAll('plans');
+          const plan = plans.find(p => p.active);
+          if(!plan) return { ok:false, reason:'no-plan' };
+          wk = WeekPlan.newSnapshot(plan, ws);
+        }
+        const curRev = Number(wk.rev) || 0;
+        if(!o.force){
+          const stale = (baseRev === null || baseRev === undefined) ? curRev > 0 : curRev !== baseRev;
+          if(stale) return { ok:false, reason:'conflict', current:wk };
+        }
+        const next = Object.assign({}, wk, { blocks: (Array.isArray(wk.blocks) ? wk.blocks : []).map(b => Object.assign({}, b)) });
+        const res = apply(next) || { ok:true };
+        if(!res.ok) return res;
+        next.blocks = WeekPlan.reorder(next.blocks).slice(0, MAX_BLOCKS_PER_WEEK);
+        next.rev = curRev + 1;
+        next.updatedAt = nowISO();
+        if(!res.keepTemplateFlag) next.fromTemplate = false;
+        api.put('weeklyPlans', next);
+        return Object.assign({}, res, { ok:true, week:next });
+      });
+    } catch(err){
+      console.error('Falha ao gravar o planejamento da semana:', err);
+      return { ok:false, reason:'error', error:err };
+    }
+  },
+  /** Coloca a disciplina num dia (na posição `index`, ou no fim). */
+  addBlock(ws, baseRev, b, opts){
+    return this._mutate(ws, baseRev, wk => {
+      if(!WeekPlan.datesOf(ws).includes(b.date)) return { ok:false, reason:'missing' };
+      if(wk.blocks.length >= MAX_BLOCKS_PER_WEEK) return { ok:false, reason:'full' };
+      const block = { id: b.id || uid(), disciplineId: b.disciplineId, date: b.date,
+        minutes: WeekPlan.cleanMinutes(b.minutes), start: WeekPlan.cleanStart(b.start), order: 0 };
+      const day = WeekPlan.reorder(wk.blocks).filter(x => x.date === b.date);
+      const at = isNum(b.index) ? clamp(Math.round(b.index), 0, day.length) : day.length;
+      day.splice(at, 0, block);
+      day.forEach((x, i) => { x.order = i; });
+      wk.blocks = wk.blocks.filter(x => x.date !== b.date).concat(day);
+      return { ok:true, block };
+    }, opts);
+  },
+  /** Muda um bloco de dia e/ou de posição. Mesmo bloco, mesma identidade — nunca uma cópia. */
+  moveBlock(ws, baseRev, id, toDate, index, opts){
+    return this._mutate(ws, baseRev, wk => {
+      const cur = wk.blocks.find(x => x.id === id);
+      if(!cur) return { ok:false, reason:'missing' };
+      if(!WeekPlan.datesOf(ws).includes(toDate)) return { ok:false, reason:'missing' };
+      const from = cur.date;
+      const rest = wk.blocks.filter(x => x.id !== id);
+      const day = WeekPlan.reorder(rest).filter(x => x.date === toDate);
+      const at = isNum(index) ? clamp(Math.round(index), 0, day.length) : day.length;
+      const moved = Object.assign({}, cur, { date: toDate });
+      day.splice(at, 0, moved);
+      day.forEach((x, i) => { x.order = i; });
+      wk.blocks = rest.filter(x => x.date !== toDate).concat(day);
+      return { ok:true, block:moved, from };
+    }, opts);
+  },
+  /** Duração e horário de um bloco (e, opcionalmente, o dia). */
+  updateBlock(ws, baseRev, id, changes, opts){
+    return this._mutate(ws, baseRev, wk => {
+      const cur = wk.blocks.find(x => x.id === id);
+      if(!cur) return { ok:false, reason:'missing' };
+      if('minutes' in changes) cur.minutes = WeekPlan.cleanMinutes(changes.minutes);
+      if('start' in changes) cur.start = WeekPlan.cleanStart(changes.start);
+      if(changes.date && changes.date !== cur.date){
+        if(!WeekPlan.datesOf(ws).includes(changes.date)) return { ok:false, reason:'missing' };
+        const others = wk.blocks.filter(x => x.date === changes.date && x.id !== id);
+        cur.date = changes.date;
+        cur.order = others.length ? Math.max(...others.map(x => x.order || 0)) + 1 : 0;
+      }
+      return { ok:true, block:cur };
+    }, opts);
+  },
+  /** Vários blocos de uma vez ("Ajustar os blocos"): { id → minutos|null }. */
+  setMinutes(ws, baseRev, map, opts){
+    return this._mutate(ws, baseRev, wk => {
+      let n = 0;
+      Object.keys(map).forEach(id => { const b = wk.blocks.find(x => x.id === id); if(b){ b.minutes = WeekPlan.cleanMinutes(map[id]); n++; } });
+      return n ? { ok:true } : { ok:false, reason:'missing' };
+    }, opts);
+  },
+  removeBlock(ws, baseRev, id, opts){
+    return this._mutate(ws, baseRev, wk => {
+      const cur = wk.blocks.find(x => x.id === id);
+      if(!cur) return { ok:false, reason:'missing' };
+      wk.blocks = wk.blocks.filter(x => x.id !== id);
+      return { ok:true, block:cur };
+    }, opts);
+  },
+  /** "Manter assim": a distribuição acima da meta desta disciplina é intencional nesta semana. */
+  keepExtra(ws, baseRev, disciplineId, opts){
+    return this._mutate(ws, baseRev, wk => {
+      const set = new Set(Array.isArray(wk.keepExtra) ? wk.keepExtra : []);
+      set.add(disciplineId);
+      wk.keepExtra = Array.from(set);
+      return { ok:true, keepTemplateFlag:true };
+    }, opts);
+  },
+  /**
+   * Operações que mexem no MODELO (plano ativo) e numa semana juntos.
+   *   kind 'save-template'  → o modelo passa a ser a organização desta semana;
+   *   kind 'apply-template' → esta semana passa a ter a organização do modelo;
+   *   kind 'goal'           → a meta de uma disciplina muda nesta semana (e, com
+   *                           `alsoPlan`, no plano e nas semanas futuras já criadas).
+   */
+  async withPlan(ws, baseRev, kind, payload, opts){
+    const o = opts || {};
+    if(ws < WeekPlan.currentStart()) return { ok:false, reason:'past' };
+    try {
+      return await DB.atomic(['weeklyPlans','plans'], async api => {
+        const plans = await api.getAll('plans');
+        const plan = plans.find(p => p.active);
+        if(!plan) return { ok:false, reason:'no-plan' };
+        let wk = await api.get('weeklyPlans', ws);
+        if(!wk) wk = WeekPlan.newSnapshot(plan, ws);
+        const curRev = Number(wk.rev) || 0;
+        if(!o.force){
+          const stale = (baseRev === null || baseRev === undefined) ? curRev > 0 : curRev !== baseRev;
+          if(stale) return { ok:false, reason:'conflict', current:wk };
+        }
+        const ts = nowISO();
+        const next = Object.assign({}, wk, { blocks: (Array.isArray(wk.blocks) ? wk.blocks : []).map(b => Object.assign({}, b)) });
+        if(kind === 'save-template'){
+          const template = WeekPlan.templateFromBlocks(next.blocks.filter(b => getDiscipline(b.disciplineId)));
+          api.put('plans', Object.assign({}, plan, { template, updatedAt: ts }));
+          // esta semana passa a ser "igual ao modelo": mesmos ids do modelo, para a próxima comparação
+          next.blocks = WeekPlan.blocksFromTemplate(template, ws);
+          next.fromTemplate = true;
+        } else if(kind === 'apply-template'){
+          next.blocks = WeekPlan.blocksFromTemplate(plan.template, ws);
+          next.fromTemplate = true;
+        } else if(kind === 'goal'){
+          const min = Math.max(0, Math.round(Number(payload.minutes) || 0));
+          const setGoal = (allocs) => {
+            const list = (allocs || []).map(a => ({ ...a }));
+            const a = list.find(x => x.disciplineId === payload.disciplineId);
+            if(a) a.targetMinutes = min;
+            else { const d = getDiscipline(payload.disciplineId); list.push({ disciplineId: payload.disciplineId, priority: d ? PriorityEngine.clamp(d.priority) : PRIORITY_DEFAULT, minWeeklyMinutes:0, targetMinutes:min }); }
+            return list;
+          };
+          next.allocations = setGoal(next.allocations);
+          if(payload.alsoPlan){
+            const newPlan = Object.assign({}, plan, { allocations: setGoal(plan.allocations), updatedAt: ts });
+            api.put('plans', newPlan);
+            const weeks = await api.getAll('weeklyPlans');
+            weeks.filter(w => w && w.weekStart > ws).forEach(w => api.put('weeklyPlans', Object.assign({}, w, { allocations: setGoal(w.allocations), rev:(Number(w.rev) || 0) + 1, updatedAt: ts })));
+          }
+        } else return { ok:false, reason:'error' };
+        next.blocks = WeekPlan.reorder(next.blocks);
+        next.rev = curRev + 1;
+        next.updatedAt = ts;
+        api.put('weeklyPlans', next);
+        return { ok:true, week:next };
+      });
+    } catch(err){
+      console.error('Falha ao gravar o modelo da semana:', err);
+      return { ok:false, reason:'error', error:err };
+    }
+  }
+};
+
+/* =========================================================================
    TELA: PLANEJAMENTO
    ========================================================================= */
 function ensurePlanDraft(){
@@ -8096,7 +9693,8 @@ function renderPlan(){
     return;
   }
 
-  if(plan && !ui.planEditing){ mount(root, planOverview(plan)); return; }
+  // v6.7: com plano, a tela mostra a semana em dias (a meta semanal continua no topo, como referência)
+  if(plan && !ui.planEditing){ mount(root, planBoard(plan)); planAfterRender(); return; }
 
   const draft = ensurePlanDraft();
 
@@ -8199,42 +9797,7 @@ function renderPlan(){
   mount(root, h('div', { class:'narrow-screen wide' }, parts));
 }
 
-/** Planejamento em leitura: quanto tempo, como está dividido e como vai a semana. */
-function planOverview(plan){
-  const prog = PlannerEngine.getCurrentWeekProgress();
-  const pct = prog.plannedTotal > 0 ? clamp(prog.pct || 0, 0, 999) : null;
-  const head = h('section', { class:'focus-block compact', 'aria-labelledby':'pl-title' },
-    h('p', { class:'tf-eyebrow', text: plan.name && plan.name !== 'Meu plano' ? `Plano: ${plan.name}` : 'Seu tempo semanal' }),
-    h('h3', { class:'tf-title', id:'pl-title' }, h('span', { class:'num', text: fmtDuration(plan.weeklyAvailableMinutes) }), ' por semana'),
-    pct !== null ? h('div', { class:'tf-progress' },
-      h('p', { class:'tf-reason', text:`Nesta semana: ${fmtDuration(prog.countedTotal)} de ${fmtDuration(prog.plannedTotal)} do plano` + (prog.remainingTotal > 0 ? ` · faltam ${fmtDuration(prog.remainingTotal)}` : ' · plano concluído')
-        + (prog.extraTotal >= 1 ? ` · ${fmtDuration(prog.extraTotal)} além do plano` : '') }),
-      h('div', { class:'nr-bar' }, progressBar(pct, pct >= 100 ? 'done' : null, 'plan-week'), h('span', { class:'nr-value num', text: fmtPct(pct) }))) : null,
-    h('div', { class:'tf-actions' },
-      h('button', { class:'btn primary', type:'button', text:'Ajustar', onclick:() => { ui.planEditing = true; ui.planDraft = null; renderPlan(); } }),
-      h('button', { class:'linkbtn muted', type:'button', text: state.plans.length > 1 ? `Seus planos (${state.plans.length})` : 'Criar outro plano', onclick: openPlansDrawer })));
-
-  const rows = prog.perDiscipline.length ? prog.perDiscipline.map(x => ({ id:x.disciplineId, planned:x.planned, realized:x.realized }))
-    : (plan.allocations || []).map(a => ({ id:a.disciplineId, planned:a.targetMinutes || 0,
-        realized: minutesInRange({ start:startOfWeek(today()), end:endOfWeek(today()) }, a.disciplineId) }));
-  const list = h('ul', { class:'alloc-list' });
-  rows.filter(r => getDiscipline(r.id) && (r.planned > 0 || r.realized > 0)).sort((a,b) => b.planned - a.planned).forEach(r => {
-    const d = getDiscipline(r.id);
-    const p = r.planned > 0 ? (r.realized / r.planned) * 100 : 0;
-    list.append(h('li', { class:'alloc-line' },
-      h('span', { class:'al-name' }, h('span', { class:'al-t', text:d.name }), h('span', { class:'al-s', text:areaNameOf(d) })),
-      h('span', { class:'al-bar' }, barWithTip(p, p >= 100 ? 'done' : null, d.name, [
-        ['Planejado', fmtDuration(r.planned)], ['Realizado', fmtDuration(r.realized)],
-        ['Restante', fmtDuration(Math.max(0, r.planned - r.realized))]])),
-      h('span', { class:'al-v num', text: `${fmtDuration(r.realized)} / ${fmtDuration(r.planned)}` })));
-  });
-  return h('div', { class:'narrow-screen' },
-    head,
-    h('section', { class:'list-block', 'aria-labelledby':'pl-div' },
-      h('h3', { class:'block-label', id:'pl-div' }, 'Divisão desta semana', helpDot('planosemana')),
-      list,
-      h('p', { class:'block-note', text:'Cada semana guarda o próprio registro: ajustar o plano não reescreve semanas que já passaram.' })));
-}
+/* v6.7 — a leitura do plano (antes `planOverview`) virou o quadro da semana: ver planBoard. */
 
 /** Lista de planos (ativar, excluir, criar) — fora do caminho principal. */
 function openPlansDrawer(){
@@ -8335,13 +9898,9 @@ async function savePlanDraft(applyToCurrentWeek){
 
     let wp = null;
     if(applyToCurrentWeek){
+      // v6.7: só as METAS da semana atual mudam; a organização em dias dela é preservada (PlanCommands)
       const ws = dateToISO(startOfWeek(today()));
-      wp = {
-        id: ws, weekStart: ws, weekEnd: dateToISO(endOfWeek(today())),
-        basePlanId: plan.id, availableMinutes: plan.weeklyAvailableMinutes,
-        allocations: plan.allocations.map(a => ({ ...a })),
-        createdAt: nowISO(), updatedAt: nowISO()
-      };
+      wp = { id: ws, weekStart: ws };
     }
 
     try {
@@ -8432,6 +9991,884 @@ async function deletePlan(id){
   ui.planDraft = null;
   await safeRefresh();
   toast('Plano excluído.');
+}
+
+/* =========================================================================
+   v6.7 — QUADRO DA SEMANA (tela Planejamento)
+
+   Lê de cima para baixo como a pessoa pensa a semana:
+     1. a META da semana (a referência) e quanto já foi estudado;
+     2. qual semana é, com anterior / próxima;
+     3. avisos humanos (só quando há o que dizer);
+     4. as disciplinas, com quanto falta pôr em algum dia;
+     5. os dias — blocos planejados, prazos do dia e progresso real;
+     6. os dias fora do planejamento (com prazos e estudos, se houver).
+   Arrastar é atalho: tudo também se faz por botões e menus, com teclado e no
+   toque. Nada é gravado durante o arraste.
+   ========================================================================= */
+const PlanBoard = {
+  busy: false,           // uma operação de cada vez (cliques rápidos não viram duas gravações)
+  landed: null,          // bloco que acabou de mudar de lugar: entra com um assentamento curto
+  focusAfter: null,      // data-fk que recebe o foco depois do próximo desenho
+  doneSeen: new Map(),   // bloco → estado no desenho anterior (transição discreta para "concluído")
+  ro: null
+};
+const PLAN_COL_MIN = 140;    // largura mínima de um dia no quadro (px); abaixo disso a semana quebra em duas linhas
+
+function planWeekStart(){
+  const off = clamp(Math.round(Number(ui.planWeekOffset) || 0), -104, 26);
+  return dateToISO(addDays(startOfWeek(today()), off * 7));
+}
+
+/** Rótulo relativo da semana escolhida. */
+function planWeekRelative(off){
+  if(off === 0) return 'Esta semana';
+  if(off === -1) return 'Semana passada';
+  if(off === 1) return 'Próxima semana';
+  return off < 0 ? `Há ${-off} semanas` : `Daqui a ${off} semanas`;
+}
+
+function planBoard(plan){
+  const ws = planWeekStart();
+  const view = WeekPlan.view(ws);
+  const prog = WeekPlan.progress(view);
+  const root = h('div', { class:'plan-screen', 'data-week':ws });
+  root.append(planWeekHead(plan, view, prog));
+  root.append(planWeekNav(view));
+  const notices = planWeekNotices(view, prog);
+  if(notices) root.append(notices);
+  if(view.editable) root.append(planTray(view, prog));
+  root.append(planDays(view, prog));
+  const off = planOffDays(view, prog);
+  if(off) root.append(off);
+  root.append(h('p', { class:'block-note wk-foot', text: view.kind === 'past'
+    ? 'Cada semana guarda o próprio registro: mudar o plano ou o modelo não reescreve semanas que já passaram.'
+    : 'Organizar a semana é planejamento: arrastar ou mover não registra estudo. O progresso de cada dia vem dos estudos que você registra, em qualquer horário daquele dia.' }));
+  PlanDnD.bind(root, view);
+  return root;
+}
+
+/* ---------- 1. a meta da semana ---------- */
+function planWeekHead(plan, view, prog){
+  const planned = sum(Array.from(view.goals.values()));
+  let counted = 0;
+  view.goals.forEach((g, id) => { const d = prog.disc.get(id); counted += PlanRules.counted(g, d ? d.realized : 0); });
+  const realized = sum(Array.from(prog.real.values()));
+  const extra = Math.max(0, realized - counted), remaining = Math.max(0, planned - counted);
+  const pct = planned > 0 ? clamp((counted / planned) * 100, 0, 999) : null;
+  const off = Number(ui.planWeekOffset) || 0;
+  const eyebrow = [planWeekRelative(off), plan.name && plan.name !== 'Meu plano' ? `Plano: ${plan.name}` : null].filter(Boolean).join(' · ');
+  const title = view.source === 'none'
+    ? h('h3', { class:'tf-title', id:'pl-title', text:'Sem plano registrado nesta semana' })
+    : h('h3', { class:'tf-title', id:'pl-title' }, h('span', { class:'num', text: fmtDuration(view.available || planned) }), ' por semana');
+  let line = null;
+  if(pct !== null && view.kind !== 'future'){
+    line = h('div', { class:'tf-progress' },
+      h('p', { class:'tf-reason', text:`${view.kind === 'past' ? 'Nessa semana' : 'Nesta semana'}: ${fmtDuration(counted)} de ${fmtDuration(planned)} do plano` +
+        (remaining > 0 ? (view.kind === 'past' ? ` · ${fmtDuration(remaining)} não estudadas` : ` · faltam ${fmtDuration(remaining)}`) : ' · plano concluído') +
+        (extra >= 1 ? ` · ${fmtDuration(extra)} além do plano` : '') }),
+      h('div', { class:'nr-bar' }, progressBar(pct, pct >= 100 ? 'done' : null, 'plan-week-' + view.ws), h('span', { class:'nr-value num', text: fmtPct(pct) })));
+  } else if(view.kind === 'future' && planned > 0){
+    line = h('p', { class:'tf-reason', text:`${fmtDuration(planned)} planejadas entre as disciplinas. A semana ainda não começou.` });
+  } else if(view.source === 'none'){
+    line = h('p', { class:'tf-reason', text: realized > 0 ? `Você estudou ${fmtDuration(realized)} nessa semana.` : 'Nenhum estudo registrado nessa semana.' });
+  }
+  return h('section', { class:'focus-block compact wk-head', 'aria-labelledby':'pl-title' },
+    h('p', { class:'tf-eyebrow', text: eyebrow }),
+    title, line,
+    h('div', { class:'tf-actions' },
+      h('button', { class:'btn primary', type:'button', text:'Ajustar metas', onclick:() => { ui.planEditing = true; ui.planDraft = null; renderPlan(); } }),
+      h('button', { class:'linkbtn muted', type:'button', text: state.plans.length > 1 ? `Seus planos (${state.plans.length})` : 'Criar outro plano', onclick: openPlansDrawer })));
+}
+
+/* ---------- 2. qual semana ---------- */
+function planWeekNav(view){
+  const off = Number(ui.planWeekOffset) || 0;
+  const go = (d, fk) => { ui.planWeekOffset = clamp(off + d, -104, 26); PlanBoard.focusAfter = fk; renderPlan(); };
+  const range = fmtRangeLabel({ start: parseISO(view.ws), end: parseISO(view.we) });
+  const prev = h('button', { class:'icon-btn wk-step', type:'button', 'data-fk':'wk-prev', 'aria-label':'Semana anterior', title:'Semana anterior',
+    disabled: off <= -104, onclick:() => go(-1, 'wk-prev') }, icon('i-back'));
+  const next = h('button', { class:'icon-btn wk-step', type:'button', 'data-fk':'wk-next', 'aria-label':'Próxima semana', title:'Próxima semana',
+    disabled: off >= 26, onclick:() => go(1, 'wk-next') }, icon('i-next'));
+  const tools = h('div', { class:'wk-tools' },
+    off !== 0 ? h('button', { class:'btn ghost sm', type:'button', 'data-fk':'wk-now', text:'Ir para esta semana', onclick:() => go(-off, 'wk-next') }) : null,
+    h('button', { class:'btn ghost sm', type:'button', 'data-fk':'wk-days', onclick: openStudyDaysModal }, icon('i-plan'), 'Personalizar dias'));
+  /* O que uma mudança aqui atinge — dito com todas as letras, sem esconder o caminho. */
+  let scope = null;
+  if(view.kind === 'past'){
+    scope = h('p', { class:'wk-scope', text:'Semana encerrada: só para consulta.' });
+  } else if(view.editable){
+    const parts = [];
+    let text;
+    if(view.matchesTemplate) text = view.blocks.length ? 'Igual ao seu modelo de semana. Mudanças aqui valem só para esta semana.' : '';
+    else if(view.hasTemplate) text = 'Esta semana está diferente do seu modelo. As mudanças valem só para ela.';
+    else text = view.blocks.length ? 'As mudanças valem só para esta semana.' : '';
+    if(text) parts.push(h('span', { text }));
+    if(view.blocks.length && !view.matchesTemplate){
+      parts.push(h('button', { class:'linkbtn', type:'button', 'data-fk':'wk-save-tpl', text: view.hasTemplate ? 'Usar esta organização nas próximas semanas' : 'Repetir nas próximas semanas',
+        onclick: () => planSaveTemplate(view) }));
+    }
+    if(view.hasTemplate && !view.matchesTemplate){
+      parts.push(h('button', { class:'linkbtn muted', type:'button', text:'Voltar ao modelo', onclick: () => planApplyTemplate(view) }));
+    }
+    if(view.blocks.length){
+      parts.push(h('button', { class:'linkbtn muted', type:'button', text:'Limpar os dias', onclick: () => planClearWeek(view) }));
+    }
+    if(parts.length) scope = h('p', { class:'wk-scope' }, parts);
+  }
+  return h('div', { class:'wk-bar' },
+    h('div', { class:'wk-nav', role:'group', 'aria-label':'Escolher a semana' },
+      prev,
+      h('div', { class:'wk-when', 'aria-live':'polite' },
+        h('span', { class:'wk-rel', text: planWeekRelative(off) }),
+        h('span', { class:'wk-range', text: range })),
+      next),
+    tools,
+    scope);
+}
+
+/* ---------- 3. avisos ---------- */
+function planWeekNotices(view, prog){
+  if(!view.editable) return null;
+  const items = [];
+  prog.disc.forEach((x, id) => {
+    const d = getDiscipline(id);
+    if(!d || x.over <= 0 || view.keepExtra.has(id)) return;
+    const text = x.goal > 0
+      ? `Você distribuiu ${fmtDuration(x.scheduled)} de ${d.name}, mas a meta semanal é de ${fmtDuration(x.goal)}.`
+      : `Você distribuiu ${fmtDuration(x.scheduled)} de ${d.name} nesta semana, mas ela não tem meta semanal no plano.`;
+    items.push(h('li', { class:'wk-notice' },
+      h('p', { class:'wk-notice-t', text }),
+      h('div', { class:'wk-notice-a' },
+        h('button', { class:'btn ghost sm', type:'button', text:'Ajustar os blocos', onclick:() => openAdjustBlocks(view, id) }),
+        h('button', { class:'btn ghost sm', type:'button', text: x.goal > 0 ? `Mudar a meta para ${fmtDuration(x.scheduled)}` : `Criar meta de ${fmtDuration(x.scheduled)}`,
+          onclick:() => openGoalUpdate(view, id, x.scheduled) }),
+        h('button', { class:'linkbtn muted', type:'button', text:'Manter assim', title:'A programação extra é intencional nesta semana',
+          onclick:() => runWeekOp(force => WeekCommands.keepExtra(view.ws, view.rev, id, { force }), {
+            done:() => toast('O aviso não aparece mais nesta semana.', 'ok', { title:`${d.name}: programação mantida` }) }) }))));
+  });
+  if(!items.length) return null;
+  return h('section', { class:'wk-notices', 'aria-label':'Avisos da semana' }, h('ul', { class:'wk-notice-list' }, items));
+}
+
+/* ---------- 4. disciplinas ---------- */
+function planTray(view, prog){
+  const discs = activeDisciplines().slice().sort((a, b) => ((view.goals.get(b.id) || 0) - (view.goals.get(a.id) || 0)) || sortByName(a, b));
+  const LIMIT = 10;
+  const shown = ui.planTrayAll ? discs : discs.slice(0, LIMIT);
+  const list = h('ul', { class:'tray-list', 'aria-label':'Disciplinas' });
+  shown.forEach(d => list.append(h('li', { class:'tray-item' }, trayCard(view, prog, d))));
+  const head = h('div', { class:'tray-head' },
+    h('h3', { class:'block-label', id:'tray-t' }, 'Disciplinas', helpDot('semanadias')),
+    h('p', { class:'tray-hint' },
+      h('span', { class:'th-drag', text:'Arraste para um dia da semana — ou use "Colocar em um dia".' }),
+      h('span', { class:'th-touch', text:'Use "Colocar em um dia" em cada disciplina.' })));
+  const more = discs.length > LIMIT ? h('button', { class:'linkbtn muted tray-more', type:'button', 'aria-expanded': ui.planTrayAll ? 'true' : 'false',
+    text: ui.planTrayAll ? 'Mostrar menos' : `Mostrar todas (${discs.length})`, onclick:() => { ui.planTrayAll = !ui.planTrayAll; renderPlan(); } }) : null;
+  const drop = h('div', { class:'tray-drop', 'aria-hidden':'true' }, icon('i-close', 'btn-icon'), h('span', { text:'Solte aqui para tirar do dia' }));
+  return h('section', { class:'wk-tray', 'aria-labelledby':'tray-t', 'data-drop':'tray' }, head, list, more, drop);
+}
+
+function trayCard(view, prog, d){
+  const x = prog.disc.get(d.id) || { goal:0, scheduled:0, realized:0, unscheduled:0, blocks:0, loose:0 };
+  const n = topicsOf(d.id).length;
+  const done = x.goal > 0 && x.realized >= x.goal;
+  let left;
+  if(x.goal > 0 && x.unscheduled > 0) left = `${fmtDuration(x.unscheduled)} ainda sem dia definido`;
+  else if(x.goal > 0) left = 'Toda a meta já tem dia';
+  else left = x.blocks ? plural(x.blocks, 'dia escolhido', 'dias escolhidos') : 'Sem meta nesta semana';
+  const days = view.dates.map(iso => ({ label: WeekPlan.dayLong(iso) + (WeekPlan.isStudyDay(iso) ? '' : ' (fora dos dias de estudo)'),
+    run: () => planAddBlock(view, d.id, iso) }));
+  return h('div', { class:'tray-card' + (done ? ' is-done' : ''), 'data-drag':'disc', 'data-disc':d.id },
+    h('div', { class:'tc-top' },
+      h('span', { class:'tc-grip', 'aria-hidden':'true' }, icon('i-grip', 'btn-icon')),
+      h('span', { class:'tc-name', text:d.name, title:d.name }),
+      priorityMark(d.priority, { compact:true })),
+    h('p', { class:'tc-sub' },
+      h('span', { class:'num', text: x.goal > 0 ? `${fmtDuration(x.goal)} na semana` : 'Sem meta' }),
+      h('span', { class:'tc-dot', 'aria-hidden':'true', text:'·' }),
+      h('span', { text: plural(n, 'tópico', 'tópicos') })),
+    x.goal > 0 ? h('div', { class:'tc-bar', title:`Estudado: ${fmtDuration(x.realized)} de ${fmtDuration(x.goal)}` },
+      progressBar(Math.min(100, x.realized / x.goal * 100), done ? 'done' : null, 'tray-' + view.ws + '-' + d.id)) : null,
+    h('p', { class:'tc-left' + (x.goal > 0 && x.unscheduled > 0 ? ' is-open' : ''), text: done ? 'Meta da semana cumprida' : left }),
+    menuButton('Colocar em um dia', days, { className:'linkbtn tc-add', icon:'i-plus', ariaLabel:`Colocar ${d.name} em um dia`, fk:'tc-' + d.id }));
+}
+
+/* ---------- 5. os dias ---------- */
+function planDays(view, prog){
+  const days = view.dates.filter(iso => WeekPlan.isStudyDay(iso));
+  const grid = h('div', { class:'wk-grid', 'data-days':String(days.length) });
+  days.forEach(iso => grid.append(dayColumn(view, prog, iso)));
+  if(!days.length) grid.append(h('p', { class:'hint', text:'Nenhum dia escolhido. Use "Personalizar dias".' }));
+  planFitColumns(grid, days.length);
+  return grid;
+}
+
+/** Quantas colunas cabem sem espremer os dias: 7 lado a lado só com espaço; senão duas linhas equilibradas (4 + 3). */
+function planFitColumns(grid, n){
+  const apply = () => {
+    const w = grid.clientWidth;
+    if(!w) return;
+    // tela estreita (celular): um dia embaixo do outro — duas colunas apertadas leem pior que uma lista
+    const fit = w < PLAN_COL_MIN * 3 ? 1 : Math.max(1, Math.floor((w + 10) / (PLAN_COL_MIN + 10)));
+    let cols = n;
+    if(n > fit) cols = fit <= 1 ? 1 : Math.ceil(n / Math.ceil(n / fit));
+    grid.style.setProperty('--wk-cols', String(Math.max(1, cols)));
+    grid.classList.toggle('is-stacked', cols === 1);
+  };
+  if(PlanBoard.ro) PlanBoard.ro.disconnect();
+  if(typeof ResizeObserver !== 'undefined'){
+    PlanBoard.ro = new ResizeObserver(() => apply());
+    PlanBoard.ro.observe(grid);
+  }
+  requestAnimationFrame(apply);
+}
+
+function dayColumn(view, prog, iso){
+  const d = parseISO(iso);
+  const isToday = iso === todayISO();
+  const planned = prog.dayPlanned.get(iso) || 0;
+  const blocks = view.blocks.filter(b => b.date === iso);
+  const dls = WeekPlan.deadlinesOn(iso);
+  let realDay = 0;
+  prog.real.forEach((m, k) => { if(k.slice(0, 10) === iso) realDay += m; });
+  const head = h('div', { class:'day-head' },
+    h('span', { class:'day-name', 'aria-hidden':'true' },
+      h('span', { class:'dn-short', text: WEEKDAY_SHORT[d.getDay()] }),
+      h('span', { class:'dn-long', text: WEEKDAY_NAMES[d.getDay()] })),
+    h('span', { class:'day-num num', 'aria-hidden':'true', text: String(d.getDate()) }),
+    isToday ? h('span', { class:'day-today', text:'Hoje' }) : null,
+    h('span', { class:'day-total num', title:'Tempo planejado neste dia', text: planned ? fmtDuration(planned) : '' }));
+  const col = h('section', { class:'day-col' + (isToday ? ' is-today' : '') + (iso < todayISO() ? ' is-past' : ''), 'data-date':iso,
+    'aria-label': WeekPlan.dayFull(iso) + (isToday ? ', hoje' : '') + (planned ? `, ${fmtDuration(planned)} planejadas` : '') });
+  col.append(head);
+  if(dls.length) col.append(h('ul', { class:'day-dls', 'aria-label':'Prazos neste dia' }, dls.map(dl => h('li', null, deadlineChip(dl)))));
+  const ul = h('ul', { class:'day-blocks', 'aria-label':'Estudos planejados' });
+  blocks.forEach(b => ul.append(blockItem(view, prog, b)));
+  col.append(ul);
+  if(!blocks.length) col.append(h('p', { class:'day-empty', text: view.editable ? 'Sem estudos planejados' : 'Nada planejado' }));
+  if(realDay > 0 && iso <= todayISO()) col.append(h('p', { class:'day-real num', text:`Estudado no dia: ${fmtDuration(realDay)}` }));
+  if(view.editable){
+    const items = activeDisciplines().slice().sort((a, b) => {
+      const xa = prog.disc.get(a.id), xb = prog.disc.get(b.id);
+      return ((xb ? xb.unscheduled : 0) - (xa ? xa.unscheduled : 0)) || sortByName(a, b);
+    }).map(disc => ({ label: disc.name, run: () => planAddBlock(view, disc.id, iso) }));
+    if(items.length) col.append(h('div', { class:'day-add' }, menuButton('Adicionar', items, { className:'linkbtn day-add-btn', icon:'i-plus',
+      ariaLabel:`Adicionar uma disciplina em ${WeekPlan.dayFull(iso)}`, fk:'add-' + iso })));
+  }
+  return col;
+}
+
+/** Prazo no dia: os MESMOS registros da tela Prazos, com aparência de prazo (não de estudo). */
+function deadlineChip(dl){
+  const info = deadlineTypeInfo(dl.type);
+  const done = DeadlineEngine.isDone(dl);
+  const where = dl.disciplineId ? disciplineName(dl.disciplineId) : null;
+  return h('button', { class:'dl-chip' + (done ? ' is-done' : ''), type:'button',
+      'aria-label': `${info.dueWord}: ${dl.title}${where ? ', ' + where : ''}${done ? ', concluído' : ''}. Abrir prazo`,
+      onclick:() => openDeadlineDrawer(dl.id) },
+    icon('i-flag', 'btn-icon dl-chip-ic'),
+    h('span', { class:'dl-chip-t', text: dl.title }),
+    h('span', { class:'dl-chip-k', text: done ? 'concluído' : info.label.toLowerCase() }));
+}
+
+/** Um bloco planejado: disciplina, quando, quanto e como está — em pouco espaço. */
+function blockItem(view, prog, b){
+  const d = getDiscipline(b.disciplineId);
+  const p = prog.blocks.get(b.id) || { planned:b.minutes, used:0, extra:0, state:'open' };
+  const time = WeekPlan.timeText(b);
+  const dur = isNum(b.minutes) && b.minutes > 0 ? fmtDuration(b.minutes) : 'Sem duração definida';
+  const meta = [time ? time + (WeekPlan.crossesMidnight(b) ? ' (termina no dia seguinte)' : '') : null, time && !(isNum(b.minutes) && b.minutes > 0) ? null : dur].filter(Boolean).join(' · ');
+  let status;
+  if(p.planned){
+    if(p.state === 'done') status = 'Concluído' + (p.extra >= 1 ? ` · ${fmtDurationWords(p.extra)} além do planejado` : '');
+    else if(p.state === 'partial') status = `${fmtDurationWords(p.used)} de ${fmtDuration(p.planned)} · faltam ${fmtDurationWords(p.planned - p.used)}`;
+    else status = p.state === 'idle' ? 'Sem estudo registrado' : 'Planejado';
+  } else {
+    status = p.used > 0 ? `Estudou ${fmtDurationWords(p.used)}` : (p.state === 'idle' ? 'Sem estudo registrado' : 'Planejado');
+  }
+  // transição discreta para "concluído": só quando o estado MUDA entre dois desenhos
+  const was = PlanBoard.doneSeen.get(b.id);
+  PlanBoard.doneSeen.set(b.id, p.state);
+  const justDone = p.state === 'done' && was !== undefined && was !== 'done';
+  const cls = 'blk is-' + p.state + (d && d.archived ? ' is-archived' : '') + (justDone ? ' just-done' : '') + (PlanBoard.landed === b.id ? ' is-landed' : '');
+  const name = d ? d.name : '(disciplina removida)';
+  const dayWord = WEEKDAY_PLAIN[WeekPlan.dowOf(b.date)];
+  const label = `${name}, ${WeekPlan.dayFull(b.date)}${time ? ', ' + time : ''}, ${dur}. ${status}.`;
+  const main = h('button', { class:'blk-main', type:'button', 'data-fk':'blk-' + b.id, 'aria-label': label + (view.editable ? ' Editar' : ''),
+      disabled: !view.editable, onclick:() => { if(view.editable) openBlockEditor(view, b.id); } },
+    h('span', { class:'blk-name', text:name }),
+    h('span', { class:'blk-meta num', text: meta }));
+  const menu = view.editable ? menuButton('', [
+    { label:'Editar duração e horário…', run:() => openBlockEditor(view, b.id) },
+    { label:'Mover para outro dia…', run:() => openMoveDialog(view, b.id) },
+    { label:'Subir na lista', run:() => planNudge(view, b.id, -1) },
+    { label:'Descer na lista', run:() => planNudge(view, b.id, 1) },
+    { label:`Tirar de ${dayWord}`, run:() => planRemoveBlock(view, b.id) }
+  ], { className:'icon-btn mini blk-more', icon:'i-more', iconOnly:true, ariaLabel:`Mais ações: ${name} em ${dayWord}`, fk:'blk-more-' + b.id }) : null;
+  const bar = p.planned ? h('div', { class:'blk-bar', 'aria-hidden':'true' }, h('span', { style:`width:${clamp(p.used / p.planned * 100, 0, 100)}%` })) : null;
+  return h('li', { class:'blk-item' },
+    h('div', { class:cls, 'data-drag': view.editable ? 'block' : null, 'data-id':b.id, 'data-disc':b.disciplineId },
+      h('div', { class:'blk-top' }, main, menu),
+      bar, h('p', { class:'blk-status', text:status })));
+}
+
+/* ---------- 6. dias fora do planejamento ---------- */
+function planOffDays(view, prog){
+  const off = view.dates.filter(iso => !WeekPlan.isStudyDay(iso));
+  if(!off.length) return null;
+  const rows = off.map(iso => {
+    const blocks = view.blocks.filter(b => b.date === iso);
+    const dls = WeekPlan.deadlinesOn(iso);
+    let realDay = 0;
+    prog.real.forEach((m, k) => { if(k.slice(0, 10) === iso) realDay += m; });
+    const facts = [];
+    if(realDay > 0) facts.push(`${fmtDuration(realDay)} estudados`);
+    if(!blocks.length && !dls.length && !realDay) facts.push('nada marcado');
+    return h('li', { class:'off-day', 'data-date':iso },
+      h('div', { class:'off-head' },
+        h('span', { class:'off-name', text: WeekPlan.dayLong(iso) }),
+        facts.length ? h('span', { class:'off-facts', text: facts.join(' · ') }) : null),
+      dls.length ? h('ul', { class:'day-dls' }, dls.map(dl => h('li', null, deadlineChip(dl)))) : null,
+      blocks.length ? h('ul', { class:'day-blocks' }, blocks.map(b => blockItem(view, prog, b))) : null);
+  });
+  return h('section', { class:'wk-off', 'aria-labelledby':'wk-off-t' },
+    h('div', { class:'wk-off-head' },
+      h('h3', { class:'block-label', id:'wk-off-t', text:'Fora dos seus dias de estudo' }),
+      h('button', { class:'linkbtn', type:'button', text:'Personalizar dias', onclick: openStudyDaysModal })),
+    h('p', { class:'hint', text:'Estes dias não aparecem no quadro, mas nada deles some: prazos, estudos registrados e o que já estava planejado continuam aqui.' }),
+    h('ul', { class:'off-list' }, rows));
+}
+
+/* ---------- operações (sempre pelo mesmo caminho: grava, depois redesenha) ---------- */
+function weekConflictDialog(close){
+  return new Promise(resolve => {
+    let done = false;
+    const finish = (v) => { if(done) return; done = true; if(close && close.pop) close.pop(); else if(c) c(); resolve(v); };
+    const content = h('div',
+      h('p', { class:'modal-sub', text:'A semana mudou depois que esta tela foi aberta — em outra aba ou janela do Ciclo.' }),
+      h('p', { class:'hint', text:'Ver a versão atual mostra a semana como ela está agora, sem a sua mudança. Aplicar a sua mudança a grava por cima da versão atual, sem desfazer o resto do que mudou lá.' }));
+    const actions = [
+      h('button', { class:'btn ghost', type:'button', text:'Ver a versão atual', onclick:() => finish('refresh') }),
+      h('button', { class:'btn primary', type:'button', text:'Aplicar a minha mudança', onclick:() => finish('reapply') })
+    ];
+    let c = null;
+    if(close && close.push){ close.push({ title:'Seu planejamento foi alterado em outra aba.', content, actions, onEsc:() => finish('refresh') }); return; }
+    c = openModal(() => ({ title:'Seu planejamento foi alterado em outra aba.', content, actions }), { size:'narrow', onClose: r => { if(r === null) finish('refresh'); } });
+  });
+}
+
+/**
+ * Roda uma operação da semana: grava, trata conflito com outra aba e só então
+ * redesenha. `op(force)` → resultado de WeekCommands. `o.close` (modal aberto)
+ * faz o aviso de conflito abrir como subtela, sem perder o que foi preenchido.
+ */
+async function runWeekOp(op, opts){
+  const o = opts || {};
+  if(PlanBoard.busy) return { ok:false, reason:'busy' };
+  PlanBoard.busy = true;
+  let res;
+  try {
+    res = await op(false);
+    if(!res.ok && res.reason === 'conflict'){
+      const choice = await weekConflictDialog(o.close);
+      if(choice === 'reapply') res = await op(true);
+      else { if(o.close && !o.close.isClosed()) o.close(); await safeRefresh(); return { ok:false, reason:'refreshed' }; }
+    }
+  } finally {
+    PlanBoard.busy = false;
+  }
+  if(!res.ok){
+    const msg = {
+      missing: ['Ele foi removido ou mudou em outra aba. A semana mostra a versão atual.', 'Este bloco não existe mais'],
+      past: ['Semanas que já passaram ficam como estavam.', 'Esta semana já terminou'],
+      'no-plan': ['Crie um plano semanal para organizar os dias.', 'Não há plano ativo'],
+      full: ['A semana já tem blocos demais. Tire alguns antes de adicionar outros.', 'Limite da semana'],
+      error: ['Tente novamente. A semana continua como estava.', 'Não foi possível salvar o planejamento']
+    }[res.reason] || ['Tente novamente. A semana continua como estava.', 'Não foi possível salvar o planejamento'];
+    toast(msg[0], res.reason === 'error' ? 'err' : 'info', { title: msg[1] });
+    await safeRefresh();          // a tela volta a mostrar o que está gravado (o arraste "volta" para a origem)
+    return res;
+  }
+  if(o.landed) PlanBoard.landed = o.landed(res);
+  if(o.focus) PlanBoard.focusAfter = o.focus(res);
+  if(o.close && !o.close.isClosed()) o.close();
+  await safeRefresh();
+  if(o.announce) announce(o.announce(res));
+  if(o.done) o.done(res);
+  setTimeout(() => { PlanBoard.landed = null; }, 400);
+  return res;
+}
+
+function planAddBlock(view, disciplineId, date, index){
+  const d = getDiscipline(disciplineId);
+  if(!d) return;
+  const minutes = WeekPlan.suggestMinutes(view, disciplineId);
+  return runWeekOp(force => WeekCommands.addBlock(view.ws, view.rev, { disciplineId, date, minutes, index }, { force }), {
+    landed: r => r.block.id,
+    focus: r => 'blk-' + r.block.id,
+    announce: () => `${d.name} colocada em ${WeekPlan.dayFull(date)}${minutes ? ', ' + fmtDuration(minutes) : ''}.`
+  });
+}
+function planMoveBlock(view, id, date, index){
+  const b = view.blocks.find(x => x.id === id);
+  const d = b ? getDiscipline(b.disciplineId) : null;
+  return runWeekOp(force => WeekCommands.moveBlock(view.ws, view.rev, id, date, index, { force }), {
+    landed: () => id, focus: () => 'blk-' + id,
+    announce: () => `${d ? d.name : 'Bloco'} movido para ${WeekPlan.dayFull(date)}.`
+  });
+}
+function planNudge(view, id, dir){
+  const b = view.blocks.find(x => x.id === id);
+  if(!b) return;
+  const day = view.blocks.filter(x => x.date === b.date);
+  const i = day.findIndex(x => x.id === id);
+  const j = i + dir;
+  if(j < 0 || j >= day.length){ announce(dir < 0 ? 'Já é o primeiro do dia.' : 'Já é o último do dia.'); return; }
+  return planMoveBlock(view, id, b.date, j);
+}
+function planRemoveBlock(view, id){
+  const b = view.blocks.find(x => x.id === id);
+  const d = b ? getDiscipline(b.disciplineId) : null;
+  return runWeekOp(force => WeekCommands.removeBlock(view.ws, view.rev, id, { force }), {
+    focus: () => b ? 'add-' + b.date : null,
+    announce: () => `${d ? d.name : 'Bloco'} saiu de ${b ? WeekPlan.dayFull(b.date) : 'o dia'}. Nenhum estudo foi apagado.`,
+    done: () => toast(`${d ? d.name : 'A disciplina'} saiu de ${b ? WEEKDAY_PLAIN[WeekPlan.dowOf(b.date)] : 'o dia'}. Estudos registrados não mudam.`, 'ok')
+  });
+}
+async function planClearWeek(view){
+  const ok = await confirmModal('Tirar todas as disciplinas dos dias desta semana? As metas semanais, os prazos e os estudos registrados não mudam.',
+    { title:'Limpar os dias da semana', confirmLabel:'Limpar os dias', danger:false });
+  if(!ok) return;
+  return runWeekOp(force => WeekCommands._mutate(view.ws, view.rev, wk => { wk.blocks = []; return { ok:true }; }, { force }), {
+    focus: () => 'wk-days', done: () => toast('A meta semanal continua a mesma.', 'ok', { title:'Dias da semana limpos' })
+  });
+}
+function planSaveTemplate(view){
+  return runWeekOp(force => WeekCommands.withPlan(view.ws, view.rev, 'save-template', null, { force }), {
+    done: () => toast('As próximas semanas começam com esta organização. Cada semana ainda pode ser ajustada sozinha.', 'ok', { title:'Modelo de semana salvo' })
+  });
+}
+async function planApplyTemplate(view){
+  const ok = await confirmModal('Trocar a organização desta semana pela do seu modelo? Só os dias desta semana mudam; metas, prazos e estudos ficam como estão.',
+    { title:'Voltar ao modelo', confirmLabel:'Usar o modelo', danger:false });
+  if(!ok) return;
+  return runWeekOp(force => WeekCommands.withPlan(view.ws, view.rev, 'apply-template', null, { force }), {
+    done: () => toast('Esta semana voltou a seguir o seu modelo.', 'ok')
+  });
+}
+
+/* ---------- janelas do quadro ---------- */
+/** Editar um bloco: dia, duração (opcional) e horário (opcional). */
+function openBlockEditor(view, id){
+  const b = view.blocks.find(x => x.id === id);
+  if(!b) return;
+  const d = getDiscipline(b.disciplineId);
+  let minutes = isNum(b.minutes) && b.minutes > 0 ? b.minutes : null;
+  let timeOn = !!b.start;
+  openModal(close => {
+    const daySel = h('select', { id:'be-day' }, view.dates.map(iso => h('option', { value:iso, selected: iso === b.date },
+      WeekPlan.dayLong(iso) + (WeekPlan.isStudyDay(iso) ? '' : ' — fora dos dias de estudo'))));
+    const presets = [null, 30, 45, 60, 90, 120];
+    const custom = h('input', { type:'number', class:'no-spin', id:'be-min', min:'1', max:String(BLOCK_MAX_MINUTES), step:'5', inputmode:'numeric',
+      placeholder:'min', value: minutes && !presets.includes(minutes) ? String(minutes) : '', 'aria-label':'Outra duração, em minutos' });
+    const chips = h('div', { class:'chips', role:'group', 'aria-labelledby':'be-dur-l' });
+    const drawChips = () => $$('.chip', chips).forEach(c => c.setAttribute('aria-pressed', (c.dataset.v === '' ? minutes === null && !custom.value : Number(c.dataset.v) === minutes && !custom.value) ? 'true' : 'false'));
+    presets.forEach(v => chips.append(h('button', { class:'chip', type:'button', 'data-v': v === null ? '' : String(v), text: v === null ? 'Só o dia' : fmtDurationWords(v),
+      onclick:() => { minutes = v; custom.value = ''; custom.removeAttribute('aria-invalid'); drawChips(); drawTime(); } })));
+    custom.addEventListener('input', () => { const n = Math.round(Number(custom.value)); minutes = custom.value && n > 0 ? n : (custom.value ? NaN : null); custom.removeAttribute('aria-invalid'); drawChips(); drawTime(); });
+    drawChips();
+
+    const startF = timeField({ id:'be-start', value: b.start || '', describedBy:'be-time-out', onInput:() => drawTime() });
+    const timeOut = h('p', { class:'when-result', id:'be-time-out', 'aria-live':'polite' });
+    const clash = h('p', { class:'hint be-clash', 'aria-live':'polite', hidden:true });
+    const timeBox = h('div', { class:'be-time', hidden: !timeOn },
+      h('div', { class:'field' }, timeLabel('be-start', 'Começa às'), startF.input), timeOut, clash);
+    const timeToggle = h('button', { class:'linkbtn add-link', type:'button', 'aria-expanded': timeOn ? 'true' : 'false',
+      text: timeOn ? 'Tirar o horário' : '+ Definir um horário (opcional)',
+      onclick:() => { timeOn = !timeOn; timeToggle.textContent = timeOn ? 'Tirar o horário' : '+ Definir um horário (opcional)'; timeToggle.setAttribute('aria-expanded', timeOn ? 'true' : 'false');
+        if(timeOn){ Motion.expand(timeBox); startF.focus(); } else Motion.collapse(timeBox); drawTime(); } });
+    function drawTime(){
+      if(!timeOn){ timeOut.textContent = ''; clash.hidden = true; return; }
+      const st = startF.state;
+      if(st !== 'valid'){ timeOut.textContent = st === 'invalid' ? clockErrorText(startF.text) : 'Digite o horário em 24h — 1900 vira 19:00.'; timeOut.className = 'when-result' + (st === 'invalid' ? ' is-error' : ''); clash.hidden = true; return; }
+      const probe = { id:b.id, date: daySel.value, start: startF.value, minutes: isNum(minutes) ? minutes : null };
+      const txt = WeekPlan.timeText(probe);
+      timeOut.className = 'when-result is-ok';
+      timeOut.textContent = (isNum(minutes) ? txt : `Às ${startF.value}, sem duração definida`) + (WeekPlan.crossesMidnight(probe) ? ' · termina no dia seguinte' : '');
+      const others = WeekPlan.overlaps(view.blocks, probe);
+      clash.hidden = !others.length;
+      if(others.length){
+        const o = others[0], od = getDiscipline(o.disciplineId);
+        clash.textContent = `Esse horário cruza com ${od ? od.name : 'outro bloco'} (${WeekPlan.timeText(o)})${others.length > 1 ? ` e mais ${others.length - 1}` : ''}. Pode manter, se for intencional.`;
+      }
+    }
+    daySel.addEventListener('change', drawTime);
+    drawTime();
+
+    const save = h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: once(async () => {
+      if(Number.isNaN(minutes) || (isNum(minutes) && (minutes < 1 || minutes > BLOCK_MAX_MINUTES))){
+        custom.setAttribute('aria-invalid', 'true'); custom.focus();
+        toast(`Use uma duração entre 1 minuto e ${fmtDuration(BLOCK_MAX_MINUTES)} — ou "Só o dia".`, 'err'); return;
+      }
+      if(timeOn && startF.state !== 'valid'){
+        startF.input.setAttribute('aria-invalid', 'true'); startF.focus();
+        toast(startF.state === 'empty' ? 'Digite o horário ou tire o horário do bloco.' : (startF.state === 'partial' ? CLOCK_PARTIAL_ERROR : clockErrorText(startF.text)), 'err'); return;
+      }
+      await runWeekOp(force => WeekCommands.updateBlock(view.ws, view.rev, id, { minutes, start: timeOn ? startF.value : null, date: daySel.value }, { force }), {
+        close, landed: () => id, focus: () => 'blk-' + id,
+        announce: () => `${d ? d.name : 'Bloco'} atualizado.`
+      });
+    }) });
+    return {
+      title: d ? d.name : 'Bloco',
+      content: h('div', { class:'be' },
+        h('p', { class:'modal-sub', text: view.kind === 'future' ? 'Vale só para essa semana.' : 'Vale só para esta semana. O progresso vem dos estudos registrados neste dia.' }),
+        h('div', { class:'field' }, h('label', { for:'be-day', text:'Dia' }), daySel),
+        h('div', { class:'field' }, h('span', { class:'pick-label', id:'be-dur-l' }, 'Quanto tempo', h('span', { class:'optional', text:'opcional' })),
+          chips, h('div', { class:'be-custom' }, h('label', { for:'be-min', text:'Outro valor' }), custom, h('span', { class:'split-unit', text:'min' }))),
+        h('div', { class:'field' }, timeToggle, timeBox)),
+      actions:[
+        h('button', { class:'linkbtn danger', type:'button', text:'Tirar deste dia', onclick: async () => { close(); await planRemoveBlock(view, id); } }),
+        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
+        save
+      ]
+    };
+  }, { size:'narrow' });
+}
+
+/** "Mover para outro dia" — sem arrastar, com teclado ou toque. */
+function openMoveDialog(view, id){
+  const b = view.blocks.find(x => x.id === id);
+  if(!b) return;
+  const d = getDiscipline(b.disciplineId);
+  openModal(close => {
+    const list = h('div', { class:'move-days', role:'group', 'aria-label':'Escolha o dia' }, view.dates.map(iso => {
+      const cur = iso === b.date;
+      return h('button', { class:'move-day' + (cur ? ' is-current' : ''), type:'button', disabled: cur, 'aria-current': cur ? 'true' : null,
+          onclick: once(async () => { await runWeekOp(force => WeekCommands.moveBlock(view.ws, view.rev, id, iso, null, { force }), {
+            close, landed: () => id, focus: () => 'blk-' + id, announce: () => `${d ? d.name : 'Bloco'} movido para ${WeekPlan.dayFull(iso)}.` }); }) },
+        h('span', { class:'md-name', text: WeekPlan.dayLong(iso) }),
+        h('span', { class:'md-tag', text: cur ? 'agora' : (WeekPlan.isStudyDay(iso) ? '' : 'fora dos dias de estudo') }));
+    }));
+    return {
+      title:`Mover ${d ? d.name : 'bloco'}`,
+      content: h('div', h('p', { class:'modal-sub', text:'O bloco muda de dia com a mesma duração e o mesmo horário.' }), list),
+      actions:[ h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }) ]
+    };
+  }, { size:'narrow' });
+}
+
+/** Personalizar dias: quais dias aparecem no quadro. Nada é apagado ao tirar um dia. */
+function openStudyDaysModal(){
+  const order = weekStartDow() === 1 ? [1,2,3,4,5,6,0] : [0,1,2,3,4,5,6];
+  let chosen = new Set(state.settings.studyDays);
+  openModal(close => {
+    const boxes = order.map(dow => {
+      const input = h('input', { type:'checkbox', id:'sd-' + dow, checked: chosen.has(dow) });
+      input.addEventListener('change', () => {
+        if(!input.checked && chosen.size === 1 && chosen.has(dow)){ input.checked = true; toast('Deixe pelo menos um dia no planejamento.', 'info'); return; }
+        if(input.checked) chosen.add(dow); else chosen.delete(dow);
+      });
+      return h('label', { class:'sd-day', for:'sd-' + dow }, input, h('span', { text: WEEKDAY_NAMES[dow] }));
+    });
+    return {
+      title:'Personalizar dias',
+      content: h('div',
+        h('p', { class:'modal-sub', text:'Em quais dias você pretende estudar? Os outros saem do quadro principal.' }),
+        h('div', { class:'sd-list', role:'group', 'aria-label':'Dias de estudo' }, boxes),
+        h('p', { class:'hint', text:'Tirar um dia não apaga nada: estudos, prazos e o que estiver planejado nele continuam aparecendo numa faixa abaixo da semana. Você pode estudar e registrar em qualquer dia.' })),
+      actions:[
+        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
+        h('button', { class:'btn primary', type:'button', text:'Salvar', onclick:() => {
+          state.settings.studyDays = Array.from(chosen).sort((a, b) => a - b);
+          saveSettings();
+          close();
+          PlanBoard.focusAfter = 'wk-days';
+          renderPlan();
+          const off = order.filter(x => !chosen.has(x));
+          toast(off.length ? `Fora do quadro: ${off.map(x => WEEKDAY_PLAIN[x]).join(', ')}.` : 'Todos os dias aparecem no quadro.', 'ok', { title:'Dias de estudo atualizados' });
+        } })
+      ]
+    };
+  }, { size:'narrow' });
+}
+
+/** "Ajustar os blocos": as durações de uma disciplina na semana, lado a lado com a meta. */
+function openAdjustBlocks(view, disciplineId){
+  const d = getDiscipline(disciplineId);
+  const blocks = view.blocks.filter(b => b.disciplineId === disciplineId);
+  if(!d || !blocks.length) return;
+  const goal = view.goals.get(disciplineId) || 0;
+  openModal(close => {
+    const inputs = new Map();
+    const total = h('p', { class:'split-status', 'aria-live':'polite' });
+    const draw = () => {
+      let s = 0;
+      inputs.forEach(inp => { const n = Math.round(Number(inp.value)); if(inp.value && n > 0) s += n; });
+      total.textContent = `Distribuído: ${fmtDuration(s)}` + (goal > 0 ? ` · meta semanal: ${fmtDuration(goal)}` : '') +
+        (goal > 0 && s === goal ? ' — bate com a meta.' : goal > 0 && s < goal ? ` — ${fmtDuration(goal - s)} ainda sem dia.` : goal > 0 ? ` — ${fmtDuration(s - goal)} acima da meta.` : '');
+      total.className = 'split-status' + (goal > 0 && s > goal ? ' is-warn' : '');
+    };
+    const rows = blocks.map(b => {
+      const inp = h('input', { type:'number', class:'no-spin', min:'1', step:'5', inputmode:'numeric', id:'ab-' + b.id,
+        value: isNum(b.minutes) ? String(b.minutes) : '', placeholder:'—', 'aria-label':`Minutos em ${WeekPlan.dayFull(b.date)}` });
+      inp.addEventListener('input', () => { inp.removeAttribute('aria-invalid'); draw(); });
+      inputs.set(b.id, inp);
+      return h('div', { class:'split-row' },
+        h('label', { class:'split-name', for:inp.id, text: WeekPlan.dayLong(b.date) + (b.start ? ' · ' + b.start : '') }),
+        h('span', { class:'split-input' }, inp, h('span', { class:'split-unit', 'aria-hidden':'true', text:'min' })));
+    });
+    draw();
+    return {
+      title:`Ajustar os blocos de ${d.name}`,
+      content: h('div',
+        h('p', { class:'modal-sub', text:'Mude a duração de cada dia. Em branco = só o dia, sem duração.' }),
+        h('div', { class:'split-rows' }, rows), total),
+      actions:[
+        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
+        h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: once(async () => {
+          const map = {};
+          for(const [id, inp] of inputs){
+            const v = inp.value.trim();
+            const n = Math.round(Number(v));
+            if(v && !(n > 0 && n <= BLOCK_MAX_MINUTES)){ inp.setAttribute('aria-invalid', 'true'); inp.focus(); toast('Use minutos inteiros maiores que zero (ou deixe em branco).', 'err'); return; }
+            map[id] = v ? n : null;
+          }
+          await runWeekOp(force => WeekCommands.setMinutes(view.ws, view.rev, map, { force }), {
+            close, announce: () => `Blocos de ${d.name} ajustados.` });
+        }) })
+      ]
+    };
+  }, { size:'narrow' });
+}
+
+/** "Mudar a meta": nunca em silêncio — a pessoa escolhe se vale só nesta semana ou também nas próximas. */
+function openGoalUpdate(view, disciplineId, minutes){
+  const d = getDiscipline(disciplineId);
+  if(!d) return;
+  const goal = view.goals.get(disciplineId) || 0;
+  openModal(close => {
+    const run = (alsoPlan) => once(async () => {
+      await runWeekOp(force => WeekCommands.withPlan(view.ws, view.rev, 'goal', { disciplineId, minutes, alsoPlan }, { force }), {
+        close, done: () => toast(alsoPlan ? 'Vale para esta semana e para as próximas.' : 'Vale só para esta semana; o plano continua igual.', 'ok',
+          { title:`Meta de ${d.name}: ${fmtDuration(minutes)}` }) });
+    });
+    return {
+      title:`Meta de ${d.name}`,
+      content: h('div',
+        h('p', { class:'modal-sub', text: goal > 0 ? `A meta semanal passa de ${fmtDuration(goal)} para ${fmtDuration(minutes)}, o tempo que você distribuiu nos dias.` : `${d.name} passa a ter uma meta de ${fmtDuration(minutes)} por semana.` }),
+        h('p', { class:'hint', text:'Semanas que já passaram nunca mudam.' })),
+      actions:[
+        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
+        h('button', { class:'btn ghost', type:'button', text:'Só nesta semana', onclick: run(false) }),
+        h('button', { class:'btn primary', type:'button', text:'Nesta e nas próximas', onclick: run(true) })
+      ]
+    };
+  }, { size:'narrow' });
+}
+
+/* =========================================================================
+   v6.7 — ARRASTAR E SOLTAR (mouse e caneta; no toque, os botões fazem tudo)
+
+   Durante o arraste NADA é gravado nem recalculado: só um "fantasma" segue o
+   ponteiro (transform, num quadro de animação) e o dia sob ele é destacado.
+   Ao soltar num dia, UMA operação é gravada (WeekCommands); se falhar, a tela
+   volta ao que está gravado. Soltar fora de um destino, ou Esc, devolve o
+   cartão à origem sem tocar no banco.
+     disciplina (bandeja) → dia  = colocar a disciplina naquele dia
+     bloco → outro dia/posição   = mover (mesmo bloco, nunca uma cópia)
+     bloco → bandeja             = tirar do dia
+   ========================================================================= */
+const PlanDnD = {
+  s: null,
+  get active(){ return !!(this.s && this.s.dragging); },
+  bind(root, view){
+    root.addEventListener('pointerdown', (e) => this.down(e, view));
+  },
+  down(e, view){
+    if(e.button !== 0 || e.pointerType === 'touch' || !view.editable || PlanBoard.busy || this.s) return;
+    const src = e.target.closest('[data-drag]');
+    if(!src || e.target.closest('.menu-wrap,input,select,textarea,a')) return;
+    this.s = { view, src, kind: src.dataset.drag, id: src.dataset.id || null, disc: src.dataset.disc || null,
+      x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, pid: e.pointerId, dragging:false, raf:0, target:null, index:null };
+    this._move = (ev) => this.move(ev);
+    this._up = (ev) => this.up(ev);
+    this._key = (ev) => { if(ev.key === 'Escape' && this.s){ ev.preventDefault(); ev.stopImmediatePropagation(); this.cancel(true); } };
+    document.addEventListener('pointermove', this._move, true);
+    document.addEventListener('pointerup', this._up, true);
+    document.addEventListener('pointercancel', this._up, true);
+    document.addEventListener('keydown', this._key, true);
+  },
+  start(){
+    const s = this.s;
+    const r = s.src.getBoundingClientRect();
+    s.r0 = r;
+    s.dx = s.x0 - r.left; s.dy = s.y0 - r.top;
+    const ghost = s.src.cloneNode(true);
+    ghost.removeAttribute('data-drag');
+    $$('[id],[data-fk]', ghost).forEach(n => { n.removeAttribute('id'); n.removeAttribute('data-fk'); });
+    $$('button,[tabindex]', ghost).forEach(n => n.setAttribute('tabindex', '-1'));
+    ghost.classList.add('dnd-ghost');
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.style.width = r.width + 'px';
+    ghost.style.left = r.left + 'px';
+    ghost.style.top = r.top + 'px';
+    document.body.append(ghost);
+    s.ghost = ghost;
+    s.src.classList.add('is-drag-source');
+    try { s.src.setPointerCapture(s.pid); } catch(_){}
+    document.documentElement.classList.add('is-dragging');
+    s.cols = $$('.day-col[data-date], .off-day[data-date]', document.getElementById('plan-body'));
+    s.cols.forEach(c => c.classList.add('is-drop-target'));
+    s.tray = s.kind === 'block' ? document.querySelector('#plan-body .wk-tray') : null;
+    if(s.tray) s.tray.classList.add('is-drop-target');
+    s.dragging = true;
+    announce('Arrastando. Solte num dia, ou pressione Esc para cancelar.');
+  },
+  move(e){
+    const s = this.s;
+    if(!s || e.pointerId !== s.pid) return;
+    s.x = e.clientX; s.y = e.clientY;
+    if(!s.dragging){
+      if(Math.abs(s.x - s.x0) + Math.abs(s.y - s.y0) < 6) return;
+      this.start();
+    }
+    e.preventDefault();
+    if(!s.raf) s.raf = requestAnimationFrame(() => this.frame());
+  },
+  frame(){
+    const s = this.s;
+    if(!s || !s.dragging) return;
+    s.raf = 0;
+    s.ghost.style.transform = `translate3d(${Math.round(s.x - s.dx - s.r0.left)}px, ${Math.round(s.y - s.dy - s.r0.top)}px, 0) rotate(.6deg)`;
+    // destino sob o ponteiro (retângulos lidos agora: a página pode ter rolado)
+    let target = null;
+    if(s.tray){ const r = s.tray.getBoundingClientRect(); if(s.x >= r.left && s.x <= r.right && s.y >= r.top && s.y <= r.bottom) target = s.tray; }
+    if(!target) target = s.cols.find(c => { const r = c.getBoundingClientRect(); return s.x >= r.left && s.x <= r.right && s.y >= r.top && s.y <= r.bottom; }) || null;
+    if(target !== s.target){
+      if(s.target) s.target.classList.remove('is-drop-over');
+      s.target = target;
+      if(target) target.classList.add('is-drop-over');
+    }
+    // posição dentro do dia: antes do primeiro bloco cuja metade fica abaixo do ponteiro
+    if(target && target !== s.tray){
+      const items = $$('.blk-item', target).filter(li => !li.contains(s.src));
+      let index = items.length;
+      for(let i = 0; i < items.length; i++){ const r = items[i].getBoundingClientRect(); if(s.y < r.top + r.height / 2){ index = i; break; } }
+      s.index = index;
+      this.mark(target, items, index);
+    } else { s.index = null; this.mark(null); }
+    // rolagem automática perto das bordas da janela
+    const edge = 56, vh = window.innerHeight;
+    const speed = s.y < edge ? -Math.ceil((edge - s.y) / 4) : s.y > vh - edge ? Math.ceil((s.y - (vh - edge)) / 4) : 0;
+    if(speed){ window.scrollBy(0, speed); s.raf = requestAnimationFrame(() => this.frame()); }
+  },
+  /** Linha que mostra onde o cartão vai entrar (posicionada, sem empurrar o layout). */
+  mark(col, items, index){
+    const s = this.s;
+    if(!col){ if(s.markEl) s.markEl.hidden = true; return; }
+    if(!s.markEl){ s.markEl = h('div', { class:'drop-mark', 'aria-hidden':'true' }); }
+    if(s.markEl.parentNode !== col) col.append(s.markEl);
+    s.markEl.hidden = false;
+    const cr = col.getBoundingClientRect();
+    let y;
+    const list = col.querySelector('.day-blocks');
+    if(!items.length){ const lr = list ? list.getBoundingClientRect() : cr; y = (list && lr.height ? lr.top : (col.querySelector('.day-head') || col).getBoundingClientRect().bottom + 6) - cr.top; }
+    else if(index < items.length) y = items[index].getBoundingClientRect().top - cr.top - 4;
+    else { const r = items[items.length - 1].getBoundingClientRect(); y = r.bottom - cr.top + 3; }
+    s.markEl.style.transform = `translateY(${Math.round(y)}px)`;
+  },
+  up(e){
+    const s = this.s;
+    if(!s || (e && e.pointerId !== s.pid)) return;
+    if(!s.dragging){ this.cleanup(); return; }
+    // o clique que o navegador dispara depois de soltar não pode abrir o editor
+    const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+    window.addEventListener('click', swallow, true);
+    setTimeout(() => window.removeEventListener('click', swallow, true), 0);
+    if(e && e.type === 'pointercancel'){ this.cancel(true); return; }
+    this.frame();
+    const target = s.target, index = s.index, view = s.view;
+    if(!target){ this.cancel(true); return; }
+    if(target === s.tray){
+      const id = s.id;
+      this.settle(null);
+      if(s.kind === 'block') planRemoveBlock(view, id);
+      return;
+    }
+    const date = target.dataset.date;
+    if(s.kind === 'disc'){
+      const disc = s.disc;
+      this.settle(s.markEl && !s.markEl.hidden ? s.markEl : target);
+      planAddBlock(view, disc, date, index);
+    } else {
+      const id = s.id;
+      const b = view.blocks.find(x => x.id === id);
+      const day = view.blocks.filter(x => x.date === date && x.id !== id);
+      const curIndex = b && b.date === date ? view.blocks.filter(x => x.date === date).findIndex(x => x.id === id) : -1;
+      if(b && b.date === date && (index === curIndex || (index === null && curIndex === day.length))){ this.cancel(true); return; }   // soltou onde já estava
+      this.settle(s.markEl && !s.markEl.hidden ? s.markEl : target);
+      planMoveBlock(view, id, date, index);
+    }
+  },
+  /** O fantasma assenta no destino (180–220 ms) enquanto a gravação acontece; o desenho final vem depois do commit. */
+  settle(toEl){
+    const s = this.s;
+    const ghost = s.ghost;
+    this.cleanup(true);
+    if(!ghost) return;
+    if(!toEl || prefersReducedMotion() || typeof ghost.animate !== 'function'){ ghost.remove(); return; }
+    const r = toEl.getBoundingClientRect();
+    const g = ghost.getBoundingClientRect();
+    const dx = r.left - g.left, dy = (toEl.classList.contains('drop-mark') ? r.top : r.top + 8) - g.top;
+    const a = ghost.animate([{ transform: ghost.style.transform, opacity:1 },
+      { transform: `${ghost.style.transform} translate(${Math.round(dx)}px, ${Math.round(dy)}px) scale(.98)`, opacity:.0 }],
+      { duration:200, easing:MOTION.ease, fill:'forwards' });
+    a.onfinish = () => ghost.remove();
+    setTimeout(() => ghost.remove(), 400);
+  },
+  /** Cancela: o cartão volta para onde estava; o banco não é tocado. */
+  cancel(animate){
+    const s = this.s;
+    if(!s) return;
+    const ghost = s.ghost, r0 = s.r0;
+    this.cleanup(true);
+    if(!ghost) return;
+    announce('Arraste cancelado. Nada mudou.');
+    if(!animate || prefersReducedMotion() || typeof ghost.animate !== 'function' || !r0){ ghost.remove(); return; }
+    const a = ghost.animate([{ transform: ghost.style.transform }, { transform:'translate3d(0,0,0)' }], { duration:180, easing:MOTION.ease, fill:'forwards' });
+    a.onfinish = () => ghost.remove();
+    setTimeout(() => ghost.remove(), 400);
+  },
+  cleanup(keepGhost){
+    const s = this.s;
+    if(!s) return;
+    if(s.raf) cancelAnimationFrame(s.raf);
+    document.removeEventListener('pointermove', this._move, true);
+    document.removeEventListener('pointerup', this._up, true);
+    document.removeEventListener('pointercancel', this._up, true);
+    document.removeEventListener('keydown', this._key, true);
+    try { s.src.releasePointerCapture(s.pid); } catch(_){}
+    s.src.classList.remove('is-drag-source');
+    (s.cols || []).forEach(c => c.classList.remove('is-drop-target', 'is-drop-over'));
+    if(s.tray) s.tray.classList.remove('is-drop-target', 'is-drop-over');
+    if(s.markEl) s.markEl.remove();
+    if(!keepGhost && s.ghost) s.ghost.remove();
+    document.documentElement.classList.remove('is-dragging');
+    this.s = null;
+    // um aviso de outra aba que chegou durante o arraste pode ser aplicado agora
+    if(typeof DataSync !== 'undefined' && DataSync.pending) setTimeout(() => DataSync.flush(), 60);
+  }
+};
+
+/** Depois de desenhar o quadro: foco onde a pessoa estava (ou no bloco que acabou de mudar). */
+function planAfterRender(){
+  const fk = PlanBoard.focusAfter;
+  PlanBoard.focusAfter = null;
+  if(!fk) return;
+  const el = document.querySelector(`#plan-body [data-fk="${cssEsc(fk)}"]`);
+  if(el && !el.disabled){ try { el.focus({ preventScroll:false }); } catch(_){ el.focus(); } }
 }
 
 /* =========================================================================
@@ -8640,7 +11077,8 @@ const StudyStats = {
     const disc = new Map(), topic = new Map(), area = new Map();
     const total = list => ({ min: sum(list, s => Number(s.minutes) || 0), n: list.length });
     state.idx.sessionsByDisc.forEach((list, id) => disc.set(id, total(list)));
-    state.idx.sessionsByTopic.forEach((list, id) => topic.set(id, total(list)));
+    // v6.7: tópico soma a PARTE dele em cada estudo (nunca o estudo inteiro de vários tópicos)
+    state.idx.sessionsByTopic.forEach((list, id) => { const tm = topicMinutesOf(id, list); topic.set(id, { min: tm.minutes, n: tm.count }); });
     // Área = soma das sessões das disciplinas que estão nela (arquivadas incluídas:
     // o histórico continua sendo da área). Área vazia = 0 e continua aparecendo.
     state.disciplines.forEach(d => {
@@ -9814,7 +12252,8 @@ function topicDetailContent(t, ctx){
   const leave = () => { if(c.inDrawer) Drawer.close(); };
   const disc = getDiscipline(t.disciplineId);
   const sess = sessionsOfTopic(t.id).slice().sort((a,b) => b.date.localeCompare(a.date));
-  const totalMin = sum(sess, s => s.minutes);
+  // v6.7: o tempo DESTE tópico — em estudos com vários tópicos, só a parte dele (estimada quando não foi informada)
+  const tm = topicMinutesOf(t.id, sess);
   const st = topicStatus(t);
 
   const kv = h('dl', { class:'kv-list' });
@@ -9823,14 +12262,17 @@ function topicDetailContent(t, ctx){
   add('Próxima revisão', t.reviewEnabled ? (t.reviewDueDate ? `${capFirst(fmtRelativeFuture(t.reviewDueDate))} · ${fmtDateBR(t.reviewDueDate)}` : 'depois do primeiro estudo') : 'revisões desligadas');
   // v6.5: é uma ESTIMATIVA tirada das respostas da pessoa nas revisões — dita assim, não como medida de memória
   add('Consolidação estimada', t.masteryLevel ? `${t.masteryLevel} de 5 · pelas suas respostas nas revisões` : 'ainda sem revisões');
-  add('Tempo estudado', sess.length ? `${fmtDuration(totalMin)} em ${plural(sess.length, 'vez', 'vezes')}` : 'nenhum estudo ainda');
+  add('Tempo estudado', !sess.length ? 'nenhum estudo ainda'
+    : (tm.estimated > 0 ? `cerca de ${fmtDuration(tm.minutes)}` : fmtDuration(tm.minutes)) + ` em ${plural(sess.length, 'estudo', 'estudos')}`);
+  const shared = sess.filter(s => SessionModel.topicIds(s).length > 1).length;
+  if(shared) add('Estudado junto com outros tópicos', `${plural(shared, 'estudo', 'estudos')}` + (tm.estimated > 0 ? ` · parte do tempo é estimada (${fmtDuration(tm.estimated)})` : ''));
 
   const actions = h('div', { class:'level-actions' },
     t.archived
       ? h('button', { class:'btn primary sm', type:'button', text:'Reativar tópico', onclick: once(async () => {
           if(!(await quickPatch('topics', t.id, { archived:false }, 'Não foi possível reativar o tópico'))) return;
           await safeRefresh(); toast(t.name, 'ok', { title:'Tópico reativado' }); }) })
-      : h('button', { class:'btn primary sm', type:'button', 'data-fk':'study', onclick:() => { leave(); startTimer(t.disciplineId, t.id, null); } }, icon('i-play'), 'Começar a estudar'),
+      : h('button', { class:'btn primary sm', type:'button', 'data-fk':'study', onclick:() => { leave(); startTimer(t.disciplineId, [t.id], []); } }, icon('i-play'), 'Começar a estudar'),
     !t.archived && t.reviewEnabled ? h('button', { class:'btn ghost sm', type:'button', text:'Revisar agora', onclick:() => { leave(); startReview(t.id); } }) : null,
     h('button', { class:'btn ghost sm', type:'button', text:'Editar', 'data-fk':'edit', onclick:() => { leave(); openTopicModal(t.disciplineId, t); } }),
     c.inDrawer ? h('button', { class:'linkbtn muted', type:'button', text:'abrir em Disciplinas', onclick:() => openTopicPage(t.id) }) : null);
@@ -9841,11 +12283,18 @@ function topicDetailContent(t, ctx){
   } else {
     sess.slice(0, 6).forEach(s => {
       const diff = difficultyInfo(s.difficulty);
+      // v6.7: o resultado mostrado é o DESTE tópico; os outros tópicos do estudo aparecem como contexto
+      const e = SessionModel.entryOf(s, t.id);
+      const others = SessionModel.topicNames(s).filter(n => n !== t.name);
+      const share = SessionModel.topicShare(s, t.id);
+      const multi = SessionModel.topicIds(s).length > 1;
       recent.appendChild(h('li', { class:'line' },
         h('button', { class:'line-main', type:'button', 'aria-label':`Editar o estudo de ${fmtDateBR(s.date)}`, onclick:() => { leave(); openEditSessionModal(s.id); } },
           h('span', { class:'line-t', text: fmtDateBR(s.date) }),
-          h('span', { class:'line-s', text: [s.type ? sessionTypeLabel(s.type) : null, diff ? diff.label : null, reviewOutcomeLabel(s.reviewOutcome)].filter(Boolean).join(' · ') || '—' })),
-        h('span', { class:'line-v num', text: fmtDuration(s.minutes) })));
+          h('span', { class:'line-s', text: [SessionModel.typesText(s) || null, diff ? diff.label : null, e && e.outcome ? reviewOutcomeLabel(e.outcome) : null,
+            others.length ? 'com ' + (others.length > 2 ? others.slice(0, 2).join(', ') + ' e mais ' + (others.length - 2) : others.join(' e ')) : null].filter(Boolean).join(' · ') || '—' })),
+        h('span', { class:'line-v num', title: multi ? `${share.estimated ? 'Parte estimada' : 'Parte informada'} de um estudo de ${fmtDuration(s.minutes)}` : null,
+          text: multi ? (share.estimated ? '≈ ' : '') + fmtDuration(share.minutes) : fmtDuration(s.minutes) })));
     });
   }
 
@@ -11385,7 +13834,7 @@ function analyticsRecentIds(kind){
   const last = new Map();
   const bump = (k, date) => { if(k && (!last.has(k) || date > last.get(k))) last.set(k, date); };
   state.sessions.forEach(s => {
-    if(kind === 'topic') bump(s.topicId, s.date);
+    if(kind === 'topic') SessionModel.topicIds(s).forEach(id => bump(id, s.date));
     else if(kind === 'discipline') bump(s.disciplineId, s.date);
     else if(kind === 'area'){
       const d = getDiscipline(s.disciplineId);
@@ -11697,7 +14146,7 @@ function analyticsFocusSummary(a, focus){
       const st = tp ? topicStatus(tp) : 'nao_iniciado';
       out.push(`${sc.label} está ${TOPIC_STATUS_LABEL[st].toLowerCase()}.`);
       if(tp && tp.masteryLevel) out.push(`Consolidação atual: ${tp.masteryLevel} de 5.`);
-      if(tp){ const s = sessionsOfTopic(tp.id); out.push(`No total, ${fmtDuration(sum(s, x => x.minutes || 0))} de estudo, em ${plural(s.length, 'vez', 'vezes')}.`); }
+      if(tp){ const tm = topicMinutesOf(tp.id); out.push(`No total, ${tm.estimated > 0 ? 'cerca de ' : ''}${fmtDuration(tm.minutes)} de estudo, em ${plural(tm.count, 'estudo', 'estudos')}.`); }
     } else {
       out.push(`Você já estudou ${c.covered} de ${plural(c.totalTopics, 'tópico', 'tópicos')}${where} (${safePct(c.coverage)}).`);
       const inReview = (c.byStatus.find(x => x.key === 'em_revisao') || {}).count || 0;
@@ -11815,11 +14264,11 @@ function analyticsFocusMetrics(a, focus){
   }
   if(focus === 'content'){
     if(topicObj){
-      const s = sessionsOfTopic(topicObj.id);
+      const tm = topicMinutesOf(topicObj.id);
       return [
         { key:'tstatus', when:'now', label:'Situação', value:TOPIC_STATUS_LABEL[topicStatus(topicObj)], onOpen:open('content') },
         masteryMetric(),
-        { key:'tsess', when:'all', label:'Estudos registrados', value:String(s.length), sub:fmtDuration(sum(s, x => x.minutes || 0)) },
+        { key:'tsess', when:'all', label:'Estudos registrados', value:String(tm.count), sub:(tm.estimated > 0 ? '≈ ' : '') + fmtDuration(tm.minutes) },
         { key:'tnext', when:'now', label:'Próxima revisão', value: topicObj.reviewEnabled && topicObj.reviewDueDate ? fmtRelativeFuture(topicObj.reviewDueDate) : '—', sub: topicObj.reviewEnabled && topicObj.reviewDueDate ? fmtDateBR(topicObj.reviewDueDate) : null }
       ];
     }
@@ -12176,8 +14625,10 @@ function menuButton(label, items, opts){
   const o = opts || {};
   const wrap = h('div', { class:'menu-wrap' });
   const menu = h('div', { class:'menu', role:'menu', hidden:true });
+  // v6.7: `iconOnly` — só o ícone (o nome vai em aria-label), sem a seta
   const btn = h('button', { class: o.className || 'btn ghost sm', type:'button', 'aria-haspopup':'menu', 'aria-expanded':'false',
-    'aria-label': o.ariaLabel || label, 'data-fk': o.fk || null }, o.icon ? icon(o.icon) : null, label, icon('i-chev', 'btn-icon menu-chev'));
+    'aria-label': o.ariaLabel || label, title: o.iconOnly ? (o.ariaLabel || label) : null, 'data-fk': o.fk || null },
+    o.icon ? icon(o.icon) : null, o.iconOnly ? null : label, o.iconOnly ? null : icon('i-chev', 'btn-icon menu-chev'));
   const pop = menuPopover(wrap, btn, menu, {
     onOpen(){ const first = menu.querySelector('[role="menuitem"]'); if(first){ try { first.focus({ preventScroll:true }); } catch(_){ first.focus(); } } }
   });
@@ -12269,7 +14720,16 @@ function breakdownRows(a){
     return { title:'Por tópico', rows: a.byTopic.map(x => ({ ...x, go: getTopic(x.key) ? () => analyzeOnly('topic', x.key) : null })) };
   }
   return { title:'Por tipo de estudo', rows: a.byType.filter(x => x.count > 0).map(x => ({ key:x.key, label:x.label, minutes:x.minutes, count:x.count,
-    pct: a.totals.minutes > 0 ? x.minutes / a.totals.minutes * 100 : 0 })) };
+    estimated:x.estimated, pct: a.totals.minutes > 0 ? x.minutes / a.totals.minutes * 100 : 0 })) };
+}
+/** v6.7: "≈ 1h30" quando parte do tempo da linha veio de divisão estimada (vários tópicos ou tipos sem divisão informada). */
+function minutesText(row){ return (row && row.estimated > 0 ? '≈ ' : '') + fmtDuration(row ? row.minutes : 0); }
+/** Nota curta, só quando alguma linha mostrada tem parte estimada. */
+function estimateNote(rows, kind){
+  if(!(rows || []).some(r => r.estimated > 0)) return null;
+  return h('p', { class:'hint est-note', text: kind === 'type'
+    ? '≈ inclui partes estimadas: um estudo com mais de um tipo tem o tempo dividido igualmente entre eles. O total continua sendo o tempo real estudado.'
+    : '≈ inclui partes estimadas: um estudo com vários tópicos e sem divisão informada tem o tempo repartido igualmente entre eles. O total continua sendo o tempo real estudado.' });
 }
 
 function openAnalyticsDrawer(kind, a){
@@ -12297,7 +14757,9 @@ function openAnalyticsDrawer(kind, a){
     if(bd.rows.length){
       const max = Math.max(1, ...bd.rows.map(x => x.minutes));
       body.append(drawerSection(bd.title, bd.rows.slice(0, 12).map(x =>
-        hbarRow(x.label, x.minutes / max * 100, `${fmtDuration(x.minutes)} · ${safePct(x.pct)}`, null, x.go))));
+        hbarRow(x.label, x.minutes / max * 100, `${minutesText(x)} · ${safePct(x.pct)}`, null, x.go))));
+      const est = estimateNote(bd.rows.slice(0, 12), bd.title === 'Por tipo de estudo' ? 'type' : 'topic');
+      if(est) body.append(est);
       if(bd.rows.some(x => x.go)) body.append(h('p', { class:'hint', text:'Clique em uma linha para analisar só aquele item.' }));
     }
     if(t.count){
@@ -12328,15 +14790,16 @@ function openAnalyticsDrawer(kind, a){
           h('span', { class:'an-sess-date', text: fmtDateBR(s.date) }),
           h('span', { class:'an-sess-main' },
             h('span', { class:'an-sess-title', text: disciplineName(s.disciplineId) + (topic ? ' › ' + topic : '') }),
-            h('span', { class:'an-sess-sub', text: [sessionTypeLabel(s.type), s.reviewOutcome ? reviewOutcomeLabel(s.reviewOutcome) : null].filter(Boolean).join(' · ') })),
-          h('span', { class:'an-sess-min', text: fmtDuration(s.minutes) }))));
+            h('span', { class:'an-sess-sub', text: [SessionModel.typesText(s) || 'Tipo não informado', SessionModel.outcomesText(s) || null].filter(Boolean).join(' · ') })),
+          h('span', { class:'an-sess-min', text: (s._shareEstimated ? '≈ ' : '') + fmtDuration(s.minutes), title: s._projected ? 'Parte deste tópico no estudo' + (s._shareEstimated ? ' (estimada)' : '') : null }))));
       });
       body.append(drawerSection(list.length > 40 ? `As 40 mais recentes de ${list.length}` : 'Lista', ul));
       if(list.length > 40) body.append(h('button', { class:'linkbtn', type:'button', text:'Ver todas no Histórico',
         onclick:() => { Drawer.close(); ui.history.period = 'analises'; setView('history'); } }));
       const maxT = Math.max(1, ...a.byType.map(x => x.count));
-      body.append(drawerSection('Tipos de estudo', a.byType.filter(x => x.count > 0).map(x =>
-        hbarRow(x.label, x.count / maxT * 100, `${x.count} · ${safePct(x.pct)}`))));
+      body.append(drawerSection('Tipos de estudo (frequência)', a.byType.filter(x => x.count > 0).map(x =>
+        hbarRow(x.label, x.count / maxT * 100, `${plural(x.count, 'estudo', 'estudos')} · ${safePct(x.pct)}`))));
+      if(a.typeStats && a.typeStats.multi) body.append(h('p', { class:'hint', text:`Contado por estudo: ${plural(a.typeStats.multi, 'estudo tem', 'estudos têm')} mais de um tipo e ${a.typeStats.multi === 1 ? 'aparece' : 'aparecem'} em cada um deles, então a soma passa de ${t.count}.` }));
       const mid = midnightNote(a);
       if(mid) body.append(mid);
     }
@@ -12413,14 +14876,14 @@ function openAnalyticsDrawer(kind, a){
       title = 'Situação do tópico';
       body.append(drawerIntro('Como este tópico está agora, independentemente do período escolhido.'));
       if(tp){
-        const sess = sessionsOfTopic(tp.id);
+        const tm = topicMinutesOf(tp.id);
         const dl = h('dl', { class:'kv-list' });
         const kv = (k, v) => dl.append(h('div', null, h('dt', { text:k }), h('dd', { text:v })));
         kv('Situação', TOPIC_STATUS_LABEL[topicStatus(tp)]);
         kv('Prioridade', PriorityEngine.text(tp.priority));
         kv('Consolidação estimada', tp.masteryLevel ? `${tp.masteryLevel} de 5` : 'ainda sem revisões');
         kv('Revisões', tp.reviewEnabled ? (tp.reviewDueDate ? `próxima em ${fmtDateBR(tp.reviewDueDate)}` : 'ativadas, começam depois do primeiro estudo') : 'desativadas');
-        kv('Estudos (total)', `${sess.length} · ${fmtDuration(sum(sess, s => s.minutes || 0))}`);
+        kv('Estudos (total)', `${tm.count} · ${tm.estimated > 0 ? 'cerca de ' : ''}${fmtDuration(tm.minutes)}` + (tm.estimated > 0 ? ' (parte estimada: estudos com vários tópicos)' : ''));
         kv('Vezes esquecido', String(tp.reviewFailures || 0));
         body.append(dl);
         body.append(h('div', { class:'row auto', style:'margin-top:14px' },
@@ -12612,7 +15075,9 @@ function calendarHeatmap(a){
 }
 
 function sessionsOfDay(iso, scope){
-  return state.sessions.filter(x => x.date === iso && AnalyticsScope.hasSession(scope, x));
+  // v6.7: pelo mesmo caminho das Análises — no escopo de um tópico, cada estudo vem com a parte daquele tópico
+  const d = parseISO(iso);
+  return d ? AnalyticsScope.sessions(scope, { start:d, end:d }) : [];
 }
 
 /** Resumo de um dia no tooltip do calendário. */
@@ -12644,7 +15109,7 @@ function openDayDrawer(iso, scope){
     body.append(h('div', { class:'stat-grid compact' },
       statBox(fmtDuration(total), 'tempo estudado'),
       statBox(String(list.length), list.length === 1 ? 'estudo' : 'estudos'),
-      statBox(String(list.filter(s => s.type === 'revisao' || s.reviewOutcome).length), 'revisões'),
+      statBox(String(sum(list, s => SessionModel.reviewItems(s).length)), 'revisões'),
       restDay > 0 ? statBox(fmtDuration(restDay), 'descanso') : null));
     const ul = h('ul', { class:'an-sess-list' });
     list.forEach(s => {
@@ -12653,8 +15118,8 @@ function openDayDrawer(iso, scope){
           onclick:() => { Drawer.close(); openEditSessionModal(s.id); } },
         h('span', { class:'an-sess-main' },
           h('span', { class:'an-sess-title', text: disciplineName(s.disciplineId) + (topic ? ' › ' + topic : '') }),
-          h('span', { class:'an-sess-sub', text: [sessionTypeLabel(s.type), s.difficulty ? 'dificuldade ' + s.difficulty + '/5' : null, s.reviewOutcome ? reviewOutcomeLabel(s.reviewOutcome) : null].filter(Boolean).join(' · ') })),
-        h('span', { class:'an-sess-min', text: fmtDuration(s.minutes) }))));
+          h('span', { class:'an-sess-sub', text: [SessionModel.typesText(s) || 'Tipo não informado', s.difficulty ? 'dificuldade ' + s.difficulty + '/5' : null, SessionModel.outcomesText(s) || null].filter(Boolean).join(' · ') })),
+        h('span', { class:'an-sess-min', text: (s._shareEstimated ? '≈ ' : '') + fmtDuration(s.minutes), title: s._projected ? 'Parte deste tópico no estudo' + (s._shareEstimated ? ' (estimada)' : '') : null }))));
     });
     body.append(drawerSection('Estudos do dia', ul));
   }
@@ -12740,8 +15205,9 @@ function openBucketDrawer(bucket, granularity, a){
     statBox(String(list.length), list.length === 1 ? 'estudo' : 'estudos'),
     statBox(String(new Set(list.map(s => s.date)).size), 'dias com estudo')));
   const useTopics = a.scope.type === 'discipline' || a.scope.type === 'topic';
-  const rows = AnalyticsEngine.groupMinutes(list, s => useTopics ? (s.topicId || '__none__') : s.disciplineId,
-    id => useTopics ? (id === '__none__' ? 'Sem tópico definido' : ((getTopic(id) || {}).name || '(tópico removido)')) : disciplineName(id));
+  // v6.7: por tópico, cada estudo divide o próprio tempo entre os tópicos dele (nada é contado duas vezes)
+  const rows = useTopics ? AnalyticsEngine.groupTopicMinutes(list)
+    : AnalyticsEngine.groupMinutes(list, s => s.disciplineId, id => disciplineName(id));
   if(rows.length){
     const mx = Math.max(1, ...rows.map(r => r.minutes));
     body.append(drawerSection(useTopics ? 'Por tópico' : 'Por disciplina', rows.slice(0, 12).map(r => hbarRow(r.label, r.minutes / mx * 100, `${fmtDuration(r.minutes)} · ${safePct(r.pct)}`))));
@@ -12775,7 +15241,7 @@ function analyticsDistributionCard(a){
   if(mode === 'area') rows = a.byArea;
   else if(mode === 'discipline') rows = a.byDiscipline;
   else if(mode === 'topic') rows = a.byTopic;
-  else rows = a.byType.filter(x => x.minutes > 0).map(x => ({ key:x.key, label:x.label, minutes:x.minutes, count:x.count,
+  else rows = a.byType.filter(x => x.minutes > 0).map(x => ({ key:x.key, label:x.label, minutes:x.minutes, count:x.count, estimated:x.estimated,
     pct: a.totals.minutes > 0 ? x.minutes / a.totals.minutes * 100 : 0 })).sort((x,y) => y.minutes - x.minutes);
 
   // no máximo 7 fatias + "Outros"
@@ -12788,7 +15254,8 @@ function analyticsDistributionCard(a){
   const content = shown.length
     ? h('div', { class:'donut-wrap' }, donutChart(shown, mode, a), donutLegend(shown, mode, a))
     : h('p', { class:'hint', text:'Sem registros neste período.' });
-  return cardWithAction('Para onde foi o tempo', toggle, content);
+  const est = (mode === 'topic' || mode === 'type') ? estimateNote(shown, mode) : null;
+  return cardWithAction('Para onde foi o tempo', toggle, content, est);
 }
 
 function distributionAction(row, mode){
@@ -12874,7 +15341,7 @@ function donutLegend(rows, mode, a){
         onclick:() => openDistributionDrawer(r, mode, a) },
       h('span', { class:'sw', style:`background:${PALETTE[i % PALETTE.length]}` }),
       h('span', { class:'lb', text:r.label }),
-      h('span', { class:'num', text:`${fmtDuration(r.minutes)} · ${safePct(r.pct)}` }));
+      h('span', { class:'num', text:`${minutesText(r)} · ${safePct(r.pct)}` }));
     ['mouseenter','focus'].forEach(ev => row.addEventListener(ev, () => donutHighlight(i, true)));
     ['mouseleave','blur'].forEach(ev => row.addEventListener(ev, () => donutHighlight(i, false)));
     box.appendChild(h('li', null, row));
@@ -12998,7 +15465,11 @@ function analyticsTypesCard(a){
   const c = h('div', { class:'card' }, h('p', { class:'card-title' }, 'Tipos de estudo', helpDot('tiposessao')));
   if(!a.totals.count){ c.append(h('p', { class:'hint', text:'Nenhum estudo neste período.' })); return c; }
   const maxType = Math.max(1, ...a.byType.map(x => x.count));
+  // v6.7: FREQUÊNCIA — em quantos estudos cada tipo apareceu (o tempo por tipo fica em "Para onde foi o tempo")
+  c.append(h('p', { class:'hint', style:'margin-bottom:8px', text:'Em quantos estudos cada tipo apareceu.' }));
   a.byType.forEach(t => c.append(hbarRow(t.label, t.count / maxType * 100, t.count ? `${t.count} · ${safePct(t.pct)}` : '0')));
+  if(a.typeStats && a.typeStats.multi) c.append(h('p', { class:'hint', style:'margin-top:8px',
+    text:`${plural(a.typeStats.multi, 'estudo tem', 'estudos têm')} mais de um tipo e conta${a.typeStats.multi === 1 ? '' : 'm'} em cada um — por isso as porcentagens podem somar mais de 100%.` }));
   return c;
 }
 
@@ -13027,7 +15498,7 @@ function weeklyReportCard(scope){
   const allocs = wp ? (wp.allocations || []).filter(x => AnalyticsScope.hasDiscipline(sc, x.disciplineId)) : [];
   const planned = sum(allocs, x => x.targetMinutes || 0);
   const realized = sum(sess, s => s.minutes || 0);
-  const reviews = sess.filter(s => s.type === 'revisao' || s.reviewOutcome).length;
+  const reviews = sum(sess, s => SessionModel.reviewItems(s).length);
   const a = dateToISO(ws), b = dateToISO(we);
   // v6.5 — plano cumprido da semana: de cada disciplina conta no máximo o planejado para ela (PlanRules)
   const plannedByDisc = new Map();
@@ -13187,8 +15658,10 @@ function buildStudyReportText(a){
     a.byWeekday.forEach(x => bullet(`${x.label}: ${fmtDuration(x.minutes)}`));
     const typed = a.byType.filter(x => x.count > 0);
     if(typed.length){
-      L.push('Por tipo de estudo:');
-      typed.forEach(x => bullet(`${x.label}: ${x.count} (${safePct(x.pct)})`));
+      // v6.7: frequência (por estudo) e tempo (dividido, nunca duplicado) — as duas leituras, nomeadas
+      L.push('Por tipo de estudo (frequência: um estudo com mais de um tipo conta em cada um):');
+      typed.forEach(x => bullet(`${x.label}: ${plural(x.count, 'estudo', 'estudos')} (${safePct(x.pct)}) · tempo ${x.estimated > 0 ? '≈ ' : ''}${fmtDuration(x.minutes)}`));
+      if(typed.some(x => x.estimated > 0)) L.push('≈ = parte estimada: estudos com mais de um tipo têm o tempo dividido igualmente entre os tipos.');
     }
     if(a.difficulty.avg !== null) L.push(`Dificuldade percebida média: ${fmtNumber(a.difficulty.avg, 1)}/5 (${plural(a.difficulty.count, 'registro', 'registros')})`);
   }
@@ -13229,6 +15702,7 @@ function buildStudyReportText(a){
   if(!topicsInScope.length) L.push('Nenhum tópico cadastrado neste escopo.');
   else {
     const mins = new Map(a.byTopic.map(r => [r.key, r.minutes]));
+    const estT = new Map(a.byTopic.map(r => [r.key, r.estimated || 0]));
     const ordered = topicsInScope.slice().sort((x,y) => ((mins.get(y.id) || 0) - (mins.get(x.id) || 0)) ||
       (PriorityEngine.clamp(y.priority) - PriorityEngine.clamp(x.priority)) || sortByName(x, y));
     const limit = 40;
@@ -13236,17 +15710,18 @@ function buildStudyReportText(a){
       const parts = [a.scope.type === 'discipline' || a.scope.type === 'topic' ? null : disciplineName(tp.disciplineId),
         `prioridade ${PriorityEngine.text(tp.priority)}`, TOPIC_STATUS_LABEL[a.content.status.get(tp.id) || topicStatus(tp)],
         tp.masteryLevel ? `consolidação estimada ${tp.masteryLevel} de 5` : null,
-        `tempo no período ${fmtDuration(mins.get(tp.id) || 0)}`].filter(Boolean);
+        `tempo no período ${estT.get(tp.id) > 0 ? '≈ ' : ''}${fmtDuration(mins.get(tp.id) || 0)}`].filter(Boolean);
       bullet(`${tp.name} — ${parts.join(' · ')}`);
     });
     if(ordered.length > limit) L.push(`(e mais ${ordered.length - limit} tópicos sem tempo no período)`);
     const noTopic = mins.get('__none__');
     if(noTopic) L.push(`Estudos sem tópico definido: ${fmtDuration(noTopic)}`);
+    if(a.byTopic.some(r => r.estimated > 0)) L.push('≈ = parte estimada: um estudo com vários tópicos e sem divisão informada tem o tempo repartido igualmente entre eles. A soma por tópico é igual ao tempo estudado.');
   }
 
   section('REVISÕES');
   const r = a.reviews;
-  L.push(`Concluídas no período: ${r.completed}`);
+  L.push(`Concluídas no período: ${r.completed}` + (r.studiesWithReview && r.studiesWithReview !== r.completed ? ` (uma por tópico revisado, em ${plural(r.studiesWithReview, 'estudo', 'estudos')})` : ''));
   L.push(`Marcadas hoje para dentro do período: ${r.scheduled}`);
   L.push(`Atrasadas agora: ${r.overdueNow}`);
   L.push(`Previstas para os próximos 7 dias: ${r.upcoming.length}`);
@@ -13416,7 +15891,7 @@ function openHistoryFilters(){
 function filteredSessions(){
   const f = ui.history;
   let list = state.sessions.slice();
-  if(f.topicId) list = list.filter(s => s.topicId === f.topicId);
+  if(f.topicId) list = list.filter(s => SessionModel.hasTopic(s, f.topicId));
   else if(f.disciplineId) list = list.filter(s => s.disciplineId === f.disciplineId);
   else if(f.areaId){
     const ids = new Set(state.disciplines.filter(d => d.areaId === f.areaId).map(d => d.id));
@@ -13425,7 +15900,7 @@ function filteredSessions(){
   if(f.period === 'semana'){ const r = { start:startOfWeek(today()), end:endOfWeek(today()) }; const a = dateToISO(r.start), b = dateToISO(r.end); list = list.filter(s => s.date >= a && s.date <= b); }
   else if(f.period === 'mes'){ const a = dateToISO(startOfMonth(today())), b = dateToISO(endOfMonth(today())); list = list.filter(s => s.date >= a && s.date <= b); }
   else if(f.period === 'analises' && ui.period){ const a = dateToISO(ui.period.start), b = dateToISO(ui.period.end); list = list.filter(s => s.date >= a && s.date <= b); }
-  if(f.type) list = list.filter(s => s.type === f.type);
+  if(f.type) list = list.filter(s => SessionModel.hasType(s, f.type));      // v6.7: estudos que TÊM este tipo (entre outros)
   if(f.difficulty) list = list.filter(s => String(s.difficulty) === f.difficulty);
   const terms = normalizeText(f.search).split(' ').filter(Boolean);
   if(terms.length){
@@ -13445,7 +15920,9 @@ function historySearchIndex(){
   state.sessions.forEach(s => {
     const d = getDiscipline(s.disciplineId);
     const area = d && d.areaId ? getArea(d.areaId) : null;
-    map.set(s.id, normalizeText([d ? d.name : '', area ? area.name : '', topicLabelOf(s), str(s.comment)].join(' ')));
+    // v6.7: todos os tópicos e tipos do estudo entram na busca (não só os mostrados na linha)
+    map.set(s.id, normalizeText([d ? d.name : '', area ? area.name : '', SessionModel.topicNames(s).join(' '), str(s.legacyTopicText),
+      SessionModel.typesText(s), str(s.comment)].join(' ')));
   });
   historyHay = { key, map };
   return map;
@@ -13482,11 +15959,13 @@ function renderHistoryTable(){
     holder.append(h('section', { class:'day-group', 'aria-label': dayLabel(iso) },
       h('h3', { class:'day-head' }, h('span', { text: dayLabel(iso) }), h('span', { class:'day-head-s num', text: fmtDuration(sum(items, s => s.minutes)) })),
       h('ul', { class:'line-list' }, items.map(s => {
-        const topic = topicLabelOf(s);
-        const diff = difficultyInfo(s.difficulty);
-        const sub = [topic || null, s.type ? sessionTypeLabel(s.type) : null, diff ? diff.label : null, reviewOutcomeLabel(s.reviewOutcome)].filter(Boolean).join(' · ');
+        /* v6.7 — UMA linha por estudo: "Frações · Equações · +2" na linha, todos os
+           nomes no rótulo acessível e na edição. O tempo é o do estudo, uma vez. */
+        const sub = SessionModel.subline(s, { maxTopics:2 });
+        const allTopics = SessionModel.topicNames(s);
+        const label = `${disciplineName(s.disciplineId)}${allTopics.length ? ', ' + allTopics.join(', ') : (topicLabelOf(s) ? ', ' + topicLabelOf(s) : '')}, ${fmtDuration(s.minutes)}. Editar estudo`;
         return h('li', { class:'line' },
-          h('button', { class:'line-main', type:'button', 'aria-label':`${disciplineName(s.disciplineId)}${topic ? ', ' + topic : ''}, ${fmtDuration(s.minutes)}. Editar estudo`,
+          h('button', { class:'line-main', type:'button', 'aria-label':label, title: allTopics.length > 3 ? allTopics.join(' · ') : null,
               onclick:() => openEditSessionModal(s.id) },
             h('span', { class:'line-t', text: disciplineName(s.disciplineId) }),
             sub ? h('span', { class:'line-s', text: sub }) : null,
@@ -13523,10 +16002,11 @@ function openEditSessionModal(id){
   const storedBreaks = sanitizeBreaks(breaksOf(s));
 
   openModal(close => {
-    let type = s.type, difficulty = s.difficulty, outcome = s.reviewOutcome;
+    let types = SessionModel.types(s).slice(), difficulty = s.difficulty;
     const comment = commentField({ id:'es-comment', value:s.comment });      // já tem comentário? o campo abre à mostra
 
-    const when = studyWhenFields({ idPrefix:'es', initial:{
+    let lastWhen = null, split = null;
+    const when = studyWhenFields({ idPrefix:'es', onChange: r => { lastWhen = r; if(split) split.refreshTotal(); }, initial:{
       date: s.date, mode: clockMode ? 'time' : 'duration',
       start: clockMode ? fmtClockOfDay(s.startedAt) : '', end: clockMode ? fmtClockOfDay(s.endedAt) : '',
       minutes: s.minutes, breaks: storedBreaks,
@@ -13542,32 +16022,32 @@ function openEditSessionModal(id){
 
     // v6.3: disciplina e tópico atuais aparecem mesmo se foram arquivados — antes
     // sumiam da lista e salvar a edição desligava o estudo do tópico sem aviso.
-    const target = studyTargetFields({ close, idPrefix:'es', discId:s.disciplineId, topicId:s.topicId || '', includeArchived:true,
+    const curIds = SessionModel.topicIds(s);
+    const target = studyTargetFields({ close, idPrefix:'es', discId:s.disciplineId, topicIds:curIds, includeArchived:true,
       allowNewTopic:false, onChange: () => renderOutcome() });
-    const typePick = studyTypePicker({ id:'es-type', value:type, onChange: v => { type = v; renderOutcome(); } });
-    const legacyTopic = (!s.topicId && str(s.legacyTopicText)) ? str(s.legacyTopicText) : null;
+    const typePick = studyTypePicker({ id:'es-type', value:types, onChange: v => { types = v; renderOutcome(); } });
+    const legacyTopic = (!curIds.length && str(s.legacyTopicText)) ? str(s.legacyTopicText) : null;
+    // v6.7: a divisão informada antes volta preenchida (a estimada fica em branco)
+    const initialSplit = {};
+    SessionModel.entries(s).forEach(e => { if(e.minutes !== null) initialSplit[e.topicId] = e.minutes; });
+    split = topicSplitField({ idPrefix:'es', initial: initialSplit, total: () => (lastWhen && lastWhen.complete) ? lastWhen.minutes : null });
 
-    const outcomeField = h('div', { class:'field', hidden:true });
-    const outcomeHint = h('p', { class:'hint' });
-    /** O que mudar este resultado faz com a agenda do tópico — dito antes de salvar. */
-    function outcomeHintText(){
-      const topicId = target.topicId;
-      if(!topicId) return '';
-      if(topicId !== s.topicId) return 'Ao salvar, esta revisão passa a contar para o tópico escolhido.';
-      const latest = TopicReconciler.latestReview(sessionsOfTopic(topicId));
+    /** O que mudar o resultado de UM tópico faz com a agenda dele — dito antes de salvar. */
+    function outcomeNote(topicId){
+      if(!curIds.includes(topicId)) return 'Ao salvar, esta revisão passa a contar para este tópico.';
+      const latest = TopicReconciler.latestReview(topicViewsOf(topicId));
       return (latest && latest.id === s.id)
-        ? 'Esta é a revisão mais recente do tópico: mudar o resultado recalcula a próxima revisão.'
-        : 'O tópico tem uma revisão mais recente: mudar aqui corrige o histórico, sem alterar a próxima revisão.';
+        ? 'É a revisão mais recente do tópico: mudar o resultado recalcula a próxima revisão.'
+        : 'O tópico tem revisão mais recente: mudar aqui corrige o histórico, sem alterar a próxima revisão.';
     }
+    const initialOutcomes = {};
+    SessionModel.entries(s).forEach(e => { if(e.outcome) initialOutcomes[e.topicId] = e.outcome; });
+    const outcomes = reviewOutcomesField({ idPrefix:'es', initial: initialOutcomes, note: outcomeNote });
+    const outcomeField = outcomes.node;
     function renderOutcome(){
-      const show = type === 'revisao' && !!target.topicId;
-      outcomeField.hidden = !show;
-      if(!show) return;
-      outcomeHint.textContent = outcomeHintText();
-      if(outcomeField.firstChild) return;
-      outcomeField.append(h('label', { text:'Resultado da revisão' }),
-        pillGroup(REVIEW_OUTCOMES.map(x => ({ value:x.v, label:x.label })), outcome, v => { outcome = v; }, 'Resultado da revisão'),
-        outcomeHint);
+      const ids = target.topicIds;
+      outcomes.update(ids, types.includes('revisao'));
+      split.update(ids);
     }
 
     const how = howGroup({ id:'es-g-how', type:typePick.node,
@@ -13582,6 +16062,7 @@ function openEditSessionModal(id){
         h('section', { class:'rm-group rm-what', 'aria-labelledby':'es-g-what' },
           h('h4', { class:'rm-group-t', id:'es-g-what', text:'O que você estudou' }),
           target.node,
+          split.node,
           legacyTopic ? h('p', { class:'hint', text:`Anotado na época como “${legacyTopic}”.` }) : null),
         how.node));
     renderOutcome();
@@ -13596,17 +16077,29 @@ function openEditSessionModal(id){
     };
 
     /** O que excluir este estudo faz com o tópico dele — dito na pergunta, antes de remover. */
+    /* v6.7 — vale para CADA tópico do estudo; a pergunta resume o que muda. */
     function removalNote(){
       const cur = state.sessions.find(x => x.id === id);
-      const topic = cur && cur.topicId ? getTopic(cur.topicId) : null;
-      if(!topic) return '';
-      const before = sessionsOfTopic(topic.id);
-      const rec = TopicReconciler.afterCorrection(topic, before, before.filter(x => x.id !== id), reviewContextOf(topic));
-      if(rec.effect === 'reset') return ` Era o único estudo de ${topic.name}: o tópico volta a "não iniciado", sem revisão marcada.`;
-      if(rec.effect === 'rescheduled' || rec.effect === 'reanchored'){
-        return rec.topic.reviewDueDate ? ` A próxima revisão de ${topic.name} passa a ser ${fmtRelativeFuture(rec.topic.reviewDueDate)}.` : ` A revisão de ${topic.name} é recalculada.`;
+      if(!cur) return '';
+      const notes = [];
+      SessionModel.topicIds(cur).forEach(tid => {
+        const topic = getTopic(tid);
+        if(!topic) return;
+        const before = topicViewsOf(tid);
+        const rec = TopicReconciler.afterCorrection(topic, before, before.filter(x => x.id !== id), reviewContextOf(topic));
+        if(rec.effect === 'reset') notes.push({ kind:'reset', topic, rec });
+        else if(rec.effect === 'rescheduled' || rec.effect === 'reanchored') notes.push({ kind:'moved', topic, rec });
+      });
+      if(!notes.length) return '';
+      if(notes.length > 1){
+        const resets = notes.filter(x => x.kind === 'reset').length;
+        return resets === notes.length
+          ? ` Era o único estudo de ${plural(resets, 'tópico', 'tópicos')}: ${resets === 1 ? 'ele volta' : 'eles voltam'} a "não iniciado".`
+          : ` A agenda de revisão de ${plural(notes.length, 'tópico', 'tópicos')} é recalculada.`;
       }
-      return '';
+      const x = notes[0];
+      if(x.kind === 'reset') return ` Era o único estudo de ${x.topic.name}: o tópico volta a "não iniciado", sem revisão marcada.`;
+      return x.rec.topic.reviewDueDate ? ` A próxima revisão de ${x.topic.name} passa a ser ${fmtRelativeFuture(x.rec.topic.reviewDueDate)}.` : ` A revisão de ${x.topic.name} é recalculada.`;
     }
 
     return {
@@ -13627,6 +16120,8 @@ function openEditSessionModal(id){
             toast(w.error || w.missing, 'err', w.errorTitle ? { title:w.errorTitle } : undefined);
             return;
           }
+          const sp = split.read();
+          if(!sp.ok){ if(sp.el){ sp.el.setAttribute('aria-invalid', 'true'); sp.el.focus(); } toast(sp.msg, 'err', { title:'Divisão do tempo' }); return; }
           const discId = await target.ensure();
           if(!discId) return;
 
@@ -13646,13 +16141,15 @@ function openEditSessionModal(id){
             if(w.needsConfirm && !(await confirmLongEdit(w.minutes))) return;
             time = { minutes:w.minutes, startedAt:w.startedAt, endedAt:w.endedAt, breaks:w.breaks };
           }
-          const topicId = target.topicId || null;
+          const topicIds = target.topicIds;
+          const isReview = types.includes('revisao');
           const changes = {
-            disciplineId: discId, topicId, date: w.date,
+            disciplineId: discId, date: w.date,
             minutes: time.minutes, startedAt: time.startedAt || null, endedAt: time.endedAt || null, breaks: time.breaks,
-            type, difficulty, comment: comment.value,
-            // sem tópico não há resultado a editar: um registro antigo sem tópico mantém o que tinha
-            reviewOutcome: type !== 'revisao' ? null : (topicId ? outcome : (s.reviewOutcome || null))
+            types, difficulty, comment: comment.value,
+            topicEntries: topicEntriesFromForm(topicIds, sp, outcomes.values, isReview),
+            // sem tópico não há resultado a editar: um registro antigo sem tópico mantém o que tinha (se continuar sendo revisão)
+            legacyReviewOutcome: (!topicIds.length && isReview) ? (SessionModel.legacyOutcome(s) || null) : null
           };
           let res = await updateSession(id, changes, { base:s });
           if(!res.ok && res.reason === 'conflict'){
@@ -14295,6 +16792,15 @@ async function init(){
   } catch(err){
     console.error('Falha na migração v6.4:', err);
     toast('Seus dados continuam intactos. Recarregue a página para tentar de novo.', 'err',
+      { title:'Não foi possível atualizar o formato dos estudos' });
+  }
+
+  // v6.6 → v6.7: um tópico/um tipo → listas de tópicos e de tipos. Minutos e revisões intactos.
+  try {
+    await runV67Migration();
+  } catch(err){
+    console.error('Falha na migração v6.7:', err);
+    toast('Seus dados continuam intactos e o Ciclo lê os estudos no formato novo mesmo assim. Recarregue a página para tentar de novo.', 'err',
       { title:'Não foi possível atualizar o formato dos estudos' });
   }
 
@@ -15047,13 +17553,14 @@ const FocusMode = {
     const o = opts || {};
     const d = TimerService.data;
     const disc = getDiscipline(d.disciplineId);
-    const topic = d.topicId ? getTopic(d.topicId) : null;
+    const topicNames = (d.topicIds || []).map(id => (getTopic(id) || {}).name).filter(Boolean);
     const resting = TimerService.isOnBreak;
     this._resting = resting;
     const root = document.getElementById('focus-root');
     root.setAttribute('data-state', resting ? 'rest' : 'study');
     document.getElementById('focus-disc').textContent = disc ? disc.name : '';
-    document.getElementById('focus-topic').textContent = [topic ? topic.name : null, d.presetType ? sessionTypeLabel(d.presetType) : null].filter(Boolean).join(' · ');
+    // v6.7: todos os tópicos e tipos escolhidos (o modo foco tem espaço para a lista inteira)
+    document.getElementById('focus-topic').textContent = [topicNames.join(' · ') || null, (d.presetTypes || []).map(sessionTypeLabel).join(' · ') || null].filter(Boolean).join(' — ');
     document.getElementById('focus-state').textContent = resting ? 'Descansando' : 'Estudando';
     document.getElementById('focus-sub').textContent = resting ? `Seu estudo está pausado em ${fmtTimer(TimerService.getElapsed())}.` : '';
     // v6.5: o aviso de que o cronômetro não pôde ser guardado aparece também aqui (a barra fica escondida no modo foco)
@@ -16374,7 +18881,19 @@ function maybeShowWhatsNew(){
     'Janelas e painéis entram e saem com uma transição curta. Uma janela com algo preenchido não fecha mais com um clique fora.',
     'Tudo isso respeita "Reduzir animações", em Configurações → Aparência.'
   ];
-  const items = saw65 ? revival : saw64 ? hardening : [
+  /* v6.7 — a semana em dias e estudos com vários tópicos e tipos. Quem já estava
+     na 6.6 lê só isto; quem vem de antes vê a novidade da versão em que parou e
+     uma linha sobre a 6.7 no fim. */
+  const saw66 = /^6\.([6-9]|\d{2,})/.test(seen);
+  const planner = [
+    'Planejamento ganhou a semana em dias: arraste uma disciplina até segunda, terça… — ou use "Colocar em um dia". Duração e horário são opcionais.',
+    'A meta semanal continua sendo a referência. Cada disciplina mostra quanto ainda está sem dia, e distribuir mais que a meta gera um aviso — nada muda sozinho.',
+    'O progresso de cada dia vem dos estudos que você registra, em qualquer horário daquele dia. Arrastar ou mover nunca cria estudo.',
+    '"Personalizar dias" tira do quadro os dias em que você não estuda. Prazos e estudos desses dias continuam à vista.',
+    'Um estudo pode ter vários tópicos e vários tipos. O tempo é contado uma vez só; a divisão entre os tópicos é opcional e, sem ela, aparece como estimativa (≈).',
+    'Numa revisão com vários tópicos, cada um recebe o próprio resultado.'
+  ];
+  const items = saw66 ? planner : saw65 ? revival : saw64 ? hardening : [
     '"Registrar estudo" guarda algo que você já estudou — de qualquer tela, sem sair dela. "Começar a estudar" liga o cronômetro.',
     'Em "Já estudei", diga a que horas começou e terminou: a duração sai sozinha, mesmo quando o estudo atravessa a meia-noite (23:50 → 00:12 são 22 minutos).',
     'Descansos: no cronômetro, "Descansar" pausa o estudo e conta o descanso à parte. Ele nunca entra no tempo estudado nem no plano da semana.',
@@ -16384,20 +18903,26 @@ function maybeShowWhatsNew(){
   ];
   if(!saw64) items.push('E, na 6.5: o mesmo estudo nunca é registrado duas vezes, editar ou excluir um estudo atualiza o tópico junto, e restaurar um backup mostra antes o que vai entrar.');
   if(!saw65) items.push('E, na 6.6: cores mais sóbrias, botões e opções que respondem ao toque, a marca da escolha deslizando até ela e menus e janelas com transições curtas.');
+  if(!saw66) items.push('E, na 6.7: a semana em dias no Planejamento (arrastar ou "Colocar em um dia") e estudos com vários tópicos e vários tipos, com o tempo contado uma vez só.');
   if(saw64){ /* nada a acrescentar: a lista acima já é só o que ficou mais seguro */ }
   else if(cameFrom6 && !saw63) items.push('Também da 6.3: criar um tópico sem sair do registro e a frase do dia só com frases reais, com autor e obra.');
   if(!saw64 && cameFrom6 && !saw62) items.push('Também da 6.2: o Voltar do navegador volta dentro do Ciclo, e cada lista tem busca e ordenação próprias.');
   if(!cameFrom6) items.push('Também da 6.0 à 6.3: visual mais calmo, Disciplinas como um índice, Análises que começam por uma pergunta, Prazos numa aba própria e o Voltar do navegador funcionando dentro do Ciclo.');
+  const mig67 = state.meta.v67MigrationSummary || {};
   const cfg = {
-    title: 'Ciclo 6.6',
-    sub: saw65
+    title: 'Ciclo 6.7',
+    sub: saw66
+      ? 'Sua semana em dias, se você quiser — e estudos com vários tópicos e tipos. A meta semanal continua sendo a referência.'
+      : saw65
       ? 'Uma versão de acabamento: a mesma ferramenta, mais clara de ver e mais agradável de usar. Nada para reaprender, e nenhum dado foi alterado.'
       : saw64
       ? 'Confiabilidade e acabamento: nada novo para aprender, e nenhum dado foi alterado.'
       : cameFrom5 || cameFrom6
       ? 'Estudar, registrar, descansar e acompanhar a constância ficaram mais simples. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
       : 'O Diário de Estudos agora se chama Ciclo — e ganhou uma interface nova. Seus dados, revisões e planos continuam como estavam.',
-    items, note: converted
+    items,
+    note: [converted, isNum(mig67.sessions) && mig67.sessions > 0
+      ? `${plural(mig67.sessions, 'estudo foi convertido', 'estudos foram convertidos')} para o formato novo ("um tópico, um tipo"), com o mesmo tempo, as mesmas revisões e o mesmo histórico.` : null].filter(Boolean).join(' ') || null
   };
 
   openModal(close => ({
@@ -16524,7 +19049,7 @@ function startProgress(){
   const hasDiscipline = activeDisciplines().length > 0;
   const hasSession = state.sessions.length > 0;
   const hasTopic = state.topics.some(t => !t.archived);
-  const hasReview = state.sessions.some(x => x.reviewOutcome) || !!state.meta.reviewDemoSeen;
+  const hasReview = state.sessions.some(x => SessionModel.hasOutcome(x)) || !!state.meta.reviewDemoSeen;
   const hasPlan = !!PlannerEngine.activePlan();
   const done = { discipline:hasDiscipline, session:hasSession, topic:hasTopic, review:hasReview, plan:hasPlan };
   const steps = HOW_TO_START.map(s2 => ({ ...s2, done: !!done[s2.id] }));
@@ -16691,8 +19216,7 @@ function openFirstReviewIntro(topic){
  * um usuário que já vem de versões anteriores nunca vê esta tela.
  */
 function hasReviewHistory(){
-  if(state.sessions.some(x => x.reviewOutcome)) return true;
-  if(state.sessions.some(x => x.type === 'revisao')) return true;
+  if(state.sessions.some(x => SessionModel.isReview(x))) return true;
   if(state.topics.some(t => (t.reviewRepetitions || 0) > 0 || t.lastReviewedAt)) return true;
   return false;
 }

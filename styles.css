@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO v6.6.0 — folha de estilo única · Visual & Interaction Revival
+   CICLO v6.7.0 — folha de estilo única · Weekly Planner & Flexible Study Records
    (antes "Diário de Estudos")
 
    Organização:
@@ -14,6 +14,9 @@
      23 V6.4 — STUDY FLOW / REST / RHYTHM (registro, seletores, descanso, ritmo)
      24 V6.4.1 — INTERFACE REFINEMENT (horário, composição do registro, tipografia)
      25 V6.5 — RELIABILITY (avisos de integridade, restauração, acessibilidade)
+     26 V6.6 — VISUAL & INTERACTION REVIVAL
+     27 V6.7 — WEEKLY PLANNER & FLEXIBLE STUDY RECORDS (quadro da semana,
+        arrastar, vários tópicos e tipos no registro)
 
    v6 — princípios visuais:
      · tipografia e espaço fazem a hierarquia; caixas só para unidades independentes;
@@ -191,6 +194,9 @@
   --dur-layer-in:     230ms;
   --dur-layer-out:    160ms;
   --dur-nav:          220ms;
+  /* v6.7 — quadro da semana: soltar um cartão e mudar de estado (parcial → concluído) */
+  --dur-drop:         200ms;
+  --dur-state:        180ms;
   --ease-standard:    cubic-bezier(.2,.8,.2,1);
   --ease-emphasized:  cubic-bezier(.16,1,.3,1);
   --ease-exit:        cubic-bezier(.4,0,.8,.2);
@@ -4246,3 +4252,316 @@ html.reduce-motion .choice:active,html.reduce-motion .an-pick:active{ transform:
   .pi-bar:hover{ background:var(--surface-hover) }
 }
 .pi-bar:active{ background:var(--surface-press) }
+
+/* =========================================================================
+   27 · V6.7 — WEEKLY PLANNER & FLEXIBLE STUDY RECORDS
+
+   Registro: vários tópicos (chips), divisão opcional do tempo e um resultado
+   de revisão por tópico. Planejamento: a semana em dias — bandeja de
+   disciplinas, colunas de dias, blocos, prazos do dia e arrastar e soltar.
+   Mesma linguagem do resto: superfícies quietas, bordas finas, teal para
+   ação/seleção, latão para prazo/atenção, verde só para "concluído".
+   ========================================================================= */
+
+/* ---------- registro: vários tópicos ---------- */
+.tpick-box{
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-height:46px; padding:6px 8px;
+  border:1px solid var(--field-border); border-radius:var(--radius-sm); background:var(--field-bg);
+  transition:border-color var(--dur-press) var(--ease-standard);
+}
+.tpick-box:hover{ border-color:var(--border-strong) }
+.tpick.is-open .tpick-box{ border-color:var(--primary); border-bottom-left-radius:0; border-bottom-right-radius:0 }
+.tpick .pick-panel{ border-radius:0 0 var(--radius-sm) var(--radius-sm) }
+.tchips{ display:flex; flex-wrap:wrap; gap:6px; margin:0; padding:0; list-style:none; min-width:0 }
+.tchips[hidden]{ display:none }
+.tchip{
+  display:inline-flex; align-items:center; gap:2px; max-width:100%; min-height:30px; padding:2px 2px 2px 10px;
+  border-radius:999px; background:var(--select-bg); border:1px solid var(--select-line); color:var(--text);
+  font-size:13px; font-weight:500;
+}
+.tchip.is-archived{ border-style:dashed }
+.tchip-t{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:24ch }
+.tchip-tag{ font-size:11px; color:var(--text-tertiary); font-style:italic; margin-left:4px }
+.tchip-x{
+  display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%;
+  color:var(--text-secondary); transition:background-color var(--dur-press) var(--ease-standard), color var(--dur-press) var(--ease-standard);
+}
+.tchip-x:hover{ background:var(--surface-hover); color:var(--text) }
+.tchip-x:focus-visible{ outline:2px solid var(--focus); outline-offset:1px }
+.tchip-x .btn-icon{ width:12px; height:12px }
+.tchips-empty{ font-size:14px; color:var(--text-secondary); padding:0 4px }
+.tchips-empty[hidden]{ display:none }
+.tpick-add{
+  display:inline-flex; align-items:center; gap:6px; min-height:32px; padding:4px 11px; border-radius:999px;
+  color:var(--primary); font-size:13px; font-weight:500; border:1px dashed var(--primary-line);
+  transition:background-color var(--dur-press) var(--ease-standard), border-color var(--dur-press) var(--ease-standard);
+}
+.tpick-add:hover{ background:var(--primary-tint); border-color:var(--primary) }
+.tpick-add:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
+.tpick-add.is-empty{ margin-left:auto }
+.tpick-add .btn-icon{ width:13px; height:13px }
+.tpick-box-mark{
+  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:18px; height:18px;
+  border:1.5px solid var(--border-strong); border-radius:5px; color:transparent;
+  transition:background-color var(--dur-select) var(--ease-standard), border-color var(--dur-select) var(--ease-standard);
+}
+.tpick-box-mark .btn-icon{ width:12px; height:12px; stroke-width:2.6 }
+.tpick-opt[aria-selected="true"] .tpick-box-mark{ background:var(--primary-fill); border-color:var(--primary-fill); color:var(--on-primary) }
+.tpick-opt.is-picked .tpick-box-mark{ animation:pickPop 240ms var(--ease-emphasized) }
+.tpick-foot{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px 8px 14px; border-top:1px solid var(--border-soft) }
+.tpick-count{ font-size:12px; color:var(--text-tertiary) }
+
+/* divisão do tempo entre tópicos (opcional) */
+.split .add-link{ display:inline-block }
+.split-intro{ margin-top:4px }
+.split-body{ margin-top:10px }
+.split-rows{ display:flex; flex-direction:column; gap:8px }
+.split-row{ display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px }
+.modal .split-row label.split-name,.split-name{ font-size:14px; color:var(--text); overflow-wrap:anywhere; margin:0 }
+.split-input{ display:inline-flex; align-items:center; gap:6px }
+.split-input input{ width:86px; text-align:right }
+.split-unit{ font-size:13px; color:var(--text-tertiary) }
+.split-foot{ display:flex; align-items:baseline; justify-content:space-between; gap:6px 12px; margin-top:10px; flex-wrap:wrap }
+.split-status{ font-size:13px; color:var(--text-secondary); margin:0; max-width:56ch }
+.split-status.is-error{ color:var(--danger) }
+.split-status.is-warn{ color:var(--accent) }
+
+/* resultado da revisão por tópico */
+.oc-all{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; font-size:13px; color:var(--text-secondary); margin:2px 0 12px }
+.oc-all-btns{ display:inline-flex; flex-wrap:wrap; gap:4px 14px }
+.oc-rows{ display:flex; flex-direction:column; gap:12px }
+.oc-row{ display:grid; grid-template-columns:minmax(110px, 170px) minmax(0,1fr); gap:6px 14px; align-items:center; padding-top:12px; border-top:1px solid var(--border-soft) }
+.oc-row:first-child{ border-top:0; padding-top:0 }
+.oc-name{ font-size:14px; font-weight:500; color:var(--text); overflow-wrap:anywhere }
+.oc-note{ grid-column:2; font-size:12px; color:var(--text-tertiary) }
+.est-note{ margin-top:10px }
+@media (max-width:600px){
+  .oc-row{ grid-template-columns:minmax(0,1fr) }
+  .oc-note{ grid-column:1 }
+  .tchip-t{ max-width:16ch }
+}
+
+/* ---------- planejamento: o quadro da semana ---------- */
+.plan-screen{ max-width:none }
+.plan-screen > * + *{ margin-top:22px }
+.plan-screen > .wk-head + .wk-bar{ margin-top:26px }
+
+.wk-bar{ display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px 16px }
+.wk-nav{ display:flex; align-items:center; gap:10px; min-width:0 }
+.wk-when{ display:flex; flex-direction:column; gap:1px; min-width:0 }
+.wk-rel{ font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text-tertiary) }
+.wk-range{ font-family:var(--font-display); font-size:20px; font-weight:600; line-height:1.25; color:var(--text); letter-spacing:-.01em }
+.wk-step{ width:36px; height:36px }
+.wk-step:disabled{ opacity:.35; cursor:default }
+.wk-tools{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end }
+.wk-scope{ grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 16px; font-size:13px; color:var(--text-secondary); margin:0 }
+
+/* avisos: uma frase, três caminhos */
+.wk-notice-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px }
+.wk-notice{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 16px;
+  padding:12px 14px; border:1px solid var(--accent-line); background:var(--accent-tint); border-radius:var(--radius-md);
+}
+.wk-notice-t{ margin:0; font-size:14px; color:var(--text); max-width:62ch }
+.wk-notice-a{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px }
+
+/* bandeja de disciplinas */
+.wk-tray{ position:relative; padding:16px; border:1px solid var(--border-soft); border-radius:var(--radius-lg); background:var(--surface) }
+.tray-head{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:4px 16px; margin-bottom:12px }
+.tray-head .block-label{ margin:0 }
+.tray-hint{ font-size:13px; color:var(--text-tertiary); margin:0 }
+.tray-list{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:8px }
+.tray-item{ min-width:0 }
+.tray-card{
+  display:flex; flex-direction:column; gap:6px; height:100%; padding:10px 12px;
+  border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface-raised);
+  cursor:grab; user-select:none; -webkit-user-select:none;
+  transition:border-color var(--dur-press) var(--ease-standard), opacity var(--dur-select) var(--ease-standard);
+}
+.tray-card:hover{ border-color:var(--border-hover) }
+.tc-top{ display:flex; align-items:center; gap:6px; min-width:0 }
+.tc-grip{ display:inline-flex; color:var(--text-tertiary); margin-left:-4px; opacity:.7 }
+.tray-card:hover .tc-grip{ opacity:1 }
+.tc-grip .btn-icon{ width:14px; height:14px }
+.tc-name{ flex:1; min-width:0; font-size:14px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.tc-sub{ display:flex; flex-wrap:wrap; gap:6px; font-size:12.5px; color:var(--text-secondary); margin:0 }
+.tc-dot{ color:var(--text-tertiary) }
+.tc-bar .bar{ height:4px }
+.tc-left{ font-size:12px; color:var(--text-tertiary); margin:0 }
+.tc-left.is-open{ color:var(--text-secondary) }
+.tray-card.is-done .tc-left{ color:var(--success) }
+.tc-add{ align-self:flex-start; margin-top:auto }
+.tc-add .btn-icon{ width:13px; height:13px }
+.tray-more{ margin-top:12px; display:inline-block }
+.tray-drop{
+  display:none; position:absolute; inset:0; z-index:3; align-items:center; justify-content:center; gap:8px;
+  border-radius:inherit; border:1.5px dashed var(--border-strong); background:var(--surface);
+  color:var(--text-secondary); font-size:14px; font-weight:500;
+}
+.wk-tray.is-drop-target .tray-drop{ display:flex }
+.wk-tray.is-drop-over .tray-drop{ border-color:var(--danger-line); color:var(--danger); box-shadow:inset 0 0 0 999px var(--danger-soft) }
+
+/* a semana: colunas que nunca ficam microscópicas (o JS decide 7, ou 4 + 3, ou uma por linha) */
+.wk-grid{ display:grid; grid-template-columns:repeat(var(--wk-cols, 7), minmax(0, 1fr)); gap:10px; align-items:stretch }
+.day-col{
+  position:relative; display:flex; flex-direction:column; min-width:0; min-height:190px; padding:10px 10px 8px;
+  border:1px solid var(--border-soft); border-radius:var(--radius-lg); background:var(--surface);
+  transition:border-color var(--dur-state) var(--ease-standard), background-color var(--dur-state) var(--ease-standard);
+}
+.day-col.is-today{ border-color:var(--primary-line); box-shadow:inset 0 2px 0 var(--primary) }
+.day-head{ display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 7px; padding:2px 2px 8px; border-bottom:1px solid var(--border-soft); margin-bottom:8px; min-width:0 }
+.day-name{ font-size:13px; font-weight:600; color:var(--text-secondary) }
+.dn-long{ display:none }
+.day-num{ font-family:var(--font-display); font-size:20px; font-weight:600; line-height:1; color:var(--text) }
+.day-col.is-past .day-num{ color:var(--text-secondary) }
+.day-today{ font-size:11px; font-weight:600; color:var(--primary); padding:1px 7px; border-radius:999px; background:var(--primary-soft) }
+.day-total{ margin-left:auto; font-size:12px; color:var(--text-tertiary); white-space:nowrap }
+.day-dls{ list-style:none; margin:0 0 8px; padding:0; display:flex; flex-direction:column; gap:4px }
+.dl-chip{
+  display:flex; align-items:center; gap:6px; width:100%; min-height:30px; padding:4px 8px;
+  border-radius:var(--radius-sm); border:1px solid var(--accent-line); background:var(--accent-tint);
+  color:var(--text); font-size:12.5px; text-align:left;
+  transition:background-color var(--dur-press) var(--ease-standard);
+}
+.dl-chip:hover{ background:var(--accent-soft) }
+.dl-chip:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
+.dl-chip-ic{ color:var(--accent); width:13px; height:13px }
+.dl-chip-t{ flex:1; min-width:0; overflow:hidden; font-weight:500; line-height:1.3; overflow-wrap:break-word;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2 }
+.dl-chip-k{ flex-shrink:0; font-size:11px; color:var(--text-tertiary) }
+.wk-grid:not(.is-stacked) .day-col .dl-chip-k{ display:none }       /* coluna estreita: o título do prazo vem primeiro (o tipo fica no rótulo) */
+.dl-chip.is-done{ border-style:dashed; background:transparent }
+.dl-chip.is-done .dl-chip-t{ text-decoration:line-through; text-decoration-color:var(--text-tertiary); color:var(--text-secondary) }
+.day-blocks{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px }
+.day-empty{ font-size:12.5px; color:var(--text-tertiary); margin:2px 2px 0 }
+.day-real{ font-size:11.5px; color:var(--text-tertiary); margin:8px 2px 0 }
+.day-add{ margin-top:auto; padding-top:8px }
+.day-add .menu{ left:0; right:auto }
+.day-add-btn .btn-icon{ width:13px; height:13px }
+.day-add-btn,.tc-add{ display:inline-flex; align-items:center; gap:4px }
+
+/* um bloco planejado: nome inteiro (quebra entre palavras), quando, quanto e como está */
+.blk{
+  position:relative; display:flex; flex-direction:column; gap:4px; padding:7px 6px 8px 9px;
+  border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface-raised);
+  cursor:grab; user-select:none; -webkit-user-select:none;
+  transition:border-color var(--dur-press) var(--ease-standard), background-color var(--dur-state) var(--ease-standard),
+             box-shadow var(--dur-state) var(--ease-standard), opacity var(--dur-select) var(--ease-standard);
+}
+.blk:hover{ border-color:var(--border-hover) }
+.blk-top{ display:flex; align-items:flex-start; gap:2px; min-width:0 }
+.blk-main{
+  flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:1px; text-align:left;
+  padding:1px 2px 0 0; border-radius:var(--radius-xs); cursor:inherit; color:inherit;
+}
+.blk-main:disabled{ cursor:default; opacity:1 }
+.blk-main:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
+.blk-name{ max-width:100%; font-size:13.5px; font-weight:600; line-height:1.3; color:var(--text); overflow-wrap:break-word; hyphens:auto }
+.blk-meta{ font-size:12px; line-height:1.35; color:var(--text-secondary); overflow-wrap:break-word }
+.blk-bar{ height:3px; margin:1px 2px 0 0; border-radius:999px; background:var(--track); overflow:hidden }
+.blk-bar > span{ display:block; height:100%; border-radius:inherit; background:var(--primary); transition:width var(--dur-state) var(--ease-standard) }
+.blk-status{ margin:0; font-size:11.5px; line-height:1.35; color:var(--text-tertiary) }
+.blk-more{ flex-shrink:0; width:24px; height:24px; margin:-3px -3px 0 0 }
+.blk.is-partial .blk-status{ color:var(--text-secondary) }
+.blk.is-done{ box-shadow:inset 3px 0 0 var(--success) }
+.blk.is-done .blk-bar > span{ background:var(--success) }
+.blk.is-done .blk-status{ color:var(--success) }
+.blk.is-archived{ opacity:.7 }
+.blk.just-done{ animation:blkDone 520ms var(--ease-emphasized) }
+.blk.is-landed{ animation:blkLand var(--dur-drop) var(--ease-emphasized) }
+@keyframes blkDone{
+  0%{ box-shadow:inset 3px 0 0 var(--success), 0 0 0 0 var(--success-soft) }
+  55%{ box-shadow:inset 3px 0 0 var(--success), 0 0 0 5px var(--success-soft) }
+  100%{ box-shadow:inset 3px 0 0 var(--success), 0 0 0 0 transparent }
+}
+@keyframes blkLand{ from{ transform:scale(.97); background-color:var(--select-bg) } to{ transform:none } }
+
+/* arrastar e soltar */
+html.is-dragging,html.is-dragging *{ cursor:grabbing!important; user-select:none!important; -webkit-user-select:none!important }
+.dnd-ghost{
+  position:fixed; z-index:400; margin:0; pointer-events:none; will-change:transform;
+  box-shadow:var(--shadow-pop); border-color:var(--primary-line)!important; background:var(--surface-overlay)!important;
+}
+.is-drag-source{ opacity:.35 }
+.day-col.is-drop-target,.off-day.is-drop-target{ border-style:dashed; border-color:var(--border-strong) }
+.day-col.is-drop-over,.off-day.is-drop-over{ border-style:solid; border-color:var(--primary); background:var(--select-bg) }
+.drop-mark{
+  position:absolute; left:8px; right:8px; top:0; z-index:2; height:2px; border-radius:2px;
+  background:var(--primary); box-shadow:0 0 0 2px var(--primary-ring); pointer-events:none;
+}
+.drop-mark[hidden]{ display:none }
+
+/* dias fora do planejamento: presentes, mas recolhidos */
+.wk-off{ padding:14px 16px 16px; border:1px dashed var(--border); border-radius:var(--radius-lg) }
+.wk-off-head{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 12px }
+.wk-off-head .block-label{ margin:0 }
+.off-list{ list-style:none; margin:12px 0 0; padding:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:10px }
+.off-day{ position:relative; padding:10px; border:1px solid var(--border-soft); border-radius:var(--radius-md); background:var(--surface-sunken) }
+.off-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:6px }
+.off-name{ font-size:13px; font-weight:600; color:var(--text-secondary) }
+.off-facts{ font-size:12px; color:var(--text-tertiary) }
+.off-day .day-blocks{ margin-top:6px }
+.wk-foot{ margin-top:18px }
+
+/* janelas do quadro */
+.be .chips{ margin-top:2px }
+.be-custom{ display:flex; align-items:center; gap:8px; margin-top:10px }
+.modal .be-custom label{ margin:0; font-size:13px; color:var(--text-secondary) }
+.be-custom input{ width:92px }
+.be-time{ margin-top:10px }
+.be-time .field{ margin-bottom:6px }
+.be-time .time-input{ max-width:140px }
+.be-clash{ color:var(--accent) }
+.move-days{ display:flex; flex-direction:column; gap:6px; margin-top:4px }
+.move-day{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; padding:8px 12px;
+  border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface); text-align:left;
+  font-size:14px; color:var(--text);
+  transition:border-color var(--dur-press) var(--ease-standard), background-color var(--dur-press) var(--ease-standard);
+}
+.move-day:hover:not(:disabled){ border-color:var(--border-hover); background:var(--surface-hover) }
+.move-day:disabled{ opacity:.6; cursor:default }
+.move-day:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
+.md-tag{ font-size:12px; color:var(--text-tertiary) }
+.sd-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:8px; margin:6px 0 12px }
+.sd-day{
+  display:flex; align-items:center; gap:10px; min-height:44px; padding:8px 12px; cursor:pointer;
+  border:1px solid var(--border); border-radius:var(--radius-md); font-size:14px; color:var(--text);
+  transition:border-color var(--dur-press) var(--ease-standard), background-color var(--dur-select) var(--ease-standard);
+}
+.sd-day:hover{ border-color:var(--border-hover) }
+.sd-day:has(input:checked){ border-color:var(--select-line); background:var(--select-bg) }
+.sd-day input{ width:18px; height:18px; margin:0; accent-color:var(--primary-fill) }
+.modal label.sd-day{ margin:0; color:var(--text) }
+
+/* responsivo: o quadro reorganiza, nunca espreme nem rola de lado */
+@media (max-width:980px){
+  .wk-bar{ grid-template-columns:minmax(0,1fr) }
+  .wk-tools{ justify-content:flex-start }
+}
+.wk-grid.is-stacked{ gap:8px }
+.wk-grid.is-stacked .day-col{ min-height:0 }
+.wk-grid.is-stacked .dn-short{ display:none }
+.wk-grid.is-stacked .dn-long{ display:inline }
+.wk-grid.is-stacked .day-empty{ margin-bottom:2px }
+.th-touch{ display:none }
+@media (max-width:600px){
+  .tc-grip{ display:none }
+  .wk-tray{ padding:12px }
+  .tray-list{ grid-template-columns:minmax(0,1fr) }
+  .wk-range{ font-size:18px }
+  .wk-notice{ padding:12px }
+}
+/* toque: arrastar não existe aqui — botões e menus fazem tudo, com alvos maiores */
+@media (pointer:coarse){
+  .tray-card,.blk{ cursor:default }
+  .tc-grip,.th-drag{ display:none }
+  .th-touch{ display:inline }
+  .blk-more{ width:40px; height:40px; margin:-8px -6px -4px 0 }
+  .day-add-btn,.tc-add{ min-height:40px }
+}
+@media (forced-colors:active){
+  .blk,.tray-card,.day-col,.dl-chip,.tchip{ border:1px solid CanvasText }
+  .day-col.is-drop-over,.off-day.is-drop-over{ outline:2px solid Highlight }
+  .drop-mark{ background:Highlight }
+}

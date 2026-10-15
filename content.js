@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — CONTEÚDO ESTÁTICO (v6.6.0)
+   CICLO — CONTEÚDO ESTÁTICO (v6.7.0)
    Textos, guias e frases. Nada aqui vai para o IndexedDB e nada vem da rede.
 
    Blocos: DAILY_QUOTES · REVIEW_METHOD_GUIDES · HELP_SECTIONS ·
@@ -336,16 +336,22 @@ const HELP_GLOSSARY = {
     short:'Aquilo que você estuda. Todo estudo registrado fica ligado a uma disciplina.' },
   topico: { term:'Tópico', article:'topicos', alias:'assunto conteudo parte capitulo',
     short:'Uma parte de uma disciplina. É o tópico que entra no ciclo de revisão e mostra seu progresso no conteúdo.' },
-  sessao: { term:'Estudo registrado', article:'sessoes', alias:'sessao sessão sessoes de estudo registro bloco tempo',
-    short:'Cada vez que você estuda e registra: disciplina, tempo e, se quiser, tópico, tipo e dificuldade. Nas Análises aparece como "estudos registrados".' },
+  sessao: { term:'Estudo registrado', article:'sessoes', alias:'sessao sessão sessoes de estudo registro tempo',
+    short:'Cada vez que você estuda e registra: disciplina, tempo e, se quiser, tópicos, tipos e dificuldade. Um estudo com vários tópicos continua sendo um estudo, com um tempo só.' },
   prioridade: { term:'Prioridade', article:'prioridades', alias:'peso importancia importância escala',
     short:'De 1 (muito baixa) a 5 (muito alta). Indica quanto algo merece sua atenção agora. O padrão é 3.' },
   minimoSemanal: { term:'Mínimo semanal', article:'distribuicao', alias:'minimo piso garantido reserva',
     short:'Tempo reservado para uma disciplina antes de qualquer divisão, para ela não ser esquecida.' },
   disponibilidade: { term:'Disponibilidade semanal', article:'planejamento', alias:'horas semana tempo capacidade',
     short:'Quantas horas por semana você pretende estudar. É o número que sustenta todo o planejamento.' },
-  planoBase: { term:'Plano semanal', article:'plano-base', alias:'plano base modelo semanal padrão padrao distribuicao',
+  planoBase: { term:'Plano semanal', article:'plano-base', alias:'plano base modelo semanal padrão padrao distribuicao meta semanal',
     short:'O modelo de divisão do seu tempo por semana. Cada semana guarda uma cópia do plano que valia nela.' },
+  semanaDias: { term:'Semana em dias', article:'semana-em-dias', alias:'calendario calendário agenda dias da semana bloco arrastar segunda terca horario',
+    short:'Uma camada opcional do plano: em que dia (e, se quiser, a que horas) estudar cada disciplina. A meta semanal continua sendo a referência.' },
+  diasEstudo: { term:'Dias de estudo', article:'dias-de-estudo', alias:'personalizar dias desativar dia folga quinta domingo',
+    short:'Os dias que aparecem no quadro da semana. Tirar um dia não apaga nada: estudos e prazos dele continuam à vista.' },
+  parteEstimada: { term:'Parte estimada', article:'varios-topicos', alias:'estimativa estimado aproximado divisao tempo por topico tipo',
+    short:'Quando um estudo tem vários tópicos (ou tipos) e você não disse quanto foi de cada um, o tempo é dividido em partes iguais e marcado com ≈. O total continua sendo o tempo real.' },
   aderencia: { term:'Plano cumprido', article:'planejado-realizado', alias:'aderencia aderência meta porcentagem planejado realizado',
     short:'Quanto do que foi planejado para cada disciplina foi de fato estudado. Tempo a mais numa disciplina não compensa o que faltou em outra: ele aparece à parte, como "além do plano".' },
   cobertura: { term:'Conteúdo estudado', article:'cobertura-dominio', alias:'cobertura percentual topicos progresso',
@@ -664,13 +670,14 @@ const HELP_ARTICLES = [
   keywords:'sessao sessoes bloco estudo registro registrar tempo minutos comentario o que e uma sessao',
   content:[
     { h:'Como funciona' },
-    { p:'Um [[sessao|estudo registrado]] é qualquer período em que você estudou algo e anotou no Ciclo. Pode ter 10 minutos ou duas horas. Ele guarda a disciplina, o tempo estudado e — se você quiser — o tópico, o tipo, a dificuldade, um comentário e os [[descanso|descansos]] que você fez.' },
+    { p:'Um [[sessao|estudo registrado]] é qualquer período em que você estudou algo e anotou no Ciclo. Pode ter 10 minutos ou duas horas. Ele guarda a disciplina, o tempo estudado e — se você quiser — os tópicos, os tipos, a dificuldade, um comentário e os [[descanso|descansos]] que você fez.' },
     { h:'Exemplo' },
-    { ul:['Inglês · 20 min','Cálculo · Derivadas · 40 min · exercícios · difícil','Redes de Computadores · VLAN · 1h · laboratório'] },
+    { ul:['Inglês · 20 min','Cálculo · Derivadas · 40 min · exercícios · difícil','Matemática · Frações, Equações e Porcentagem · 1h30 · teoria e exercícios'] },
+    { p:'O último exemplo é UM estudo de 1h30 — não três. Veja [[parteEstimada|como o tempo se divide entre vários tópicos]].' },
     { h:'Por que registrar' },
     { p:'Registrar transforma sensação em informação. Os registros alimentam o planejamento, as análises e as revisões: sem eles, o Ciclo não tem como sugerir nada.' },
     { details:{ title:'Tipos de estudo', content:[
-      { p:'Classificar é opcional, mas alimenta uma análise útil: a proporção entre teoria e prática.' },
+      { p:'Classificar é opcional, mas alimenta uma análise útil: a proporção entre teoria e prática. Dá para marcar mais de um tipo no mesmo estudo — clique de novo para desmarcar.' },
       { ul:[
         'Teoria — ler, assistir ou entender um conceito.',
         'Exercícios — praticar questões e problemas.',
@@ -679,11 +686,50 @@ const HELP_ARTICLES = [
         'Projeto — construir ou desenvolver algo.',
         'Outro — qualquer outro tipo de estudo.'
       ]},
-      { p:'Se você marcar o tipo como Revisão e o estudo tiver um tópico, o Ciclo pergunta como você se saiu e ajusta o intervalo da próxima revisão.' }
+      { p:'Se você marcar Revisão e o estudo tiver tópicos, o Ciclo pergunta como você se saiu — em cada tópico — e ajusta a próxima revisão de cada um.' }
     ]}}
   ],
   cta:{ action:'openHistory', label:'Ver meus estudos' },
-  related:['cronometro','registro-manual','descansos']
+  related:['varios-topicos','tipos-de-estudo','cronometro','registro-manual']
+},
+{
+  id:'varios-topicos', section:'usar', group:'estudando',
+  title:'Vários tópicos no mesmo estudo',
+  oneLine:'Estudou Frações, Equações e Porcentagem em 1h30? É um estudo de 1h30, com três tópicos.',
+  summary:'Como escolher vários tópicos, dividir o tempo (se quiser) e o que acontece com as revisões.',
+  keywords:'varios topicos multiplos topicos mais de um topico dividir tempo distribuir minutos estimativa estimado aproximado chips',
+  content:[
+    { h:'Como funciona' },
+    { p:'No registro, em "Tópicos", use "Adicionar tópico" e marque quantos quiser da mesma disciplina. Os escolhidos aparecem como pequenas etiquetas; o × tira um deles. Se trocar de disciplina, os tópicos da anterior saem da seleção.' },
+    { h:'O tempo é contado uma vez' },
+    { p:'1h30 com três tópicos continua sendo 1h30: no histórico, na disciplina, no plano da semana e nas análises. Os tópicos só dizem do que foi aquele tempo.' },
+    { h:'Quanto foi de cada tópico?' },
+    { p:'É opcional. Em "+ Dividir o tempo entre os tópicos", informe os minutos de cada um. O que ficar em branco recebe uma parte igual do que sobrar.' },
+    { ul:['Frações 40 min · Equações 30 min · Porcentagem em branco → Porcentagem fica com os 20 min restantes.','Sem divisão nenhuma → 30 min para cada um, marcados como estimativa (≈).'] },
+    { p:'O Ciclo não finge saber o que você não informou: quando a parte é estimada, as Análises e o tópico mostram "≈" ou "cerca de". A soma das partes é sempre o tempo real do estudo.' },
+    { h:'Revisões' },
+    { p:'Cada tópico estudado segue o próprio ciclo de revisão. Numa revisão com vários tópicos, o Ciclo pergunta como você se saiu em cada um — e há um atalho "Mesmo resultado para todos". Um tópico sem resposta conta como estudado, sem mexer na agenda dele.' },
+    { note:'Editar ou excluir um estudo com vários tópicos atualiza todos eles: um tópico que sai do estudo tem a agenda refeita sem ele, e um que entra recebe o estudo como novo.' }
+  ],
+  related:['sessoes','tipos-de-estudo','resultados-revisao']
+},
+{
+  id:'tipos-de-estudo', section:'usar', group:'estudando',
+  title:'Vários tipos no mesmo estudo',
+  oneLine:'Teoria e exercícios na mesma hora? Marque os dois.',
+  summary:'O que muda nas Análises: frequência por tipo e tempo por tipo são coisas diferentes.',
+  keywords:'tipos de estudo varios tipos teoria exercicios laboratorio projeto frequencia porcentagem passa de 100',
+  content:[
+    { h:'Como funciona' },
+    { p:'Os tipos — Teoria, Exercícios, Laboratório, Revisão, Projeto e Outro — são opcionais e podem ser combinados: clique para marcar e clique de novo para desmarcar. No teclado, as setas percorrem as opções e o Espaço marca.' },
+    { h:'Nas Análises' },
+    { ul:[
+      'Frequência por tipo — em quantos estudos cada tipo apareceu. Um estudo com dois tipos conta nos dois, por isso as porcentagens podem somar mais de 100%.',
+      'Tempo por tipo — o tempo de cada estudo dividido entre os tipos dele. Com um tipo, ele leva tudo; com vários, partes iguais, marcadas como estimativa (≈). A soma é sempre o tempo estudado.'
+    ]},
+    { p:'Exemplo: 60 min de Laboratório e Projeto aparecem como um estudo em cada tipo, e como cerca de 30 min para cada um no tempo — nunca como 2h.' }
+  ],
+  related:['sessoes','varios-topicos','analises-como-ler']
 },
 {
   id:'cronometro', section:'usar', group:'estudando',
@@ -812,11 +858,74 @@ const HELP_ARTICLES = [
       'Ajuste o plano quando a realidade mudar — provas, semanas cheias, férias.'
     ]},
     { h:'Por que não é uma agenda rígida' },
-    { p:'O Ciclo controla quanto falta na semana, não em que dia você estuda. Não estudar na terça não quebra nada: a recomendação apenas passa a puxar essa disciplina com mais força enquanto o tempo não for cumprido.' },
+    { p:'A referência é a meta da semana: quanto de cada disciplina. Se quiser, você também escolhe em que dia estudar cada uma (veja [[semanaDias|a semana em dias]]) — mas isso é opcional, e não estudar na terça não quebra nada: a recomendação apenas passa a puxar essa disciplina com mais força enquanto o tempo não for cumprido.' },
     { note:'O planejamento é opcional. Sem ele, o Ciclo continua sugerindo o que estudar — só com menos informação.' }
   ],
   cta:{ action:'plan', label:'Organizar minha semana' },
-  related:['distribuicao','plano-base','planejado-realizado']
+  related:['semana-em-dias','distribuicao','plano-base','planejado-realizado']
+},
+{
+  id:'semana-em-dias', section:'usar', group:'semana',
+  title:'A semana em dias',
+  oneLine:'Escolha em que dia estudar cada disciplina — arrastando ou pelos botões. Horário é opcional.',
+  summary:'Colocar, mover e tirar disciplinas dos dias, durações e horários opcionais, e o modelo das próximas semanas.',
+  keywords:'semana em dias calendario calendário agenda arrastar soltar mover para outro dia segunda terca quarta horario 19h bloco colocar em um dia modelo proximas semanas repetir',
+  content:[
+    { h:'Como funciona' },
+    { p:'Em Planejamento, abaixo da meta da semana, ficam as suas disciplinas e os dias. Arraste uma disciplina até um dia — ou use "Colocar em um dia" — e ela passa a aparecer ali como um bloco.' },
+    { ul:[
+      'Matemática na segunda e na sexta, 1h em cada: são dois blocos da mesma disciplina, somando 2h.',
+      'Arraste um bloco para outro dia (ou para cima e para baixo no mesmo dia) para reorganizar.',
+      'Arraste um bloco de volta para "Disciplinas" — ou use "Tirar de segunda" — para retirá-lo do dia.'
+    ]},
+    { h:'Sem arrastar' },
+    { p:'Tudo também funciona por botões, no teclado e no celular: "Colocar em um dia" em cada disciplina, "Adicionar" em cada dia e o menu ⋯ de cada bloco, com "Mover para outro dia…", "Subir", "Descer" e "Tirar". Esc cancela um arraste no meio, sem mudar nada.' },
+    { h:'Duração e horário (opcionais)' },
+    { p:'Clique num bloco para escolher a duração ("Só o dia", 30 min, 1h…) e, se quiser, um horário de início em 24h — 1900 vira 19:00. Horários que se cruzam geram só um aviso: o Ciclo não impede.' },
+    { h:'Meta e dias andam juntos' },
+    { p:'A meta da semana continua sendo a referência. Cada disciplina mostra quanto ainda está "sem dia definido". Se você distribuir mais que a meta, o Ciclo avisa e deixa você escolher: ajustar os blocos, mudar a meta (só nesta semana, ou também nas próximas) ou manter assim. Nada muda sozinho.' },
+    { h:'Esta semana, próximas semanas' },
+    { p:'Mudanças valem só para a semana mostrada. Quando gostar da organização, use "Repetir nas próximas semanas": as semanas seguintes começam com ela. Semanas que já passaram ficam só para consulta.' },
+    { note:'Organizar a semana é planejamento: arrastar ou mover nunca registra estudo. O progresso vem dos estudos que você registra.' }
+  ],
+  cta:{ action:'plan', label:'Abrir Planejamento' },
+  related:['progresso-do-dia','dias-de-estudo','plano-base']
+},
+{
+  id:'progresso-do-dia', section:'usar', group:'semana',
+  title:'Como o progresso de cada dia é calculado',
+  oneLine:'Pelo que você registrou naquele dia, naquela disciplina — em qualquer horário.',
+  summary:'Planejado, em andamento, concluído e "além do planejado", sem marcar nada à mão.',
+  keywords:'progresso dia concluido concluído parcial faltam planejado realizado bloco cumprido sem estudo registrado alem do planejado',
+  content:[
+    { h:'Como funciona' },
+    { p:'Para cada dia, o Ciclo soma os estudos registrados daquela disciplina naquele dia. Se o bloco era às 19:00 e você estudou às 16:00, conta igual: o horário é uma preferência, não uma obrigação.' },
+    { h:'Exemplo' },
+    { ul:['Matemática na segunda, 1h planejada. Você registra 40 min → "40 min de 1h · faltam 20 min".','Registra mais 20 min → "Concluído".','Se fossem 1h20 → "Concluído · 20 min além do planejado". O excesso nunca vira tempo de outra disciplina.'] },
+    { h:'Dois blocos da mesma disciplina no mesmo dia' },
+    { p:'O tempo do dia vai preenchendo os blocos na ordem em que aparecem; cada minuto conta uma vez só. Um bloco sem duração ("só o dia") fica realizado com qualquer tempo que sobrar.' },
+    { h:'Sem cobrança' },
+    { p:'Um dia que passou sem estudo mostra apenas "Sem estudo registrado". Não existe sequência, pontuação ou atraso — o Ciclo só mostra o que aconteceu.' },
+    { note:'Um estudo com vários tópicos conta uma vez para a disciplina. Os tópicos são detalhes dentro dela.' }
+  ],
+  related:['semana-em-dias','planejado-realizado']
+},
+{
+  id:'dias-de-estudo', section:'usar', group:'semana',
+  title:'Dias de estudo e prazos na semana',
+  oneLine:'Tire do quadro os dias em que você não estuda. Nada deles some.',
+  summary:'"Personalizar dias", a faixa dos dias fora do planejamento e os prazos no dia certo.',
+  keywords:'personalizar dias desativar dia quinta domingo folga dias de estudo prazos na semana prova no dia faixa',
+  content:[
+    { h:'Como funciona' },
+    { p:'Em Planejamento, "Personalizar dias" mostra os sete dias da semana. Desmarque os dias em que você não pretende estudar: eles saem do quadro principal e vão para uma faixa mais discreta, "Fora dos seus dias de estudo".' },
+    { h:'Desativar não é apagar' },
+    { ul:['Estudos registrados naquele dia continuam no histórico e nas análises.','Prazos daquele dia continuam aparecendo — na faixa, no dia certo.','Você continua podendo estudar e registrar em qualquer dia.'] },
+    { h:'Prazos no dia certo' },
+    { p:'Provas, trabalhos e entregas aparecem no dia em que vencem, com uma marca própria (não como bloco de estudo). São os mesmos prazos da aba Prazos: editar a data lá muda o dia aqui; concluir ou excluir também. Mover uma disciplina no quadro nunca muda a data de um prazo.' }
+  ],
+  cta:{ action:'plan', label:'Abrir Planejamento' },
+  related:['semana-em-dias','prazos']
 },
 {
   id:'distribuicao', section:'usar', group:'semana',
@@ -858,9 +967,11 @@ const HELP_ARTICLES = [
       'As análises de março continuam comparando com 2h e 1h — o plano que realmente valia lá.'
     ]},
     { h:'No Ciclo' },
-    { p:'Ao salvar, você escolhe entre valer a partir da próxima semana ou aplicar também na semana atual. Alterar o plano hoje nunca reescreve as metas de semanas anteriores.' }
+    { p:'Ao salvar, você escolhe entre valer a partir da próxima semana ou aplicar também na semana atual. Alterar o plano hoje nunca reescreve as metas de semanas anteriores.' },
+    { h:'E os dias da semana?' },
+    { p:'A organização em dias também tem um modelo: "Repetir nas próximas semanas" faz as semanas seguintes começarem com ela. Cada semana pode ser ajustada sozinha, e salvar as metas nunca apaga os dias que você organizou.' }
   ],
-  related:['planejado-realizado','analises']
+  related:['semana-em-dias','planejado-realizado','analises']
 },
 {
   id:'planejado-realizado', section:'usar', group:'semana',
@@ -1773,6 +1884,12 @@ const HELP_FAQ = [
   { id:'faq-como-escolhe', g:'estudando', article:'como-o-ciclo-sugere',
     q:'Como o Ciclo escolhe o que devo estudar?',
     a:'Por uma pontuação calculada no seu navegador: o que falta no plano da semana, a prioridade, há quanto tempo você não estuda, prazos próximos e revisões pendentes. Os motivos sempre aparecem no card.' },
+  { id:'faq-varios-topicos-tempo', g:'estudando', article:'varios-topicos',
+    q:'Estudei três tópicos em 1h30. Isso conta 4h30?',
+    a:'Não. É um estudo de 1h30, com três tópicos. Se você não disser quanto foi de cada um, o Ciclo divide igualmente e mostra a parte de cada tópico como estimativa (≈).' },
+  { id:'faq-tipos-100', g:'estudando', article:'tipos-de-estudo',
+    q:'Por que as porcentagens dos tipos de estudo passam de 100%?',
+    a:'Porque um estudo pode ter mais de um tipo, e a frequência conta o estudo em cada um deles. O tempo por tipo, ao contrário, divide o tempo do estudo — e sempre soma o total.' },
   { id:'faq-descanso-conta', g:'estudando', article:'descansos',
     q:'O descanso conta como tempo de estudo?',
     a:'Não. Descanso é guardado à parte: não entra no tempo estudado, no plano da semana nem na ordem "Mais estudadas". Nas Análises ele aparece separado, só como informação.' },
@@ -1843,6 +1960,18 @@ const HELP_FAQ = [
   { id:'faq-prazo-distante', g:'planejamento', article:'prazos-influencia',
     q:'Um prazo distante já muda minhas sugestões?',
     a:'Muito pouco. A influência cresce conforme a data se aproxima e depende da prioridade do prazo. Com data de início, ele só começa a pesar a partir dela.' },
+  { id:'faq-dias-obrigatorio', g:'planejamento', article:'semana-em-dias',
+    q:'Preciso escolher dias e horários para cada disciplina?',
+    a:'Não. A meta semanal funciona sozinha, como sempre. Escolher dias — e, se quiser, horários — é uma camada opcional para quem gosta de ver a semana organizada.' },
+  { id:'faq-arrastar-celular', g:'planejamento', article:'semana-em-dias',
+    q:'Como organizo a semana no celular, sem arrastar?',
+    a:'Use "Colocar em um dia" em cada disciplina, "Adicionar" em cada dia e o menu ⋯ de cada bloco ("Mover para outro dia…", "Tirar"). Tudo o que o arraste faz também existe nesses botões.' },
+  { id:'faq-planejei-nao-estudei', g:'planejamento', article:'progresso-do-dia',
+    q:'Planejei Matemática na segunda e não estudei. E agora?',
+    a:'Nada quebra. O bloco mostra "Sem estudo registrado" e a meta da semana continua contando o que falta. Estude em outro dia, ou mova o bloco: o progresso vem só do que você registra.' },
+  { id:'faq-dia-desativado-prazo', g:'planejamento', article:'dias-de-estudo',
+    q:'Tirei a quinta do planejamento. Minha prova de quinta some?',
+    a:'Não. Dias fora do planejamento vão para uma faixa abaixo da semana, com os prazos e os estudos deles. Tirar um dia nunca apaga nada.' },
   { id:'faq-criar-prazo', g:'planejamento', article:'prazos',
     q:'Como criar um prazo?',
     a:'Em Disciplinas, na aba Prazos, use "+ Prazo". Informe o tipo, o título e a data; ligar a uma disciplina e a um tópico é opcional, mas é o que faz o prazo influenciar as sugestões.' },
@@ -1963,8 +2092,10 @@ const CONTEXT_HELP = {
                       tip:'Cada semana guarda o plano que valia nela; mudar o plano não reescreve o passado.' },
   distribuicao:     { title:'Distribuição', article:'distribuicao',
                       tip:'Respeita os mínimos, divide o resto por prioridade e fecha no total exato.' },
-  tiposessao:       { title:'Tipo de estudo', article:'sessoes',
-                      tip:'Classificar ajuda a ver a proporção entre teoria e prática.' },
+  tiposessao:       { title:'Tipo de estudo', article:'tipos-de-estudo',
+                      tip:'Classificar ajuda a ver a proporção entre teoria e prática. Um estudo pode ter mais de um tipo.' },
+  semanadias:       { title:'A semana em dias', article:'semana-em-dias',
+                      tip:'Opcional: em que dia (e a que horas) estudar cada disciplina. O progresso vem dos estudos registrados naquele dia.' },
   estrategia:       { term:'estrategiaRevisao' },
   metodo:           { term:'metodoRevisao' },
   natureza:         { term:'naturezaConteudo' }
@@ -1981,9 +2112,9 @@ const SCREEN_HELP = {
                 cta:{ action:'quickStart', label:'Começar a estudar agora' },
                 articles:['como-o-ciclo-sugere','comecar-sessao','cronometro'] },
   plan:       { title:'Planejamento',
-                intro:'Você diz quanto tempo tem por semana e o Ciclo distribui entre as disciplinas.',
-                points:['A tela mostra a divisão da semana e quanto já foi feito.','"Ajustar" abre os detalhes: horas, prioridade, mínimo e minutos de cada disciplina.','A distribuição automática é só uma sugestão: tudo continua editável.','Cada semana guarda seu próprio registro histórico.'],
-                articles:['planejamento','distribuicao','plano-base'] },
+                intro:'Você diz quanto tempo tem por semana e o Ciclo distribui entre as disciplinas. Se quiser, também escolhe em que dia estudar cada uma.',
+                points:['No topo, a meta da semana e quanto já foi estudado — ela continua sendo a referência.','Arraste uma disciplina até um dia, ou use "Colocar em um dia". Clique num bloco para escolher duração e horário (opcionais).','O progresso de cada dia vem dos estudos registrados naquele dia. Arrastar nunca registra estudo.','"Personalizar dias" tira do quadro os dias em que você não estuda; prazos e estudos deles continuam à vista.','"Ajustar metas" abre horas, prioridade, mínimo e minutos de cada disciplina. Cada semana guarda o próprio registro.'],
+                articles:['semana-em-dias','progresso-do-dia','dias-de-estudo','planejamento'] },
   reviews:    { title:'Revisões',
                 intro:'Tópicos estudados voltam automaticamente para revisão, em intervalos que se adaptam.',
                 points:['O que é para agora aparece primeiro, começando pelo que corre mais risco de ser esquecido.','"Revisar por 20 min" escolhe as mais importantes que cabem nesse tempo.','O resultado que você informa ajusta quando o tópico volta.','As próximas revisões ficam recolhidas no fim da tela.'],
@@ -2000,8 +2131,8 @@ const SCREEN_HELP = {
                 articles:['analises','analises-como-ler','calendario','relatorio'] },
   history:    { title:'Histórico',
                 intro:'Todos os estudos registrados, organizados por dia.',
-                points:['A busca procura só nos estudos registrados: disciplina, área, tópico e comentário, com ou sem acento.','"Filtros" abre um painel; os filtros ativos aparecem abaixo da busca e saem com um clique.','Clique num estudo para ver o horário, o tempo estudado e os descansos — e para editar ou remover.'],
-                articles:['sessoes','registro-manual','descansos'] },
+                points:['A busca procura só nos estudos registrados: disciplina, área, tópicos, tipos e comentário, com ou sem acento.','Um estudo é sempre uma linha, com o tempo dele uma vez só. Com muitos tópicos, a linha mostra alguns e "+2"; a edição mostra todos.','"Filtros" abre um painel; os filtros ativos aparecem abaixo da busca e saem com um clique.','Clique num estudo para ver o horário, o tempo estudado e os descansos — e para editar ou remover.'],
+                articles:['sessoes','varios-topicos','registro-manual','descansos'] },
   data:       { title:'Dados',
                 intro:'Backup, restauração e informações de privacidade.',
                 points:['O backup (.json) restaura tudo; o CSV serve para planilha.','Restaurar substitui os dados atuais e pede confirmação.','Backups das versões anteriores continuam sendo aceitos.'],
@@ -2087,6 +2218,7 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 };
 
 const CHANGELOG = [
+  { v:'6.7', d:'Weekly Planner & Flexible Study Records. Planejamento ganhou a semana em dias: arraste uma disciplina até segunda, terça, quarta… — ou use "Colocar em um dia", sem arrastar, no teclado ou no celular. Cada bloco pode ter só o dia, uma duração ou também um horário (24h); horários que se cruzam geram só um aviso. A meta semanal continua sendo a referência: cada disciplina mostra quanto ainda está sem dia definido, e distribuir mais que a meta gera um aviso com três caminhos — ajustar os blocos, mudar a meta (só nesta semana ou também nas próximas) ou manter assim. O progresso de cada dia vem dos estudos registrados naquele dia, em qualquer horário, e cada minuto conta uma vez: "40 min de 1h", "Concluído", "20 min além do planejado" — sem cobrança. "Personalizar dias" tira do quadro os dias em que você não estuda, e os prazos e estudos desses dias continuam numa faixa própria. Provas e entregas aparecem no dia em que vencem. Dá para navegar entre semanas, repetir a organização nas próximas e voltar ao modelo; semanas passadas ficam como estavam. Um estudo agora pode ter vários tópicos e vários tipos: continua sendo um estudo, com o tempo contado uma vez só; a divisão do tempo entre os tópicos é opcional e, quando não é informada, aparece como estimativa (≈). Numa revisão com vários tópicos, cada um recebe o próprio resultado. Histórico, Análises (frequência e tempo por tipo, tempo por tópico), revisões, cronômetro, backup e CSV entendem o formato novo. Seus estudos foram convertidos automaticamente para "um tópico, um tipo", com o mesmo tempo, as mesmas revisões e o mesmo histórico; backups antigos continuam sendo aceitos.' },
   { v:'6.6', d:'Visual & Interaction Revival. Uma versão de acabamento, sem funções novas e sem mudança nos dados. Cores mais fechadas e sérias: grafite levemente azulado no tema escuro, neutro quente no claro e um verde-petróleo reservado para a ação principal de cada tela. Todo botão, linha e opção responde ao mouse, ao toque e ao teclado, e o que está escolhido continua marcado sem o mouse — com fundo, contorno e, quando cabe, um ✓. Em controles de uma linha (tema, abas, período, prioridade, navegação) a marca da escolha desliza até a opção nova. Menus abrem junto do botão e sempre dentro da tela, viram uma folha embaixo no celular e fecham com clique fora ou Esc, devolvendo o foco ao botão. Janelas, painéis e a busca entram e saem com transições curtas; uma janela com algo preenchido não fecha mais com um clique fora em nenhum formulário. Respostas, detalhes e "Explorar mais" abrem e recolhem suavemente. Tudo respeita "Reduzir animações" e a preferência do sistema.' },
   { v:'6.5', d:'Public Release Hardening. Uma versão de confiabilidade, sem funções novas: o que mudou foi o quanto você pode confiar no que está gravado. O cronômetro em duas abas não registra mais o mesmo estudo duas vezes — nem com cliques simultâneos; a segunda aba avisa que o estudo já foi registrado. Editar, mover ou excluir um estudo agora atualiza o tópico junto: excluir o único estudo de um tópico o devolve a "não iniciado", e registrar uma revisão com data antiga não empurra mais a próxima revisão para o passado. A restauração de backup confere o arquivo inteiro antes de gravar, mostra o que vai entrar, o que foi ajustado e o que fica de fora, recusa backups de uma versão mais nova e nunca troca uma data ilegível por "hoje". "Plano cumprido" passou a medir a divisão do tempo: estudar a mais numa disciplina não compensa o que faltou em outra, e esse tempo aparece à parte, como "além do plano". Um estudo é guardado por horário ou só por duração, nunca com as duas coisas se contradizendo. Com o Ciclo aberto em duas abas, uma avisa a outra quando os dados mudam, e um formulário aberto nunca é atropelado. Janelas só fecham depois de gravar; se a gravação falhar, o que você digitou continua lá. O CSV ficou seguro para abrir em planilhas, as Análises dizem se cada número é do período ou da situação atual, a análise que você montou continua lá quando você volta, e a navegação por teclado ficou mais firme (modo foco, "Ir para o conteúdo"). Nenhum dado seu foi alterado e nenhuma migração foi necessária.' },
   { v:'6.4.1', d:'Interface Refinement. Uma versão de acabamento, sem funções novas. O horário do estudo ganhou um campo próprio, no formato 24h: basta digitar os números (2350 vira 23:50), colar um horário também funciona, e a roda do mouse não muda mais a hora. A duração aparece assim que o início e o fim são informados — com o que foi decorrido, o descanso e o tempo estudado separados quando há descansos. "Registrar estudo" passou a aproveitar a largura da tela: "Quando" e "O que você estudou" ficam lado a lado, e "Como foi" reúne tipo de estudo, dificuldade e comentário; o comentário só aparece quando você pede. Finalizar e editar um estudo seguem a mesma composição, e os botões de ação das janelas ficam sempre à vista. A tipografia foi revista: títulos e textos usam a mesma família de fontes do sistema, sem serifada, com menos negrito e sem maiúsculas decorativas. Nenhum dado foi alterado.' },
