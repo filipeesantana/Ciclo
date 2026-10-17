@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v6.7.0 · Weekly Planner & Flexible Study Records
+   CICLO — v6.8.0 · Freedom & Insights
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -23,6 +23,8 @@
      CONFIABILIDADE (v6.5: comandos atômicos, reconciliação, sincronia entre abas)
      UM ESTUDO, VÁRIOS TÓPICOS E TIPOS (v6.7: SessionModel, migração 6 → 7)
      SEMANA EM DIAS (v6.7: WeekPlan, WeekCommands, quadro da semana com arrastar)
+     LIBERDADE (v6.8: meta semanal TOTAL, várias disciplinas por estudo, migração
+                7 → 8, Análises prontas e personalizadas)
      HELP ENGINE (busca, rotas, glossário) · EVENT HANDLERS · INITIALIZATION
    ========================================================================= */
 'use strict';
@@ -30,8 +32,8 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '6.7.0';
-const APP_SCHEMA_VERSION = 7;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
+const APP_VERSION = '6.8.0';
+const APP_SCHEMA_VERSION = 8;          // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
                                        // ganham tipo, status, data de início, orientações e
@@ -76,6 +78,16 @@ const APP_SCHEMA_VERSION = 7;          // formato LÓGICO dos dados. A v5.2 mudo
                                        // cada semana registrada ganha `blocks` (a semana em
                                        // dias) e `rev` (revisão, contra gravação obsoleta de
                                        // outra aba). As configurações ganham `studyDays`.
+                                       // A v6.8 muda o formato (7 → 8). Um estudo pode ter
+                                       // VÁRIAS disciplinas: `disciplineEntries` (cada uma
+                                       // com a parte do tempo informada, ou nada) e cada
+                                       // tópico passa a guardar a disciplina dele. A
+                                       // migração 7 → 8 converte cada estudo em "uma
+                                       // disciplina" sem mudar a duração nem as revisões;
+                                       // `disciplineId` continua gravado (é a primeira
+                                       // disciplina). As configurações ganham
+                                       // `savedAnalyses` (análises salvas) e o período
+                                       // padrão aceita "90d".
 
 /* Identificadores técnicos LEGADOS. O produto passou a se chamar "Ciclo" na v5.1,
    mas estes nomes ficam como estão: renomeá-los faria o navegador procurar um
@@ -86,10 +98,12 @@ const IDB_VERSION = 1;                 // schema FÍSICO do IndexedDB: v4 e v5.2
                                        // índice novo — por isso continua 1. O prazo mantém
                                        // `date` como data do prazo (há um índice nesse campo).
                                        // v6.7: também continua 1. O índice `topicId` dos
-                                       // estudos fica onde está (não é usado nem apagado):
-                                       // a reconciliação de tópicos usa o índice
-                                       // `disciplineId`, que já existia — todo tópico de um
-                                       // estudo é da disciplina dele.
+                                       // estudos fica onde está (não é usado nem apagado).
+                                       // v6.8: continua 1. O índice `disciplineId` guarda a
+                                       // PRIMEIRA disciplina do estudo; como um tópico pode
+                                       // estar num estudo cuja primeira disciplina é outra,
+                                       // a reconciliação lê os estudos inteiros dentro da
+                                       // transação (sem índice novo, sem upgrade do banco).
 const V2_LS_KEY = 'diarioEstudos:v1';  // chave usada pela V2 (preservada, nunca apagada)
 const TIMER_LS_KEY = 'diarioEstudos:v3:timer';
 const THEME_LS_KEY = 'diarioEstudos:v3:theme';
@@ -200,7 +214,7 @@ const LEGACY_IMPORTANCE_TO_PRIORITY = { low:2, baixa:2, normal:3, high:4, alta:4
 /* v5 — métricas em duas camadas: nome natural + termo canônico.
    A interface mostra o natural; o técnico aparece como complemento. */
 const METRIC_WORDS = {
-  adherence: { title:'Plano cumprido',        canonical:'aderência ao plano' },
+  adherence: { title:'Meta da semana',        canonical:'meta semanal' },
   coverage:  { title:'Conteúdo estudado',     canonical:'cobertura' },
   mastery:   { title:'Conteúdos consolidados',canonical:'domínio' }
 };
@@ -337,8 +351,12 @@ const DEFAULT_SETTINGS = {
   /* v6.7 — dias da semana que fazem parte do planejamento (0 = domingo … 6 = sábado).
      Tirar um dia daqui só o recolhe do quadro da semana: estudos, prazos e blocos
      daquele dia continuam existindo e aparecendo. */
-  studyDays: [0, 1, 2, 3, 4, 5, 6]
+  studyDays: [0, 1, 2, 3, 4, 5, 6],
+  /* v6.8 — análises que a pessoa salvou: só a CONFIGURAÇÃO (o que, quando, o que
+     ver), nunca resultados — abrir uma delas recalcula com os dados de agora. */
+  savedAnalyses: []
 };
+const MAX_SAVED_ANALYSES = 12;
 
 const VIEW_TITLES = {
   today:'Hoje', plan:'Planejamento', reviews:'Revisões', disciplines:'Disciplinas',
@@ -1329,31 +1347,44 @@ async function runV64Migration(){
 
 /* =========================================================================
    MIGRATION V6.6 → V6.7 (schema 6 → 7) — UM ESTUDO, VÁRIOS TÓPICOS E TIPOS
-   Cada estudo antigo vira "um tópico, um tipo" (SessionModel.normalize):
-     topicId + reviewOutcome + reviewStrategyAtTime → topicEntries[0]
-     type → types[0]        resultado sem tópico → legacyReviewOutcome
+   MIGRATION V6.7 → V6.8 (schema 7 → 8) — UM ESTUDO, VÁRIAS DISCIPLINAS
+   As duas conversões são a mesma função (SessionModel.normalize), que leva
+   QUALQUER formato anterior ao atual:
+     6 → topicId + reviewOutcome + reviewStrategyAtTime → topicEntries[0]
+         type → types[0]        resultado sem tópico → legacyReviewOutcome
+     7 → disciplineId → disciplineEntries[0]; cada tópico ganha a disciplina
+         do estudo (no formato 7 todo tópico era da disciplina do estudo)
    `minutes`, `breaks`, datas, horários, comentário e dificuldade NÃO mudam.
    Tópicos NÃO são tocados: a agenda de revisão continua exatamente onde
    estava (a conversão preserva o resultado e a estratégia de cada revisão,
    então refazer o histórico depois chega ao mesmo lugar).
    Idempotente e sem marca de "já feito" como trava: rodar de novo só converte
-   o que ainda estiver no formato 6 — por exemplo, um estudo gravado depois da
-   atualização por uma aba que continuava aberta com a versão anterior.
-   Tudo numa transação: ou todos os estudos convertidos entram, ou nenhum.
+   o que ainda estiver num formato anterior — por exemplo, um estudo gravado
+   depois da atualização por uma aba que continuava aberta com a versão
+   anterior. Tudo numa transação: ou todos os estudos convertidos entram, ou
+   nenhum. As marcas em `meta` são só registro (data e quantos).
    ========================================================================= */
 async function runV67Migration(){
   return DB.atomic(['sessions','meta'], async api => {
-    const [all, done] = [await api.getAll('sessions'), await api.get('meta', 'v67MigrationCompleted')];
-    const changed = (all || []).filter(x => x && typeof x === 'object' && !SessionModel.isCanonical(x)).map(x => SessionModel.normalize(x));
+    const [all, done67, done68] = [await api.getAll('sessions'), await api.get('meta', 'v67MigrationCompleted'), await api.get('meta', 'v68MigrationCompleted')];
+    const list = (all || []).filter(x => x && typeof x === 'object');
+    const changed = list.filter(x => !SessionModel.isCanonical(x)).map(x => SessionModel.normalize(x));
     changed.forEach(x => api.put('sessions', x));
-    if(!(done && done.value)){
+    if(!(done67 && done67.value)){
       api.put('meta', { key:'v67MigrationCompleted', value:true });
       api.put('meta', { key:'v67MigrationDate', value: nowISO() });
       api.put('meta', { key:'v67MigrationSummary', value:{ sessions: changed.length } });
     }
+    if(!(done68 && done68.value)){
+      api.put('meta', { key:'v68MigrationCompleted', value:true });
+      api.put('meta', { key:'v68MigrationDate', value: nowISO() });
+      api.put('meta', { key:'v68MigrationSummary', value:{ sessions: changed.length } });
+    }
     return { migrated: changed.length > 0, counts:{ sessions: changed.length } };
   });
 }
+/** v6.8 — nome da conversão atual (é a mesma função; ver acima). */
+const runSessionMigration = runV67Migration;
 
 /* =========================================================================
    DOMAIN MODELS — fábricas e derivações. Estado em memória (`state`).
@@ -1406,6 +1437,8 @@ function newSession(data){
   const ts = nowISO();
   return Object.assign({
     id:uid(), disciplineId:null, legacyTopicText:'',
+    /* v6.8 — várias disciplinas; a primeira é `disciplineId`. Ver SessionModel. */
+    disciplineEntries:[],
     date: todayISO(), startedAt:null, endedAt:null,
     /* `minutes` = tempo de ESTUDO. Descanso nunca entra aqui: fica em `breaks`,
        um registro por descanso — { id, startedAt, endedAt, minutes }. */
@@ -1465,8 +1498,12 @@ function rebuildIndexes(){
   idx.sessionsByTopic = new Map();
   idx.topicsByDisc = new Map();
   state.sessions.forEach(s => {
-    if(!idx.sessionsByDisc.has(s.disciplineId)) idx.sessionsByDisc.set(s.disciplineId, []);
-    idx.sessionsByDisc.get(s.disciplineId).push(s);
+    // v6.8: um estudo com várias disciplinas entra na lista de CADA uma (participação) —
+    // quem soma tempo por disciplina usa a parte dela (SessionModel.discShare), nunca `minutes`.
+    SessionModel.disciplineIds(s).forEach(did => {
+      if(!idx.sessionsByDisc.has(did)) idx.sessionsByDisc.set(did, []);
+      idx.sessionsByDisc.get(did).push(s);
+    });
     // v6.7: um estudo com vários tópicos entra na lista de CADA um (participação) —
     // quem soma tempo por tópico usa a parte do tópico (SessionModel.topicShare), nunca `minutes`.
     SessionModel.topicIds(s).forEach(tid => {
@@ -1487,7 +1524,25 @@ const getTopic = id => state.idx.topicById.get(id) || null;
 const activeDisciplines = () => state.disciplines.filter(d => !d.archived);
 const activeAreas = () => state.areas.filter(a => !a.archived);
 const topicsOf = (discId, includeArchived) => (state.idx.topicsByDisc.get(discId) || []).filter(t => includeArchived || !t.archived);
+/** Estudos em que a disciplina aparece (sozinha ou com outras). Para tempo, use a parte dela: `discMinutesOf`. */
 const sessionsOf = discId => state.idx.sessionsByDisc.get(discId) || [];
+/** v6.8: tempo de uma disciplina numa lista de estudos: { minutes, estimated (minutos estimados), count }. */
+function discMinutesOf(discId, sessions){
+  let minutes = 0, estimated = 0, count = 0;
+  (sessions || sessionsOf(discId)).forEach(s => {
+    const sh = SessionModel.discShares(s).find(x => x.disciplineId === discId);
+    if(!sh) return;
+    minutes += sh.minutes; count++;
+    if(sh.estimated) estimated += sh.minutes;
+  });
+  return { minutes, estimated, count };
+}
+/** v6.8: minutos por disciplina de uma lista de estudos (cada estudo dividido, nunca repetido). → Map id → minutos */
+function minutesByDiscipline(sessions){
+  const m = new Map();
+  (sessions || []).forEach(s => SessionModel.discShares(s).forEach(x => m.set(x.disciplineId, (m.get(x.disciplineId) || 0) + x.minutes)));
+  return m;
+}
 /** Estudos em que o tópico aparece (sozinho ou com outros). Para tempo, use a parte dele: `topicMinutesOf`. */
 const sessionsOfTopic = topicId => state.idx.sessionsByTopic.get(topicId) || [];
 /** v6.7: os estudos do tópico vistos por ele (resultado e parte do tempo DELE) — o que a reconciliação lê. */
@@ -1513,40 +1568,55 @@ function difficultyInfo(v){ return DIFFICULTIES.find(d => d.v === v) || null; }
 function reviewOutcomeLabel(v){ const o = REVIEW_OUTCOMES.find(x => x.v === v); return o ? o.label : null; }
 
 /* =========================================================================
-   v6.7 — UM ESTUDO, VÁRIOS TÓPICOS, VÁRIOS TIPOS (SessionModel)
+   UM ESTUDO, VÁRIAS DISCIPLINAS, VÁRIOS TÓPICOS, VÁRIOS TIPOS (SessionModel)
+   v6.7 trouxe vários tópicos e tipos; v6.8 traz várias disciplinas.
 
    Um estudo continua sendo UM registro com UM tempo (`minutes`). O que muda é
    o que ele descreve:
 
-     topicEntries: [{ topicId, minutes, outcome, strategy }]
-        · topicId  — tópico da MESMA disciplina do estudo (nunca repetido);
-        · minutes  — a parte do tempo que a pessoa INFORMOU para o tópico, ou
-                     null (não informou);
-        · outcome  — resultado da revisão DESTE tópico ('forgot'…'mastered') ou
-                     null. Um resultado nunca vale para outro tópico;
-        · strategy — estratégia de revisão em vigor para este tópico quando ele
-                     entrou no estudo (a reconciliação refaz a agenda com ela).
+     disciplineEntries: [{ disciplineId, minutes }]          (v6.8)
+        · a primeira é a disciplina "principal" — a mesma de `disciplineId`,
+          que continua gravado (índice do banco e versões anteriores);
+        · minutes — a parte do tempo que a pessoa INFORMOU para a disciplina,
+          ou null (não informou: a parte é estimada).
+     topicEntries: [{ topicId, disciplineId, minutes, outcome, strategy }]
+        · topicId      — tópico de uma das disciplinas do estudo (nunca repetido);
+        · disciplineId — a disciplina dele (v6.8). Um tópico de Inglês nunca
+                         fica preso a Matemática;
+        · minutes      — a parte do tempo DA DISCIPLINA DELE que a pessoa
+                         informou para o tópico, ou null;
+        · outcome      — resultado da revisão DESTE tópico ou null. Um
+                         resultado nunca vale para outro tópico;
+        · strategy     — estratégia de revisão em vigor para este tópico quando
+                         ele entrou no estudo (a reconciliação refaz com ela).
      types: ['teoria', 'exercicios', …] — nenhum, um ou vários tipos.
      legacyReviewOutcome — só em estudos antigos SEM tópico que tinham um
                      resultado de revisão: o número continua nas Análises.
 
    POLÍTICA DE TEMPO — uma só, usada por Análises, Disciplinas, Tópicos,
-   Histórico, plano da semana e relatórios:
-     1. O tempo do estudo é contado UMA vez. Disciplina, dia, semana e plano
-        somam `minutes`; tópicos e tipos nunca multiplicam nada.
-     2. Tempo por tópico: com um tópico, ele recebe o tempo todo (exato). Com
-        vários, cada um recebe a parte informada; o que não foi informado é
-        dividido em partes iguais entre os tópicos sem parte (a sobra de
-        minutos vai para os primeiros, na ordem do estudo) e essa parte é
-        marcada como ESTIMADA — a não ser que reste um tópico só em branco:
-        ele recebe exatamente o que sobrou, e isso é conta, não estimativa.
-        A soma das partes é sempre exatamente `minutes`.
-     3. Tempo por tipo: um tipo recebe o tempo todo; vários dividem em partes
+   Histórico, planejamento e relatórios:
+     1. O tempo do estudo é contado UMA vez. Dia, semana, meta semanal e total
+        somam `minutes`. Disciplinas, tópicos e tipos nunca multiplicam nada.
+     2. Tempo por disciplina: uma disciplina recebe o tempo todo (exato). Com
+        várias, cada uma recebe a parte informada; o que não foi informado é
+        dividido em partes iguais entre as disciplinas sem parte (a sobra de
+        minutos vai para as primeiras, na ordem do estudo) e essa parte é
+        ESTIMADA — a não ser que reste uma só em branco: ela recebe exatamente
+        o que sobrou, e isso é conta, não estimativa. A soma das partes é
+        sempre exatamente `minutes`.
+     3. Tempo por tópico: a MESMA regra, dentro do tempo da disciplina dele.
+        A parte de um tópico nunca passa da parte da disciplina; se a parte
+        da disciplina é estimada, a do tópico também é. Uma disciplina sem
+        tópico fica com o tempo dela em "sem tópico definido".
+     4. Tempo por tipo: um tipo recebe o tempo todo; vários dividem em partes
         iguais, marcadas como estimadas. Sem tipo → "Não informado".
-     4. Frequência por tipo conta ESTUDOS: um estudo com dois tipos aparece nos
+     5. Frequência por tipo conta ESTUDOS: um estudo com dois tipos aparece nos
         dois. A soma das frequências pode passar do total de estudos — e a
         tela diz isso.
-   Partes informadas que não fecham (somam mais que o estudo, ou todas
+     6. FILTRAR não é ATRIBUIR. Um estudo de Matemática e Inglês entra uma vez
+        num filtro "Matemática + Inglês" (com o tempo todo) e, num filtro só
+        de Matemática, entra com a parte de Matemática (`project`).
+   Partes informadas que não fecham (somam mais que o todo, ou todas
    informadas com soma diferente) são descartadas: a divisão volta a ser
    estimada em vez de mostrar uma precisão que não existe.
    ========================================================================= */
@@ -1555,26 +1625,44 @@ const REVIEW_OUTCOME_VALUES = REVIEW_OUTCOMES.map(o => o.v);
 /* Campos do formato 6 (um tópico, um tipo). Só são LIDOS, na conversão. */
 const LEGACY_SESSION_KEYS = ['topicId', 'type', 'reviewOutcome', 'reviewStrategyAtTime'];
 const MAX_TOPICS_PER_STUDY = 40;      // teto defensivo (dados importados); a interface não chega perto
+const MAX_DISCIPLINES_PER_STUDY = 12; // idem
 
 const SessionModel = {
   hasLegacy(s){ return !!s && LEGACY_SESSION_KEYS.some(k => Object.prototype.hasOwnProperty.call(s, k)); },
-  isCanonical(s){ return !!s && Array.isArray(s.topicEntries) && Array.isArray(s.types) && !this.hasLegacy(s); },
+  /** Formato atual (8): listas presentes, cada tópico com a disciplina dele, principal em primeiro. */
+  isCanonical(s){
+    if(!s || !Array.isArray(s.topicEntries) || !Array.isArray(s.types) || !Array.isArray(s.disciplineEntries)) return false;
+    const d = s.disciplineEntries;
+    if(!d.length || !d[0] || d[0].disciplineId !== s.disciplineId || this.hasLegacy(s)) return false;
+    for(const e of s.topicEntries){ if(!e || typeof e.disciplineId !== 'string' || !e.disciplineId) return false; }
+    return true;
+  },
 
   _id(v){ return typeof v === 'string' ? v.trim() : (isNum(v) ? String(v) : ''); },
+  _min(v){
+    const m = Number(v);
+    return (v !== null && v !== undefined && v !== '' && Number.isFinite(m) && m > 0) ? Math.round(m) : null;
+  },
 
   /** Uma entrada de tópico saneada, ou null. */
   cleanEntry(e){
     if(!e || typeof e !== 'object') return null;
     const topicId = this._id(e.topicId);
     if(!topicId) return null;
-    const m = Number(e.minutes);
-    const given = e.minutes !== null && e.minutes !== undefined && e.minutes !== '' && Number.isFinite(m) && m > 0;
     return {
       topicId,
-      minutes: given ? Math.round(m) : null,
+      disciplineId: this._id(e.disciplineId) || null,
+      minutes: this._min(e.minutes),
       outcome: REVIEW_OUTCOME_VALUES.includes(e.outcome) ? e.outcome : null,
       strategy: REVIEW_STRATEGIES.some(x => x.v === e.strategy) ? e.strategy : null
     };
+  },
+  /** Uma entrada de disciplina saneada, ou null. */
+  cleanDiscEntry(e){
+    if(!e || typeof e !== 'object') return null;
+    const disciplineId = this._id(e.disciplineId);
+    if(!disciplineId) return null;
+    return { disciplineId, minutes: this._min(e.minutes) };
   },
 
   /** Tipos saneados, sem repetição, na ordem da lista de tipos do Ciclo. */
@@ -1584,34 +1672,79 @@ const SessionModel = {
   },
 
   /**
-   * Partes informadas que não fecham com o estudo são descartadas (ver a
-   * política). Altera `entries` no lugar. Devolve true quando descartou.
-   * Com um tópico só, a parte é sempre o tempo todo: nada a guardar.
+   * Divide `total` entre `items` ({ minutes: número|null }) pela política de
+   * tempo. Puro. → [{ minutes, estimated }], na ordem de `items`; a soma é `total`.
+   * `baseEstimated` marca tudo como estimado (o todo já era uma estimativa).
    */
-  settleSplit(entries, minutes){
-    if(entries.length <= 1){ entries.forEach(e => { e.minutes = null; }); return false; }
-    const explicit = entries.filter(e => e.minutes !== null);
-    if(!explicit.length) return false;
-    const total = Math.max(0, Math.round(Number(minutes) || 0));
+  split(items, total, baseEstimated){
+    const n = items.length;
+    const t = Math.max(0, Math.round(Number(total) || 0));
+    if(!n) return [];
+    if(n === 1) return [{ minutes:t, estimated: !!baseEstimated }];
+    const explicit = items.filter(e => e.minutes !== null && e.minutes !== undefined);
     const sumEx = sum(explicit, e => e.minutes);
-    if(sumEx > total || (explicit.length === entries.length && sumEx !== total)){
-      entries.forEach(e => { e.minutes = null; });
-      return true;
+    const valid = explicit.length > 0 && sumEx <= t && !(explicit.length === n && sumEx !== t);
+    if(!valid){
+      return this.evenSplit(t, n).map(m => ({ minutes:m, estimated:true }));
     }
-    return false;
+    // um item só em branco recebe exatamente o que sobrou (é conta, não estimativa); dois ou mais dividem — isso é estimado
+    const blanks = n - explicit.length;
+    const parts = this.evenSplit(t - sumEx, blanks);
+    let k = 0;
+    return items.map(e => (e.minutes !== null && e.minutes !== undefined)
+      ? { minutes:e.minutes, estimated: !!baseEstimated }
+      : { minutes:parts[k++], estimated: !!baseEstimated || blanks > 1 });
+  },
+  /** As partes informadas fecham com o todo? (mesma regra de `split`) */
+  splitFits(items, total){
+    if(items.length <= 1) return true;
+    const t = Math.max(0, Math.round(Number(total) || 0));
+    const explicit = items.filter(e => e.minutes !== null && e.minutes !== undefined);
+    if(!explicit.length) return true;
+    const sumEx = sum(explicit, e => e.minutes);
+    return !(sumEx > t || (explicit.length === items.length && sumEx !== t));
   },
 
   /**
-   * Qualquer versão de um estudo → formato canônico (7). Puro: devolve um
+   * Partes informadas que não fecham são descartadas (ver a política). Altera
+   * as listas no lugar. Devolve true quando descartou alguma.
+   *   settleSplit(topicEntries, minutes)                    → formato de uma disciplina (compatível com v6.7)
+   *   settleAll(disciplineEntries, topicEntries, minutes)   → disciplinas e, dentro de cada uma, os tópicos
+   */
+  settleSplit(entries, minutes){
+    if(entries.length <= 1){ entries.forEach(e => { e.minutes = null; }); return false; }
+    if(this.splitFits(entries, minutes)) return false;
+    entries.forEach(e => { e.minutes = null; });
+    return true;
+  },
+  settleAll(discs, entries, minutes){
+    let dropped = false;
+    if(discs.length <= 1) discs.forEach(d => { d.minutes = null; });
+    else if(!this.splitFits(discs, minutes)){ discs.forEach(d => { d.minutes = null; }); dropped = true; }
+    const shares = this.split(discs, minutes);
+    discs.forEach((d, i) => {
+      const own = entries.filter(e => e.disciplineId === d.disciplineId);
+      if(own.length <= 1){ own.forEach(e => { e.minutes = null; }); return; }
+      if(!this.splitFits(own, shares[i].minutes)){ own.forEach(e => { e.minutes = null; }); dropped = true; }
+    });
+    return dropped;
+  },
+
+  /**
+   * Qualquer versão de um estudo → formato canônico (8). Puro: devolve um
    * objeto NOVO (o original não muda). `report(code)`, opcional, recebe os
    * ajustes feitos (relatório de importação).
    * Conversão do formato 6, sem mudar a duração:
    *   topicId → um tópico, com o resultado e a estratégia que o estudo tinha;
    *   type    → um tipo;
    *   resultado sem tópico → `legacyReviewOutcome` (continua nas Análises).
-   * Um registro com `topicEntries` E campos antigos foi gravado por uma aba
-   * ainda na versão anterior depois da migração: o que ela escreveu é SOMADO
-   * ao que já existia — nada é descartado por causa dela.
+   * Conversão do formato 7: a disciplina do estudo vira a lista de uma
+   * disciplina; cada tópico ganha a disciplina do estudo (no formato 7 todo
+   * tópico de um estudo era da disciplina dele). Nada mais muda.
+   * Um registro com listas novas E campos antigos foi gravado por uma aba
+   * ainda numa versão anterior depois da migração: o que ela escreveu
+   * prevalece onde conflita (ela trocou a disciplina, por exemplo) e é SOMADO
+   * ao resto — nada é descartado por causa dela.
    */
   normalize(raw, report){
     const rep = typeof report === 'function' ? report : () => {};
@@ -1619,6 +1752,7 @@ const SessionModel = {
     let entries = Array.isArray(raw.topicEntries) ? raw.topicEntries.map(e => this.cleanEntry(e)).filter(Boolean) : [];
     let types = this.cleanTypes(raw.types);
     let legacyOutcome = REVIEW_OUTCOME_VALUES.includes(raw.legacyReviewOutcome) ? raw.legacyReviewOutcome : null;
+    const primary = this._id(raw.disciplineId);
 
     if(this.hasLegacy(raw)){
       const tid = this._id(raw.topicId);
@@ -1626,22 +1760,54 @@ const SessionModel = {
       const strategy = REVIEW_STRATEGIES.some(x => x.v === raw.reviewStrategyAtTime) ? raw.reviewStrategyAtTime : null;
       if(tid){
         const cur = entries.find(e => e.topicId === tid);
-        if(cur){ if(outcome) cur.outcome = outcome; if(strategy && !cur.strategy) cur.strategy = strategy; }
-        else entries.unshift({ topicId:tid, minutes:null, outcome, strategy });
+        if(cur){ if(outcome) cur.outcome = outcome; if(strategy && !cur.strategy) cur.strategy = strategy; if(!cur.disciplineId) cur.disciplineId = primary || null; }
+        else entries.unshift({ topicId:tid, disciplineId: primary || null, minutes:null, outcome, strategy });
       } else if(outcome && !entries.length){
         legacyOutcome = outcome;
       }
       if(SESSION_TYPE_VALUES.includes(raw.type)) types = this.cleanTypes(types.concat([raw.type]));
       LEGACY_SESSION_KEYS.forEach(k => { delete s[k]; });
     }
+
+    /* ---------- disciplinas (v6.8) ---------- */
+    let discs = Array.isArray(raw.disciplineEntries) ? raw.disciplineEntries.map(e => this.cleanDiscEntry(e)).filter(Boolean) : [];
+    const seenD = new Set();
+    discs = discs.filter(d => { if(seenD.has(d.disciplineId)){ rep('session-disc-dup'); return false; } seenD.add(d.disciplineId); return true; });
+    if(primary){
+      const at = discs.findIndex(d => d.disciplineId === primary);
+      if(at < 0){
+        if(discs.length){
+          /* Uma aba numa versão anterior trocou a disciplina deste estudo (ela só
+             conhece `disciplineId`): vale o que ela gravou. As outras disciplinas
+             saem junto com os tópicos delas — era um estudo de outra coisa. */
+          const keep = new Set([primary]);
+          entries = entries.filter(e => !e.disciplineId || keep.has(e.disciplineId));
+        }
+        discs = [{ disciplineId:primary, minutes:null }];
+      } else if(at > 0){
+        const [p] = discs.splice(at, 1);
+        discs.unshift(p);
+      }
+    }
+    // tópico sem disciplina: é da principal (formato 7). Tópico de disciplina que não está na lista: a disciplina entra.
+    entries.forEach(e => {
+      if(!e.disciplineId) e.disciplineId = discs.length ? discs[0].disciplineId : (primary || null);
+      if(e.disciplineId && !discs.some(d => d.disciplineId === e.disciplineId)) discs.push({ disciplineId:e.disciplineId, minutes:null });
+    });
+    entries = entries.filter(e => !!e.disciplineId);
+    discs = discs.slice(0, MAX_DISCIPLINES_PER_STUDY);
+    const discSet = new Set(discs.map(d => d.disciplineId));
     // um tópico aparece uma vez só
     const seen = new Set();
     entries = entries.filter(e => {
+      if(!discSet.has(e.disciplineId)) return false;
       if(seen.has(e.topicId)){ rep('session-topic-dup'); return false; }
       seen.add(e.topicId);
       return true;
     }).slice(0, MAX_TOPICS_PER_STUDY);
-    if(this.settleSplit(entries, raw.minutes)) rep('session-split');
+    if(this.settleAll(discs, entries, raw.minutes)) rep('session-split');
+    s.disciplineId = discs.length ? discs[0].disciplineId : primary;
+    s.disciplineEntries = discs;
     s.topicEntries = entries;
     s.types = types;
     if(legacyOutcome && !entries.length) s.legacyReviewOutcome = legacyOutcome; else delete s.legacyReviewOutcome;
@@ -1650,19 +1816,28 @@ const SessionModel = {
   },
 
   /* ---------- leitura: o Ciclo inteiro lê os estudos por aqui ---------- */
-  entries(s){
-    if(!s) return [];
-    if(Array.isArray(s.topicEntries) && !this.hasLegacy(s)) return s.topicEntries;
-    return this.normalize(s).topicEntries;           // registro antigo ainda não convertido: lido como seria
+  _normCache: new WeakMap(),
+  /** O estudo no formato atual (um registro antigo é lido como seria convertido, sem ser alterado). */
+  canon(s){
+    if(!s) return null;
+    if(s._projected || this.isCanonical(s)) return s;
+    let n = this._normCache.get(s);
+    if(!n){ n = this.normalize(s); this._normCache.set(s, n); }
+    return n;
   },
+  entries(s){ const c = this.canon(s); return c ? c.topicEntries : []; },
+  discEntries(s){ const c = this.canon(s); return c && c.disciplineEntries ? c.disciplineEntries : []; },
+  disciplineIds(s){ return this.discEntries(s).map(d => d.disciplineId); },
+  hasDiscipline(s, id){ return !!id && this.discEntries(s).some(d => d.disciplineId === id); },
+  /** Tem alguma disciplina deste conjunto? */
+  touchesDisciplines(s, set){ return this.discEntries(s).some(d => set.has(d.disciplineId)); },
+  isMulti(s){ return this.discEntries(s).length > 1; },
   topicIds(s){ return this.entries(s).map(e => e.topicId); },
   hasTopic(s, topicId){ return !!topicId && this.entries(s).some(e => e.topicId === topicId); },
   entryOf(s, topicId){ return this.entries(s).find(e => e.topicId === topicId) || null; },
-  types(s){
-    if(!s) return [];
-    if(Array.isArray(s.types) && !this.hasLegacy(s)) return s.types;
-    return this.normalize(s).types;
-  },
+  /** Tópicos de UMA disciplina do estudo, na ordem do estudo. */
+  topicIdsOf(s, disciplineId){ return this.entries(s).filter(e => e.disciplineId === disciplineId).map(e => e.topicId); },
+  types(s){ const c = this.canon(s); return c ? c.types : []; },
   hasType(s, v){ return this.types(s).includes(v); },
   legacyOutcome(s){
     if(!s || this.entries(s).length) return null;
@@ -1696,35 +1871,49 @@ const SessionModel = {
     const base = Math.floor(t / n), extra = t - base * n;
     return Array.from({ length:n }, (_, i) => base + (i < extra ? 1 : 0));
   },
-  /** Tempo de cada tópico do estudo; a soma é exatamente `minutes`. → [{ topicId, minutes, estimated }] */
-  topicShares(s){
-    const entries = this.entries(s);
-    if(!entries.length) return [];
+  _shares(s){
+    const c = this.canon(s);
     const total = Math.max(0, Math.round(Number(s.minutes) || 0));
     const hit = this._shareCache.get(s);
-    if(hit && hit.total === total && hit.entries === entries) return hit.list;
-    let list;
-    if(entries.length === 1){
-      list = [{ topicId: entries[0].topicId, minutes: total, estimated:false }];
-    } else {
-      const explicit = entries.filter(e => e.minutes !== null);
-      const sumEx = sum(explicit, e => e.minutes);
-      const valid = explicit.length > 0 && sumEx <= total && !(explicit.length === entries.length && sumEx !== total);
-      if(!valid){
-        const parts = this.evenSplit(total, entries.length);
-        list = entries.map((e, i) => ({ topicId:e.topicId, minutes:parts[i], estimated:true }));
-      } else {
-        // um tópico só em branco recebe exatamente o que sobrou (é conta, não estimativa); dois ou mais dividem — isso é estimado
-        const blanks = entries.length - explicit.length;
-        const parts = this.evenSplit(total - sumEx, blanks);
-        let k = 0;
-        list = entries.map(e => e.minutes !== null
-          ? { topicId:e.topicId, minutes:e.minutes, estimated:false }
-          : { topicId:e.topicId, minutes:parts[k++], estimated: blanks > 1 });
-      }
-    }
-    if(s && typeof s === 'object') this._shareCache.set(s, { total, entries, list });
-    return list;
+    if(hit && hit.total === total && hit.d === c.disciplineEntries && hit.e === c.topicEntries) return hit;
+    const discs = c.disciplineEntries || [];
+    const dParts = this.split(discs, total);
+    const disc = discs.map((d, i) => ({ disciplineId:d.disciplineId, minutes:dParts[i].minutes, estimated:dParts[i].estimated }));
+    const byTopic = new Map();
+    disc.forEach(d => {
+      const own = c.topicEntries.filter(e => e.disciplineId === d.disciplineId);
+      if(!own.length) return;
+      const parts = this.split(own, d.minutes, d.estimated);
+      own.forEach((e, i) => byTopic.set(e.topicId, { topicId:e.topicId, disciplineId:d.disciplineId, minutes:parts[i].minutes, estimated:parts[i].estimated }));
+    });
+    const topic = c.topicEntries.map(e => byTopic.get(e.topicId)).filter(Boolean);
+    const out = { total, d:c.disciplineEntries, e:c.topicEntries, disc, topic,
+                  untopiced: total - sum(topic, x => x.minutes) };
+    if(s && typeof s === 'object') this._shareCache.set(s, out);
+    return out;
+  },
+  /** Tempo de cada disciplina do estudo; a soma é exatamente `minutes`. → [{ disciplineId, minutes, estimated }] */
+  discShares(s){
+    if(!s) return [];
+    if(s._projected && s._discShares) return s._discShares;
+    return this._shares(s).disc;
+  },
+  /** { minutes, estimated } da disciplina neste estudo (0 quando ela não faz parte). */
+  discShare(s, disciplineId){
+    const x = this.discShares(s).find(d => d.disciplineId === disciplineId);
+    return x ? { minutes:x.minutes, estimated:x.estimated } : { minutes:0, estimated:false };
+  },
+  /** Tempo de cada tópico do estudo, dentro da disciplina dele. → [{ topicId, disciplineId, minutes, estimated }] */
+  topicShares(s){
+    if(!s || !this.entries(s).length) return [];
+    if(s._projected && s._topicShares) return s._topicShares;
+    return this._shares(s).topic;
+  },
+  /** Minutos do estudo que não pertencem a nenhum tópico (disciplina estudada sem tópico). */
+  untopicedMinutes(s){
+    if(!s) return 0;
+    if(s._projected && s._topicShares) return Math.max(0, (Number(s.minutes) || 0) - sum(s._topicShares, x => x.minutes));
+    return this._shares(s).untopiced;
   },
   /** { minutes, estimated } do tópico neste estudo (0 quando ele não faz parte). */
   topicShare(s, topicId){
@@ -1740,6 +1929,8 @@ const SessionModel = {
     const parts = this.evenSplit(total, types.length);
     return types.map((t, i) => ({ type:t, minutes:parts[i], estimated:true }));
   },
+  /** Alguma parte do tempo deste estudo é estimada (disciplinas ou tópicos)? */
+  hasEstimate(s){ return this.discShares(s).some(x => x.estimated) || this.topicShares(s).some(x => x.estimated); },
 
   /**
    * O estudo visto por UM tópico — o que a reconciliação de revisões lê.
@@ -1764,25 +1955,64 @@ const SessionModel = {
   },
 
   /**
-   * Análises de UM tópico: o estudo com o tempo DAQUELE tópico (exato ou
-   * estimado); os descansos acompanham na mesma proporção. Só leitura — uma
-   * projeção nunca é gravada (`_projected`).
+   * PROJEÇÃO — o estudo dentro de um recorte das Análises (regra 6 da política):
+   *   sel.topicIds (Set) → só a parte desses tópicos;
+   *   sel.discIds  (Set) → só a parte dessas disciplinas.
+   * Os descansos acompanham na mesma proporção. Só leitura: uma projeção nunca
+   * é gravada (`_projected`); para abrir/editar, use sempre o `id`. Estudo
+   * inteiro dentro do recorte volta como está (mesmo objeto). Fora → null.
    */
-  projectToTopic(s, topicId){
-    const share = this.topicShare(s, topicId);
+  project(s, sel){
     const total = Math.max(0, Math.round(Number(s.minutes) || 0));
-    const f = total > 0 ? share.minutes / total : 0;
-    const e = this.entryOf(s, topicId);
+    const allDisc = this.discShares(s);
+    const allTopic = this.topicShares(s);
+    let disc, topic, entries;
+    if(sel && sel.topicIds){
+      topic = allTopic.filter(x => sel.topicIds.has(x.topicId));
+      if(!topic.length) return null;
+      entries = this.entries(s).filter(e => sel.topicIds.has(e.topicId));
+      if(topic.length === allTopic.length && sum(topic, x => x.minutes) === total) return s;
+      const m = new Map();
+      topic.forEach(x => {
+        const cur = m.get(x.disciplineId) || { disciplineId:x.disciplineId, minutes:0, estimated:false };
+        cur.minutes += x.minutes; if(x.estimated) cur.estimated = true;
+        m.set(x.disciplineId, cur);
+      });
+      disc = Array.from(m.values());
+    } else if(sel && sel.discIds){
+      disc = allDisc.filter(x => sel.discIds.has(x.disciplineId));
+      if(!disc.length) return null;
+      if(disc.length === allDisc.length) return s;
+      const keep = new Set(disc.map(x => x.disciplineId));
+      topic = allTopic.filter(x => keep.has(x.disciplineId));
+      entries = this.entries(s).filter(e => keep.has(e.disciplineId));
+    } else return s;
+    const minutes = sum(disc, x => x.minutes);
+    const f = total > 0 ? minutes / total : 0;
     return Object.assign({}, s, {
-      minutes: share.minutes,
+      minutes,
+      disciplineId: disc[0].disciplineId,
+      disciplineEntries: disc.map(x => ({ disciplineId:x.disciplineId, minutes:x.minutes })),
+      topicEntries: entries,
       breaks: f >= 1 ? breaksOf(s) : breaksOf(s).map(b => Object.assign({}, b, { minutes: (Number(b.minutes) || 0) * f })),
-      topicEntries: e ? [Object.assign({}, e, { minutes:null })] : [],
-      _shareEstimated: share.estimated,
+      _discShares: disc, _topicShares: topic,
+      _shareEstimated: disc.some(x => x.estimated) || topic.some(x => x.estimated),
       _projected: true
     });
   },
+  /** Compatibilidade (v6.7): a parte de UM tópico. */
+  projectToTopic(s, topicId){ return this.project(s, { topicIds: new Set([topicId]) }) || Object.assign({}, s, { minutes:0, breaks:[], topicEntries:[], _projected:true, _discShares:[], _topicShares:[] }); },
 
   /* ---------- texto ---------- */
+  /** Nomes das disciplinas, na ordem do estudo. */
+  disciplineNames(s){ return this.disciplineIds(s).map(id => disciplineName(id)); },
+  /** "Matemática · Inglês" — compacto, para listas. */
+  disciplinesText(s, max){
+    const names = this.disciplineNames(s);
+    const m = max || 3;
+    if(names.length <= m + 1) return names.join(' · ');
+    return names.slice(0, m).join(' · ') + ' · +' + (names.length - m);
+  },
   /** Nomes dos tópicos, na ordem do estudo (tópico que não existe mais não aparece). */
   topicNames(s){
     return this.topicIds(s).map(id => { const t = getTopic(id); return t ? t.name : null; }).filter(Boolean);
@@ -1805,13 +2035,24 @@ const SessionModel = {
     const same = items.every(x => x.outcome === items[0].outcome);
     return same ? `${reviewOutcomeLabel(items[0].outcome)} (${items.length} tópicos)` : `${items.length} resultados de revisão`;
   },
-  /** Linha secundária de um estudo nas listas: tópicos · tipos · dificuldade · resultado. */
+  /**
+   * Linha secundária de um estudo nas listas: tópicos · tipos · dificuldade · resultado.
+   * v6.8: num estudo de várias disciplinas, os tópicos viram uma contagem ("4 tópicos") —
+   * a lista completa, separada por disciplina, fica nos detalhes.
+   */
   subline(s, o){
     const opt = o || {};
     const diff = difficultyInfo(s.difficulty);
-    return [opt.noTopics ? null : (this.topicsText(s, opt.maxTopics || 2) || null), this.typesText(s) || null,
+    let topics = null;
+    if(!opt.noTopics){
+      const n = this.topicNames(s).length;
+      topics = this.isMulti(s) ? (n ? plural(n, 'tópico', 'tópicos') : null) : (this.topicsText(s, opt.maxTopics || 2) || null);
+    }
+    return [topics, this.typesText(s) || null,
       opt.noDifficulty ? null : (diff ? diff.label : null), this.outcomesText(s) || null].filter(Boolean).join(' · ');
-  }
+  },
+  /** "Matemática" ou "Matemática · Inglês" — o título de um estudo nas listas. */
+  title(s){ return this.isMulti(s) ? this.disciplinesText(s, 3) : disciplineName(s.disciplineId); }
 };
 
 /* ---------- v6.4: descansos e constância ---------- */
@@ -1863,7 +2104,8 @@ function sessionsInRange(range){
   return state.sessions.filter(s => s.date >= a && s.date <= b);
 }
 function minutesInRange(range, disciplineId){
-  return sum(sessionsInRange(range).filter(s => !disciplineId || s.disciplineId === disciplineId), s => s.minutes);
+  const list = sessionsInRange(range);
+  return disciplineId ? discMinutesOf(disciplineId, list).minutes : sum(list, s => s.minutes);
 }
 
 /* Status do tópico — derivado, nunca armazenado. */
@@ -2076,40 +2318,60 @@ const DeadlineEngine = {
 };
 
 /* =========================================================================
-   v6.5 — PLAN RULES: o que "Plano cumprido" quer dizer.
+   v6.8 — PLAN RULES: o que "meta da semana" quer dizer.
 
-   O plano semanal divide o tempo entre disciplinas. "Cumprir o plano" é
-   estudar, em CADA disciplina, o que foi planejado para ela. Por isso:
+   A META é o TEMPO TOTAL estudado na semana. Qualquer estudo válido da semana
+   conta — de qualquer disciplina, planejada ou não, em qualquer dia:
 
-       plano cumprido = Σ min(realizado, planejado)  ÷  Σ planejado
-                        (por disciplina, em cada semana)
+       meta cumprida  = min(estudado, meta) ÷ meta
+       falta          = max(0, meta − estudado)
+       além da meta   = max(0, estudado − meta)
 
-   Tempo a mais numa disciplina não compensa o que faltou em outra: planejou
-   1h de Redes e 1h de Matemática e estudou 2h de Redes → 50% do plano, com
-   1h "além do plano" mostrada à parte. O volume total continua visível
-   ("estudado no total"); ele só não é mais chamado de plano cumprido.
-   Antes da v6.5 a conta era Σ realizado ÷ Σ planejado, e o exemplo acima
-   aparecia como 100%.
+   A divisão entre disciplinas (allocations) é uma SUGESTÃO de organização:
+   ajuda a decidir o que estudar, aparece ao lado do que foi realmente feito
+   (sugerido × realizado) e nunca vira nota. Planejou 2h de Matemática, 1h30
+   de Português e 1h30 de Inglês, estudou 1h, 1h e 3h → 5h de 5h: meta
+   cumprida. A organização em dias é outra camada, também opcional.
+
+   Antes (v6.5–v6.7) a conta era por disciplina — Σ min(realizado, planejado)
+   — e o exemplo acima aparecia como 70%, com "semana incompleta". Isso
+   contradizia o objetivo do produto: dar liberdade, não cobrar distribuição.
+   `counted` continua existindo por disciplina, só para a leitura informativa
+   "quanto da sugestão daquela disciplina já aconteceu".
    ========================================================================= */
 const PlanRules = {
-  /** Quanto do realizado conta para o plano de UMA disciplina numa semana. */
+  /** Quanto de uma sugestão já aconteceu (informativo, por disciplina). */
   counted(planned, realized){ return Math.max(0, Math.min(Number(realized) || 0, Number(planned) || 0)); },
   /**
-   * pares = [{ planned, realized }] (um por disciplina e semana) + tempo sem plano.
-   * → { planned, realized, counted, extra, remaining, pct, volumePct }
+   * A semana diante da meta TOTAL.
+   * → { goal, realized, counted, extra, remaining, pct (0–100), volumePct (pode passar de 100), reached }
    */
-  summarize(pairs, unplannedRealized){
-    const planned = sum(pairs, x => Number(x.planned) || 0);
-    const realized = sum(pairs, x => Number(x.realized) || 0) + (Number(unplannedRealized) || 0);
-    const counted = sum(pairs, x => this.counted(x.planned, x.realized));
+  goal(goalMinutes, realizedMinutes){
+    const goal = Math.max(0, Math.round(Number(goalMinutes) || 0));
+    const realized = Math.max(0, Number(realizedMinutes) || 0);
+    const counted = Math.min(realized, goal);
     return {
-      planned, realized, counted,
-      extra: Math.max(0, realized - counted),
-      remaining: Math.max(0, planned - counted),
-      pct: planned > 0 ? (counted / planned) * 100 : null,
-      volumePct: planned > 0 ? (realized / planned) * 100 : null
+      goal, realized, counted,
+      extra: Math.max(0, realized - goal),
+      remaining: Math.max(0, goal - realized),
+      pct: goal > 0 ? (counted / goal) * 100 : null,
+      volumePct: goal > 0 ? (realized / goal) * 100 : null,
+      reached: goal > 0 && realized >= goal
     };
-  }
+  },
+  /**
+   * Meta de uma semana registrada: o tempo semanal que a pessoa escolheu
+   * (`availableMinutes`). Planos antigos sem esse número usam a soma da
+   * sugestão — o mesmo total que sempre foi mostrado.
+   */
+  weekGoal(week){
+    if(!week) return 0;
+    const avail = Math.max(0, Math.round(Number(week.availableMinutes ?? week.weeklyAvailableMinutes) || 0));
+    if(avail > 0) return avail;
+    return sum(week.allocations || [], a => Math.max(0, Number(a.targetMinutes) || 0));
+  },
+  /** Soma da sugestão por disciplina (pode ser diferente da meta — é só uma referência). */
+  suggestedTotal(week){ return week ? sum(week.allocations || [], a => Math.max(0, Number(a.targetMinutes) || 0)) : 0; }
 };
 
 /* =========================================================================
@@ -2212,7 +2474,7 @@ const PlannerEngine = {
     return state.weeklyPlans.find(w => w.weekStart === ws) || null;
   },
 
-  /** Progresso da semana corrente: planejado × realizado, geral e por disciplina. */
+  /** Progresso da semana: a meta TOTAL × o tempo estudado, e a sugestão por disciplina ao lado (informativa). */
   getCurrentWeekProgress(dateRef){
     const ws = dateToISO(startOfWeek(dateRef || today()));
     return DerivedCache.get('weekProgress:' + ws, () => this._computeWeekProgress(dateRef));
@@ -2223,39 +2485,40 @@ const PlannerEngine = {
     const wp = this.weeklyPlanFor(ref);
     const range = { start: startOfWeek(ref), end: endOfWeek(ref) };
     const weekSessions = sessionsInRange(range);
-    const realizedByDisc = new Map();
-    weekSessions.forEach(s => realizedByDisc.set(s.disciplineId, (realizedByDisc.get(s.disciplineId) || 0) + s.minutes));
+    // v6.8: cada estudo divide o próprio tempo entre as disciplinas dele (nunca repete)
+    const realizedByDisc = minutesByDiscipline(weekSessions);
+    const realizedTotal = sum(weekSessions, s => Number(s.minutes) || 0);
+    const goalTotal = PlanRules.weekGoal(wp);
+    const g = PlanRules.goal(goalTotal, realizedTotal);
 
     const perDiscipline = [];
-    let countedTotal = 0;
     if(wp){
-      wp.allocations.forEach(a => {
-        const planned = a.targetMinutes || 0;
-        const realized = realizedByDisc.get(a.disciplineId) || 0;
-        countedTotal += PlanRules.counted(planned, realized);
+      const seen = new Set();
+      (wp.allocations || []).forEach(a => {
+        if(seen.has(a.disciplineId)) return;
+        seen.add(a.disciplineId);
         const d = getDiscipline(a.disciplineId);
         if(!d || d.archived) return;
-        perDiscipline.push({
-          disciplineId: a.disciplineId,
-          planned,
-          realized,
-          remaining: Math.max(0, planned - realized)
-        });
+        const planned = a.targetMinutes || 0;
+        const realized = realizedByDisc.get(a.disciplineId) || 0;
+        perDiscipline.push({ disciplineId: a.disciplineId, planned, realized, remaining: Math.max(0, planned - realized), suggested:true });
       });
     }
-    const plannedTotal = wp ? sum(wp.allocations, a => a.targetMinutes || 0) : 0;
-    const realizedTotal = sum(weekSessions, s => s.minutes);
-    /* v6.5 — "Plano cumprido" mede a DISTRIBUIÇÃO, não o volume (ver PlanRules):
-       `pct` conta, de cada disciplina, no máximo o que foi planejado para ela.
-       `extraTotal` é o tempo estudado além disso — aparece à parte, nunca somado. */
+    // o que foi estudado fora da sugestão também aparece (e conta para a meta)
+    const realizedList = Array.from(realizedByDisc.entries())
+      .map(([id, m]) => ({ disciplineId:id, minutes:m, suggested: !!(wp && (wp.allocations || []).some(a => a.disciplineId === id && (a.targetMinutes || 0) > 0)) }))
+      .filter(x => x.minutes > 0)
+      .sort((a, b) => (b.minutes - a.minutes) || str(disciplineName(a.disciplineId)).localeCompare(str(disciplineName(b.disciplineId)), 'pt-BR'));
+    /* Nomes antigos continuam válidos para quem os lê, agora com o sentido da v6.8:
+         plannedTotal  = a META da semana (tempo total);
+         countedTotal  = quanto do estudado conta para ela (no máximo a meta);
+         extraTotal    = além da meta;  remainingTotal = quanto falta. */
     return {
-      weeklyPlan: wp, range, plannedTotal, realizedTotal,
-      countedTotal,
-      extraTotal: Math.max(0, realizedTotal - countedTotal),
-      remainingTotal: Math.max(0, plannedTotal - countedTotal),
-      pct: plannedTotal > 0 ? (countedTotal / plannedTotal) * 100 : null,
-      volumePct: plannedTotal > 0 ? (realizedTotal / plannedTotal) * 100 : null,
-      perDiscipline
+      weeklyPlan: wp, range,
+      goalTotal: g.goal, plannedTotal: g.goal, suggestedTotal: PlanRules.suggestedTotal(wp),
+      realizedTotal, countedTotal: g.counted, extraTotal: g.extra, remainingTotal: g.remaining,
+      pct: g.pct, volumePct: g.volumePct, reached: g.reached,
+      perDiscipline, realizedByDiscipline: realizedList
     };
   },
 
@@ -2664,8 +2927,9 @@ const RecommendationEngine = {
   buildReasons(disc, scored, topicPick){
     const r = [];
     const f = scored.facts;
-    if(f.planned > 0 && f.remaining > 0) r.push(`ainda faltam ${fmtDuration(f.remaining)} de ${disc.name} no plano desta semana`);
-    else if(f.planned > 0 && f.remaining === 0) r.push('plano semanal desta disciplina já cumprido');
+    // v6.8: a divisão por disciplina é uma sugestão — a frase informa, não cobra
+    if(f.planned > 0 && f.remaining > 0) r.push(`a sugestão desta semana tem mais ${fmtDuration(f.remaining)} de ${disc.name}`);
+    else if(f.planned > 0 && f.remaining === 0) r.push(`a sugestão da semana para ${disc.name} já foi atingida`);
     const dp = PriorityEngine.clamp(disc.priority);
     if(dp >= 4) r.push(`${disc.name} é prioridade ${PRIORITY_LABELS[dp].toLowerCase()}`);
     const topic = topicPick && topicPick.topic;
@@ -2676,7 +2940,7 @@ const RecommendationEngine = {
     if(f.deadline && f.deadline.days !== null && f.deadline.days <= 30 && !(topicPick && topicPick.reason === DeadlineEngine.phrase(f.deadline.dl))){
       r.push(DeadlineEngine.phrase(f.deadline.dl));
     }
-    if(scored.parts.overTargetPenalty > 0) r.push(`já passou ${fmtDuration(f.realized - f.planned)} do planejado nesta semana`);
+    if(scored.parts.overTargetPenalty > 0) r.push(`já recebeu ${fmtDuration(f.realized - f.planned)} além da sugestão nesta semana`);
     if(topicPick && topicPick.reason) r.push(topicPick.reason);
     if(!r.length) r.push('disciplina ativa disponível para estudo');
     return r;
@@ -2692,8 +2956,7 @@ const RecommendationEngine = {
 
     const deficits = PlannerEngine.calculateDeficits();
     const weekRange = { start: startOfWeek(today()), end: endOfWeek(today()) };
-    const realizedByDisc = new Map();
-    sessionsInRange(weekRange).forEach(s => realizedByDisc.set(s.disciplineId, (realizedByDisc.get(s.disciplineId) || 0) + s.minutes));
+    const realizedByDisc = minutesByDiscipline(sessionsInRange(weekRange));
     const ctx = { deficits, realizedByDisc };
 
     const scored = discs.map(d => {
@@ -2724,83 +2987,124 @@ const RecommendationEngine = {
    ========================================================================= */
 const NO_AREA_ID = '__none__';
 const SCOPE_KIND_LABEL = { all:'Tudo', area:AREA_TERM, discipline:'Disciplina', topic:'Tópico' };
+const SCOPE_KIND_PLURAL = { area:'Áreas de Estudo', discipline:'Disciplinas', topic:'Tópicos' };
 
-function defaultAnalyticsScope(){ return { type:'all', areaId:null, disciplineId:null, topicId:null }; }
+function defaultAnalyticsScope(){ return { type:'all', areaId:null, disciplineId:null, topicId:null, ids:null, types:null }; }
 
+/* v6.8 — o recorte pode ter VÁRIOS itens (Matemática + Inglês; três tópicos)
+   e um filtro de tipos de estudo. Duas operações diferentes, nunca misturadas:
+     · FILTRAR — quais estudos entram (tem alguma das disciplinas/tópicos
+       escolhidos; tem algum dos tipos escolhidos). Um estudo entra UMA vez;
+     · ATRIBUIR — com que tempo ele entra: num recorte de disciplinas ou de
+       tópicos, só a parte deles (SessionModel.project). Um estudo de
+       Matemática e Inglês no recorte "Matemática + Inglês" entra com o tempo
+       todo, uma vez — nunca duas.
+   O filtro de tipos só escolhe estudos: um estudo de 60 min com Teoria e
+   Exercícios, no filtro "Exercícios", entra com os 60 min (e a tela diz
+   "estudos que tiveram Exercícios"). Tempo POR tipo é outra leitura (byType). */
 const AnalyticsScope = {
-  /** Converte a escolha salva em um escopo utilizável. Entidade removida → volta para "Tudo". */
+  /** Converte a escolha salva em um escopo utilizável. Itens removidos saem; sem nenhum → volta para "Tudo". */
   resolve(raw){
     const s = Object.assign(defaultAnalyticsScope(), raw || {});
+    const want = (Array.isArray(s.ids) && s.ids.length ? s.ids
+      : [s.type === 'area' ? s.areaId : s.type === 'discipline' ? s.disciplineId : s.type === 'topic' ? s.topicId : null])
+      .filter(x => typeof x === 'string' && x).filter((x, i, arr) => arr.indexOf(x) === i);
+    const typeList = SessionModel.cleanTypes(s.types);
+    const types = typeList.length ? new Set(typeList) : null;
+    const typesLabel = typeList.map(sessionTypeLabel).join(' + ');
+    const join = names => names.length <= 2 ? names.join(' + ') : `${names.length} ${s.type === 'topic' ? 'tópicos' : s.type === 'area' ? 'áreas' : 'disciplinas'}`;
     const areaPath = (d) => {
       const a = d && d.areaId ? getArea(d.areaId) : null;
       return a ? [a.name] : [];
     };
+    const base = { types, typeList, typesLabel, requested: want.length };
     if(s.type === 'area'){
-      if(s.areaId === NO_AREA_ID){
-        const ids = state.disciplines.filter(d => !d.areaId || !getArea(d.areaId)).map(d => d.id);
-        return { type:'area', areaId:NO_AREA_ID, disciplineId:null, topicId:null,
-                 discIds:new Set(ids), label:NO_AREA_LABEL, path:[NO_AREA_LABEL] };
-      }
-      const a = getArea(s.areaId);
-      if(a){
-        const ids = state.disciplines.filter(d => d.areaId === a.id).map(d => d.id);
-        return { type:'area', areaId:a.id, disciplineId:null, topicId:null,
-                 discIds:new Set(ids), label:a.name, path:[a.name] };
+      const ids = [], discIds = new Set(), names = [];
+      want.forEach(id => {
+        if(id === NO_AREA_ID){
+          ids.push(id); names.push(NO_AREA_LABEL);
+          state.disciplines.filter(d => !d.areaId || !getArea(d.areaId)).forEach(d => discIds.add(d.id));
+        } else {
+          const a = getArea(id);
+          if(!a) return;
+          ids.push(a.id); names.push(a.name);
+          state.disciplines.filter(d => d.areaId === a.id).forEach(d => discIds.add(d.id));
+        }
+      });
+      if(ids.length){
+        return Object.assign(base, { type:'area', ids, areaId: ids.length === 1 ? ids[0] : null, disciplineId:null, topicId:null,
+                 discIds, topicIds:null, label: join(names), names, path: ids.length === 1 ? [names[0]] : [join(names)], multi: ids.length > 1 });
       }
     } else if(s.type === 'discipline'){
-      const d = getDiscipline(s.disciplineId);
-      if(d){
-        return { type:'discipline', areaId:d.areaId || null, disciplineId:d.id, topicId:null,
-                 discIds:new Set([d.id]), label:d.name, path:[...areaPath(d), d.name] };
+      const discs = want.map(id => getDiscipline(id)).filter(Boolean);
+      if(discs.length){
+        const one = discs.length === 1 ? discs[0] : null;
+        return Object.assign(base, { type:'discipline', ids: discs.map(d => d.id), areaId: one ? (one.areaId || null) : null,
+                 disciplineId: one ? one.id : null, topicId:null, discIds: new Set(discs.map(d => d.id)), topicIds:null,
+                 label: join(discs.map(d => d.name)), names: discs.map(d => d.name),
+                 path: one ? [...areaPath(one), one.name] : [join(discs.map(d => d.name))], multi: discs.length > 1 });
       }
     } else if(s.type === 'topic'){
-      const t = getTopic(s.topicId);
-      const d = t ? getDiscipline(t.disciplineId) : null;
-      if(t && d){
-        return { type:'topic', areaId:d.areaId || null, disciplineId:d.id, topicId:t.id,
-                 discIds:new Set([d.id]), label:t.name, path:[...areaPath(d), d.name, t.name] };
+      const tps = want.map(id => getTopic(id)).filter(t => t && getDiscipline(t.disciplineId));
+      if(tps.length){
+        const one = tps.length === 1 ? tps[0] : null;
+        const dset = new Set(tps.map(t => t.disciplineId));
+        const d = dset.size === 1 ? getDiscipline(tps[0].disciplineId) : null;
+        return Object.assign(base, { type:'topic', ids: tps.map(t => t.id), areaId: d ? (d.areaId || null) : null,
+                 disciplineId: d ? d.id : null, topicId: one ? one.id : null,
+                 discIds: dset, topicIds: new Set(tps.map(t => t.id)),
+                 label: join(tps.map(t => t.name)), names: tps.map(t => t.name),
+                 path: one && d ? [...areaPath(d), d.name, one.name] : [join(tps.map(t => t.name))], multi: tps.length > 1 });
       }
     }
-    return { type:'all', areaId:null, disciplineId:null, topicId:null, discIds:null,
-             label:'Todos os estudos', path:[], fellBack: s.type !== 'all' };
+    return Object.assign(base, { type:'all', ids:[], areaId:null, disciplineId:null, topicId:null, discIds:null, topicIds:null,
+             label:'Todos os estudos', names:[], path:[], multi:false, fellBack: s.type !== 'all' });
   },
-  key(r){ return [r.type, r.areaId || '', r.disciplineId || '', r.topicId || ''].join(':'); },
-  kindLabel(r){ return SCOPE_KIND_LABEL[r.type] || 'Tudo'; },
+  key(r){ return [r.type, (r.ids || []).join(','), (r.typeList || []).join(',')].join(':'); },
+  kindLabel(r){ return r.multi ? (SCOPE_KIND_PLURAL[r.type] || 'Tudo') : (SCOPE_KIND_LABEL[r.type] || 'Tudo'); },
   /** "Tecnologia › Redes de Computadores › OSPF" */
-  pathText(r){ return r.type === 'all' ? 'Todos os estudos' : r.path.join(' › '); },
-  isAll(r){ return r.type === 'all'; },
+  pathText(r){
+    const base = r.type === 'all' ? 'Todos os estudos' : r.path.join(' › ');
+    return r.types ? `${base} · estudos com ${r.typesLabel}` : base;
+  },
+  isAll(r){ return r.type === 'all' && !r.types; },
 
+  /** Filtro de estudos (sem atribuir tempo): o estudo pertence ao recorte? */
   hasSession(r, s){
+    if(r.types && !SessionModel.types(s).some(v => r.types.has(v))) return false;
     if(r.type === 'all') return true;
-    if(r.type === 'topic') return SessionModel.hasTopic(s, r.topicId);
-    return r.discIds.has(s.disciplineId);
+    if(r.type === 'topic') return SessionModel.entries(s).some(e => r.topicIds.has(e.topicId));
+    return SessionModel.touchesDisciplines(s, r.discIds);
   },
   hasDiscipline(r, id){ return r.type === 'all' || r.discIds.has(id); },
   hasTopic(r, t){
-    if(r.type === 'topic') return t.id === r.topicId;
+    if(r.type === 'topic') return r.topicIds.has(t.id);
     return r.type === 'all' || r.discIds.has(t.disciplineId);
   },
   /** 'own' = prazo do escopo · 'discipline' = prazo da disciplina inteira (escopo de tópico) · null = fora. */
   deadlineRelation(r, dl){
     if(r.type === 'all') return 'own';
     if(r.type === 'topic'){
-      if(dl.topicId && dl.topicId === r.topicId) return 'own';
-      if(!dl.topicId && dl.disciplineId === r.disciplineId) return 'discipline';
+      if(dl.topicId && r.topicIds.has(dl.topicId)) return 'own';
+      if(!dl.topicId && dl.disciplineId && r.discIds.has(dl.disciplineId)) return 'discipline';
       return null;
     }
     return dl.disciplineId && r.discIds.has(dl.disciplineId) ? 'own' : null;
   },
   /**
-   * Estudos do escopo. v6.7: no escopo de UM tópico, cada estudo entra com a
-   * parte do tempo DAQUELE tópico (SessionModel.projectToTopic) — um estudo de
-   * 90 min com três tópicos conta 30 min aqui, não 90. Projeções nunca são
-   * gravadas; para abrir/editar, use sempre o `id`.
+   * Estudos do escopo. Cada um entra UMA vez; num recorte de disciplinas ou de
+   * tópicos, com a parte do tempo DELES (SessionModel.project): um estudo de 90
+   * min com três tópicos conta 30 min no recorte de um deles, não 90.
+   * Projeções nunca são gravadas; para abrir/editar, use sempre o `id`.
    */
   sessions(r, range){
-    const list = range ? sessionsInRange(range) : state.sessions;
+    let list = range ? sessionsInRange(range) : state.sessions;
+    if(r.types) list = list.filter(s => SessionModel.types(s).some(v => r.types.has(v)));
     if(r.type === 'all') return list;
-    if(r.type === 'topic') return list.filter(s => SessionModel.hasTopic(s, r.topicId)).map(s => SessionModel.projectToTopic(s, r.topicId));
-    return list.filter(s => this.hasSession(r, s));
+    const sel = r.type === 'topic' ? { topicIds: r.topicIds } : { discIds: r.discIds };
+    const out = [];
+    list.forEach(s => { const p = SessionModel.project(s, sel); if(p) out.push(p); });
+    return out;
   },
   disciplines(r){ return activeDisciplines().filter(d => this.hasDiscipline(r, d.id)); },
   topics(r){
@@ -2812,6 +3116,15 @@ const AnalyticsScope = {
   }
 };
 
+/** v6.8 — a frase da meta: o tempo estudado diante da meta (ou da sugestão, num recorte de disciplinas). */
+function planGoalSentence(pa){
+  if(!pa || !pa.hasPlan) return '';
+  const what = pa.basis === 'goal' ? 'da meta' : 'do tempo sugerido para esta seleção';
+  if(pa.realized >= pa.planned - 0.5){
+    return `Você estudou ${fmtDuration(pa.realized)} de ${fmtDuration(pa.planned)} ${what}` + (pa.extra >= 1 ? ` — ${fmtDuration(pa.extra)} além.` : ' — alcançado.');
+  }
+  return `Você estudou ${fmtDuration(pa.realized)} de ${fmtDuration(pa.planned)} ${what} (${safePct(pa.pct)}).`;
+}
 /** Número seguro para exibir: nunca "NaN", "Infinity" ou "undefined". */
 function safePct(v){ return isNum(v) ? fmtPct(v) : '—'; }
 function plural(n, one, many){ return `${n} ${n === 1 ? one : many}`; }
@@ -2860,9 +3173,10 @@ const AnalyticsEngine = {
     const weeklyRhythm = this.weeklyRhythm(range, sessions);
     const previousComparison = this.compare(totals, this.totals(prevSessions, rangeDays(prevRange)), prevRange);
 
-    const byDiscipline = this.groupMinutes(sessions, s => s.disciplineId, id => disciplineName(id));
-    const byArea = this.groupMinutes(sessions,
-      s => { const d = getDiscipline(s.disciplineId); return d && d.areaId && getArea(d.areaId) ? d.areaId : NO_AREA_ID; },
+    // v6.8: por disciplina e por área, cada estudo DIVIDE o próprio tempo (nunca repete)
+    const byDiscipline = this.groupDisciplineMinutes(sessions, id => id, id => disciplineName(id));
+    const byArea = this.groupDisciplineMinutes(sessions,
+      id => { const d = getDiscipline(id); return d && d.areaId && getArea(d.areaId) ? d.areaId : NO_AREA_ID; },
       id => id === NO_AREA_ID ? NO_AREA_LABEL : (getArea(id) ? getArea(id).name : '(área removida)'));
     const byTopic = this.groupTopicMinutes(sessions);
     const byType = this.typeDistribution(sessions);
@@ -2986,6 +3300,33 @@ const AnalyticsEngine = {
   },
 
   /**
+   * v6.8 — tempo por DISCIPLINA (ou por área, via `keyOf(disciplinaId)`) sem
+   * multiplicar nada: cada estudo distribui o próprio tempo entre as disciplinas
+   * dele (SessionModel.discShares). A soma das linhas é o tempo total.
+   * `count` = em quantos estudos a linha apareceu (um estudo conta uma vez por
+   * linha, mesmo com duas disciplinas da mesma área); `estimated` = minutos
+   * vindos de divisão estimada.
+   */
+  groupDisciplineMinutes(sessions, keyOf, labelFn){
+    const map = new Map();
+    sessions.forEach(s => {
+      const touched = new Set();
+      SessionModel.discShares(s).forEach(x => {
+        const k = keyOf(x.disciplineId);
+        if(k === null || k === undefined) return;
+        const cur = map.get(k) || { key:k, minutes:0, count:0, estimated:0 };
+        cur.minutes += x.minutes; if(x.estimated) cur.estimated += x.minutes;
+        if(!touched.has(k)){ cur.count++; touched.add(k); }
+        map.set(k, cur);
+      });
+    });
+    const total = sum(Array.from(map.values()), x => x.minutes);
+    return Array.from(map.values())
+      .map(x => ({ ...x, label: labelFn(x.key), pct: total > 0 ? (x.minutes / total) * 100 : 0 }))
+      .sort((a,b) => (b.minutes - a.minutes) || str(a.label).localeCompare(str(b.label), 'pt-BR'));
+  },
+
+  /**
    * v6.7 — tempo por TÓPICO sem multiplicar nada: cada estudo distribui o próprio
    * tempo entre os tópicos dele (SessionModel.topicShares); estudo sem tópico
    * fica em "Sem tópico definido". A soma das linhas é o tempo total.
@@ -3003,6 +3344,9 @@ const AnalyticsEngine = {
       const shares = SessionModel.topicShares(s);
       if(!shares.length){ add('__none__', s.minutes || 0, false); return; }
       shares.forEach(x => add(x.topicId, x.minutes, x.estimated));
+      // v6.8: disciplina do estudo sem tópico escolhido → o tempo dela fica em "sem tópico"
+      const rest = SessionModel.untopicedMinutes(s);
+      if(rest > 0) add('__none__', rest, SessionModel.discShares(s).some(d => d.estimated));
     });
     const total = sum(Array.from(map.values()), x => x.minutes);
     const label = id => { if(id === '__none__') return 'Sem tópico definido'; const t = getTopic(id); return t ? t.name : '(tópico removido)'; };
@@ -3064,7 +3408,14 @@ const AnalyticsEngine = {
     };
     return {
       avg, count: withD.length, counts,
-      perDiscipline: groupAvg(withD, s => s.disciplineId, id => disciplineName(id)),
+      // v6.8: a dificuldade é do estudo inteiro — cada disciplina dele recebe a nota uma vez (média por participação)
+      perDiscipline: (() => {
+        const m = new Map();
+        withD.forEach(s => SessionModel.disciplineIds(s).forEach(id => { if(!m.has(id)) m.set(id, []); m.get(id).push(s.difficulty); }));
+        return Array.from(m.entries())
+          .map(([id, vals]) => ({ id, label: disciplineName(id), avg: sum(vals) / vals.length, count: vals.length }))
+          .sort((a,b) => b.avg - a.avg);
+      })(),
       // v6.7: a dificuldade é do estudo inteiro — cada tópico dele recebe a nota uma vez (média por participação)
       perTopic: (() => {
         const m = new Map();
@@ -3077,12 +3428,19 @@ const AnalyticsEngine = {
   },
 
   /**
-   * Planejado × realizado usando o plano que existia em cada semana tocada
-   * pelo período. O plano é por disciplina: no escopo de tópico ele não se aplica.
+   * v6.8 — META SEMANAL × realizado, usando o registro de cada semana tocada
+   * pelo período (semana parcial conta proporcionalmente).
+   *   · Todos os estudos → a META TOTAL da semana (qualquer estudo conta);
+   *   · Disciplinas/área → a SUGESTÃO daquelas disciplinas (só referência);
+   *   · Tópicos          → não se aplica (a semana não é planejada por tópico).
+   * `pct` = quanto da meta foi alcançado (até 100%); `volumePct` pode passar.
+   * Por disciplina: sugerido × realizado, informativo (nunca nota).
    */
   planAdherence(range, scope){
-    const empty = { applicable: scope.type !== 'topic', hasPlan:false, planned:0, realized:0, counted:0, extra:0, weeks:[], perDiscipline:[], pct:null, volumePct:null };
-    if(scope.type === 'topic') return empty;
+    const basis = scope.type === 'all' ? 'goal' : 'suggestion';
+    const empty = { applicable: scope.type !== 'topic' && !scope.types, basis, hasPlan:false, planned:0, realized:0, counted:0, extra:0,
+                    weeks:[], perDiscipline:[], pct:null, volumePct:null, weeksWithGoal:0, weeksReached:0 };
+    if(scope.type === 'topic' || scope.types) return empty;
     const weeks = [];
     let cursor = startOfWeek(range.start);
     const last = startOfWeek(range.end);
@@ -3099,40 +3457,33 @@ const AnalyticsEngine = {
       const a = dateToISO(clipStart), b = dateToISO(clipEnd);
       const inWeek = scoped.filter(s => s.date >= a && s.date <= b);
       const realized = sum(inWeek, s => s.minutes || 0);
-      const realizedByDisc = new Map();
-      inWeek.forEach(s => realizedByDisc.set(s.disciplineId, (realizedByDisc.get(s.disciplineId) || 0) + (s.minutes || 0)));
+      const realizedByDisc = minutesByDiscipline(inWeek);
       const allocs = wp ? (wp.allocations || []).filter(x => AnalyticsScope.hasDiscipline(scope, x.disciplineId)) : [];
-      const planned = sum(allocs, x => x.targetMinutes || 0) * factor;
-      // v6.5 — plano cumprido da semana: de cada disciplina conta no máximo o planejado para ela (PlanRules)
-      // (somado por disciplina antes de comparar: uma disciplina repetida no plano não conta duas vezes)
-      let counted = 0;
       const plannedByDisc = new Map();
       allocs.forEach(al => plannedByDisc.set(al.disciplineId, (plannedByDisc.get(al.disciplineId) || 0) + (al.targetMinutes || 0) * factor));
-      plannedByDisc.forEach((pl, id) => { counted += PlanRules.counted(pl, realizedByDisc.get(id) || 0); });
-      weeks.push({ weekStart: ws, weeklyPlan: wp || null, allocs, planned, realized, counted, factor, coveredDays,
-                   extra: Math.max(0, realized - counted), plannedByDisc, realizedByDisc,
-                   weekNumber: isoWeekNumber(wStart),
-                   pct: planned > 0 ? (counted / planned) * 100 : null,
-                   volumePct: planned > 0 ? (realized / planned) * 100 : null });
+      const planned = (basis === 'goal' ? PlanRules.weekGoal(wp) : sum(allocs, x => x.targetMinutes || 0)) * factor;
+      const g = PlanRules.goal(planned, realized);
+      weeks.push({ weekStart: ws, weeklyPlan: wp || null, allocs, planned, realized, counted: Math.min(realized, planned), factor, coveredDays,
+                   extra: Math.max(0, realized - planned), plannedByDisc, realizedByDisc,
+                   weekNumber: isoWeekNumber(wStart), reached: planned > 0 && realized >= planned - 0.5,
+                   pct: g.pct, volumePct: g.volumePct });
       cursor = addDays(cursor, 7);
     }
-    const planned = sum(weeks, w => w.planned);
-    const realized = sum(weeks, w => w.realized);
-    const counted = sum(weeks, w => w.counted);
+    /* Só as semanas que TINHAM meta entram na comparação: uma semana sem meta não
+       "passa da meta" nem "falta" nada. O tempo dessas semanas fica em `realizedAll`. */
+    const withGoal = weeks.filter(w => w.planned > 0);
+    const planned = sum(withGoal, w => w.planned);
+    const realized = sum(withGoal, w => w.realized);
+    const counted = sum(withGoal, w => w.counted);
+    const realizedAll = sum(weeks, w => w.realized);
     const hasPlan = planned > 0;
-    if(!hasPlan) return { ...empty, weeks, realized };
+    if(!hasPlan) return { ...empty, weeks, realized: realizedAll, realizedAll };
 
     const map = new Map();
-    weeks.forEach(w => w.plannedByDisc.forEach((pl, id) => {
-      const cur = map.get(id) || { disciplineId:id, planned:0, realized:0, counted:0 };
-      cur.planned += pl;
-      cur.counted += PlanRules.counted(pl, w.realizedByDisc.get(id) || 0);
-      map.set(id, cur);
-    }));
-    scoped.forEach(s => {
-      const cur = map.get(s.disciplineId) || { disciplineId:s.disciplineId, planned:0, realized:0, counted:0 };
-      cur.realized += s.minutes || 0;
-      map.set(s.disciplineId, cur);
+    const touch = id => { const cur = map.get(id) || { disciplineId:id, planned:0, realized:0, counted:0 }; map.set(id, cur); return cur; };
+    withGoal.forEach(w => {
+      w.plannedByDisc.forEach((pl, id) => { const cur = touch(id); cur.planned += pl; cur.counted += PlanRules.counted(pl, w.realizedByDisc.get(id) || 0); });
+      w.realizedByDisc.forEach((m, id) => { touch(id).realized += m; });
     });
     const perDiscipline = [];
     map.forEach(v => {
@@ -3141,13 +3492,12 @@ const AnalyticsEngine = {
                            priority: d ? PriorityEngine.clamp(d.priority) : PRIORITY_DEFAULT,
                            pct: v.planned > 0 ? (v.realized / v.planned) * 100 : null });
     });
-    perDiscipline.sort((a,b) => (a.pct === null ? 999 : a.pct) - (b.pct === null ? 999 : b.pct));
-    /* `pct` = plano cumprido (distribuição, nunca passa de 100%).
-       `volumePct` = tudo o que foi estudado ÷ planejado (pode passar de 100%).
-       Por disciplina, `pct` continua sendo realizado ÷ planejado daquela disciplina:
-       ali "130%" é a leitura certa de "estudou mais do que planejou". */
-    return { applicable:true, hasPlan, planned, realized, counted, extra: Math.max(0, realized - counted), weeks, perDiscipline,
-             pct: (counted / planned) * 100, volumePct: (realized / planned) * 100 };
+    // ordem de leitura: quem recebeu mais tempo primeiro (é uma distribuição, não uma classificação)
+    perDiscipline.sort((a,b) => (b.realized - a.realized) || (b.planned - a.planned) || str(a.label).localeCompare(str(b.label), 'pt-BR'));
+    const full = weeks.filter(w => w.planned > 0);
+    return { applicable:true, basis, hasPlan, planned, realized, realizedAll, counted, extra: Math.max(0, realized - planned), weeks, perDiscipline,
+             pct: (counted / planned) * 100, volumePct: (realized / planned) * 100,
+             weeksWithGoal: full.length, weeksReached: full.filter(w => w.reached).length };
   },
 
   /** Revisões do escopo: concluídas no período + a situação de agora (marcadas, atrasadas, próximas). */
@@ -3240,7 +3590,7 @@ const AnalyticsEngine = {
     // v6.7: prazo de um tópico conta a PARTE daquele tópico nos estudos (nunca o estudo inteiro de vários tópicos)
     const studiedFor = dl => {
       if(dl.topicId) return topicMinutesOf(dl.topicId, sessions).minutes;
-      return dl.disciplineId ? sum(sessions.filter(s => s.disciplineId === dl.disciplineId), s => s.minutes || 0) : 0;
+      return dl.disciplineId ? discMinutesOf(dl.disciplineId, sessions).minutes : 0;
     };
     const open = all.filter(dl => !DeadlineEngine.isDone(dl))
       .sort((x,y) => str(x.date).localeCompare(str(y.date)))
@@ -3263,9 +3613,11 @@ const AnalyticsEngine = {
   priorityStats(scope, sessions){
     const total = sum(sessions, s => s.minutes || 0);
     const discs = AnalyticsScope.disciplines(scope);
+    const discMin = minutesByDiscipline(sessions);
     const byDisc = [1,2,3,4,5].map(p => {
       const ids = new Set(state.disciplines.filter(d => PriorityEngine.clamp(d.priority) === p).map(d => d.id));
-      const minutes = sum(sessions.filter(s => ids.has(s.disciplineId)), s => s.minutes || 0);
+      let minutes = 0;
+      discMin.forEach((m, id) => { if(ids.has(id)) minutes += m; });
       return { p, minutes, pct: total > 0 ? minutes / total * 100 : 0, count: discs.filter(d => PriorityEngine.clamp(d.priority) === p).length };
     });
     // v6.7: tempo por prioridade de TÓPICO = partes dos tópicos (exatas ou estimadas), nunca o estudo repetido
@@ -3285,7 +3637,7 @@ const AnalyticsEngine = {
       const minutes = byPrio.get(p);
       return { p, minutes, pct: topicTotal > 0 ? minutes / topicTotal * 100 : 0, count: topics.filter(t => PriorityEngine.clamp(t.priority) === p).length };
     });
-    const studiedDisc = new Set(sessions.map(s => s.disciplineId));
+    const studiedDisc = new Set(Array.from(discMin.keys()));
     const highDiscNoTime = discs.length > 1
       ? discs.filter(d => PriorityEngine.clamp(d.priority) >= 4 && !studiedDisc.has(d.id)).sort(sortByName) : [];
     const highTopicNoTime = scope.type === 'topic' ? []
@@ -3374,7 +3726,7 @@ const AnalyticsEngine = {
       out.push(`Você estudou ${fmtDuration(t.minutes)}${where} em ${plural(t.count, 'estudo registrado', 'estudos registrados')}, com estudo em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')}.`);
     }
     const pa = a.planAdherence;
-    if(pa.hasPlan) out.push(`Cumpriu ${safePct(pa.pct)} do plano: ${fmtDuration(pa.counted)} de ${fmtDuration(pa.planned)} planejadas` + (pa.extra >= 1 ? `, mais ${fmtDuration(pa.extra)} além do plano.` : '.'));
+    if(pa.hasPlan) out.push(planGoalSentence(pa));
     if(t.count > 0 && a.scope.type !== 'topic' && a.scope.type !== 'discipline' && a.byDiscipline.length > 1){
       const top = a.byDiscipline[0];
       out.push(`${top.label} recebeu mais tempo (${safePct(top.pct)}).`);
@@ -3425,13 +3777,15 @@ const AnalyticsEngine = {
       add('rest', `Você fez descansos em ${rs.longest.withBreaks} dos ${rs.longest.of} estudos mais longos do período.`);
     }
 
-    // plano
+    // meta da semana — v6.8: a distribuição sugerida é só referência; diferença não é falha
     const pa = a.planAdherence;
     if(pa.hasPlan){
-      pa.perDiscipline.filter(x => x.pct !== null && x.pct < 70 && x.planned > 0 && !x.archived).slice(0, 2)
-        .forEach(x => add('plan', `${x.label} recebeu ${safePct(x.pct)} do tempo planejado (${fmtDuration(x.realized)} de ${fmtDuration(x.planned)}).`));
-      pa.perDiscipline.filter(x => x.pct !== null && x.pct > 130 && x.planned > 0 && !x.archived).slice(0, 1)
-        .forEach(x => add('plan', `${x.label} recebeu ${fmtNumber(x.pct - 100, 0)}% mais tempo que o planejado.`));
+      if(pa.basis === 'goal' && pa.weeksWithGoal > 1) add('plan', `A meta semanal foi alcançada em ${pa.weeksReached} de ${plural(pa.weeksWithGoal, 'semana', 'semanas')} com meta neste período.`);
+      const diff = pa.perDiscipline.filter(x => x.planned > 0 && !x.archived && Math.abs(x.realized - x.planned) >= 30)
+        .sort((x, y) => Math.abs(y.realized - y.planned) - Math.abs(x.realized - x.planned))[0];
+      if(diff) add('plan', `Na prática, ${diff.label} recebeu ${fmtDuration(diff.realized)}; a sugestão era ${fmtDuration(diff.planned)}. A sugestão é só uma referência.`);
+      const unplanned = pa.perDiscipline.filter(x => !(x.planned > 0) && x.realized > 0);
+      if(unplanned.length && pa.basis === 'goal') add('plan', `${unplanned.length === 1 ? unplanned[0].label + ' não estava' : plural(unplanned.length, 'disciplina não estava', 'disciplinas não estavam')} na sugestão e ${unplanned.length === 1 ? 'recebeu' : 'receberam'} ${fmtDuration(sum(unplanned, x => x.realized))} — esse tempo também conta para a meta.`);
     }
 
     // prioridades
@@ -3503,8 +3857,8 @@ const AnalyticsEngine = {
 
     if(a.projection.available && a.projection.target){
       add('projection', a.projection.meetsTarget
-        ? `A média das últimas ${a.projection.weeksConsidered} semanas (${fmtDuration(a.projection.avgWeeklyMinutes)}) acompanha o objetivo semanal.`
-        : `A média das últimas ${a.projection.weeksConsidered} semanas (${fmtDuration(a.projection.avgWeeklyMinutes)}) está ${fmtDuration(Math.abs(a.projection.gap))} abaixo do objetivo semanal.`);
+        ? `A média das últimas ${a.projection.weeksConsidered} semanas (${fmtDuration(a.projection.avgWeeklyMinutes)}) acompanha a meta semanal.`
+        : `A média das últimas ${a.projection.weeksConsidered} semanas (${fmtDuration(a.projection.avgWeeklyMinutes)}) está ${fmtDuration(Math.abs(a.projection.gap))} abaixo da meta semanal.`);
     }
     return out;
   },
@@ -3512,7 +3866,9 @@ const AnalyticsEngine = {
   positiveItems(a){
     const out = [];
     const add = (tag, text) => out.push({ tag, text });
-    if(a.planAdherence.hasPlan && a.planAdherence.pct >= 90) add('plan', `Plano cumprido em ${safePct(a.planAdherence.pct)}.`);
+    const pa = a.planAdherence;
+    if(pa.hasPlan && pa.basis === 'goal' && pa.weeksWithGoal <= 1 && pa.pct >= 100) add('plan', `Meta semanal alcançada: ${fmtDuration(pa.realized)} de ${fmtDuration(pa.planned)}.`);
+    else if(pa.hasPlan && pa.basis === 'goal' && pa.weeksWithGoal > 1 && pa.weeksReached === pa.weeksWithGoal) add('plan', 'A meta semanal foi alcançada em todas as semanas do período.');
     if(a.reviews.completed > 0 && a.reviews.overdueNow === 0) add('reviews', `${plural(a.reviews.completed, 'revisão concluída', 'revisões concluídas')} e nenhuma atrasada.`);
     if(a.previousComparison.available && isNum(a.previousComparison.minutesDelta) && a.previousComparison.minutesDelta >= 10)
       add('time', `${fmtNumber(a.previousComparison.minutesDelta, 0)}% mais tempo que no período anterior.`);
@@ -3531,10 +3887,7 @@ const AnalyticsEngine = {
     a.deadlines.soon.filter(x => x.days <= 7 && x.studied === 0 && (x.dl.disciplineId || x.dl.topicId)).slice(0, 2)
       .forEach(x => add('deadlines', `${DeadlineEngine.phrase(x.dl)}, sem estudo registrado para ele neste período.`));
     a.priorities.highDiscNoTime.slice(0, 2).forEach(d => add('priority', `${d.name} (prioridade ${PriorityEngine.text(d.priority)}) sem estudo no período.`));
-    if(a.planAdherence.hasPlan){
-      a.planAdherence.perDiscipline.filter(x => x.pct !== null && x.pct < 50 && x.planned > 0 && !x.archived).slice(0, 2)
-        .forEach(x => add('plan', `${x.label} com ${safePct(x.pct)} do tempo planejado.`));
-    }
+    // v6.8: nenhuma disciplina vira "atenção" por ter estudado diferente da sugestão do plano
     a.reviews.forgetful.slice(0, 2).forEach(tp => add('reviews', `${tp.name} esquecido ${tp.reviewFailures} vezes.`));
     return out;
   }
@@ -3555,11 +3908,13 @@ const AnalyticsEngine = {
    contas — e o tempo de estudo nunca corre escondido durante um descanso.
    ========================================================================= */
 const TimerService = {
-  data: null,          // { runId, disciplineId, topicIds, presetTypes, presetMethod, openedAt, startedAt, accumulatedMs,
+  data: null,          // { runId, disciplineId, disciplineIds, topicIds, presetTypes, presetMethod, openedAt, startedAt, accumulatedMs,
                        //   running, breaks:[{id,startedAt,endedAt}], breakStartedAt, targetMinutes? }
                        // v6.7: `topicIds`/`presetTypes` (vários). `topicId`/`presetType` continuam
                        // gravados ao lado (o primeiro de cada lista) só para uma aba ainda na versão
                        // anterior conseguir mostrar o cronômetro; esta versão lê as listas.
+                       // v6.8: `disciplineIds` (várias disciplinas). `disciplineId` continua
+                       // gravado — é sempre a primeira da lista — pelo mesmo motivo.
   _tick: null,
   /* v6.5 — `runId` é a identidade deste cronômetro. Ela nasce em start(), fica
      no localStorage junto com o resto e vira o `id` do estudo ao finalizar.
@@ -3584,10 +3939,13 @@ const TimerService = {
         .filter(b => b && isNum(b.startedAt) && isNum(b.endedAt) && b.endedAt > b.startedAt)
         .slice(0, MAX_BREAKS_PER_STUDY)
         .map(b => ({ id: str(b.id) || uid(), startedAt: b.startedAt, endedAt: b.endedAt }));
+      // v6.8: várias disciplinas; um cronômetro da versão anterior tem uma só (a lista nasce dela)
+      const discIds = TimerService.cleanIds([str(d.disciplineId)].concat(Array.isArray(d.disciplineIds) ? d.disciplineIds : [])).slice(0, MAX_DISCIPLINES_PER_STUDY);
       this.data = {
         // cronômetro iniciado antes da v6.5 não tem identidade: recebe uma agora, uma única vez
         runId: (typeof d.runId === 'string' && d.runId) ? d.runId : uid(),
         disciplineId: str(d.disciplineId),
+        disciplineIds: discIds,
         // v6.7: cronômetro iniciado na versão anterior tem um tópico e um tipo — viram listas de um item
         topicIds: TimerService.cleanIds(Array.isArray(d.topicIds) ? d.topicIds : (d.topicId ? [d.topicId] : [])),
         presetTypes: SessionModel.cleanTypes(Array.isArray(d.presetTypes) ? d.presetTypes : (d.presetType ? [d.presetType] : [])),
@@ -3624,6 +3982,7 @@ const TimerService = {
     try {
       if(this.data){
         // espelho de compatibilidade para uma aba ainda na versão anterior (ver `data`)
+        if(Array.isArray(this.data.disciplineIds) && this.data.disciplineIds.length) this.data.disciplineId = this.data.disciplineIds[0];
         this.data.topicId = this.data.topicIds && this.data.topicIds.length ? this.data.topicIds[0] : null;
         this.data.presetType = this.data.presetTypes && this.data.presetTypes.length ? this.data.presetTypes[0] : null;
         const json = JSON.stringify(this.data);
@@ -3663,17 +4022,22 @@ const TimerService = {
    */
   updateSelection(runId, sel){
     if(!this.data || this.data.runId !== runId || !sel) return false;
-    if(sel.disciplineId && getDiscipline(sel.disciplineId)) this.data.disciplineId = sel.disciplineId;
+    if(Array.isArray(sel.disciplineIds)){
+      const ids = this.cleanIds(sel.disciplineIds).filter(id => getDiscipline(id)).slice(0, MAX_DISCIPLINES_PER_STUDY);
+      if(ids.length){ this.data.disciplineIds = ids; this.data.disciplineId = ids[0]; }
+    } else if(sel.disciplineId && getDiscipline(sel.disciplineId)){ this.data.disciplineId = sel.disciplineId; this.data.disciplineIds = [sel.disciplineId]; }
     if(Array.isArray(sel.topicIds)) this.data.topicIds = this.cleanIds(sel.topicIds);
     if(Array.isArray(sel.presetTypes)) this.data.presetTypes = SessionModel.cleanTypes(sel.presetTypes);
     this._persist();
     return true;
   },
-  start(disciplineId, topicIds, presetTypes, presetMethod, targetMinutes){
+  /** v6.8: `disciplineIds` pode ser uma lista (a primeira é a principal) ou um id só. */
+  start(disciplineIds, topicIds, presetTypes, presetMethod, targetMinutes){
     const now = Date.now();
+    const discs = this.cleanIds(Array.isArray(disciplineIds) ? disciplineIds : [disciplineIds]).slice(0, MAX_DISCIPLINES_PER_STUDY);
     const ids = Array.isArray(topicIds) ? topicIds : (topicIds ? [topicIds] : []);
     const types = Array.isArray(presetTypes) ? presetTypes : (presetTypes ? [presetTypes] : []);
-    this.data = { runId: uid(), disciplineId, topicIds: this.cleanIds(ids), presetTypes: SessionModel.cleanTypes(types),
+    this.data = { runId: uid(), disciplineId: discs[0], disciplineIds: discs, topicIds: this.cleanIds(ids), presetTypes: SessionModel.cleanTypes(types),
                   presetMethod: presetMethod || null,
                   startedAt: now, accumulatedMs: 0, running: true, openedAt: now,
                   breaks: [], breakStartedAt: null,
@@ -3720,6 +4084,10 @@ const TimerService = {
     if(!this.data) return 0;
     return sum(this.data.breaks, b => b.endedAt - b.startedAt) + this.getBreakElapsed(at);
   },
+  /** v6.8: as disciplinas do cronômetro (sempre uma lista; a primeira é a principal). */
+  discIds(){ if(!this.data) return []; const l = Array.isArray(this.data.disciplineIds) && this.data.disciplineIds.length ? this.data.disciplineIds : [this.data.disciplineId]; return l.filter(Boolean); },
+  /** "Matemática · Inglês" */
+  discText(){ return this.discIds().map(id => disciplineName(id)).join(' · '); },
   get isActive(){ return !!this.data; },
   get isRunning(){ return !!(this.data && this.data.running); },
   get isOnBreak(){ return !!(this.data && !this.data.running); },
@@ -3850,24 +4218,30 @@ const Backup = {
        v6.7 — UMA linha por estudo, sempre: vários tópicos e tipos ficam na mesma célula,
        separados por "; ". A parte de cada tópico sai em `minutos_por_topico` (última
        coluna, para planilhas antigas continuarem lendo as outras no mesmo lugar),
-       com "(estimado)" quando a divisão não foi informada. */
-    const head = ['data','area','disciplina','topico','tipo','dificuldade','minutos','descanso_minutos','resultado_revisao','metodo_revisao','comentario','minutos_por_topico'];
+       com "(estimado)" quando a divisão não foi informada.
+       v6.8 — um estudo com várias disciplinas continua sendo UMA linha: as
+       disciplinas (e as áreas delas) vêm na mesma célula, e a parte de cada uma
+       sai na nova última coluna, `minutos_por_disciplina`. */
+    const head = ['data','area','disciplina','topico','tipo','dificuldade','minutos','descanso_minutos','resultado_revisao','metodo_revisao','comentario','minutos_por_topico','minutos_por_disciplina'];
     const T = v => this.csvText(v), N = v => this.csvNumber(v);
     const topicName = id => { const t = getTopic(id); return t ? t.name : '(tópico removido)'; };
     const rows = state.sessions.slice().sort((a,b) => a.date.localeCompare(b.date)).map(s => {
-      const d = getDiscipline(s.disciplineId);
+      const discs = SessionModel.disciplineIds(s).map(id => getDiscipline(id));
+      const areaText = Array.from(new Set(discs.filter(Boolean).map(d => areaNameOf(d)))).join('; ');
+      const discText = SessionModel.disciplineIds(s).map(id => disciplineName(id)).join('; ');
       const diff = difficultyInfo(s.difficulty);
       const ids = SessionModel.topicIds(s);
       const topics = ids.length ? ids.map(topicName).join('; ') : str(s.legacyTopicText);
       const items = SessionModel.reviewItems(s).filter(x => x.outcome);
       const outcomes = items.length === 1 ? reviewOutcomeLabel(items[0].outcome)
         : items.map(x => `${x.topicId ? topicName(x.topicId) : 'sem tópico'}: ${reviewOutcomeLabel(x.outcome)}`).join('; ');
-      const shares = ids.length > 1 ? SessionModel.topicShares(s).map(x => `${topicName(x.topicId)}: ${x.minutes}${x.estimated ? ' (estimado)' : ''}`).join('; ') : '';
+      const shares = (ids.length > 1 || SessionModel.isMulti(s)) && ids.length ? SessionModel.topicShares(s).map(x => `${topicName(x.topicId)}: ${x.minutes}${x.estimated ? ' (estimado)' : ''}`).join('; ') : '';
+      const dShares = SessionModel.isMulti(s) ? SessionModel.discShares(s).map(x => `${disciplineName(x.disciplineId)}: ${x.minutes}${x.estimated ? ' (estimado)' : ''}`).join('; ') : '';
       return [
-        T(s.date), T(d ? areaNameOf(d) : ''), T(d ? d.name : ''), T(topics),
+        T(s.date), T(areaText), T(discText), T(topics),
         T(SessionModel.types(s).map(sessionTypeLabel).join('; ')), T(diff ? diff.label : ''),
         N(s.minutes), N(breakMinutesOf(s)), T(outcomes || ''),
-        T(s.reviewMethod ? methodLabel(s.reviewMethod) : ''), T(s.comment), T(shares)
+        T(s.reviewMethod ? methodLabel(s.reviewMethod) : ''), T(s.comment), T(shares), T(dShares)
       ].join(',');
     });
     // BOM: sem ele o Excel lê acentos errados. CRLF é o fim de linha do formato CSV (RFC 4180).
@@ -3988,7 +4362,10 @@ const IntegrityValidator = {
     'session-topic-missing': n => `${plural(n, 'ligação de estudo apontava', 'ligações de estudos apontavam')} para um tópico que não existe no arquivo: o estudo continua, sem ${n === 1 ? 'esse tópico' : 'esses tópicos'}.`,
     'session-topic-foreign': n => `${plural(n, 'ligação de estudo apontava', 'ligações de estudos apontavam')} para um tópico de outra disciplina: o estudo continua, sem ${n === 1 ? 'esse tópico' : 'esses tópicos'}.`,
     'session-topic-dup':     n => `${plural(n, 'tópico repetido dentro de um estudo foi contado', 'tópicos repetidos dentro de estudos foram contados')} uma vez só.`,
-    'session-split':         n => `${plural(n, 'divisão de tempo entre tópicos não fechava', 'divisões de tempo entre tópicos não fechavam')} com a duração do estudo e ${n === 1 ? 'passa' : 'passam'} a ser estimada${n === 1 ? '' : 's'}. A duração foi mantida.`,
+    'session-split':         n => `${plural(n, 'divisão de tempo não fechava', 'divisões de tempo não fechavam')} com a duração do estudo (ou da disciplina) e ${n === 1 ? 'passa' : 'passam'} a ser estimada${n === 1 ? '' : 's'}. A duração foi mantida.`,
+    'session-disc-missing':  n => `${plural(n, 'estudo citava', 'estudos citavam')} uma disciplina que não existe no arquivo: o estudo continua com as outras disciplinas dele.`,
+    'session-disc-dup':      n => `${plural(n, 'disciplina repetida dentro de um estudo foi contada', 'disciplinas repetidas dentro de estudos foram contadas')} uma vez só.`,
+    'session-topic-disc':    n => `${plural(n, 'tópico de um estudo estava', 'tópicos de estudos estavam')} ligado${n === 1 ? '' : 's'} à disciplina errada dentro do mesmo estudo e ${n === 1 ? 'voltou' : 'voltaram'} para a disciplina certa.`,
     'block-orphan':          n => `${plural(n, 'bloco da semana era', 'blocos da semana eram')} de uma disciplina que não existe no arquivo.`,
     'block-date':            n => `${plural(n, 'bloco da semana tinha', 'blocos da semana tinham')} um dia fora daquela semana ou ilegível.`,
     'block-fix':             n => `${plural(n, 'bloco da semana teve', 'blocos da semana tiveram')} duração ou horário ilegível em branco.`,
@@ -4205,8 +4582,21 @@ const IntegrityValidator = {
 
     /* ---------- estudos ---------- */
     const sessions = collect('sessions', src.sessions, byId, (s, id) => {
-      const disciplineId = ref(s.disciplineId);
-      if(!discIds.has(disciplineId)) return drop('session-orphan');
+      /* v6.8 — várias disciplinas. A conversão de formatos anteriores (6 e 7) é a
+         MESMA da migração — é migração, não reparo. Disciplina que não existe no
+         arquivo sai do estudo; sem nenhuma disciplina válida, o estudo fica de fora. */
+      const norm = SessionModel.normalize(Object.assign({}, s, { minutes: isNum(s.minutes) ? s.minutes : Number(s.minutes) }), fix);
+      const discs = [];
+      let missingDisc = 0;
+      norm.disciplineEntries.forEach(d => {
+        const did = ref(d.disciplineId);
+        if(discIds.has(did)) discs.push({ disciplineId: did, minutes: d.minutes });
+        else missingDisc++;
+      });
+      if(!discs.length) return drop('session-orphan');
+      if(missingDisc) fix('session-disc-missing');
+      const disciplineId = discs[0].disciplineId;
+      const discSet = new Set(discs.map(d => d.disciplineId));
 
       // Instantes primeiro: eles podem socorrer uma data ilegível.
       let startedAt = self.instant(s.startedAt), endedAt = self.instant(s.endedAt);
@@ -4226,18 +4616,18 @@ const IntegrityValidator = {
         fix('session-date-derived');
       }
 
-      /* v6.7 — tópicos e tipos. Um backup do formato 6 (topicId/type/reviewOutcome)
-         vira "um tópico, um tipo" pela MESMA conversão da migração — é migração,
-         não reparo. Cada tópico precisa existir e ser da disciplina do estudo. */
-      const norm = SessionModel.normalize(Object.assign({}, s, { minutes: isNum(s.minutes) ? s.minutes : Number(s.minutes) }), fix);
+      /* v6.7 — tópicos e tipos. Cada tópico precisa existir e ser de uma das
+         disciplinas do estudo; v6.8: e fica com a disciplina dele. */
       const typeRaw = Array.isArray(s.types) ? s.types : (s.type !== undefined && s.type !== null && s.type !== '' ? [s.type] : []);
       if(typeRaw.some(v => !SESSION_TYPE_VALUES.includes(v))) fix('option');
       const entries = [];
       norm.topicEntries.forEach(e => {
         const tid = ref(e.topicId);
         if(!topicDisc.has(tid)){ fix('session-topic-missing'); return; }
-        if(topicDisc.get(tid) !== disciplineId){ fix('session-topic-foreign'); return; }
-        entries.push(Object.assign({}, e, { topicId: tid }));
+        const td = topicDisc.get(tid);
+        if(!discSet.has(td)){ fix('session-topic-foreign'); return; }
+        if(e.disciplineId && e.disciplineId !== td) fix('session-topic-disc');
+        entries.push(Object.assign({}, e, { topicId: tid, disciplineId: td }));
       });
 
       // tempo de estudo: nunca recalculado na importação
@@ -4251,9 +4641,9 @@ const IntegrityValidator = {
       const rawBreaks = Array.isArray(s.breaks) ? Math.min(s.breaks.length, MAX_BREAKS_PER_STUDY) : 0;
       for(let i = breaks.length; i < rawBreaks; i++) fix('breaks');
 
-      if(SessionModel.settleSplit(entries, minutes)) fix('session-split');
+      if(SessionModel.settleAll(discs, entries, minutes)) fix('session-split');
       const out = {
-        id, disciplineId, legacyTopicText: str(s.legacyTopicText),
+        id, disciplineId, disciplineEntries: discs, legacyTopicText: str(s.legacyTopicText),
         date, startedAt, endedAt, minutes, breaks,
         topicEntries: entries,
         types: norm.types,
@@ -4427,15 +4817,46 @@ function sanitizeSettings(s){
     defaultReviewMinutes: clamp(Math.round(Number(src.defaultReviewMinutes) || DEFAULT_SETTINGS.defaultReviewMinutes), 5, 600),
     autoReviewNewTopics: src.autoReviewNewTopics !== false,
     reduceMotion: !!src.reduceMotion,
-    defaultPeriod: ['hoje','7d','30d','semana','mes','tudo'].includes(src.defaultPeriod) ? src.defaultPeriod : DEFAULT_SETTINGS.defaultPeriod,
+    defaultPeriod: ['hoje','7d','30d','90d','semana','mes','tudo'].includes(src.defaultPeriod) ? src.defaultPeriod : DEFAULT_SETTINGS.defaultPeriod,
     /* v4 — instalações anteriores recebem defaults seguros */
     defaultReviewStrategy: REVIEW_STRATEGIES.some(x => x.v === src.defaultReviewStrategy) ? src.defaultReviewStrategy : 'adaptive',
     defaultReviewMethod: REVIEW_METHODS.some(x => x.v === src.defaultReviewMethod) ? src.defaultReviewMethod : 'auto',
     showDailyQuote: src.showDailyQuote !== false,
     seenWhatsNew: typeof src.seenWhatsNew === 'string' ? src.seenWhatsNew : null,
     /* v6.7 — instalações e backups anteriores não têm o campo: todos os dias valem. */
-    studyDays: sanitizeStudyDays(src.studyDays)
+    studyDays: sanitizeStudyDays(src.studyDays),
+    /* v6.8 — instalações e backups anteriores não têm o campo: nenhuma análise salva. */
+    savedAnalyses: sanitizeSavedAnalyses(src.savedAnalyses)
   };
+}
+/**
+ * Análises salvas: { id, name, query, createdAt }. A consulta é guardada só com
+ * campos conhecidos e valores simples (texto, listas curtas de ids); quem a usa
+ * passa por normalizeAnalyticsQuery, que confere tudo de novo com os dados de
+ * agora. Nunca lança; o que não se reconhece fica de fora.
+ */
+function sanitizeSavedAnalyses(v){
+  if(!Array.isArray(v)) return [];
+  const ids = list => (Array.isArray(list) ? list : []).filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0, 80)).slice(0, 40);
+  const txt = (x, n) => typeof x === 'string' ? x.slice(0, n) : null;
+  const seen = new Set(), out = [];
+  v.forEach(it => {
+    if(!it || typeof it !== 'object' || !it.query || typeof it.query !== 'object') return;
+    let id = txt(it.id, 60) || '';
+    if(!id || seen.has(id)) id = uid();
+    seen.add(id);
+    const q = it.query;
+    out.push({
+      id, name: (txt(it.name, 60) || '').trim() || 'Análise salva',
+      query: {
+        scopeType: txt(q.scopeType, 20) || 'all', scopeIds: ids(q.scopeIds && q.scopeIds.length ? q.scopeIds : (q.scopeId ? [q.scopeId] : [])),
+        types: ids(q.types), periodPreset: txt(q.periodPreset, 20) || 'semana',
+        startDate: txt(q.startDate, 10), endDate: txt(q.endDate, 10), focus: txt(q.focus, 20) || 'overview'
+      },
+      createdAt: txt(it.createdAt, 40) || null
+    });
+  });
+  return out.slice(0, MAX_SAVED_ANALYSES);
 }
 /** Dias de estudo: inteiros 0–6, sem repetição, em ordem. Lista vazia ou ilegível → todos os dias. */
 function sanitizeStudyDays(v){
@@ -4471,6 +4892,7 @@ const ui = {
   analyticsExplore: new Set(),// seções de "Explorar mais" abertas
   analyticsShowAllInsights: false,
   anPick: null,               // estado transitório do seletor (busca, mês do calendário)
+  analyticsRecent: [],        // v6.8: análises abertas nesta sessão (só memória; as salvas ficam nas configurações)
   discTab: 'disciplines',     // v6: Disciplinas | Prazos
   /* v6.1 — Disciplinas navegada como índice: Disciplinas → Área → Disciplina → Tópico */
   discNav: { level:'root', areaId:null, disciplineId:null, topicId:null },
@@ -4485,6 +4907,8 @@ const ui = {
   planEditing: false,         // v6: Planejamento em modo de ajuste
   planWeekOffset: 0,          // v6.7: semana mostrada no quadro (0 = esta, -1 = anterior, 1 = próxima)
   planTrayAll: false,         // v6.7: bandeja de disciplinas mostrando todas
+  planCompare: false,         // v6.8: "Comparar com a sugestão" em "Como o tempo foi usado"
+  planUsageAll: false,        // v6.8: todas as disciplinas em "Como o tempo foi usado"
   reviewsShowAll: false,      // v6: lista completa de revisões pendentes
   reviewsSearch: { q:'' },    // v6.2: busca só entre as revisões (tela Revisões)
   calMode: 'view',            // v5.2: 'view' (detalhes do dia) | 'select' (escolher intervalo)
@@ -4956,7 +5380,7 @@ async function refresh(){
      numa transação própria, e só uma vez por vez. */
   if(state.legacySessions > 0 && !healRunning){
     healRunning = true;
-    try { await runV67Migration(); await loadAll(); }
+    try { await runSessionMigration(); await loadAll(); }
     catch(err){ console.error('Falha ao converter estudos no formato antigo:', err); }
     finally { healRunning = false; }
   }
@@ -5957,7 +6381,7 @@ function renderTimerBar(opts){
   }
   if(!TimerService.isActive){ clear(slot); TimerService.stopTicking(); return; }
   const d = TimerService.data;
-  const disc = getDiscipline(d.disciplineId);
+  const discText = TimerService.discText() || '(disciplina removida)';
   const topicNames = (d.topicIds || []).map(id => (getTopic(id) || {}).name).filter(Boolean);
   const resting = TimerService.isOnBreak;
 
@@ -5984,7 +6408,7 @@ function renderTimerBar(opts){
     h('span', { class:'tb-status', 'aria-hidden':'true' }),
     h('div', { class:'tb-what' },
       labelEl,
-      h('div', { class:'tb-disc', text: disc ? disc.name : '(disciplina removida)' }),
+      h('div', { class:'tb-disc', text: discText, title: discText }),
       meta ? h('div', { class:'tb-topic', text: meta }) : null),
     h('div', { class:'tb-time' },
       clock,
@@ -6036,24 +6460,23 @@ async function discardTimer(){
 }
 
 /* ---------- INICIAR SESSÃO ---------- */
-/** v6.7: `topicIds` e `presetTypes` podem ser listas ou um valor só (null = nenhum). */
-function startTimer(disciplineId, topicIds, presetTypes, presetMethod, targetMinutes){
+/** v6.7: `topicIds` e `presetTypes` podem ser listas ou um valor só (null = nenhum). v6.8: disciplinas também. */
+function startTimer(disciplineIds, topicIds, presetTypes, presetMethod, targetMinutes){
   // v6.5: um estudo iniciado em outra aba também conta — o armazenamento é consultado antes de começar outro.
   if(!TimerService.isActive && TimerService.storedRunId()){ TimerService.restore(); renderTimerBar(); }
   if(TimerService.isActive){
     toast('Termine o estudo atual antes de começar outro.', 'err', { title:'Você já está estudando' });
     return false;
   }
-  TimerService.start(disciplineId, topicIds, presetTypes, presetMethod, targetMinutes);
+  TimerService.start(disciplineIds, topicIds, presetTypes, presetMethod, targetMinutes);
   renderTimerBar();
   if(!TimerService.persisted){
     toast('Se a página for fechada, este estudo não poderá ser recuperado. Finalize antes de sair.', 'warn',
       { title:'Não foi possível garantir a recuperação deste cronômetro', duration:7000 });
   }
-  const d = getDiscipline(disciplineId);
   const names = TimerService.data.topicIds.map(id => (getTopic(id) || {}).name).filter(Boolean);
   const topicText = names.length > 2 ? names.slice(0, 2).join(' · ') + ' · +' + (names.length - 2) : names.join(' · ');
-  toast((d ? d.name : '') + (topicText ? ' · ' + topicText : '') + ' — o tempo já está contando.', 'ok',
+  toast(TimerService.discText() + (topicText ? ' · ' + topicText : '') + ' — o tempo já está contando.', 'ok',
     { title: TimerService.data.presetTypes.includes('revisao') ? 'Revisão iniciada' : 'Estudo iniciado' });
   return true;
 }
@@ -6269,7 +6692,7 @@ function recentDisciplines(n){
     const last = new Map();
     state.sessions.forEach(s => {
       const k = s.date + '|' + str(s.createdAt);
-      if(!last.has(s.disciplineId) || k > last.get(s.disciplineId)) last.set(s.disciplineId, k);
+      SessionModel.disciplineIds(s).forEach(id => { if(!last.has(id) || k > last.get(id)) last.set(id, k); });
     });
     return Array.from(last.entries()).sort((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0))
       .map(([id]) => getDiscipline(id)).filter(d => d && !d.archived).slice(0, n);
@@ -6512,80 +6935,169 @@ function topicMultiPicker(o){
 }
 
 /**
- * Disciplina + Tópicos de um estudo. Serve ao registro, ao fim do cronômetro e
+ * Disciplinas + Tópicos de um estudo. Serve ao registro, ao fim do cronômetro e
  * à edição.
  *   o.close               função de fechar do modal (com push/pop de subtela)
  *   o.idPrefix            prefixo dos ids ('rm', 'fin', 'es')
- *   o.discId / o.topicIds valores iniciais (v6.7: lista; `o.topicId` solto também vale)
+ *   o.discIds / o.discId  disciplinas iniciais (v6.8: lista; a primeira é a principal)
+ *   o.topicIds            tópicos iniciais (de qualquer uma das disciplinas)
  *   o.allowNewDiscipline  oferece "Nova disciplina…" (só o nome; padrões no resto)
  *   o.allowNewTopic       oferece "Criar novo tópico…" (editor canônico, em subtela)
+ *   o.allowMulti          oferece "+ Adicionar outra disciplina" (padrão: sim)
  *   o.includeArchived     lista também disciplinas arquivadas (edição de estudo antigo)
- *   o.onChange({ discId, topicIds, reason })   reason: 'discipline' | 'topics' | 'created'
+ *   o.onChange({ discId, discIds, topicIds, groups, reason })
+ *                         reason: 'discipline' | 'topics' | 'created'
  *
- * Coerência (v6.7): trocar a disciplina limpa os tópicos — nenhum tópico de
- * outra disciplina fica escolhido. `topicIds` só devolve tópicos que existem e
- * são da disciplina escolhida.
+ * v6.8 — VÁRIAS DISCIPLINAS, expandindo só o necessário. Começa como sempre:
+ * uma disciplina e os tópicos dela. "+ Adicionar outra disciplina" acrescenta
+ * um bloco compacto (disciplina + tópicos DELA). Cada bloco mostra só os
+ * tópicos da própria disciplina — nunca os de todas ao mesmo tempo.
  *
- * `ensure()` devolve a disciplina escolhida — criando-a antes, se a pessoa
- * digitou um nome novo — ou null (com aviso) quando falta escolher.
+ * Coerência: trocar a disciplina de um bloco limpa os tópicos dele; um tópico
+ * de Inglês nunca fica preso a Matemática. `topicIds` só devolve tópicos que
+ * existem e são da disciplina do bloco em que estão.
+ *
+ * `ensure()` devolve a disciplina principal — criando-a antes, se a pessoa
+ * digitou um nome novo — ou null (com aviso) quando falta escolher. Blocos
+ * extras deixados em branco são ignorados.
  */
 function studyTargetFields(o){
   const prefix = o.idPrefix;
-  let discId = (o.discId && getDiscipline(o.discId)) ? o.discId : '';
+  const startIds = (Array.isArray(o.discIds) && o.discIds.length ? o.discIds : [o.discId]).filter(id => id && getDiscipline(id));
   const initialTopics = Array.isArray(o.topicIds) ? o.topicIds : (o.topicId ? [o.topicId] : []);
+  const allowMulti = o.allowMulti !== false;
   let creating = false;
   let ready = false;         // durante a montagem ninguém é avisado (quem chama ainda não tem a referência)
-  const emit = (reason) => { if(ready && o.onChange) o.onChange({ discId: api.discId, topicIds: api.topicIds, reason }); };
+  let seq = 0;
+  const blocks = [];
+  const emit = (reason) => { if(ready && o.onChange) o.onChange({ discId: api.discId, discIds: api.discIds, topicIds: api.topicIds, groups: api.groups, reason }); };
 
-  /* ---------- disciplina ---------- */
-  function discList(){
-    const list = (o.includeArchived ? state.disciplines : activeDisciplines()).slice().sort(sortByName);
+  function discList(block){
+    const others = new Set(blocks.filter(b => b !== block && b.discId).map(b => b.discId));
+    const list = (o.includeArchived ? state.disciplines : activeDisciplines()).filter(d => !others.has(d.id)).slice().sort(sortByName);
     // Um cronômetro ou estudo antigo pode apontar para uma disciplina arquivada depois:
     // ela continua visível para o registro não trocar de disciplina sozinho.
-    if(discId && !list.some(d => d.id === discId)){ const d = getDiscipline(discId); if(d) list.unshift(d); }
+    if(block.discId && !list.some(d => d.id === block.discId)){ const d = getDiscipline(block.discId); if(d) list.unshift(d); }
     return list;
   }
   const discRow = d => ({ kind:'opt', value:d.id, title:d.name, sub:areaNameOf(d), tag: d.archived ? 'arquivada' : null,
     side: priorityMark(d.priority, { compact:true }) });
-  const discPicker = entityPicker({
-    id: prefix + '-disc', label:'Disciplina', placeholder:'Escolher disciplina',
-    searchPlaceholder:'Buscar disciplina…', noResults:'Nenhuma disciplina encontrada.',
-    value: discId, count: () => discList().length,
-    describe: v => { const d = v ? getDiscipline(v) : null;
-      return d ? { title: d.name + (d.archived ? ' (arquivada)' : ''), sub: areaNameOf(d), side: priorityMark(d.priority, { compact:true }) } : null; },
-    options: q => {
-      const all = discList();
-      const terms = normalizeText(q).split(' ').filter(Boolean);
-      const rows = [];
-      let total = 0;
-      if(terms.length){
-        const hit = all.filter(d => matchesTerms(normalizeText(d.name + ' ' + areaNameOf(d)), terms));
-        hit.forEach(d => rows.push(discRow(d)));
-        total = hit.length;
-      } else {
-        const recent = all.length > PICK_SEARCH_MIN ? recentDisciplines(3).filter(d => all.includes(d)) : [];
-        if(recent.length){
-          rows.push({ kind:'group', label:'Recentes' });
-          recent.forEach(d => rows.push(discRow(d)));
-          rows.push({ kind:'group', label:'Todas' });
+
+  /* ---------- um bloco: disciplina + tópicos dela ---------- */
+  function makeBlock(discId, topicIds, first){
+    const k = first ? '' : '-' + (++seq);
+    const block = { discId: discId || '', first };
+    const tList = () => {
+      const list = topicsOf(block.discId).slice();
+      // tópico arquivado depois de escolhido (ou de um estudo antigo) continua na lista para poder sair
+      block.topicPicker && block.topicPicker.value.forEach(id => {
+        if(list.some(t => t.id === id)) return;
+        const t = getTopic(id);
+        if(t && t.disciplineId === block.discId) list.push(t);
+      });
+      return list;
+    };
+    block.picker = entityPicker({
+      id: prefix + '-disc' + k, label: first ? 'Disciplina' : 'Outra disciplina', placeholder:'Escolher disciplina',
+      searchPlaceholder:'Buscar disciplina…', noResults:'Nenhuma disciplina encontrada.',
+      value: block.discId, count: () => discList(block).length,
+      describe: v => { const d = v ? getDiscipline(v) : null;
+        return d ? { title: d.name + (d.archived ? ' (arquivada)' : ''), sub: areaNameOf(d), side: priorityMark(d.priority, { compact:true }) } : null; },
+      options: q => {
+        const all = discList(block);
+        const terms = normalizeText(q).split(' ').filter(Boolean);
+        const rows = [];
+        let total = 0;
+        if(terms.length){
+          const hit = all.filter(d => matchesTerms(normalizeText(d.name + ' ' + areaNameOf(d)), terms));
+          hit.forEach(d => rows.push(discRow(d)));
+          total = hit.length;
+        } else {
+          const recent = all.length > PICK_SEARCH_MIN ? recentDisciplines(3).filter(d => all.includes(d)) : [];
+          if(recent.length){
+            rows.push({ kind:'group', label:'Recentes' });
+            recent.forEach(d => rows.push(discRow(d)));
+            rows.push({ kind:'group', label:'Todas' });
+          }
+          all.forEach(d => rows.push(discRow(d)));
+          total = all.length + recent.length;
         }
-        all.forEach(d => rows.push(discRow(d)));
-        total = all.length + recent.length;
+        if(first && o.allowNewDiscipline){
+          const name = q.trim();
+          rows.push({ kind:'create', title: name ? `Criar a disciplina “${name}”` : 'Nova disciplina…', run: text => startCreating(text) });
+        }
+        return { rows, total };
+      },
+      onChange: v => {
+        const had = block.topicPicker.value.filter(id => getTopic(id)).length;
+        block.discId = v; block.topicPicker.set([]); syncBlock(block, true);
+        // os tópicos eram da disciplina anterior: saem, e a pessoa fica sabendo
+        if(had) announce(had === 1 ? 'O tópico escolhido era de outra disciplina e saiu da seleção.' : 'Os tópicos escolhidos eram de outra disciplina e saíram da seleção.');
+        drawMeta();
+        emit('discipline');
       }
-      if(o.allowNewDiscipline){
-        const name = q.trim();
-        rows.push({ kind:'create', title: name ? `Criar a disciplina “${name}”` : 'Nova disciplina…', run: text => startCreating(text) });
-      }
-      return { rows, total };
-    },
-    onChange: v => {
-      const had = topicPicker.value.filter(id => getTopic(id)).length;
-      discId = v; topicPicker.set([]); syncTopic(true);
-      // os tópicos eram da disciplina anterior: saem, e a pessoa fica sabendo
-      if(had) announce(had === 1 ? 'O tópico escolhido era de outra disciplina e saiu da seleção.' : 'Os tópicos escolhidos eram de outra disciplina e saíram da seleção.');
-      emit('discipline');
+    });
+    block.topicPicker = topicMultiPicker({
+      id: prefix + '-topics' + k, label: first ? 'Tópicos' : 'Tópicos desta disciplina',
+      value: block.discId ? (topicIds || []).filter(id => { const t = getTopic(id); return t && t.disciplineId === block.discId; }) : [],
+      options: tList, describe: topicPickMeta,
+      canCreate: () => o.allowNewTopic !== false && !!o.close && !!block.discId && !creating,
+      onCreate: q => openCreate(block, q),
+      onChange: () => emit('topics')
+    });
+    block.removeBtn = first ? null : h('button', { class:'linkbtn muted st-remove', type:'button', text:'Remover',
+      'aria-label':'Remover esta disciplina do estudo', onclick:() => removeBlock(block) });
+    block.node = h('div', { class:'st-block' + (first ? ' is-first' : ' is-extra') },
+      block.removeBtn ? h('div', { class:'st-block-head' }, block.picker.node, block.removeBtn) : block.picker.node,
+      block.topicPicker.node);
+    return block;
+  }
+  function syncBlock(block, animate){
+    const show = !(block.first && creating) && !!block.discId;
+    const was = block.topicPicker.node.hidden;
+    block.topicPicker.node.hidden = !show;
+    block.topicPicker.refresh();
+    if(show && was && animate) swapIn(block.topicPicker.node);
+  }
+
+  /* ---------- várias disciplinas ---------- */
+  const list = h('div', { class:'st-list' });
+  const multiNote = h('p', { class:'hint st-note', hidden:true, text:'Um estudo só, com um tempo só: o Ciclo divide esse tempo entre as disciplinas (e você pode informar a divisão).' });
+  const addBtn = h('button', { class:'linkbtn add-link st-add', type:'button', text:'+ Adicionar outra disciplina',
+    onclick:() => addBlock('', [], true) });
+  function drawMeta(){
+    const n = blocks.length;
+    const chosen = blocks.filter(b => b.discId).length;
+    const free = activeDisciplines().filter(d => !blocks.some(b => b.discId === d.id)).length;
+    addBtn.hidden = !allowMulti || creating || !blocks[0].discId || n >= MAX_DISCIPLINES_PER_STUDY || free === 0 || blocks.some(b => !b.first && !b.discId);
+    multiNote.hidden = chosen < 2;
+    node.classList.toggle('is-multi', n > 1);
+  }
+  function addBlock(discId, topicIds, byUser){
+    const b = makeBlock(discId, topicIds, blocks.length === 0);
+    blocks.push(b);
+    list.append(b.node);
+    syncBlock(b, false);
+    if(byUser){
+      swapIn(b.node);
+      drawMeta();
+      setTimeout(() => { if(b.picker.button.isConnected){ b.picker.button.focus(); b.picker.open(); } }, 30);
     }
-  });
+    return b;
+  }
+  function removeBlock(block){
+    const i = blocks.indexOf(block);
+    if(i <= 0) return;
+    const name = block.discId ? disciplineName(block.discId) : null;
+    blocks.splice(i, 1);
+    const go = () => { if(block.node.parentNode) block.node.parentNode.removeChild(block.node); };
+    Motion.collapse(block.node, go);
+    drawMeta();
+    const target = blocks[i] ? blocks[i].picker.button : (addBtn.hidden ? blocks[i - 1].picker.button : addBtn);
+    try { target.focus({ preventScroll:true }); } catch(_){}
+    if(name) announce(`${name} saiu deste estudo.`);
+    emit('discipline');
+  }
 
   /* Disciplina nova sem sair do registro: só o nome, com os padrões de sempre. */
   const newIn = h('input', { type:'text', id: prefix + '-newdisc', maxlength:'80', autocomplete:'off', placeholder:'Ex.: História' });
@@ -6595,14 +7107,15 @@ function studyTargetFields(o){
     h('p', { class:'hint', text:'Uma matéria, um idioma, uma certificação, um instrumento… Um nome basta: ela é criada quando você continuar.' }),
     cancelNew);
   newIn.addEventListener('input', () => newIn.removeAttribute('aria-invalid'));
-  newIn.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); ensure().then(id => { if(id) topicPicker.button.focus(); }); } });
+  newIn.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); ensure().then(id => { if(id) blocks[0].topicPicker.button.focus(); }); } });
   function startCreating(text){
     creating = true;
     newIn.value = text || '';
-    discPicker.node.hidden = true;
+    blocks[0].picker.node.hidden = true;
     newBox.hidden = false;
-    cancelNew.hidden = !discList().length;
-    syncTopic(false);
+    cancelNew.hidden = !discList(blocks[0]).length;
+    syncBlock(blocks[0], false);
+    drawMeta();
     swapIn(newBox);
     setTimeout(() => { if(newIn.isConnected) newIn.focus(); }, 20);
     emit('discipline');
@@ -6610,19 +7123,21 @@ function studyTargetFields(o){
   function stopCreating(){
     creating = false;
     newBox.hidden = true;
-    discPicker.node.hidden = false;
-    syncTopic(false);
-    discPicker.button.focus();
+    blocks[0].picker.node.hidden = false;
+    syncBlock(blocks[0], false);
+    drawMeta();
+    blocks[0].picker.button.focus();
     emit('discipline');
   }
   let ensuring = null;
   function ensure(){
     if(ensuring) return ensuring;
     ensuring = (async () => {
+      const b0 = blocks[0];
       if(!creating){
-        if(discId && getDiscipline(discId)) return discId;
+        if(b0.discId && getDiscipline(b0.discId)) return b0.discId;
         toast('Escolha uma disciplina.', 'err');
-        discPicker.button.focus();
+        b0.picker.button.focus();
         return null;
       }
       const clean = newIn.value.trim();
@@ -6646,87 +7161,80 @@ function studyTargetFields(o){
         toast('Adicione tópicos quando quiser.', 'ok', { title: clean + ' criada' });
       }
       creating = false;
-      discId = disc.id;
+      b0.discId = disc.id;
       newBox.hidden = true;
-      discPicker.node.hidden = false;
-      discPicker.set(discId, true);
-      topicPicker.set([]);
-      syncTopic(true);
+      b0.picker.node.hidden = false;
+      b0.picker.set(b0.discId, true);
+      b0.topicPicker.set([]);
+      syncBlock(b0, true);
+      drawMeta();
       emit('discipline');
-      return discId;
+      return b0.discId;
     })();
     const done = () => { ensuring = null; };
     ensuring.then(done, done);
     return ensuring;
   }
 
-  /* ---------- tópicos (dependem da disciplina) ---------- */
-  function topicList(){
-    const list = topicsOf(discId).slice();
-    // tópico arquivado depois de escolhido (ou de um estudo antigo) continua na lista para poder sair
-    topicPicker && topicPicker.value.forEach(id => {
-      if(list.some(t => t.id === id)) return;
-      const t = getTopic(id);
-      if(t && t.disciplineId === discId) list.push(t);
-    });
-    return list;
-  }
-  const canCreateTopic = () => o.allowNewTopic !== false && !!o.close && !!discId && !creating;
-  let topicPicker = null;
-  topicPicker = topicMultiPicker({
-    id: prefix + '-topics', label:'Tópicos',
-    value: discId ? initialTopics.filter(id => { const t = getTopic(id); return t && t.disciplineId === discId; }) : [],
-    options: topicList, describe: topicPickMeta,
-    canCreate: canCreateTopic, onCreate: q => openCreate(q),
-    onChange: () => emit('topics')
-  });
-  function syncTopic(animate){
-    const show = !creating && !!discId;
-    const was = topicPicker.node.hidden;
-    topicPicker.node.hidden = !show;
-    topicPicker.refresh();
-    if(show && was && animate) swapIn(topicPicker.node);
-  }
-
-  /* Criar tópico: o EDITOR CANÔNICO numa subtela do mesmo modal. Ao salvar,
-     o tópico novo entra marcado; se a pessoa escolheu outra disciplina no
-     editor, disciplina e tópicos mudam JUNTOS — nunca um tópico de outra. */
-  function openCreate(name){
-    const back = () => o.close.pop(topicPicker.button);
+  /* Criar tópico: o EDITOR CANÔNICO numa subtela do mesmo modal. Ao salvar, o
+     tópico novo entra marcado no bloco da disciplina dele; se a pessoa escolheu
+     no editor uma disciplina que não está no estudo, o bloco que pediu a
+     criação muda de disciplina e de tópicos JUNTOS — nunca um tópico de outra. */
+  function openCreate(block, name){
+    const back = () => o.close.pop(block.topicPicker.button);
     const ed = topicEditor({
-      disciplineId: discId, name: name || '',
+      disciplineId: block.discId, name: name || '',
       chooseDiscipline: true, inRegistration: true,
-      close: o.close, onCancel: back, onSaved: adopt, onUseExisting: adopt
+      close: o.close, onCancel: back, onSaved: t => adopt(block, t), onUseExisting: t => adopt(block, t)
     });
     o.close.push({ title: ed.title, content: ed.content, actions: ed.actions, focus: ed.focus, onEsc: back });
   }
-  function adopt(t){
+  function adopt(block, t){
     const fresh = getTopic(t.id) || t;
-    const sameDisc = fresh.disciplineId === discId;
-    const keep = sameDisc ? topicPicker.value.filter(id => id !== fresh.id) : [];
-    discId = fresh.disciplineId;
-    discPicker.set(discId);
-    topicPicker.set(keep.concat([fresh.id]), true);
-    syncTopic(false);
-    o.close.pop(topicPicker.button);
+    const owner = blocks.find(b => b.discId === fresh.disciplineId) || block;
+    if(owner.discId !== fresh.disciplineId){
+      owner.discId = fresh.disciplineId;
+      owner.picker.set(owner.discId);
+      owner.topicPicker.set([fresh.id], true);
+    } else {
+      owner.topicPicker.set(owner.topicPicker.value.filter(id => id !== fresh.id).concat([fresh.id]), true);
+    }
+    syncBlock(owner, false);
+    drawMeta();
+    o.close.pop(owner.topicPicker.button);
     emit('created');
   }
 
-  const node = h('div', { class:'study-target' }, discPicker.node, newBox, topicPicker.node);
+  const node = h('div', { class:'study-target' }, list, newBox, addBtn, multiNote);
+  startIds.forEach(id => addBlock(id, initialTopics, false));
+  if(!blocks.length) addBlock('', initialTopics, false);
+  blocks.forEach(b => syncBlock(b, false));
   const api = {
     node, ensure,
-    discButton: discPicker.button, topicButton: topicPicker.button,
-    get discId(){ return creating ? '' : discId; },
-    /** Só devolve tópicos que existem e pertencem à disciplina escolhida, na ordem em que foram escolhidos. */
-    get topicIds(){
-      if(creating || !discId) return [];
-      return topicPicker.value.filter(id => { const t = getTopic(id); return t && t.disciplineId === discId; });
+    get discButton(){ return blocks[0].picker.button; },
+    get topicButton(){ return blocks[0].topicPicker.button; },
+    get discId(){ return creating ? '' : (blocks[0].discId || ''); },
+    /** As disciplinas escolhidas (existentes), sem repetição, na ordem dos blocos. */
+    get discIds(){
+      if(creating) return [];
+      const out = [];
+      blocks.forEach(b => { if(b.discId && getDiscipline(b.discId) && !out.includes(b.discId)) out.push(b.discId); });
+      return out;
     },
+    /** Cada disciplina com os tópicos DELA: [{ discId, topicIds }]. */
+    get groups(){
+      if(creating) return [];
+      const seen = new Set();
+      return blocks.filter(b => b.discId && getDiscipline(b.discId) && !seen.has(b.discId) && seen.add(b.discId))
+        .map(b => ({ discId: b.discId, topicIds: b.topicPicker.value.filter(id => { const t = getTopic(id); return t && t.disciplineId === b.discId; }) }));
+    },
+    /** Todos os tópicos escolhidos, cada um da disciplina do bloco dele, na ordem dos blocos. */
+    get topicIds(){ return api.groups.reduce((acc, g) => acc.concat(g.topicIds), []); },
     /** Compatibilidade: o primeiro tópico (ou null). */
     get topicId(){ const ids = api.topicIds; return ids.length ? ids[0] : null; }
   };
-  syncTopic(false);
-  if(o.allowNewDiscipline && !discId && !discList().length) startCreating('');
+  drawMeta();
+  if(o.allowNewDiscipline && !blocks[0].discId && !discList(blocks[0]).length) startCreating('');
   ready = true;
   return api;
 }
@@ -6783,28 +7291,36 @@ function studyTypePicker(o){
 }
 
 /**
- * v6.7 — "Dividir o tempo entre os tópicos" (opcional, só com dois ou mais).
- * Fechado por padrão: sem divisão, o Ciclo reparte igualmente e mostra a parte
- * de cada tópico como ESTIMATIVA. Aberto, cada tópico ganha um campo de
- * minutos; o que ficar em branco recebe uma parte igual do que sobrou.
+ * "Distribuir o tempo" (opcional). v6.7: entre os tópicos; v6.8: também entre
+ * as DISCIPLINAS de um estudo — e, dentro de cada uma, entre os tópicos dela.
  *
- *   o = { idPrefix, initial: Map|obj topicId → minutes, total() → minutos do estudo ou null }
- *   update(topicIds)  redesenha para os tópicos atuais (o que foi digitado fica)
- *   read() → { ok, minutes: Map topicId → minutos|null } | { ok:false, msg, el }
+ * Fechado por padrão: sem divisão, o Ciclo reparte igualmente e mostra cada
+ * parte como ESTIMATIVA. Aberto, cada disciplina (com duas ou mais) e cada
+ * tópico (com dois ou mais na mesma disciplina) ganha um campo de minutos; o
+ * que ficar em branco recebe uma parte igual do que sobrou. Uma disciplina em
+ * branco com TODOS os tópicos preenchidos fica com a soma deles.
+ *
+ *   o = { idPrefix, initial: { disc:{ id → min }, topic:{ id → min } } (ou, como
+ *         antes, só { topicId → min }), total() → minutos do estudo ou null }
+ *   update(groups)  groups = [{ discId, topicIds }] (ou, como antes, uma lista de tópicos)
+ *   read() → { ok, minutes: Map topicId → min|null, disc: Map discId → min|null } | { ok:false, msg, el }
  */
 function topicSplitField(o){
   const p = o.idPrefix;
-  const typed = new Map();                 // topicId → texto digitado (sobrevive a trocar tópicos)
+  const dTyped = new Map(), tTyped = new Map();      // id → texto digitado (sobrevive a trocar disciplinas e tópicos)
   const init = o.initial || {};
-  Object.keys(init).forEach(k => { if(init[k] !== null && init[k] !== undefined) typed.set(k, String(init[k])); });
-  let ids = [];
-  let opened = Array.from(typed.values()).some(v => v !== '');
+  const initTopic = (init.topic && typeof init.topic === 'object') ? init.topic : (init.disc ? {} : init);
+  const initDisc = (init.disc && typeof init.disc === 'object') ? init.disc : {};
+  Object.keys(initTopic).forEach(k => { if(initTopic[k] !== null && initTopic[k] !== undefined) tTyped.set(k, String(initTopic[k])); });
+  Object.keys(initDisc).forEach(k => { if(initDisc[k] !== null && initDisc[k] !== undefined) dTyped.set(k, String(initDisc[k])); });
+  let groups = [];
+  let opened = Array.from(tTyped.values()).concat(Array.from(dTyped.values())).some(v => v !== '');
   const toggleBtn = h('button', { class:'linkbtn add-link', type:'button', 'aria-expanded':'false' });
   const intro = h('p', { class:'hint split-intro' });
   const rowsBox = h('div', { class:'split-rows' });
   const status = h('p', { class:'split-status', 'aria-live':'polite' });
   const clearBtn = h('button', { class:'linkbtn muted', type:'button', text:'Não dividir', onclick:() => {
-    typed.clear(); opened = false; draw(); toggleBtn.focus(); if(o.onChange) o.onChange();
+    tTyped.clear(); dTyped.clear(); opened = false; draw(); toggleBtn.focus(); if(o.onChange) o.onChange();
   } });
   const body = h('div', { class:'split-body', hidden:true }, rowsBox, h('div', { class:'split-foot' }, status, clearBtn));
   const node = h('div', { class:'field split', hidden:true }, toggleBtn, intro, body);
@@ -6816,59 +7332,132 @@ function topicSplitField(o){
   });
 
   function totalNow(){ const t = o.total ? o.total() : null; return isNum(t) && t > 0 ? Math.round(t) : null; }
+  const multi = () => groups.length >= 2;
+  const topicsSplit = g => g.topicIds.length >= 2;
+  const relevant = () => multi() || groups.some(topicsSplit);
+
+  function input(id, kind, label){
+    const map = kind === 'd' ? dTyped : tTyped;
+    const el = h('input', { type:'number', class:'no-spin', min:'1', step:'1', inputmode:'numeric', id:`${p}-${kind === 'd' ? 'dsplit' : 'split'}-${id}`,
+      value: map.get(id) || '', placeholder:'—', 'aria-label':`Minutos de ${label}` });
+    el.addEventListener('input', () => { map.set(id, el.value); el.removeAttribute('aria-invalid'); drawStatus(); if(o.onChange) o.onChange(); });
+    return el;
+  }
+  function row(cls, id, kind, label){
+    const el = input(id, kind, label);
+    return h('div', { class:'split-row ' + cls },
+      h('label', { class:'split-name', for:el.id, text:label }),
+      h('span', { class:'split-input' }, el, h('span', { class:'split-unit', 'aria-hidden':'true', text:'min' })));
+  }
 
   function draw(){
-    const n = ids.length;
-    node.hidden = n < 2;
-    if(n < 2) return;
-    toggleBtn.textContent = opened ? 'Divisão do tempo entre os tópicos' : '+ Dividir o tempo entre os tópicos';
+    node.hidden = !relevant();
+    if(node.hidden) return;
+    const label = multi() ? 'Distribuir o tempo entre as disciplinas' : 'Dividir o tempo entre os tópicos';
+    toggleBtn.textContent = opened ? label : '+ ' + label;
     toggleBtn.setAttribute('aria-expanded', opened ? 'true' : 'false');
     toggleBtn.classList.toggle('is-open', opened);
     intro.textContent = opened
-      ? 'Informe quanto tempo foi de cada um. O que ficar em branco recebe uma parte igual do que sobrar.'
-      : 'Opcional. Sem divisão, o Ciclo reparte o tempo igualmente e mostra cada parte como estimativa.';
+      ? (multi() ? 'Informe quanto tempo foi de cada disciplina — e, se quiser, de cada tópico dentro dela. O que ficar em branco recebe uma parte igual do que sobrar.'
+                 : 'Informe quanto tempo foi de cada um. O que ficar em branco recebe uma parte igual do que sobrar.')
+      : (multi() ? 'Opcional. Sem divisão, o Ciclo reparte o tempo igualmente entre as disciplinas e mostra cada parte como estimativa.'
+                 : 'Opcional. Sem divisão, o Ciclo reparte o tempo igualmente e mostra cada parte como estimativa.');
     body.hidden = !opened;
     if(!opened) return;
     clear(rowsBox);
-    ids.forEach(id => {
-      const t = getTopic(id);
-      if(!t) return;
-      const input = h('input', { type:'number', class:'no-spin', min:'1', step:'1', inputmode:'numeric', id:`${p}-split-${id}`,
-        value: typed.get(id) || '', placeholder:'—', 'aria-label':`Minutos de ${t.name}` });
-      input.addEventListener('input', () => { typed.set(id, input.value); input.removeAttribute('aria-invalid'); drawStatus(); if(o.onChange) o.onChange(); });
-      rowsBox.append(h('div', { class:'split-row' },
-        h('label', { class:'split-name', for:input.id, text:t.name }),
-        h('span', { class:'split-input' }, input, h('span', { class:'split-unit', 'aria-hidden':'true', text:'min' }))));
+    groups.forEach(g => {
+      const d = getDiscipline(g.discId);
+      if(!d) return;
+      const box = h('div', { class:'split-group' + (multi() ? ' is-multi' : '') });
+      if(multi()) box.append(row('is-disc', g.discId, 'd', d.name));
+      if(topicsSplit(g)) g.topicIds.forEach(id => { const t = getTopic(id); if(t) box.append(row(multi() ? 'is-topic' : '', id, 't', t.name)); });
+      rowsBox.append(box);
     });
     drawStatus();
   }
 
+  function num(raw){ const t = str(raw).trim(); if(t === '') return null; const m = Math.round(Number(t)); return Number.isFinite(m) && m > 0 ? m : NaN; }
+  /** Valores digitados → { disc: Map, topic: Map } com NaN onde o texto não é um número válido. */
   function values(){
-    const out = new Map();
-    ids.forEach(id => {
-      const raw = opened ? str(typed.get(id)).trim() : '';
-      const m = Math.round(Number(raw));
-      out.set(id, raw !== '' && Number.isFinite(m) && m > 0 ? m : (raw === '' ? null : NaN));
+    const disc = new Map(), topic = new Map();
+    groups.forEach(g => {
+      disc.set(g.discId, opened && multi() ? num(dTyped.get(g.discId)) : null);
+      g.topicIds.forEach(id => topic.set(id, opened && topicsSplit(g) ? num(tTyped.get(id)) : null));
     });
-    return out;
+    // disciplina em branco com todos os tópicos preenchidos: a soma deles
+    groups.forEach(g => {
+      if(!multi() || disc.get(g.discId) !== null || !topicsSplit(g)) return;
+      const tv = g.topicIds.map(id => topic.get(id));
+      if(tv.every(v => isNum(v))) disc.set(g.discId, sum(tv));
+    });
+    return { disc, topic };
+  }
+  /** Confere tudo: → { ok, disc, topic, msg, el, note } */
+  function check(){
+    const v = values(), total = totalNow();
+    const bad = groups.find(g => Number.isNaN(v.disc.get(g.discId))) ? 'd' : null;
+    const badT = !bad ? Array.from(v.topic.entries()).find(([, x]) => Number.isNaN(x)) : null;
+    if(bad || badT){
+      const id = bad ? groups.find(g => Number.isNaN(v.disc.get(g.discId))).discId : badT[0];
+      return { ok:false, msg:'Use minutos inteiros maiores que zero na divisão do tempo (ou deixe em branco).', el: rowsBox.querySelector(`#${cssEsc(p + (bad ? '-dsplit-' : '-split-') + id)}`) };
+    }
+    if(total === null) return { ok:true, disc:v.disc, topic:v.topic, partial:true };
+    // 1) disciplinas
+    let budgets = new Map(groups.map(g => [g.discId, total]));
+    if(multi()){
+      const items = groups.map(g => ({ minutes: v.disc.get(g.discId) }));
+      if(!SessionModel.splitFits(items, total)){
+        const given = items.filter(x => x.minutes !== null), sg = sum(given, x => x.minutes);
+        return { ok:false, el: rowsBox.querySelector('input'),
+          msg: sg > total ? `As disciplinas somam ${fmtDurationWords(sg)}, mais que o estudo (${fmtDurationWords(total)}).`
+                          : `As disciplinas somam ${fmtDurationWords(sg)}; o estudo tem ${fmtDurationWords(total)}. Ajuste uma delas ou deixe uma em branco.` };
+      }
+      const parts = SessionModel.split(items, total);
+      budgets = new Map(groups.map((g, i) => [g.discId, parts[i].minutes]));
+    }
+    // 2) tópicos, dentro do tempo da disciplina deles
+    for(const g of groups){
+      if(!topicsSplit(g)) continue;
+      const items = g.topicIds.map(id => ({ minutes: v.topic.get(id) }));
+      const budget = budgets.get(g.discId);
+      if(!SessionModel.splitFits(items, budget)){
+        const sg = sum(items.filter(x => x.minutes !== null), x => x.minutes);
+        const whose = multi() ? `de ${disciplineName(g.discId)} ` : '';
+        const el = rowsBox.querySelector(`#${cssEsc(p + '-split-' + g.topicIds[0])}`);
+        return { ok:false, el, msg: sg > budget
+          ? `Os tópicos ${whose}somam ${fmtDurationWords(sg)}, mais que o tempo ${multi() ? 'dela' : 'do estudo'} (${fmtDurationWords(budget)}).`
+          : `Os tópicos ${whose}somam ${fmtDurationWords(sg)}; ${multi() ? 'ela tem' : 'o estudo tem'} ${fmtDurationWords(budget)}. Ajuste um deles ou deixe um em branco.` };
+      }
+    }
+    return { ok:true, disc:v.disc, topic:v.topic, budgets };
   }
   function drawStatus(){
-    const v = values(), total = totalNow();
-    const given = Array.from(v.values()).filter(x => isNum(x));
-    const bad = Array.from(v.values()).some(x => Number.isNaN(x));
-    const sumG = sum(given);
+    const r = check(), total = totalNow();
     let text = '', cls = '';
-    if(bad){ text = 'Use minutos inteiros maiores que zero (ou deixe em branco).'; cls = 'is-error'; }
-    else if(!given.length) text = 'Nenhuma parte informada: a divisão será estimada.';
-    else if(total === null) text = `Informado: ${fmtDurationWords(sumG)}.`;
-    else if(sumG > total){ text = `As partes somam ${fmtDurationWords(sumG)}, mais que o estudo (${fmtDurationWords(total)}).`; cls = 'is-error'; }
-    else if(given.length === ids.length && sumG !== total){ text = `As partes somam ${fmtDurationWords(sumG)}; o estudo tem ${fmtDurationWords(total)}. Ajuste uma delas ou deixe uma em branco.`; cls = 'is-error'; }
-    else if(sumG === total) text = `Distribuído: ${fmtDurationWords(sumG)} de ${fmtDurationWords(total)}.`;
+    if(!r.ok){ text = r.msg; cls = 'is-error'; }
     else {
-      const blanks = ids.length - given.length;
-      text = `Distribuído: ${fmtDurationWords(sumG)} de ${fmtDurationWords(total)}. ` + (blanks === 1
-        ? `O tópico em branco fica com os ${fmtDurationWords(total - sumG)} restantes.`
-        : `Os ${blanks} tópicos em branco dividem ${fmtDurationWords(total - sumG)} igualmente (estimativa).`);
+      const anyGiven = Array.from(r.disc.values()).some(x => isNum(x)) || Array.from(r.topic.values()).some(x => isNum(x));
+      if(!anyGiven) text = 'Nada informado: a divisão será estimada.';
+      else if(total === null) text = 'Informe a duração do estudo para conferir a divisão.';
+      else if(multi()){
+        const given = groups.filter(g => isNum(r.disc.get(g.discId)));
+        const sg = sum(given, g => r.disc.get(g.discId));
+        const blanks = groups.length - given.length;
+        if(!given.length) text = 'Disciplinas sem divisão: partes iguais (estimativa).';
+        else if(sg === total) text = `Distribuído: ${fmtDurationWords(sg)} de ${fmtDurationWords(total)}.`;
+        else text = `Distribuído: ${fmtDurationWords(sg)} de ${fmtDurationWords(total)}. ` + (blanks === 1
+          ? `${disciplineName(groups.find(g => !isNum(r.disc.get(g.discId))).discId)} fica com os ${fmtDurationWords(total - sg)} restantes.`
+          : `As ${blanks} disciplinas em branco dividem ${fmtDurationWords(total - sg)} igualmente (estimativa).`);
+      } else {
+        const g = groups[0];
+        const given = g.topicIds.filter(id => isNum(r.topic.get(id)));
+        const sg = sum(given, id => r.topic.get(id));
+        const blanks = g.topicIds.length - given.length;
+        if(sg === total) text = `Distribuído: ${fmtDurationWords(sg)} de ${fmtDurationWords(total)}.`;
+        else text = `Distribuído: ${fmtDurationWords(sg)} de ${fmtDurationWords(total)}. ` + (blanks === 1
+          ? `O tópico em branco fica com os ${fmtDurationWords(total - sg)} restantes.`
+          : `Os ${blanks} tópicos em branco dividem ${fmtDurationWords(total - sg)} igualmente (estimativa).`);
+      }
     }
     if(status.textContent !== text) status.textContent = text;
     status.className = 'split-status' + (cls ? ' ' + cls : '');
@@ -6876,28 +7465,29 @@ function topicSplitField(o){
 
   return {
     node,
-    update(nextIds){ ids = (nextIds || []).slice(); draw(); },
-    refreshTotal(){ if(opened && ids.length >= 2) drawStatus(); },
-    get opened(){ return opened && ids.length >= 2; },
-    /** O que será gravado. Fechado (ou um tópico só) → todas as partes em branco (estimadas). */
-    read(){
-      const v = values(), total = totalNow();
-      const out = new Map(ids.map(id => [id, null]));
-      if(!(opened && ids.length >= 2)) return { ok:true, minutes:out };
-      const firstBad = ids.find(id => Number.isNaN(v.get(id)));
-      if(firstBad){ const el = rowsBox.querySelector(`#${cssEsc(p + '-split-' + firstBad)}`); return { ok:false, msg:'Use minutos inteiros maiores que zero na divisão do tempo (ou deixe em branco).', el }; }
-      const given = ids.filter(id => isNum(v.get(id)));
-      const sumG = sum(given, id => v.get(id));
-      if(total !== null && (sumG > total || (given.length === ids.length && sumG !== total))){
-        const el = rowsBox.querySelector('input');
-        return { ok:false, msg: sumG > total
-          ? `A divisão soma ${fmtDurationWords(sumG)}, mais que o tempo do estudo (${fmtDurationWords(total)}).`
-          : `A divisão soma ${fmtDurationWords(sumG)}, e o estudo tem ${fmtDurationWords(total)}. Ajuste uma parte ou deixe uma em branco.`, el };
-      }
-      ids.forEach(id => out.set(id, isNum(v.get(id)) ? v.get(id) : null));
-      return { ok:true, minutes:out };
+    /** v6.8: [{ discId, topicIds }]. Uma lista simples de tópicos (v6.7) vira um grupo só. */
+    update(next){
+      if(Array.isArray(next) && next.length && typeof next[0] === 'string') groups = [{ discId: (getTopic(next[0]) || {}).disciplineId || '', topicIds: next.slice() }];
+      else groups = (Array.isArray(next) ? next : []).filter(g => g && g.discId).map(g => ({ discId: g.discId, topicIds: (g.topicIds || []).slice() }));
+      draw();
     },
-    get dirty(){ return opened && Array.from(typed.values()).some(x => str(x).trim() !== ''); }
+    refreshTotal(){ if(opened && relevant()) drawStatus(); },
+    get opened(){ return opened && relevant(); },
+    /** O que será gravado. Fechado → tudo em branco (estimado). */
+    read(){
+      const emptyT = new Map(), emptyD = new Map();
+      groups.forEach(g => { emptyD.set(g.discId, null); g.topicIds.forEach(id => emptyT.set(id, null)); });
+      if(!(opened && relevant())) return { ok:true, minutes:emptyT, disc:emptyD };
+      const r = check();
+      if(!r.ok) return { ok:false, msg:r.msg, el:r.el };
+      const disc = new Map(), topic = new Map();
+      groups.forEach(g => {
+        disc.set(g.discId, multi() && isNum(r.disc.get(g.discId)) ? r.disc.get(g.discId) : null);
+        g.topicIds.forEach(id => topic.set(id, topicsSplit(g) && isNum(r.topic.get(id)) ? r.topic.get(id) : null));
+      });
+      return { ok:true, minutes:topic, disc };
+    },
+    get dirty(){ return opened && Array.from(tTyped.values()).concat(Array.from(dTyped.values())).some(x => str(x).trim() !== ''); }
   };
 }
 
@@ -6940,11 +7530,13 @@ function reviewOutcomesField(o){
           const b = node.querySelector('.oc-all .linkbtn'); if(b) b.focus(); } }))));
     node.append(all);
     const rows = h('div', { class:'oc-rows', role:'group', 'aria-labelledby':lid });
+    // v6.8: tópicos de mais de uma disciplina — cada linha diz de qual disciplina é
+    const manyDiscs = new Set(list.map(id => getTopic(id).disciplineId)).size > 1;
     list.forEach(id => {
       const t = getTopic(id);
       const note = o.note ? o.note(id) : '';
       rows.append(h('div', { class:'oc-row' },
-        h('span', { class:'oc-name', text:t.name }),
+        h('span', { class:'oc-name' }, t.name, manyDiscs ? h('span', { class:'oc-disc', text: disciplineName(t.disciplineId) }) : null),
         pillGroup(opts, outcomes.get(id) || null, v => { if(v) outcomes.set(id, v); else outcomes.delete(id); if(o.onChange) o.onChange(); }, 'Resultado de ' + t.name),
         note ? h('span', { class:'oc-note', text:note }) : null));
     });
@@ -6960,6 +7552,11 @@ function reviewOutcomesField(o){
   };
 }
 
+/** v6.8 — monta `disciplines` para os comandos: [{ disciplineId, minutes }] (a primeira é a principal). */
+function disciplinesFromForm(groups, split){
+  const sp = split && split.disc ? split.disc : new Map();
+  return (groups || []).map(g => ({ disciplineId: g.discId, minutes: sp.has(g.discId) ? sp.get(g.discId) : null }));
+}
 /** v6.7 — monta `topics` para os comandos: [{ topicId, minutes, outcome }] na ordem escolhida. */
 function topicEntriesFromForm(topicIds, split, outcomes, isReview){
   const sp = split ? split.minutes : new Map();
@@ -7622,7 +8219,7 @@ function openRegisterModal(preset){
     function renderOutcome(){
       const ids = target.topicIds;
       outcomes.update(ids, mode === 'manual' && types.includes('revisao'));
-      split.update(mode === 'manual' ? ids : []);
+      split.update(mode === 'manual' ? target.groups : []);
     }
     const comment = commentField({ id:'rm-comment' });
     /* v6.4.1 — três perguntas, três grupos. "Quando" e "O que você estudou" são
@@ -7639,7 +8236,7 @@ function openRegisterModal(preset){
     const grid = h('div', { class:'rm-grid' }, whenBlock, whatBlock, howBlock, timerBlock);
     // Já há algo preenchido além do que veio pronto? Então um clique fora da janela não a fecha.
     isDirty = () => when.isDirty() || !!comment.textarea.value.trim() || types.join(',') !== types0 || difficulty !== null || outcomes.dirty
-      || target.discId !== discId0 || target.topicIds.join(',') !== (topicId0 || '') || targetMin !== null || split.dirty;
+      || target.discIds.join(',') !== (discId0 || '') || target.topicIds.join(',') !== (topicId0 || '') || targetMin !== null || split.dirty;
 
     /* 8 horas ou mais: o Ciclo pergunta, não proíbe. Numa subtela — o formulário fica intacto. */
     function confirmLong(w){
@@ -7699,17 +8296,18 @@ function openRegisterModal(preset){
         const discId = await target.ensure();          // cria a disciplina digitada, se for o caso
         if(!discId) return;
         const topicIds = target.topicIds;
+        const groups = target.groups;                  // v6.8: cada disciplina com os tópicos dela
 
         if(mode === 'timer'){
           // v6.5: só fecha se o cronômetro começou (outra aba pode ter iniciado um estudo neste meio-tempo)
-          if(startTimer(discId, topicIds, types, null, targetMin)) close();
+          if(startTimer(target.discIds, topicIds, types, null, targetMin)) close();
           return;
         }
         if(w.needsConfirm && !(await confirmLong(w))) return;
 
         setBusy(true);
         const ok = await saveSession({
-          disciplineId:discId, date:w.date, minutes:w.minutes, breaks:w.breaks,
+          disciplineId:discId, disciplines: disciplinesFromForm(groups, sp), date:w.date, minutes:w.minutes, breaks:w.breaks,
           startedAt:w.startedAt, endedAt:w.endedAt, types, difficulty,
           comment: comment.value,
           topics: topicEntriesFromForm(topicIds, sp, outcomes.values, types.includes('revisao'))
@@ -7829,7 +8427,7 @@ function openFinishModal(){
 
     // v6.7: os tópicos escolhidos ao começar (todos) voltam aqui — inclusive depois de recarregar a página
     let split = null;
-    const target = studyTargetFields({ close, idPrefix:'fin', discId:d.disciplineId, topicIds: d.topicIds || [],
+    const target = studyTargetFields({ close, idPrefix:'fin', discIds: TimerService.discIds(), topicIds: d.topicIds || [],
       onChange: () => renderOutcome() });
     const typePick = studyTypePicker({ id:'fin-type', value:types, onChange: v => { types = v; renderOutcome(); } });
     split = topicSplitField({ idPrefix:'fin', total: () => { const m = Math.round(Number(minInput.value)); return m > 0 ? m : null; } });
@@ -7841,9 +8439,9 @@ function openFinishModal(){
       const ids = target.topicIds;
       const show = types.includes('revisao') && ids.length > 0;
       outcomes.update(ids, show);
-      split.update(ids);
-      // F5 no meio da finalização não perde tópicos e tipos escolhidos aqui (o tempo nunca é tocado)
-      if(target.discId) TimerService.updateSelection(runId, { disciplineId: target.discId, topicIds: ids, presetTypes: types });
+      split.update(target.groups);
+      // F5 no meio da finalização não perde disciplinas, tópicos e tipos escolhidos aqui (o tempo nunca é tocado)
+      if(target.discId) TimerService.updateSelection(runId, { disciplineIds: target.discIds, topicIds: ids, presetTypes: types });
       clear(methodBox);
       methodBox.hidden = !show;
       if(!show) return;
@@ -7883,6 +8481,7 @@ function openFinishModal(){
       const discId = await target.ensure();
       if(!discId){ unlock(); return; }
       const topicIds = target.topicIds;
+      const groups = target.groups;
       const isReview = types.includes('revisao');
 
       /* v6.5 — este cronômetro ainda é o que está valendo? Outra aba pode ter
@@ -7907,7 +8506,7 @@ function openFinishModal(){
          retrato (o fim é o momento em que a pessoa pediu para finalizar).
          v6.5 — o id do estudo é o runId do cronômetro: o banco aceita UM. */
       const res = await registerStudy({
-        disciplineId: discId, date: dateToISO(new Date(snap.startedAt)),
+        disciplineId: discId, disciplines: disciplinesFromForm(groups, sp), date: dateToISO(new Date(snap.startedAt)),
         minutes, breaks: br.breaks, types, difficulty, comment: comment.value,
         topics: topicEntriesFromForm(topicIds, sp, outcomes.values, isReview),
         reviewMethod: (isReview && topicIds.length) ? method : null,
@@ -7947,7 +8546,7 @@ function openFinishModal(){
 function offerStaleSession(){
   const hours = TimerService.getOpenAgeMs() / 3600000;
   if(hours < 6) return;
-  const name = (getDiscipline(TimerService.data.disciplineId) || {}).name || '';
+  const name = TimerService.discText();
   const resting = TimerService.isOnBreak;
   const text = resting
     ? `O estudo de ${name} está em descanso há ${fmtDuration(Math.round(TimerService.getBreakElapsed() / 60000))}. Talvez o cronômetro tenha ficado ligado sem querer.`
@@ -8226,7 +8825,8 @@ function sameStored(a, b){
      create(input)                 novo estudo
      finalizeTimer(input, runId)   novo estudo cujo id É a identidade do
                                    cronômetro — o banco recusa o segundo
-     update(id, changes, {base})   edição (inclui trocar de tópico/disciplina)
+     update(id, changes, {base})   edição (inclui trocar de tópico/disciplina,
+                                   pôr ou tirar disciplinas — v6.8)
      remove(id)                    exclusão
 
    reason: 'no-minutes' | 'bad-date' | 'no-discipline' | 'duplicate' |
@@ -8240,6 +8840,7 @@ const SessionCommands = {
    * (`topics: [{ topicId, minutes, outcome }]`) e, por compatibilidade, o
    * formato de um tópico só (`topicId` + `reviewOutcome`). Sem repetição.
    * A estratégia NUNCA vem de fora: é decidida aqui, pela regra em vigor.
+   * A disciplina de cada tópico também não: é a do tópico, lida do banco.
    */
   _inputEntries(input){
     const list = Array.isArray(input.topics) ? input.topics
@@ -8253,15 +8854,65 @@ const SessionCommands = {
       return true;
     }).slice(0, MAX_TOPICS_PER_STUDY);
   },
-
-  /** Os estudos de uma disciplina, lidos do banco DENTRO da transação, no formato atual (com cache por comando). */
-  _discSessions(api, cache, discId){
-    if(!cache.has(discId)){
-      cache.set(discId, api.getAllByIndex('sessions', 'disciplineId', discId)
-        .then(list => (list || []).map(x => SessionModel.isCanonical(x) ? x : SessionModel.normalize(x))));
-    }
-    return cache.get(discId);
+  /**
+   * v6.8 — disciplinas de uma entrada de formulário: `disciplines: [{ disciplineId,
+   * minutes }]` (a primeira é a principal) ou, como sempre foi, `disciplineId`.
+   */
+  _inputDiscs(input){
+    const list = Array.isArray(input.disciplines) ? input.disciplines
+      : Array.isArray(input.disciplineEntries) ? input.disciplineEntries
+      : (input.disciplineId ? [{ disciplineId: input.disciplineId, minutes:null }] : []);
+    const seen = new Set();
+    return list.map(d => SessionModel.cleanDiscEntry(typeof d === 'string' ? { disciplineId:d } : d)).filter(d => {
+      if(!d || seen.has(d.disciplineId)) return false;
+      seen.add(d.disciplineId);
+      return true;
+    }).slice(0, MAX_DISCIPLINES_PER_STUDY);
   },
+  /**
+   * Disciplinas e tópicos conferidos NO BANCO, dentro da transação: disciplina
+   * que não existe sai; tópico que não existe, ou cuja disciplina não está no
+   * estudo, sai. Cada tópico fica com a disciplina dele. Altera `session`.
+   * → { ok, droppedTopics, droppedDiscs, topics: Map id → tópico }
+   */
+  async _check(api, session){
+    const discs = [];
+    let droppedDiscs = 0;
+    for(const d of session.disciplineEntries){
+      const disc = await api.get('disciplines', d.disciplineId);
+      if(disc) discs.push(d); else droppedDiscs++;
+    }
+    if(!discs.length) return { ok:false, reason:'no-discipline' };
+    const discSet = new Set(discs.map(d => d.disciplineId));
+    const topics = new Map();
+    const kept = [];
+    let droppedTopics = 0;
+    for(const e of session.topicEntries){
+      const topic = await api.get('topics', e.topicId);
+      if(!topic || !discSet.has(topic.disciplineId)){ droppedTopics++; continue; }
+      e.disciplineId = topic.disciplineId;
+      topics.set(topic.id, topic);
+      kept.push(e);
+    }
+    session.disciplineEntries = discs;
+    session.disciplineId = discs[0].disciplineId;
+    session.topicEntries = kept;
+    SessionModel.settleAll(session.disciplineEntries, session.topicEntries, session.minutes);
+    return { ok:true, droppedTopics, droppedDiscs, topics };
+  },
+
+  /**
+   * Todos os estudos, lidos do banco DENTRO da transação, no formato atual (um
+   * cache por comando). v6.8: um tópico pode estar num estudo cuja primeira
+   * disciplina é outra, então o índice `disciplineId` não basta mais.
+   */
+  _allSessions(api, cache){
+    if(!cache.has('*')){
+      cache.set('*', api.getAll('sessions').then(list => (list || []).filter(x => x && typeof x === 'object').map(x => SessionModel.canon(x))));
+    }
+    return cache.get('*');
+  },
+  async _topicViews(api, cache, topicId){ return SessionModel.viewsFor(await this._allSessions(api, cache), topicId); },
 
   async create(input, opts){
     const o = opts || {};
@@ -8269,12 +8920,14 @@ const SessionCommands = {
     if(!(minutes > 0)) return { ok:false, reason:'no-minutes' };
     const date = input.date || todayISO();
     if(!isStrictISODate(date)) return { ok:false, reason:'bad-date' };
+    const discs = this._inputDiscs(input);
+    if(!discs.length) return { ok:false, reason:'no-discipline' };
 
     /* Integridade (v6.4): `minutes` é tempo de ESTUDO; descansos ficam à parte.
        v6.5: horário e duração nunca se contradizem no que é gravado. */
     const time = TimeRules.settle({ minutes, breaks: sanitizeBreaks(input.breaks), startedAt: input.startedAt || null, endedAt: input.endedAt || null });
     const session = newSession({
-      disciplineId: str(input.disciplineId), date, minutes,
+      disciplineId: discs[0].disciplineId, disciplineEntries: discs, date, minutes,
       breaks: sanitizeBreaks(time.breaks), difficulty: input.difficulty || null,
       comment: str(input.comment), reviewMethod: input.reviewMethod || null,
       startedAt: time.startedAt, endedAt: time.endedAt,
@@ -8285,31 +8938,23 @@ const SessionCommands = {
 
     try {
       return await DB.atomic(this.STORES, async api => {
-        const disc = await api.get('disciplines', session.disciplineId);
-        if(!disc) return { ok:false, reason:'no-discipline' };
         if(o.unique){
           const dup = await api.get('sessions', session.id);
           if(dup) return { ok:false, reason:'duplicate', session:dup };
         }
-        // cada tópico precisa existir e ser da disciplina do estudo (outra aba pode ter mudado algo)
-        const kept = [];
-        let dropped = 0;
-        for(const e of session.topicEntries){
-          const topic = await api.get('topics', e.topicId);
-          if(!topic || topic.disciplineId !== session.disciplineId){ dropped++; continue; }
-          kept.push({ e, topic });
-        }
-        session.topicEntries = kept.map(k => k.e);
-        SessionModel.settleSplit(session.topicEntries, session.minutes);
-        if(!session.topicEntries.length && dropped) session.reviewMethod = null;    // a revisão era daqueles tópicos
+        // cada disciplina e cada tópico precisam existir (outra aba pode ter mudado algo)
+        const chk = await this._check(api, session);
+        if(!chk.ok) return chk;
+        if(!session.topicEntries.length && chk.droppedTopics) session.reviewMethod = null;    // a revisão era daqueles tópicos
 
         // cada tópico recebe o estudo com o resultado DELE — nunca o de outro
         const recs = [];
-        for(const k of kept){
-          const ctx = reviewContextOf(k.topic);
-          k.e.strategy = ctx.strategy;          // a estratégia vigente fica gravada: a reconciliação refaz com ela
-          const rec = TopicReconciler.afterCreate(k.topic, SessionModel.topicView(session, k.topic.id), ctx);
-          recs.push({ topic: rec.topic, effect: rec.effect, outcome: k.e.outcome || null });
+        for(const e of session.topicEntries){
+          const topic = chk.topics.get(e.topicId);
+          const ctx = reviewContextOf(topic);
+          e.strategy = ctx.strategy;          // a estratégia vigente fica gravada: a reconciliação refaz com ela
+          const rec = TopicReconciler.afterCreate(topic, SessionModel.topicView(session, topic.id), ctx);
+          recs.push({ topic: rec.topic, effect: rec.effect, outcome: e.outcome || null });
         }
         // `add` recusa um id repetido: é a garantia final de que o mesmo cronômetro não vira dois estudos.
         if(o.unique) await api.add('sessions', session); else api.put('sessions', session);
@@ -8318,7 +8963,9 @@ const SessionCommands = {
           ok:true, session, effects: recs,
           topics: recs.map(r => r.topic),
           topic: recs.length ? recs[0].topic : null, effect: recs.length ? recs[0].effect : null,
-          topicDropped: dropped > 0, droppedCount: dropped, clockDropped: time.clockDropped
+          topicDropped: chk.droppedTopics > 0, droppedCount: chk.droppedTopics,
+          discDropped: chk.droppedDiscs > 0, droppedDiscCount: chk.droppedDiscs,
+          clockDropped: time.clockDropped
         };
       });
     } catch(err){
@@ -8332,11 +8979,16 @@ const SessionCommands = {
     return this.create(input, { id: runId, unique:true });
   },
 
-  /** Comparação de um campo do formulário com o gravado. Tópicos: só o que a pessoa vê (tópico, parte, resultado). */
+  /** Comparação de um campo do formulário com o gravado. Tópicos e disciplinas: só o que a pessoa vê. */
   sameField(key, a, b){
     if(key === 'topicEntries'){
       const simple = list => (Array.isArray(list) ? list : []).map(e => SessionModel.cleanEntry(e)).filter(Boolean)
         .map(e => ({ topicId:e.topicId, minutes:e.minutes, outcome:e.outcome }));
+      return JSON.stringify(simple(a)) === JSON.stringify(simple(b));
+    }
+    if(key === 'disciplineEntries'){
+      const simple = list => (Array.isArray(list) ? list : []).map(d => SessionModel.cleanDiscEntry(d)).filter(Boolean)
+        .map(d => ({ disciplineId:d.disciplineId, minutes:d.minutes }));
       return JSON.stringify(simple(a)) === JSON.stringify(simple(b));
     }
     if(key === 'types') return JSON.stringify(SessionModel.cleanTypes(a)) === JSON.stringify(SessionModel.cleanTypes(b));
@@ -8356,6 +9008,9 @@ const SessionCommands = {
    *   · tópico que FICOU            → só é refeito se a data, o resultado DELE
    *                                   ou o jeito de revisar mudaram.
    * Tópicos que não mudaram não são tocados — nenhuma revisão "por tabela".
+   * v6.8 — tirar uma disciplina do estudo tira os tópicos dela (que saem do
+   * histórico pela mesma regra); acrescentar uma disciplina não toca em nada
+   * além dos tópicos escolhidos para ela.
    */
   async update(id, changes, opts){
     const o = opts || {};
@@ -8365,26 +9020,39 @@ const SessionCommands = {
         if(!raw) return { ok:false, reason:'missing' };
         const cur = SessionModel.normalize(raw);
         const base = o.base ? SessionModel.normalize(o.base) : cur;
-        const keys = Object.keys(changes || {}).filter(k => !this.sameField(k, changes[k], base[k]));
+        const input = Object.assign({}, changes || {});
+        // formulário antigo (só `disciplineId`): a lista de disciplinas acompanha
+        if('disciplineId' in input && !('disciplineEntries' in input) && input.disciplineId !== base.disciplineId){
+          input.disciplineEntries = [{ disciplineId: input.disciplineId, minutes:null }];
+        }
+        if('disciplineEntries' in input){
+          input.disciplineEntries = this._inputDiscs({ disciplines: input.disciplineEntries });
+          if(input.disciplineEntries.length) input.disciplineId = input.disciplineEntries[0].disciplineId;
+        }
+        const keys = Object.keys(input).filter(k => !this.sameField(k, input[k], base[k]));
         if(!keys.length) return { ok:true, unchanged:true, session:cur };
         if(o.base && !o.force){
-          const clash = keys.filter(k => !this.sameField(k, base[k], cur[k]) && !this.sameField(k, changes[k], cur[k]));
+          const clash = keys.filter(k => !this.sameField(k, base[k], cur[k]) && !this.sameField(k, input[k], cur[k]));
           if(clash.length) return { ok:false, reason:'conflict', current:cur, fields:clash };
         }
         const updated = Object.assign({}, cur);
-        keys.forEach(k => { updated[k] = changes[k]; });
+        keys.forEach(k => { updated[k] = input[k]; });
         if(keys.includes('topicEntries')){
           // a estratégia de um tópico que continua no estudo é a que estava gravada
-          updated.topicEntries = this._inputEntries({ topics: changes.topicEntries }).map(e => {
+          updated.topicEntries = this._inputEntries({ topics: input.topicEntries }).map(e => {
             const was = SessionModel.entryOf(cur, e.topicId);
             return Object.assign(e, { strategy: was ? was.strategy : null });
           });
+        } else {
+          updated.topicEntries = (cur.topicEntries || []).map(e => Object.assign({}, e));
         }
-        if(keys.includes('types')) updated.types = SessionModel.cleanTypes(changes.types);
+        updated.disciplineEntries = (updated.disciplineEntries || []).map(d => Object.assign({}, d));
+        if(keys.includes('types')) updated.types = SessionModel.cleanTypes(input.types);
         updated.updatedAt = nowISO();
         updated.minutes = Math.max(0, Math.round(Number(updated.minutes) || 0));
         if(!(updated.minutes > 0)) return { ok:false, reason:'no-minutes' };
         if(!isStrictISODate(updated.date)) return { ok:false, reason:'bad-date' };
+        if(!updated.disciplineEntries.length) return { ok:false, reason:'no-discipline' };
         updated.breaks = sanitizeBreaks(updated.breaks);
 
         let clockDropped = false;
@@ -8393,26 +9061,14 @@ const SessionCommands = {
           updated.startedAt = time.startedAt; updated.endedAt = time.endedAt; updated.breaks = sanitizeBreaks(time.breaks);
           clockDropped = time.clockDropped;
         }
-        // crédito antigo calculado sobre outro tempo/disciplina deixaria de ser verdade: não acompanha a edição
+        // campo antigo de uma versão anterior calculado sobre outro tempo/disciplina deixaria de ser verdade: não acompanha a edição
         if('credits' in updated && (updated.minutes !== cur.minutes || updated.disciplineId !== cur.disciplineId)) delete updated.credits;
 
-        const disc = await api.get('disciplines', updated.disciplineId);
-        if(!disc) return { ok:false, reason:'no-discipline' };
-
-        // cada tópico precisa existir e ser da disciplina do estudo
-        const topicsById = new Map();
-        const topicOf = async tid => {
-          if(!topicsById.has(tid)) topicsById.set(tid, await api.get('topics', tid) || null);
-          return topicsById.get(tid);
-        };
-        const kept = [];
-        for(const e of (updated.topicEntries || [])){
-          const t = await topicOf(e.topicId);
-          if(t && t.disciplineId === updated.disciplineId) kept.push(e);
-        }
-        const droppedCount = (updated.topicEntries || []).length - kept.length;
-        updated.topicEntries = kept;
-        SessionModel.settleSplit(updated.topicEntries, updated.minutes);
+        // disciplinas e tópicos conferidos no banco (cada tópico fica com a disciplina dele)
+        const beforeCount = updated.topicEntries.length;
+        const chk = await this._check(api, updated);
+        if(!chk.ok) return chk;
+        const droppedCount = beforeCount - updated.topicEntries.length;
         // o resultado antigo "sem tópico" só existe enquanto o estudo não tem tópico
         if(updated.topicEntries.length || !REVIEW_OUTCOME_VALUES.includes(updated.legacyReviewOutcome)) delete updated.legacyReviewOutcome;
         // todos os tópicos saíram: o jeito de revisar era deles
@@ -8423,6 +9079,7 @@ const SessionCommands = {
         const dateChanged = cur.date !== updated.date;
         const methodChanged = (cur.reviewMethod || null) !== (updated.reviewMethod || null);
         const cache = new Map();
+        const topicOf = async tid => chk.topics.get(tid) || await api.get('topics', tid) || null;
         const effects = [];
         for(const tid of allIds){
           const topic = await topicOf(tid);
@@ -8432,13 +9089,13 @@ const SessionCommands = {
             const ec = SessionModel.entryOf(cur, tid), eu = SessionModel.entryOf(updated, tid);
             const touches = dateChanged || (ec.outcome || null) !== (eu.outcome || null) || (methodChanged && !!(ec.outcome || eu.outcome));
             if(!touches) continue;
-            const before = SessionModel.viewsFor(await this._discSessions(api, cache, topic.disciplineId), tid);
+            const before = await this._topicViews(api, cache, tid);
             const after = before.map(v => v.id === id ? SessionModel.topicView(updated, tid) : v);
             const rec = TopicReconciler.afterCorrection(topic, before, after, reviewContextOf(topic));
             api.put('topics', rec.topic);
             effects.push({ topic:rec.topic, effect:rec.effect, role:'same' });
           } else if(inCur){
-            const before = SessionModel.viewsFor(await this._discSessions(api, cache, topic.disciplineId), tid);
+            const before = await this._topicViews(api, cache, tid);
             const rec = TopicReconciler.afterCorrection(topic, before, before.filter(v => v.id !== id), reviewContextOf(topic));
             api.put('topics', rec.topic);
             effects.push({ topic:rec.topic, effect:rec.effect, role:'from' });
@@ -8452,7 +9109,8 @@ const SessionCommands = {
           }
         }
         api.put('sessions', updated);
-        return { ok:true, session:updated, previous:cur, effects, clockDropped, topicDropped: droppedCount > 0 };
+        return { ok:true, session:updated, previous:cur, effects, clockDropped,
+                 topicDropped: droppedCount > 0, discDropped: chk.droppedDiscs > 0 };
       });
     } catch(err){
       console.error('Falha ao atualizar o estudo:', err);
@@ -8460,7 +9118,7 @@ const SessionCommands = {
     }
   },
 
-  /** Exclusão. v6.7: TODOS os tópicos do estudo são reconciliados, cada um com o próprio histórico. */
+  /** Exclusão. v6.7: TODOS os tópicos do estudo (de todas as disciplinas) são reconciliados, cada um com o próprio histórico. */
   async remove(id){
     try {
       return await DB.atomic(this.STORES, async api => {
@@ -8472,7 +9130,7 @@ const SessionCommands = {
         for(const tid of SessionModel.topicIds(cur)){
           const topic = await api.get('topics', tid);
           if(!topic) continue;
-          const before = SessionModel.viewsFor(await this._discSessions(api, cache, topic.disciplineId), tid);
+          const before = await this._topicViews(api, cache, tid);
           const rec = TopicReconciler.afterCorrection(topic, before, before.filter(v => v.id !== id), reviewContextOf(topic));
           api.put('topics', rec.topic);
           effects.push({ topic:rec.topic, effect:rec.effect, role:'same' });
@@ -8548,7 +9206,7 @@ async function registerStudy(input, opts){
   await safeRefresh();
 
   const session = res.session;
-  const disc = getDiscipline(session.disciplineId);
+  const discText = SessionModel.title(session);
   const reviewed = (res.effects || []).filter(x => x.outcome);
   if(reviewed.length === 1){
     const x = reviewed[0], topic = x.topic;
@@ -8571,7 +9229,7 @@ async function registerStudy(input, opts){
     const next = reviewed.map(x => x.topic.reviewDueDate).filter(Boolean).sort()[0] || null;
     const hist = reviewed.filter(x => x.effect === 'historical').length;
     const rows = [
-      (disc ? disc.name + ' · ' : '') + plural(reviewed.length, 'tópico revisado', 'tópicos revisados'),
+      discText + ' · ' + plural(reviewed.length, 'tópico revisado', 'tópicos revisados'),
       ['Tempo estudado', fmtDuration(session.minutes)]
     ];
     if(next) rows.push(['Próxima revisão', fmtRelativeFuture(next)]);
@@ -8581,12 +9239,13 @@ async function registerStudy(input, opts){
     const prog = PlannerEngine.getCurrentWeekProgress();
     const topicsText = SessionModel.topicsText(session, 2);
     const rows = [
-      (disc ? disc.name : '') + (topicsText ? ' · ' + topicsText : ''),
+      discText + (topicsText && !SessionModel.isMulti(session) ? ' · ' + topicsText : ''),
       ['Tempo estudado', fmtDuration(session.minutes)]
     ];
     const restMin = breakMinutesOf(session);
     if(restMin > 0) rows.push(['Descanso', fmtDuration(restMin)]);
-    if(prog.plannedTotal > 0) rows.push(['Plano da semana', `${fmtDuration(prog.countedTotal)} de ${fmtDuration(prog.plannedTotal)}`]);
+    // v6.8: a meta é o tempo total da semana — este estudo conta inteiro, seja qual for a disciplina
+    if(prog.goalTotal > 0) rows.push(['Meta da semana', prog.reached ? `alcançada · ${fmtDuration(prog.realizedTotal)} de ${fmtDuration(prog.goalTotal)}` : `${fmtDuration(prog.realizedTotal)} de ${fmtDuration(prog.goalTotal)}`]);
     const topics = res.topics || [];
     if(topics.length === 1 && topics[0].reviewDueDate) rows.push(['Próxima revisão', fmtRelativeFuture(topics[0].reviewDueDate)]);
     else if(topics.length > 1){
@@ -8597,9 +9256,12 @@ async function registerStudy(input, opts){
   }
   if(res.topicDropped){
     const n = res.droppedCount || 1;
-    toast(n === 1 ? 'Um tópico escolhido não existe mais (ou não é desta disciplina). O estudo foi registrado sem ele.'
-                  : `${n} tópicos escolhidos não existem mais (ou não são desta disciplina). O estudo foi registrado sem eles.`,
+    toast(n === 1 ? 'Um tópico escolhido não existe mais (ou não é de uma das disciplinas do estudo). O estudo foi registrado sem ele.'
+                  : `${n} tópicos escolhidos não existem mais (ou não são das disciplinas do estudo). O estudo foi registrado sem eles.`,
       'warn', { title: n === 1 ? 'Tópico não encontrado' : 'Tópicos não encontrados' });
+  }
+  if(res.discDropped){
+    toast('Uma das disciplinas escolhidas foi excluída em outra aba. O estudo foi registrado com as outras.', 'warn', { title:'Disciplina não encontrada' });
   }
   return res;
 }
@@ -8793,20 +9455,19 @@ function todayNext(){
 
   const prog = PlannerEngine.getCurrentWeekProgress();
   const todayMin = sum(state.sessions.filter(s => s.date === todayISO()), s => s.minutes);
-  if(PlannerEngine.activePlan() && prog.plannedTotal > 0){
-    const pct = clamp(prog.pct || 0, 0, 999);
-    /* v6.5 — a barra mostra o plano CUMPRIDO (por disciplina). O que foi estudado
-       além do planejado aparece à parte e não enche a barra. */
-    const extraText = prog.extraTotal >= 1 ? ` · ${fmtDuration(prog.extraTotal)} além do plano` : '';
+  if(PlannerEngine.activePlan() && prog.goalTotal > 0){
+    /* v6.8 — a barra mostra a META TOTAL da semana: qualquer estudo conta, de
+       qualquer disciplina. Passou da meta? Diz quanto, sem encher mais a barra. */
+    const pct = clamp(prog.pct || 0, 0, 100);
     rows.push(nextRow({
-      label:'Semana',
-      title:`${fmtDuration(prog.countedTotal)} de ${fmtDuration(prog.plannedTotal)} do plano desta semana`,
-      sub: (prog.remainingTotal > 0 ? `Faltam ${fmtDuration(prog.remainingTotal)}` : 'Plano da semana concluído') + extraText + ` · hoje ${fmtDuration(todayMin)}`,
-      bar: barWithTip(pct, pct >= 100 ? 'done' : null, 'Semana', [
-        ['Planejado', fmtDuration(prog.plannedTotal)], ['Estudado no total', fmtDuration(prog.realizedTotal)],
-        ['Dentro do plano', fmtDuration(prog.countedTotal)], ['Além do plano', fmtDuration(prog.extraTotal)],
-        ['Falta', fmtDuration(prog.remainingTotal)], ['Plano cumprido', fmtPct(pct)]], 'today-week'),
-      value: fmtPct(pct),
+      label:'Meta da semana',
+      title: prog.reached ? `Meta semanal concluída: ${fmtDuration(prog.realizedTotal)} de ${fmtDuration(prog.goalTotal)}` : `${fmtDuration(prog.realizedTotal)} de ${fmtDuration(prog.goalTotal)} nesta semana`,
+      sub: (prog.reached ? (prog.extraTotal >= 1 ? `${fmtDuration(prog.extraTotal)} além da meta` : 'Exatamente a meta') : `Faltam ${fmtDuration(prog.remainingTotal)}`) + ` · hoje ${fmtDuration(todayMin)}`,
+      bar: barWithTip(pct, prog.reached ? 'done' : null, 'Meta da semana', [
+        ['Meta', fmtDuration(prog.goalTotal)], ['Estudado', fmtDuration(prog.realizedTotal)],
+        prog.reached ? ['Além da meta', fmtDuration(prog.extraTotal)] : ['Falta', fmtDuration(prog.remainingTotal)],
+        ['Conta para a meta', 'qualquer disciplina']], 'today-week'),
+      value: prog.reached ? 'Concluída' : fmtPct(pct),
       open:() => setView('plan')
     }));
   } else {
@@ -9389,11 +10050,14 @@ const WeekPlan = {
     const realWeek = new Map();      // disc → minutos na semana
     state.sessions.forEach(s => {
       if(s.date < view.ws || s.date > view.we) return;
-      const m = Number(s.minutes) || 0;
-      if(m <= 0) return;
-      const k = s.date + '|' + s.disciplineId;
-      real.set(k, (real.get(k) || 0) + m);
-      realWeek.set(s.disciplineId, (realWeek.get(s.disciplineId) || 0) + m);
+      if(!((Number(s.minutes) || 0) > 0)) return;
+      // v6.8: um estudo de várias disciplinas leva a cada uma a PARTE dela (o dia soma o estudo uma vez)
+      SessionModel.discShares(s).forEach(x => {
+        if(!(x.minutes > 0)) return;
+        const k = s.date + '|' + x.disciplineId;
+        real.set(k, (real.get(k) || 0) + x.minutes);
+        realWeek.set(x.disciplineId, (realWeek.get(x.disciplineId) || 0) + x.minutes);
+      });
     });
     const blocks = new Map();
     const groups = new Map();
@@ -9418,7 +10082,7 @@ const WeekPlan = {
     disc.forEach(d => { d.unscheduled = Math.max(0, d.goal - d.scheduled); d.over = Math.max(0, d.scheduled - d.goal); });
     const dayPlanned = new Map(view.dates.map(iso => [iso, 0]));
     view.blocks.forEach(b => { if(isNum(b.minutes)) dayPlanned.set(b.date, (dayPlanned.get(b.date) || 0) + b.minutes); });
-    return { blocks, disc, dayPlanned, real };
+    return { blocks, disc, dayPlanned, real, realWeek };
   },
 
   /** Prazos de um dia (os MESMOS registros da tela Prazos — nada é copiado). */
@@ -9680,8 +10344,8 @@ function renderPlan(){
     mount(root, h('div', { class:'narrow-screen' },
       h('section', { class:'focus-block', 'aria-labelledby':'pl-q' },
         h('p', { class:'tf-eyebrow', text:'Organizar a semana' }),
-        h('h3', { class:'tf-title', id:'pl-q', text:'Quanto tempo você tem por semana?' }),
-        h('p', { class:'tf-reason', text:'O Ciclo divide esse tempo entre o que você estuda e passa a mostrar quanto falta. Você pode estudar sem plano — ele só torna as sugestões melhores.' }),
+        h('h3', { class:'tf-title', id:'pl-q', text:'Quanto tempo você quer estudar por semana?' }),
+        h('p', { class:'tf-reason', text:'Essa é a sua meta semanal: qualquer estudo conta, de qualquer disciplina. O Ciclo sugere como dividir esse tempo — só como referência. Você pode estudar sem meta.' }),
         (() => {
           const chips = h('div', { class:'an-chips', role:'group', 'aria-label':'Horas por semana' });
           [2,5,10].forEach(hrs => chips.append(h('button', { class:'an-chip', type:'button', text: hrs + ' h', onclick:() => createSimplePlan(hrs * 60) })));
@@ -9712,21 +10376,21 @@ function renderPlan(){
 
   parts.push(h('section', { class:'edit-block' },
     h('div', { class:'edit-head' },
-      h('h3', { class:'block-label', text: plan ? 'Ajustar plano' : 'Novo plano' }),
+      h('h3', { class:'block-label', text: plan ? 'Meta e sugestão de distribuição' : 'Nova meta semanal' }),
       h('button', { class:'btn ghost sm', type:'button', text: plan ? 'Cancelar' : 'Voltar',
         onclick:() => { ui.planEditing = false; ui.planExpanded = false; ui.planDraft = null; renderPlan(); } })),
     h('div', { class:'row' },
       h('div', { class:'field' }, h('label', { for:'plan-name', text:'Nome do plano' }), nameInput),
-      h('div', { class:'field' }, h('label', { for:'plan-avail-h' }, 'Horas por semana', helpDot('disponibilidade')), availInput,
-        h('p', { class:'hint', text:'Quanto tempo você pretende dedicar aos estudos por semana.' }))
+      h('div', { class:'field' }, h('label', { for:'plan-avail-h' }, 'Meta semanal, em horas', helpDot('disponibilidade')), availInput,
+        h('p', { class:'hint', text:'O tempo total que você quer estudar por semana. Qualquer disciplina conta.' }))
     ),
     h('div', { class:'row auto' },
-      h('button', { class:'btn ghost sm', type:'button', text:'Distribuir automaticamente', title:'Respeita mínimos, divide o resto por prioridade e fecha no total exato.', onclick:() => {
+      h('button', { class:'btn ghost sm', type:'button', text:'Sugerir automaticamente', title:'Respeita mínimos, divide o resto por prioridade e fecha na meta exata.', onclick:() => {
         const res = PlannerEngine.generatePlan(draft.availableMinutes, draft.allocations);
         draft.allocations = res.allocations;
         renderPlan();
-        if(res.conflict) toast(`Seus mínimos ultrapassam a disponibilidade em ${fmtDuration(res.conflict.excess)}. Os valores foram reduzidos proporcionalmente.`, 'err');
-        else toast('Distribuição gerada.', 'ok');
+        if(res.conflict) toast(`Seus mínimos passam da meta em ${fmtDuration(res.conflict.excess)}. Os valores foram reduzidos proporcionalmente.`, 'err');
+        else toast('Sugestão gerada pela prioridade de cada disciplina.', 'ok');
       } })
     )
   ));
@@ -9734,13 +10398,13 @@ function renderPlan(){
   /* --- alocações --- */
   const allocCard = h('section', { class:'edit-block' });
   allocCard.append(h('div', { class:'card-head' },
-    h('p', { class:'card-title', text:'Distribuição semanal', style:'margin:0' }),
-    h('span', { class:'hint', text:'Edite qualquer valor livremente.' })));
+    h('p', { class:'card-title', text:'Sugestão por disciplina', style:'margin:0' }),
+    h('span', { class:'hint', text:'Opcional. Estudar diferente da sugestão não muda o cumprimento da meta.' })));
   allocCard.append(h('div', { class:'alloc-head' },
     h('span', { text:'Disciplina' }),
     h('span', null, 'Prioridade', helpDot('prioridade')),
     h('span', null, 'Mínimo', helpDot('minimo')),
-    h('span', { text:'Planejado' })));
+    h('span', { text:'Sugestão' })));
 
   const totalEl = h('span', { class:'at-v' });
   const diffEl = h('p', { class:'hint', style:'margin:0' });
@@ -9749,13 +10413,13 @@ function renderPlan(){
     const total = sum(draft.allocations, a => Number(a.targetMinutes) || 0);
     totalEl.textContent = `${fmtDuration(total)} / ${fmtDuration(draft.availableMinutes)}`;
     const d = total - draft.availableMinutes;
-    if(d === 0) diffEl.textContent = 'O planejado bate exatamente com a disponibilidade.';
-    else if(d > 0) diffEl.textContent = `${fmtDuration(d)} acima da disponibilidade.`;
-    else diffEl.textContent = `${fmtDuration(-d)} ainda não distribuídos.`;
-    diffEl.style.color = d > 0 ? 'var(--brass)' : '';
+    if(d === 0) diffEl.textContent = 'A sugestão soma exatamente a meta.';
+    else if(d > 0) diffEl.textContent = `A sugestão soma ${fmtDuration(d)} a mais que a meta. Tudo bem: ela é só uma referência.`;
+    else diffEl.textContent = `${fmtDuration(-d)} da meta ainda sem sugestão — livres para o que você quiser.`;
+    diffEl.style.color = '';
     const mins = sum(draft.allocations, a => Number(a.minWeeklyMinutes) || 0);
     if(mins > draft.availableMinutes){
-      diffEl.textContent += `  ·  Seus mínimos somam ${fmtDuration(mins)}, ${fmtDuration(mins - draft.availableMinutes)} acima da disponibilidade.`;
+      diffEl.textContent += `  ·  Seus mínimos somam ${fmtDuration(mins)}, ${fmtDuration(mins - draft.availableMinutes)} acima da meta.`;
       diffEl.style.color = 'var(--danger)';
     }
   }
@@ -9767,27 +10431,27 @@ function renderPlan(){
     [1,2,3,4,5].forEach(p => prioSel.appendChild(h('option', { value:String(p), selected: p === a.priority }, `${p} — ${PRIORITY_LABELS[p]}`)));
     prioSel.addEventListener('change', () => { a.priority = Number(prioSel.value); });
 
-    const minIn = h('input', { type:'number', min:'0', step:'5', inputmode:'numeric', value:String(a.minWeeklyMinutes), 'aria-label':'Mínimo semanal de ' + disc.name });
+    const minIn = h('input', { type:'number', min:'0', step:'5', inputmode:'numeric', value:String(a.minWeeklyMinutes), 'aria-label':'Mínimo semanal sugerido de ' + disc.name });
     minIn.addEventListener('input', () => { a.minWeeklyMinutes = Math.max(0, Math.round(Number(minIn.value) || 0)); updateTotals(); });
 
-    const tgtIn = h('input', { type:'number', min:'0', step:'5', inputmode:'numeric', value:String(a.targetMinutes), 'aria-label':'Minutos planejados de ' + disc.name });
+    const tgtIn = h('input', { type:'number', min:'0', step:'5', inputmode:'numeric', value:String(a.targetMinutes), 'aria-label':'Minutos sugeridos de ' + disc.name });
     tgtIn.addEventListener('input', () => { a.targetMinutes = Math.max(0, Math.round(Number(tgtIn.value) || 0)); updateTotals(); });
 
     allocCard.append(h('div', { class:'alloc-row' },
       h('div', { class:'ar-id' }, h('div', { class:'ar-name', text:disc.name }), h('div', { class:'ar-area', text:areaNameOf(disc) })),
       h('div', null, h('label', { class:'sr-only', text:'Prioridade' }), prioSel),
       h('div', null, h('label', { class:'sr-only', text:'Mínimo (min)' }), minIn),
-      h('div', null, h('label', { class:'sr-only', text:'Planejado (min)' }), tgtIn)
+      h('div', null, h('label', { class:'sr-only', text:'Sugestão (min)' }), tgtIn)
     ));
   });
 
   allocCard.append(h('div', { class:'alloc-total' },
-    h('div', null, h('p', { class:'card-title', text:'Total planejado', style:'margin:0 0 2px' }), totalEl),
+    h('div', null, h('p', { class:'card-title', text:'Sugestão / meta', style:'margin:0 0 2px' }), totalEl),
     diffEl));
   allocCard.append(h('div', { class:'row auto', style:'margin-top:14px' },
     // v6.3: once() — um duplo clique não grava duas vezes (antes podia criar dois planos ativos)
-    h('button', { class:'btn primary', type:'button', text:'Salvar plano', onclick: once(() => savePlanDraft(false)) }),
-    h('button', { class:'btn ghost', type:'button', text:'Salvar e aplicar nesta semana', onclick: once(() => savePlanDraft(true)) })
+    h('button', { class:'btn primary', type:'button', text:'Salvar e usar nesta semana', onclick: once(() => savePlanDraft(true)) }),
+    h('button', { class:'btn ghost', type:'button', text:'Salvar só a partir da próxima semana', onclick: once(() => savePlanDraft(false)) })
   ));
   updateTotals();
   const ph = planHints(draft);
@@ -9832,9 +10496,9 @@ function createSimplePlan(minutes){
   })));
 
   openModal(close => ({
-    title:'O Ciclo sugere esta divisão',
+    title:`Meta: ${fmtDuration(minutes)} por semana`,
     content: h('div',
-      h('p', { class:'modal-sub', text:`${fmtDuration(minutes)} por semana, distribuídas conforme a atenção que cada uma merece.` }),
+      h('p', { class:'modal-sub', text:`Uma sugestão para distribuir suas ${fmtDuration(minutes)}, pela prioridade de cada disciplina. Qualquer estudo conta para a meta — esta divisão é só uma referência.` }),
       h('div', { class:'plan-preview' },
         res.allocations.map(a => {
           const d = getDiscipline(a.disciplineId);
@@ -9843,14 +10507,14 @@ function createSimplePlan(minutes){
               h('div', { class:'hint', text: d ? 'Prioridade ' + PriorityEngine.text(d.priority) : '' })),
             h('span', { class:'num', text: fmtDuration(a.targetMinutes) }));
         })),
-      h('p', { class:'hint', style:'margin-top:12px', text:'Isso é apenas uma sugestão. Você pode ajustar qualquer valor depois, quando quiser.' })),
+      h('p', { class:'hint', style:'margin-top:12px', text:'Você pode mudar a meta e a sugestão quando quiser.' })),
     actions:[
-      h('button', { class:'btn ghost', type:'button', text:'Ajustar', onclick:() => {
+      h('button', { class:'btn ghost', type:'button', text:'Personalizar distribuição', onclick:() => {
         close(); ui.planExpanded = true;
         ui.planDraft = { planId:null, name:'Meu plano', availableMinutes:minutes, allocations:res.allocations.map(a => ({ ...a })) };
         renderPlan();
       } }),
-      h('button', { class:'btn primary', type:'button', text:'Usar esta divisão', onclick: once(async () => {
+      h('button', { class:'btn primary', type:'button', text:'Usar esta sugestão', onclick: once(async () => {
         // v6.5: grava primeiro, fecha depois; nada na memória muda antes de o banco confirmar
         const plan = newPlan('Meu plano', minutes);
         plan.allocations = res.allocations;
@@ -9863,7 +10527,7 @@ function createSimplePlan(minutes){
         close();
         ui.planDraft = null; ui.planExpanded = false;
         await safeRefresh();
-        toast(`${fmtDuration(minutes)} por semana. A tela Hoje já usa esse plano.`, 'ok', { title:'Semana organizada' });
+        toast(`${fmtDuration(minutes)} por semana. A tela Hoje já mostra quanto falta.`, 'ok', { title:'Meta semanal definida' });
       }) })
     ]
   }), { size:'wide' });
@@ -9881,7 +10545,7 @@ async function savePlanDraft(applyToCurrentWeek){
     const total = sum(draft.allocations, a => Number(a.targetMinutes) || 0);
     if(total > draft.availableMinutes){
       const ok = await confirmModal(
-        `O total planejado (${fmtDuration(total)}) passa da sua disponibilidade (${fmtDuration(draft.availableMinutes)}). Salvar assim mesmo?`,
+        `A sugestão soma ${fmtDuration(total)}, mais que a meta semanal (${fmtDuration(draft.availableMinutes)}). A meta continua sendo ${fmtDuration(draft.availableMinutes)}. Salvar assim mesmo?`,
         { confirmLabel:'Salvar assim mesmo', danger:false });
       if(!ok) return;
     }
@@ -9923,8 +10587,8 @@ async function savePlanDraft(applyToCurrentWeek){
     ui.planDraft = null;
     ui.planEditing = false;
     await safeRefresh();
-    toast(applyToCurrentWeek ? 'Já vale para esta semana.' : 'Vale a partir da próxima semana. Para usar agora, escolha "Salvar e aplicar nesta semana".', 'ok',
-      { title:'Plano salvo' });
+    toast(applyToCurrentWeek ? 'Já vale para esta semana.' : 'Vale a partir da próxima semana. Para usar agora, escolha "Salvar e usar nesta semana".', 'ok',
+      { title:'Meta e sugestão salvas' });
   } finally {
     planSaveRunning = false;
   }
@@ -10033,52 +10697,184 @@ function planBoard(plan){
   const view = WeekPlan.view(ws);
   const prog = WeekPlan.progress(view);
   const root = h('div', { class:'plan-screen', 'data-week':ws });
-  root.append(planWeekHead(plan, view, prog));
+  // v6.8: semana → meta → progresso real → dias → sugestão por disciplina (ao lado dos dias, para arrastar)
   root.append(planWeekNav(view));
-  const notices = planWeekNotices(view, prog);
-  if(notices) root.append(notices);
-  if(view.editable) root.append(planTray(view, prog));
+  root.append(planWeekHead(plan, view, prog));
   root.append(planDays(view, prog));
   const off = planOffDays(view, prog);
   if(off) root.append(off);
+  const notices = planWeekNotices(view, prog);
+  if(notices) root.append(notices);
+  if(view.source !== 'none') root.append(planTray(view, prog));
   root.append(h('p', { class:'block-note wk-foot', text: view.kind === 'past'
     ? 'Cada semana guarda o próprio registro: mudar o plano ou o modelo não reescreve semanas que já passaram.'
-    : 'Organizar a semana é planejamento: arrastar ou mover não registra estudo. O progresso de cada dia vem dos estudos que você registra, em qualquer horário daquele dia.' }));
+    : 'Organizar a semana é opcional: arrastar ou mover não registra estudo. Estudar em outro dia, ou outra disciplina, conta do mesmo jeito para a meta.' }));
   PlanDnD.bind(root, view);
   return root;
 }
 
 /* ---------- 1. a meta da semana ---------- */
+/**
+ * v6.8 — A META É O TEMPO TOTAL. Primeiro a resposta ("3h40 de 5h"), depois o
+ * que falta ou o que passou, depois COMO o tempo foi usado (por disciplina,
+ * com a sugestão ao lado só se a pessoa quiser comparar). Nenhuma disciplina
+ * "falha": a sugestão é uma referência.
+ */
+function planWeekGoal(view){
+  if(view.source === 'none') return 0;
+  return PlanRules.weekGoal({ availableMinutes: view.available, allocations: view.allocations });
+}
 function planWeekHead(plan, view, prog){
-  const planned = sum(Array.from(view.goals.values()));
-  let counted = 0;
-  view.goals.forEach((g, id) => { const d = prog.disc.get(id); counted += PlanRules.counted(g, d ? d.realized : 0); });
-  const realized = sum(Array.from(prog.real.values()));
-  const extra = Math.max(0, realized - counted), remaining = Math.max(0, planned - counted);
-  const pct = planned > 0 ? clamp((counted / planned) * 100, 0, 999) : null;
+  const goal = planWeekGoal(view);
+  const realized = sum(Array.from(prog.realWeek.values()));
+  const g = PlanRules.goal(goal, realized);
   const off = Number(ui.planWeekOffset) || 0;
   const eyebrow = [planWeekRelative(off), plan.name && plan.name !== 'Meu plano' ? `Plano: ${plan.name}` : null].filter(Boolean).join(' · ');
-  const title = view.source === 'none'
-    ? h('h3', { class:'tf-title', id:'pl-title', text:'Sem plano registrado nesta semana' })
-    : h('h3', { class:'tf-title', id:'pl-title' }, h('span', { class:'num', text: fmtDuration(view.available || planned) }), ' por semana');
-  let line = null;
-  if(pct !== null && view.kind !== 'future'){
-    line = h('div', { class:'tf-progress' },
-      h('p', { class:'tf-reason', text:`${view.kind === 'past' ? 'Nessa semana' : 'Nesta semana'}: ${fmtDuration(counted)} de ${fmtDuration(planned)} do plano` +
-        (remaining > 0 ? (view.kind === 'past' ? ` · ${fmtDuration(remaining)} não estudadas` : ` · faltam ${fmtDuration(remaining)}`) : ' · plano concluído') +
-        (extra >= 1 ? ` · ${fmtDuration(extra)} além do plano` : '') }),
-      h('div', { class:'nr-bar' }, progressBar(pct, pct >= 100 ? 'done' : null, 'plan-week-' + view.ws), h('span', { class:'nr-value num', text: fmtPct(pct) })));
-  } else if(view.kind === 'future' && planned > 0){
-    line = h('p', { class:'tf-reason', text:`${fmtDuration(planned)} planejadas entre as disciplinas. A semana ainda não começou.` });
-  } else if(view.source === 'none'){
-    line = h('p', { class:'tf-reason', text: realized > 0 ? `Você estudou ${fmtDuration(realized)} nessa semana.` : 'Nenhum estudo registrado nessa semana.' });
+
+  let title, status = null, bar = null;
+  if(view.source === 'none'){
+    title = h('h3', { class:'tf-title', id:'pl-title', text:'Sem meta registrada nesta semana' });
+    status = h('p', { class:'tf-reason', text: realized > 0 ? `Você estudou ${fmtDuration(realized)} nessa semana.` : 'Nenhum estudo registrado nessa semana.' });
+  } else if(view.kind === 'future'){
+    title = h('h3', { class:'tf-title', id:'pl-title' }, 'Meta: ', h('span', { class:'num', text: fmtDuration(goal) }), ' na semana');
+    status = h('p', { class:'tf-reason', text:'A semana ainda não começou. Qualquer estudo dela vai contar para a meta.' });
+  } else {
+    title = h('h3', { class:'tf-title wk-goal-t', id:'pl-title' },
+      h('span', { class:'num wk-goal-done', text: fmtDuration(realized) }),
+      h('span', { class:'wk-goal-of', text:' de ' }),
+      h('span', { class:'num', text: fmtDuration(goal) }));
+    let text;
+    if(g.reached) text = view.kind === 'past'
+      ? 'Meta da semana alcançada' + (g.extra >= 1 ? ` · ${fmtDuration(g.extra)} além da meta` : '')
+      : 'Meta semanal concluída' + (g.extra >= 1 ? ` · ${fmtDuration(g.extra)} além da meta` : '');
+    else text = view.kind === 'past' ? `${fmtDuration(realized)} estudadas de uma meta de ${fmtDuration(goal)}` : `Faltam ${fmtDuration(g.remaining)} para sua meta semanal`;
+    status = h('p', { class:'tf-reason wk-goal-s' + (g.reached ? ' is-done' : ''), text });
+    bar = h('div', { class:'nr-bar wk-goal-bar' }, progressBar(clamp(g.pct || 0, 0, 100), g.reached ? 'done' : null, 'plan-week-' + view.ws),
+      h('span', { class:'nr-value num', text: g.reached ? 'Concluída' : fmtPct(g.pct || 0) }));
   }
+
   return h('section', { class:'focus-block compact wk-head', 'aria-labelledby':'pl-title' },
-    h('p', { class:'tf-eyebrow', text: eyebrow }),
-    title, line,
-    h('div', { class:'tf-actions' },
-      h('button', { class:'btn primary', type:'button', text:'Ajustar metas', onclick:() => { ui.planEditing = true; ui.planDraft = null; renderPlan(); } }),
-      h('button', { class:'linkbtn muted', type:'button', text: state.plans.length > 1 ? `Seus planos (${state.plans.length})` : 'Criar outro plano', onclick: openPlansDrawer })));
+    h('div', { class:'wk-head-main' },
+      h('p', { class:'tf-eyebrow', text: eyebrow }),
+      title, status, bar,
+      h('p', { class:'wk-head-note', text:'Qualquer estudo da semana conta para a meta — de qualquer disciplina, em qualquer dia.' }),
+      h('div', { class:'tf-actions' },
+        view.kind !== 'past' ? h('button', { class:'btn primary', type:'button', 'data-fk':'wk-goal', text:'Alterar meta', onclick:() => openWeekGoalModal(view) }) : null,
+        h('button', { class:'btn ghost', type:'button', text:'Personalizar distribuição', onclick:() => { ui.planEditing = true; ui.planDraft = null; renderPlan(); } }),
+        h('button', { class:'linkbtn muted', type:'button', text: state.plans.length > 1 ? `Seus planos (${state.plans.length})` : 'Criar outro plano', onclick: openPlansDrawer }))),
+    planUsage(view, prog));
+}
+
+/**
+ * "Como o tempo foi usado": o tempo REAL de cada disciplina na semana (inclusive
+ * das que não estavam na sugestão). Comparar com a sugestão é opcional e
+ * informativo — o traço marca a sugestão, sem cores de acerto ou erro.
+ */
+function planUsage(view, prog){
+  if(view.kind === 'future') return null;
+  const goals = view.goals;
+  const ids = new Set();
+  prog.realWeek.forEach((m, id) => { if(m > 0) ids.add(id); });
+  const rows = Array.from(ids).map(id => ({ id, real: prog.realWeek.get(id) || 0, sug: goals.get(id) || 0 }))
+    .sort((a, b) => (b.real - a.real) || (b.sug - a.sug) || str(disciplineName(a.id)).localeCompare(str(disciplineName(b.id)), 'pt-BR'));
+  const box = h('div', { class:'wk-usage', role:'group', 'aria-labelledby':'wk-usage-t' });
+  const head = h('div', { class:'wk-usage-head' }, h('h4', { class:'wk-usage-t', id:'wk-usage-t', text:'Como o tempo foi usado' }));
+  box.append(head);
+  if(!rows.length){
+    box.append(h('p', { class:'hint', text: view.kind === 'past' ? 'Nenhum estudo registrado nessa semana.' : 'Assim que você registrar estudos, eles aparecem aqui, por disciplina.' }));
+    return box;
+  }
+  const compare = !!ui.planCompare && rows.some(r => r.sug > 0);
+  if(Array.from(goals.values()).some(v => v > 0)){
+    head.append(h('button', { class:'linkbtn muted', type:'button', 'aria-pressed': compare ? 'true' : 'false', 'data-fk':'wk-compare',
+      text: compare ? 'Esconder a sugestão' : 'Comparar com a sugestão',
+      onclick:() => { ui.planCompare = !ui.planCompare; PlanBoard.focusAfter = 'wk-compare'; renderPlan(); } }));
+  }
+  const mx = Math.max(1, ...rows.map(r => Math.max(r.real, compare ? r.sug : 0)));
+  const LIMIT = 6;
+  const shown = ui.planUsageAll ? rows : rows.slice(0, LIMIT);
+  const list = h('ul', { class:'wk-usage-list' });
+  shown.forEach(r => {
+    const name = disciplineName(r.id);
+    const val = fmtDuration(r.real) + (compare && r.sug > 0 ? ` · sugestão ${fmtDuration(r.sug)}` : (compare ? ' · fora da sugestão' : ''));
+    list.append(h('li', { class:'wk-usage-row', role:'img', 'aria-label': `${name}: ${val}` },
+      h('span', { class:'wu-name', text:name, title:name }),
+      h('span', { class:'wu-track', 'aria-hidden':'true' },
+        h('span', { class:'wu-fill', style:`width:${(r.real / mx) * 100}%` }),
+        compare && r.sug > 0 ? h('span', { class:'wu-mark', style:`left:${Math.min(100, (r.sug / mx) * 100)}%` }) : null),
+      h('span', { class:'wu-v num', text: val })));
+  });
+  box.append(list);
+  if(rows.length > LIMIT) box.append(h('button', { class:'linkbtn muted', type:'button', 'aria-expanded': ui.planUsageAll ? 'true' : 'false',
+    text: ui.planUsageAll ? 'Mostrar menos' : `Mostrar todas (${rows.length})`, onclick:() => { ui.planUsageAll = !ui.planUsageAll; renderPlan(); } }));
+  if(compare) box.append(h('p', { class:'hint wk-usage-note', text:'O traço marca a sugestão. Estudar mais de uma e menos de outra é normal: a meta da semana é o tempo total.' }));
+  return box;
+}
+
+/** "Alterar meta": quantas horas por semana. Vale para esta semana e as próximas; semanas passadas nunca mudam. */
+function openWeekGoalModal(view){
+  const plan = PlannerEngine.activePlan();
+  if(!plan) return;
+  const cur = planWeekGoal(view) || plan.weeklyAvailableMinutes || 300;
+  let minutes = cur;
+  openModal(close => {
+    const presets = [120, 180, 300, 480, 600, 900];
+    const custom = h('input', { type:'number', class:'no-spin', id:'wg-h', min:'0.5', max:'100', step:'0.5', inputmode:'decimal',
+      value: presets.includes(cur) ? '' : String(Math.round(cur / 60 * 100) / 100), placeholder:'horas', 'aria-label':'Outro valor, em horas' });
+    const chips = h('div', { class:'chips', role:'group', 'aria-labelledby':'wg-l' });
+    const draw = () => $$('.chip', chips).forEach(c => c.setAttribute('aria-pressed', !custom.value && Number(c.dataset.v) === minutes ? 'true' : 'false'));
+    presets.forEach(v => chips.append(h('button', { class:'chip', type:'button', 'data-v':String(v), text: fmtDuration(v),
+      onclick:() => { minutes = v; custom.value = ''; custom.removeAttribute('aria-invalid'); draw(); drawNote(); } })));
+    custom.addEventListener('input', () => { const n = Number(custom.value); minutes = custom.value && n > 0 ? Math.round(n * 60) : (custom.value ? NaN : cur); custom.removeAttribute('aria-invalid'); draw(); drawNote(); });
+    const redistribute = h('input', { type:'checkbox', id:'wg-redist', checked:true });
+    const note = h('p', { class:'hint', 'aria-live':'polite' });
+    const drawNote = () => {
+      note.textContent = isNum(minutes) && minutes > 0
+        ? (redistribute.checked ? `A sugestão por disciplina é refeita para ${fmtDuration(minutes)}, pela prioridade de cada uma.` : 'A sugestão por disciplina continua como está.')
+        : '';
+    };
+    redistribute.addEventListener('change', drawNote);
+    draw(); drawNote();
+    return {
+      title:'Meta semanal',
+      content: h('div', { class:'wg' },
+        h('p', { class:'modal-sub', text:'Quanto tempo você quer estudar por semana, no total? Qualquer estudo conta, de qualquer disciplina.' }),
+        h('div', { class:'field' }, h('span', { class:'pick-label', id:'wg-l', text:'Horas por semana' }), chips,
+          h('div', { class:'be-custom' }, h('label', { for:'wg-h', text:'Outro valor' }), custom, h('span', { class:'split-unit', text:'h' }))),
+        h('label', { class:'check-row', for:'wg-redist' }, redistribute, h('span', { text:'Refazer a sugestão de distribuição para a nova meta' })),
+        note,
+        h('p', { class:'hint', text:'Vale para esta semana e para as próximas. Semanas que já passaram nunca mudam.' })),
+      actions:[
+        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
+        h('button', { class:'btn primary', type:'button', text:'Salvar meta', onclick: once(async () => {
+          if(!(isNum(minutes) && minutes >= 15 && minutes <= 6000)){ custom.setAttribute('aria-invalid', 'true'); custom.focus(); toast('Use uma meta entre 15 minutos e 100 horas por semana.', 'err'); return; }
+          const next = Object.assign({}, plan, { weeklyAvailableMinutes: minutes });
+          if(redistribute.checked){
+            const base = (plan.allocations || []).filter(a => (a.targetMinutes || 0) > 0 && getDiscipline(a.disciplineId) && !getDiscipline(a.disciplineId).archived);
+            const list = base.length ? base : activeDisciplines().map(d => ({ disciplineId:d.id, priority:d.priority, minWeeklyMinutes:0 }));
+            const res = PlannerEngine.generatePlan(minutes, list.map(a => ({ disciplineId:a.disciplineId, priority: (getDiscipline(a.disciplineId) || {}).priority || a.priority, minWeeklyMinutes: a.minWeeklyMinutes || 0 })));
+            const keep = new Map(res.allocations.map(a => [a.disciplineId, a]));
+            next.allocations = (plan.allocations || []).filter(a => !keep.has(a.disciplineId)).map(a => ({ ...a, targetMinutes:0 })).concat(res.allocations);
+          }
+          const ws = dateToISO(startOfWeek(today()));
+          let res;
+          try { res = await PlanCommands.saveActive(next, { id: ws, weekStart: ws }, { baseUpdatedAt: plan.updatedAt || null }); }
+          catch(err){ console.error('Falha ao salvar a meta:', err); res = { ok:false }; }
+          if(res && !res.ok && res.reason === 'conflict'){
+            const keep = await confirmModal('O plano foi alterado em outra aba. Salvar a nova meta por cima dessa alteração?', { title:'Os dados mudaram em outra aba.', confirmLabel:'Salvar a meta', danger:false });
+            if(!keep){ close(); await safeRefresh(); return; }
+            try { res = await PlanCommands.saveActive(next, { id: ws, weekStart: ws }, { force:true }); } catch(err){ console.error(err); res = { ok:false }; }
+          }
+          if(!res || !res.ok){ toast('Tente novamente. A meta anterior continua valendo.', 'err', { title:'Não foi possível salvar a meta' }); return; }
+          close();
+          ui.planDraft = null;
+          PlanBoard.focusAfter = 'wk-goal';
+          await safeRefresh();
+          toast(`${fmtDuration(minutes)} por semana, a partir desta semana.`, 'ok', { title:'Meta semanal atualizada' });
+        }) })
+      ]
+    };
+  }, { size:'narrow' });
 }
 
 /* ---------- 2. qual semana ---------- */
@@ -10134,16 +10930,17 @@ function planWeekNotices(view, prog){
   prog.disc.forEach((x, id) => {
     const d = getDiscipline(id);
     if(!d || x.over <= 0 || view.keepExtra.has(id)) return;
+    // v6.8: a sugestão por disciplina é referência — o aviso só aponta a diferença e oferece caminhos
     const text = x.goal > 0
-      ? `Você distribuiu ${fmtDuration(x.scheduled)} de ${d.name}, mas a meta semanal é de ${fmtDuration(x.goal)}.`
-      : `Você distribuiu ${fmtDuration(x.scheduled)} de ${d.name} nesta semana, mas ela não tem meta semanal no plano.`;
+      ? `Você colocou ${fmtDuration(x.scheduled)} de ${d.name} nos dias, e a sugestão é de ${fmtDuration(x.goal)}.`
+      : `Você colocou ${fmtDuration(x.scheduled)} de ${d.name} nos dias, e ela não está na sugestão.`;
     items.push(h('li', { class:'wk-notice' },
       h('p', { class:'wk-notice-t', text }),
       h('div', { class:'wk-notice-a' },
         h('button', { class:'btn ghost sm', type:'button', text:'Ajustar os blocos', onclick:() => openAdjustBlocks(view, id) }),
-        h('button', { class:'btn ghost sm', type:'button', text: x.goal > 0 ? `Mudar a meta para ${fmtDuration(x.scheduled)}` : `Criar meta de ${fmtDuration(x.scheduled)}`,
+        h('button', { class:'btn ghost sm', type:'button', text: x.goal > 0 ? `Sugerir ${fmtDuration(x.scheduled)}` : `Incluir com ${fmtDuration(x.scheduled)}`,
           onclick:() => openGoalUpdate(view, id, x.scheduled) }),
-        h('button', { class:'linkbtn muted', type:'button', text:'Manter assim', title:'A programação extra é intencional nesta semana',
+        h('button', { class:'linkbtn muted', type:'button', text:'Manter assim', title:'A diferença é intencional nesta semana',
           onclick:() => runWeekOp(force => WeekCommands.keepExtra(view.ws, view.rev, id, { force }), {
             done:() => toast('O aviso não aparece mais nesta semana.', 'ok', { title:`${d.name}: programação mantida` }) }) }))));
   });
@@ -10151,18 +10948,39 @@ function planWeekNotices(view, prog){
   return h('section', { class:'wk-notices', 'aria-label':'Avisos da semana' }, h('ul', { class:'wk-notice-list' }, items));
 }
 
-/* ---------- 4. disciplinas ---------- */
+/* ---------- 4. sugestão de organização (as disciplinas da semana) ---------- */
+/**
+ * v6.8 — "Sugestão de organização": como dividir a meta entre as disciplinas.
+ * Cards compactos (nome · prioridade · tópicos · sugestão), ajuste rápido da
+ * sugestão sem uma sequência de janelas, e as mesmas ações de antes para pôr
+ * a disciplina num dia (arrastar, menu, teclado). Disciplinas fora da sugestão
+ * entram por "Adicionar disciplina", com busca.
+ */
 function planTray(view, prog){
-  const discs = activeDisciplines().slice().sort((a, b) => ((view.goals.get(b.id) || 0) - (view.goals.get(a.id) || 0)) || sortByName(a, b));
+  const goal = planWeekGoal(view);
+  const sugTotal = sum(Array.from(view.goals.values()));
+  const inPlan = activeDisciplines().filter(d => (view.goals.get(d.id) || 0) > 0 || ((prog.disc.get(d.id) || {}).blocks || 0) > 0)
+    .sort((a, b) => ((view.goals.get(b.id) || 0) - (view.goals.get(a.id) || 0)) || sortByName(a, b));
+  // sem sugestão nenhuma ainda: todas aparecem (é o ponto de partida para arrastar para os dias)
+  const discs = inPlan.length ? inPlan : activeDisciplines().slice().sort(sortByName);
   const LIMIT = 10;
   const shown = ui.planTrayAll ? discs : discs.slice(0, LIMIT);
-  const list = h('ul', { class:'tray-list', 'aria-label':'Disciplinas' });
+  const list = h('ul', { class:'tray-list', 'aria-label':'Disciplinas da sugestão' });
   shown.forEach(d => list.append(h('li', { class:'tray-item' }, trayCard(view, prog, d))));
+  const outside = activeDisciplines().filter(d => !discs.includes(d));
+  let sub;
+  if(sugTotal > 0 && goal > 0) sub = sugTotal === goal ? `Uma sugestão para distribuir suas ${fmtDuration(goal)}.`
+    : `Uma sugestão para distribuir suas ${fmtDuration(goal)} (a sugestão soma ${fmtDuration(sugTotal)}).`;
+  else sub = 'Escolha quanto sugerir para cada disciplina, se quiser. A meta da semana não depende disso.';
   const head = h('div', { class:'tray-head' },
-    h('h3', { class:'block-label', id:'tray-t' }, 'Disciplinas', helpDot('semanadias')),
+    h('div', { class:'tray-head-t' },
+      h('h3', { class:'block-label', id:'tray-t' }, 'Sugestão de organização', helpDot('semanadias')),
+      h('p', { class:'tray-sub', text: sub })),
     h('p', { class:'tray-hint' },
-      h('span', { class:'th-drag', text:'Arraste para um dia da semana — ou use "Colocar em um dia".' }),
-      h('span', { class:'th-touch', text:'Use "Colocar em um dia" em cada disciplina.' })));
+      h('span', { class:'th-drag', text:'Arraste para um dia — ou use "Colocar em um dia".' }),
+      h('span', { class:'th-touch', text:'Use "Colocar em um dia" em cada disciplina.' })),
+    view.editable && (outside.length || inPlan.length) ? h('button', { class:'btn ghost sm tray-add', type:'button', 'data-fk':'tray-add',
+      onclick:() => openSuggestionPicker(view) }, icon('i-plus'), 'Adicionar disciplina') : null);
   const more = discs.length > LIMIT ? h('button', { class:'linkbtn muted tray-more', type:'button', 'aria-expanded': ui.planTrayAll ? 'true' : 'false',
     text: ui.planTrayAll ? 'Mostrar menos' : `Mostrar todas (${discs.length})`, onclick:() => { ui.planTrayAll = !ui.planTrayAll; renderPlan(); } }) : null;
   const drop = h('div', { class:'tray-drop', 'aria-hidden':'true' }, icon('i-close', 'btn-icon'), h('span', { text:'Solte aqui para tirar do dia' }));
@@ -10171,27 +10989,116 @@ function planTray(view, prog){
 
 function trayCard(view, prog, d){
   const x = prog.disc.get(d.id) || { goal:0, scheduled:0, realized:0, unscheduled:0, blocks:0, loose:0 };
+  const real = prog.realWeek.get(d.id) || 0;
   const n = topicsOf(d.id).length;
-  const done = x.goal > 0 && x.realized >= x.goal;
+  const sug = x.goal || 0;
   let left;
-  if(x.goal > 0 && x.unscheduled > 0) left = `${fmtDuration(x.unscheduled)} ainda sem dia definido`;
-  else if(x.goal > 0) left = 'Toda a meta já tem dia';
-  else left = x.blocks ? plural(x.blocks, 'dia escolhido', 'dias escolhidos') : 'Sem meta nesta semana';
+  if(sug > 0 && x.unscheduled > 0) left = `${fmtDuration(x.unscheduled)} ainda sem dia`;
+  else if(sug > 0 && x.blocks) left = 'Toda a sugestão já tem dia';
+  else left = x.blocks ? plural(x.blocks, 'dia escolhido', 'dias escolhidos') : 'Sem dia definido';
   const days = view.dates.map(iso => ({ label: WeekPlan.dayLong(iso) + (WeekPlan.isStudyDay(iso) ? '' : ' (fora dos dias de estudo)'),
     run: () => planAddBlock(view, d.id, iso) }));
-  return h('div', { class:'tray-card' + (done ? ' is-done' : ''), 'data-drag':'disc', 'data-disc':d.id },
+  const sugBtn = view.editable
+    ? h('button', { class:'tc-sug', type:'button', 'data-fk':'tc-sug-' + d.id, 'aria-label': `Sugestão para ${d.name}: ${sug > 0 ? fmtDuration(sug) : 'nenhuma'}. Ajustar`,
+        onclick:() => openSuggestionEditor(view, d.id) },
+        h('span', { class:'tc-sug-l', text:'Sugestão' }), h('span', { class:'tc-sug-v num', text: sug > 0 ? fmtDuration(sug) : '—' }), icon('i-chev', 'btn-icon tc-sug-ic'))
+    : h('span', { class:'tc-sug is-static' }, h('span', { class:'tc-sug-l', text:'Sugestão' }), h('span', { class:'tc-sug-v num', text: sug > 0 ? fmtDuration(sug) : '—' }));
+  return h('div', { class:'tray-card', 'data-drag': view.editable ? 'disc' : null, 'data-disc':d.id },
     h('div', { class:'tc-top' },
-      h('span', { class:'tc-grip', 'aria-hidden':'true' }, icon('i-grip', 'btn-icon')),
-      h('span', { class:'tc-name', text:d.name, title:d.name }),
-      priorityMark(d.priority, { compact:true })),
+      view.editable ? h('span', { class:'tc-grip', 'aria-hidden':'true' }, icon('i-grip', 'btn-icon')) : null,
+      h('span', { class:'tc-name', text:d.name, title:d.name })),
     h('p', { class:'tc-sub' },
-      h('span', { class:'num', text: x.goal > 0 ? `${fmtDuration(x.goal)} na semana` : 'Sem meta' }),
+      h('span', { text:`Prioridade ${PriorityEngine.clamp(d.priority)}` }),
       h('span', { class:'tc-dot', 'aria-hidden':'true', text:'·' }),
       h('span', { text: plural(n, 'tópico', 'tópicos') })),
-    x.goal > 0 ? h('div', { class:'tc-bar', title:`Estudado: ${fmtDuration(x.realized)} de ${fmtDuration(x.goal)}` },
-      progressBar(Math.min(100, x.realized / x.goal * 100), done ? 'done' : null, 'tray-' + view.ws + '-' + d.id)) : null,
-    h('p', { class:'tc-left' + (x.goal > 0 && x.unscheduled > 0 ? ' is-open' : ''), text: done ? 'Meta da semana cumprida' : left }),
-    menuButton('Colocar em um dia', days, { className:'linkbtn tc-add', icon:'i-plus', ariaLabel:`Colocar ${d.name} em um dia`, fk:'tc-' + d.id }));
+    h('div', { class:'tc-mid' }, sugBtn,
+      h('span', { class:'tc-real num', title:'Estudado nesta semana', text: real > 0 ? `${fmtDuration(real)} estudadas` : '' })),
+    view.editable ? h('p', { class:'tc-left' + (sug > 0 && x.unscheduled > 0 ? ' is-open' : ''), text: left }) : null,
+    view.editable ? menuButton('Colocar em um dia', days, { className:'linkbtn tc-add', icon:'i-plus', ariaLabel:`Colocar ${d.name} em um dia`, fk:'tc-' + d.id }) : null);
+}
+
+/** Ajuste rápido da sugestão de UMA disciplina: valores prontos, outro valor, ou tirar da sugestão. */
+function openSuggestionEditor(view, disciplineId, opts){
+  const d = getDiscipline(disciplineId);
+  if(!d || !view.editable) return;
+  const o = opts || {};
+  const cur = view.goals.get(disciplineId) || 0;
+  let minutes = cur > 0 ? cur : 60;
+  openModal(close => {
+    const presets = [30, 60, 90, 120, 180, 240];
+    const custom = h('input', { type:'number', class:'no-spin', id:'sg-min', min:'5', max:'6000', step:'5', inputmode:'numeric', placeholder:'min',
+      value: presets.includes(minutes) ? '' : String(minutes), 'aria-label':'Outro valor, em minutos' });
+    const chips = h('div', { class:'chips', role:'group', 'aria-labelledby':'sg-l' });
+    const draw = () => $$('.chip', chips).forEach(c => c.setAttribute('aria-pressed', !custom.value && Number(c.dataset.v) === minutes ? 'true' : 'false'));
+    presets.forEach(v => chips.append(h('button', { class:'chip', type:'button', 'data-v':String(v), text: fmtDuration(v),
+      onclick:() => { minutes = v; custom.value = ''; custom.removeAttribute('aria-invalid'); draw(); } })));
+    custom.addEventListener('input', () => { const n = Math.round(Number(custom.value)); minutes = custom.value && n > 0 ? n : (custom.value ? NaN : (cur || 60)); custom.removeAttribute('aria-invalid'); draw(); });
+    draw();
+    const valid = () => isNum(minutes) && minutes >= 5 && minutes <= 6000;
+    const run = (alsoPlan, value) => once(async () => {
+      const m = value === 0 ? 0 : minutes;
+      if(value !== 0 && !valid()){ custom.setAttribute('aria-invalid', 'true'); custom.focus(); toast('Use um valor entre 5 minutos e 100 horas.', 'err'); return; }
+      await runWeekOp(force => WeekCommands.withPlan(view.ws, view.rev, 'goal', { disciplineId, minutes:m, alsoPlan }, { force }), {
+        close, focus: () => m > 0 ? 'tc-sug-' + disciplineId : 'tray-add',
+        done: () => toast(alsoPlan ? 'Vale para esta semana e para as próximas. A meta semanal não muda.' : 'Vale só para esta semana. A meta semanal não muda.', 'ok',
+          { title: m > 0 ? `Sugestão para ${d.name}: ${fmtDuration(m)}` : `${d.name} saiu da sugestão` }) });
+    });
+    const topics = topicsOf(d.id).length;
+    return {
+      title: o.adding ? `Sugerir ${d.name}` : `Sugestão para ${d.name}`,
+      content: h('div', { class:'sg' },
+        h('p', { class:'modal-sub', text:`Prioridade ${PriorityEngine.text(d.priority)} · ${plural(topics, 'tópico', 'tópicos')}${cur > 0 ? ` · hoje a sugestão é ${fmtDuration(cur)}` : ''}` }),
+        h('div', { class:'field' }, h('span', { class:'pick-label', id:'sg-l', text:'Quanto sugerir por semana' }), chips,
+          h('div', { class:'be-custom' }, h('label', { for:'sg-min', text:'Outro valor' }), custom, h('span', { class:'split-unit', text:'min' }))),
+        h('p', { class:'hint', text:'É só uma referência para dividir a meta. Estudar mais ou menos desta disciplina não muda o cumprimento da meta semanal.' })),
+      actions:[
+        cur > 0 ? h('button', { class:'linkbtn danger', type:'button', text:'Tirar da sugestão', onclick: run(true, 0) }) : null,
+        h('button', { class:'btn ghost', type:'button', text:'Só nesta semana', onclick: run(false) }),
+        h('button', { class:'btn primary', type:'button', text:'Nesta e nas próximas', onclick: run(true) })
+      ].filter(Boolean)
+    };
+  }, { size:'narrow' });
+}
+
+/** "Adicionar disciplina" à sugestão: busca entre as disciplinas que ainda não estão nela. */
+function openSuggestionPicker(view){
+  const prog = WeekPlan.progress(view);
+  const outside = activeDisciplines().filter(d => !((view.goals.get(d.id) || 0) > 0) && !(((prog.disc.get(d.id) || {}).blocks || 0) > 0)).sort(sortByName);
+  if(!outside.length){
+    toast('Todas as suas disciplinas já estão na sugestão. Para criar outra, use Disciplinas.', 'info', { title:'Nada para adicionar' });
+    return;
+  }
+  openModal(close => {
+    const input = h('input', { type:'search', id:'sp-q', autocomplete:'off', spellcheck:'false', placeholder:'Buscar disciplina…', 'aria-label':'Buscar disciplina' });
+    const listBox = h('ul', { class:'sp-list', 'aria-label':'Disciplinas fora da sugestão' });
+    const draw = () => {
+      clear(listBox);
+      const terms = normalizeText(input.value).split(' ').filter(Boolean);
+      const hit = outside.filter(d => !terms.length || matchesTerms(normalizeText(d.name + ' ' + areaNameOf(d)), terms));
+      hit.slice(0, 60).forEach(d => listBox.append(h('li', null, h('button', { class:'sp-item', type:'button',
+          onclick:() => { close(); setTimeout(() => openSuggestionEditor(view, d.id, { adding:true }), 30); } },
+        h('span', { class:'sp-name' }, terms.length ? highlightMatch(d.name, input.value) : d.name),
+        h('span', { class:'sp-sub', text: `${areaNameOf(d)} · prioridade ${PriorityEngine.clamp(d.priority)} · ${plural(topicsOf(d.id).length, 'tópico', 'tópicos')}` })))));
+      if(!hit.length) listBox.append(h('li', { class:'sp-none', text:'Nenhuma disciplina encontrada.' }));
+    };
+    input.addEventListener('input', draw);
+    input.addEventListener('keydown', e => { if(e.key === 'ArrowDown'){ const f = listBox.querySelector('button'); if(f){ e.preventDefault(); f.focus(); } } });
+    listBox.addEventListener('keydown', e => {
+      const items = $$('button', listBox), i = items.indexOf(document.activeElement);
+      if(e.key === 'ArrowDown' && i >= 0){ e.preventDefault(); (items[i + 1] || items[i]).focus(); }
+      else if(e.key === 'ArrowUp' && i >= 0){ e.preventDefault(); (i > 0 ? items[i - 1] : input).focus(); }
+    });
+    draw();
+    return {
+      title:'Adicionar disciplina à sugestão',
+      content: h('div', { class:'sp' },
+        h('p', { class:'modal-sub', text:'Escolha a disciplina e, em seguida, quanto sugerir para ela por semana.' }),
+        outside.length >= 6 ? h('div', { class:'an-search' }, icon('i-search'), input) : null,
+        listBox),
+      actions:[ h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }) ],
+      focus: outside.length >= 6 ? input : null
+    };
+  }, { size:'narrow' });
 }
 
 /* ---------- 5. os dias ---------- */
@@ -10282,7 +11189,7 @@ function blockItem(view, prog, b){
   let status;
   if(p.planned){
     if(p.state === 'done') status = 'Concluído' + (p.extra >= 1 ? ` · ${fmtDurationWords(p.extra)} além do planejado` : '');
-    else if(p.state === 'partial') status = `${fmtDurationWords(p.used)} de ${fmtDuration(p.planned)} · faltam ${fmtDurationWords(p.planned - p.used)}`;
+    else if(p.state === 'partial') status = `${fmtDurationWords(p.used)} de ${fmtDuration(p.planned)}`;
     else status = p.state === 'idle' ? 'Sem estudo registrado' : 'Planejado';
   } else {
     status = p.used > 0 ? `Estudou ${fmtDurationWords(p.used)}` : (p.state === 'idle' ? 'Sem estudo registrado' : 'Planejado');
@@ -10652,13 +11559,13 @@ function openGoalUpdate(view, disciplineId, minutes){
     const run = (alsoPlan) => once(async () => {
       await runWeekOp(force => WeekCommands.withPlan(view.ws, view.rev, 'goal', { disciplineId, minutes, alsoPlan }, { force }), {
         close, done: () => toast(alsoPlan ? 'Vale para esta semana e para as próximas.' : 'Vale só para esta semana; o plano continua igual.', 'ok',
-          { title:`Meta de ${d.name}: ${fmtDuration(minutes)}` }) });
+          { title:`Sugestão para ${d.name}: ${fmtDuration(minutes)}` }) });
     });
     return {
-      title:`Meta de ${d.name}`,
+      title:`Sugestão para ${d.name}`,
       content: h('div',
-        h('p', { class:'modal-sub', text: goal > 0 ? `A meta semanal passa de ${fmtDuration(goal)} para ${fmtDuration(minutes)}, o tempo que você distribuiu nos dias.` : `${d.name} passa a ter uma meta de ${fmtDuration(minutes)} por semana.` }),
-        h('p', { class:'hint', text:'Semanas que já passaram nunca mudam.' })),
+        h('p', { class:'modal-sub', text: goal > 0 ? `A sugestão passa de ${fmtDuration(goal)} para ${fmtDuration(minutes)}, o tempo que você colocou nos dias.` : `${d.name} entra na sugestão com ${fmtDuration(minutes)} por semana.` }),
+        h('p', { class:'hint', text:'A meta semanal (o tempo total) não muda. Semanas que já passaram nunca mudam.' })),
       actions:[
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
         h('button', { class:'btn ghost', type:'button', text:'Só nesta semana', onclick: run(false) }),
@@ -11075,19 +11982,24 @@ const StudyStats = {
     if(key === this._key) return;
     this._key = key;
     const disc = new Map(), topic = new Map(), area = new Map();
-    const total = list => ({ min: sum(list, s => Number(s.minutes) || 0), n: list.length });
-    state.idx.sessionsByDisc.forEach((list, id) => disc.set(id, total(list)));
+    // v6.8: disciplina soma a PARTE dela em cada estudo (nunca o estudo inteiro de várias disciplinas)
+    state.idx.sessionsByDisc.forEach((list, id) => { const dm = discMinutesOf(id, list); disc.set(id, { min: dm.minutes, n: dm.count }); });
     // v6.7: tópico soma a PARTE dele em cada estudo (nunca o estudo inteiro de vários tópicos)
     state.idx.sessionsByTopic.forEach((list, id) => { const tm = topicMinutesOf(id, list); topic.set(id, { min: tm.minutes, n: tm.count }); });
-    // Área = soma das sessões das disciplinas que estão nela (arquivadas incluídas:
+    // Área = soma das partes das disciplinas que estão nela (arquivadas incluídas:
     // o histórico continua sendo da área). Área vazia = 0 e continua aparecendo.
-    state.disciplines.forEach(d => {
-      const st = disc.get(d.id);
-      if(!st) return;
-      const k = areaKeyOf(d);
-      const a = area.get(k) || { min:0, n:0 };
-      a.min += st.min; a.n += st.n;
-      area.set(k, a);
+    // Um estudo com duas disciplinas da mesma área conta UMA vez nessa área.
+    state.sessions.forEach(s => {
+      const touched = new Set();
+      SessionModel.discShares(s).forEach(x => {
+        const d = getDiscipline(x.disciplineId);
+        if(!d) return;
+        const k = areaKeyOf(d);
+        const a = area.get(k) || { min:0, n:0 };
+        a.min += x.minutes;
+        if(!touched.has(k)){ a.n++; touched.add(k); }
+        area.set(k, a);
+      });
     });
     this._disc = disc; this._topic = topic; this._area = area;
   },
@@ -12142,7 +13054,8 @@ function discDisciplineLevel(r){
     onCommit: v => setDisciplinePriority(d.id, v) }));
 
   parts.push(h('div', { class:'facts' },
-    fact(weekProg && weekProg.planned > 0 ? `${fmtDuration(weekRealized)} de ${fmtDuration(weekProg.planned)}` : fmtDuration(weekRealized), 'nesta semana'),
+    // v6.8: a parte da sugestão da semana é só referência — "1h de 2h sugeridas"
+    fact(weekProg && weekProg.planned > 0 ? `${fmtDuration(weekRealized)} de ${fmtDuration(weekProg.planned)}` : fmtDuration(weekRealized), weekProg && weekProg.planned > 0 ? 'nesta semana (sugestão)' : 'nesta semana'),
     fact(prog.coverage !== null ? fmtPct(prog.coverage) : '—', 'conteúdo estudado'),
     fact(capFirst(fmtRelativePast(lastStudyISO(d.id))), 'último estudo')));
 
@@ -12723,29 +13636,57 @@ async function toggleArchiveDiscipline(id){
 async function deleteDisciplineForever(id){
   const d = getDiscipline(id);
   if(!d) return;
-  const sess = sessionsOf(id).length, tps = topicsOf(id, true).length;
+  // v6.8: um estudo com outras disciplinas não é apagado — só perde a parte desta disciplina
+  const all = sessionsOf(id);
+  const only = all.filter(x => !SessionModel.isMulti(x)).length, shared = all.length - only;
+  const tps = topicsOf(id, true).length;
   const ok = await confirmModal(
-    `Excluir "${d.name}" DEFINITIVAMENTE apaga ${plural(sess, 'registro de estudo', 'registros de estudo')} e ${plural(tps, 'tópico', 'tópicos')}. Arquivar preserva tudo. Continuar mesmo assim?`,
+    `Excluir "${d.name}" DEFINITIVAMENTE apaga ${plural(only, 'registro de estudo', 'registros de estudo')} e ${plural(tps, 'tópico', 'tópicos')}` +
+    (shared ? `, e tira ${d.name} (com o tempo e os tópicos dela) de ${plural(shared, 'estudo feito', 'estudos feitos')} junto com outras disciplinas — eles continuam com as outras` : '') +
+    '. Arquivar preserva tudo. Continuar mesmo assim?',
     { confirmLabel:'Excluir definitivamente' });
   if(!ok) return;
   // Um estudo no cronômetro desta disciplina ficaria sem dono: resolve-se ele antes.
-  if(TimerService.isActive && TimerService.data.disciplineId === id){
+  if(TimerService.isActive && TimerService.discIds().includes(id)){
     toast('Finalize ou descarte o estudo em andamento desta disciplina antes de excluí-la.', 'err', { title:'Há um estudo em andamento' });
     return;
   }
   try {
-    /* v6.5 — o que será apagado é lido DENTRO da transação, pelos índices do
-       banco: um tópico ou estudo criado em outra aba um instante antes não
-       sobra órfão. Ou tudo sai, ou nada sai. */
+    /* v6.5 — o que será apagado é lido DENTRO da transação: um tópico ou estudo
+       criado em outra aba um instante antes não sobra órfão. Ou tudo sai, ou
+       nada sai. v6.8 — os estudos são lidos inteiros (não pelo índice, que só
+       conhece a primeira disciplina). Estudo só desta disciplina sai; estudo com
+       outras perde a parte desta (tempo, tópicos e resultados dela) e continua. */
     await DB.atomic(['disciplines','topics','sessions','deadlines'], async api => {
       const [tps2, sess2, dls] = [
         await api.getAllByIndex('topics', 'disciplineId', id),
-        await api.getAllByIndex('sessions', 'disciplineId', id),
+        await api.getAll('sessions'),
         await api.getAllByIndex('deadlines', 'disciplineId', id)
       ];
       api.delete('disciplines', id);
       tps2.forEach(t => api.delete('topics', t.id));
-      sess2.forEach(x => api.delete('sessions', x.id));
+      (sess2 || []).forEach(raw => {
+        if(!raw || typeof raw !== 'object') return;
+        const x = SessionModel.canon(raw);
+        if(!SessionModel.hasDiscipline(x, id)) return;
+        const rest = SessionModel.discShares(x).filter(sh => sh.disciplineId !== id);
+        if(!rest.length){ api.delete('sessions', x.id); return; }
+        const minutes = sum(rest, sh => sh.minutes);
+        if(!(minutes > 0)){ api.delete('sessions', x.id); return; }
+        const next = Object.assign({}, x, {
+          minutes,
+          disciplineEntries: x.disciplineEntries.filter(e => e.disciplineId !== id).map(e => Object.assign({}, e)),
+          topicEntries: x.topicEntries.filter(e => e.disciplineId !== id).map(e => Object.assign({}, e)),
+          updatedAt: nowISO()
+        });
+        next.disciplineId = next.disciplineEntries[0].disciplineId;
+        // o horário gravado era do estudo inteiro: com menos tempo, vale só a duração
+        const time = TimeRules.settle(next);
+        next.startedAt = time.startedAt; next.endedAt = time.endedAt; next.breaks = sanitizeBreaks(time.breaks);
+        SessionModel.settleAll(next.disciplineEntries, next.topicEntries, next.minutes);
+        if(!next.topicEntries.length && SessionModel.topicIds(x).length) next.reviewMethod = null;
+        api.put('sessions', next);
+      });
       dls.forEach(dl => api.delete('deadlines', dl.id));
     });
   } catch(err){
@@ -13394,31 +14335,54 @@ async function completeDeadline(id){ return setDeadlineStatus(id, 'completed'); 
    diretamente: toda mudança passa por applyAnalyticsQuery().
    ========================================================================= */
 const ANALYTICS_PRESETS = [
-  { v:'hoje',   label:'Hoje',            explain:'Só o dia de hoje.' },
-  { v:'semana', label:'Esta semana',     explain:'Os dias da semana atual.' },
-  { v:'7d',     label:'Últimos 7 dias',  explain:'Hoje e os seis dias anteriores.' },
-  { v:'mes',    label:'Este mês',        explain:'Do dia 1 ao último dia do mês atual.' },
-  { v:'30d',    label:'Últimos 30 dias', explain:'Hoje e os 29 dias anteriores.' },
-  { v:'tudo',   label:'Tudo',            explain:'Desde o primeiro estudo registrado até hoje.' }
+  { v:'hoje',   label:'Hoje',             explain:'Só o dia de hoje.' },
+  { v:'semana', label:'Esta semana',      explain:'Os dias da semana atual.' },
+  { v:'7d',     label:'Últimos 7 dias',   explain:'Hoje e os seis dias anteriores.' },
+  { v:'mes',    label:'Este mês',         explain:'Do dia 1 ao último dia do mês atual.' },
+  { v:'30d',    label:'Últimos 30 dias',  explain:'Hoje e os 29 dias anteriores.' },
+  { v:'90d',    label:'Últimos 90 dias',  explain:'Hoje e os 89 dias anteriores — cerca de três meses.' },
+  { v:'tudo',   label:'Todo o histórico', explain:'Desde o primeiro estudo registrado até hoje.' }
 ];
+/** Períodos oferecidos nas análises prontas (os outros continuam em "Personalizar"). */
+const READY_PERIODS = ['semana','7d','30d','90d','tudo'];
 const CUSTOM_PERIOD_EXPLAIN = 'Você escolhe o primeiro e o último dia.';
 
 const ANALYTICS_SCOPE_KINDS = [
   { v:'all',        label:'Todos os estudos', short:'Tudo o que você registrou.' },
-  { v:'area',       label:AREA_TERM,          short:'Um grupo de disciplinas, como Faculdade ou Idiomas.' },
-  { v:'discipline', label:'Disciplina',       short:'Uma matéria ou campo que você estuda.' },
-  { v:'topic',      label:'Tópico',           short:'Uma parte específica de uma disciplina.' }
+  { v:'discipline', label:'Disciplinas',      short:'Uma ou mais disciplinas.' },
+  { v:'topic',      label:'Tópicos',          short:'Um ou mais tópicos, de qualquer disciplina.' },
+  { v:'area',       label:AREA_TERM,          short:'Um grupo de disciplinas, como Faculdade ou Idiomas.' }
 ];
 
+/* v6.8 — o que ver. Cada foco é uma forma de LER a mesma análise (o motor é um
+   só): muda a pergunta, a resposta principal, os números e o gráfico. */
 const ANALYTICS_FOCUS = [
-  { v:'overview',  label:'Visão geral',        short:'Um resumo do período.' },
-  { v:'time',      label:'Tempo e constância', short:'Quanto e com que frequência você estudou.' },
-  { v:'planning',  label:'Planejamento',       short:'Planejado e realizado.' },
-  { v:'reviews',   label:'Revisões',           short:'O que você revisou e o que precisa de atenção.' },
-  { v:'content',   label:'Conteúdo',           short:'O que avançou e o que ainda falta.' },
-  { v:'deadlines', label:'Prazos',             short:'Datas importantes relacionadas aos estudos.' }
+  { v:'overview',     label:'Visão geral',         short:'Um resumo do período.',                       question:'Como foram meus estudos?' },
+  { v:'time',         label:'Tempo de estudo',     short:'Quanto você estudou e como evoluiu.',         question:'Quanto estudei?' },
+  { v:'consistency',  label:'Constância',          short:'Em quantos dias você estudou.',               question:'Em quantos dias estudei?' },
+  { v:'distribution', label:'Disciplinas',         short:'Onde o tempo foi investido.',                 question:'Onde meu tempo foi investido?' },
+  { v:'topics',       label:'Tópicos',             short:'Quais assuntos receberam mais atenção.',      question:'Quais assuntos receberam mais atenção?' },
+  { v:'types',        label:'Tipos de estudo',     short:'Teoria, exercícios, revisão…',                question:'Como eu estudo?' },
+  { v:'rest',         label:'Descansos',           short:'Quanto e quantas vezes você descansou.',      question:'Quanto descansei?' },
+  { v:'planning',     label:'Meta semanal',        short:'O tempo estudado diante da meta.',            question:'Quanto estudei em relação à meta?' },
+  { v:'reviews',      label:'Revisões',            short:'O que você revisou e o que vem por aí.',      question:'Como estão minhas revisões?' },
+  { v:'content',      label:'Conteúdo',            short:'O que avançou e o que ainda falta.',          question:'Quanto do conteúdo já estudei?' },
+  { v:'deadlines',    label:'Prazos',              short:'Datas importantes ligadas aos estudos.',      question:'O que vem pela frente?' }
 ];
 function focusInfo(v){ return ANALYTICS_FOCUS.find(f => f.v === v) || ANALYTICS_FOCUS[0]; }
+
+/* v6.8 — ANÁLISES PRONTAS: atalhos que configuram a MESMA consulta (escopo,
+   período e foco). Nenhuma tem cálculo próprio. */
+const ANALYTICS_READY = [
+  { id:'tempo',      focus:'time',         icon:'i-today',      title:'Meu tempo de estudo', desc:'Quanto você estudou e como isso mudou.' },
+  { id:'constancia', focus:'consistency',  icon:'i-plan',       title:'Minha constância',     desc:'Veja em quantos dias você estudou.' },
+  { id:'disciplinas',focus:'distribution', icon:'i-pie',        title:'Minhas disciplinas',   desc:'Entenda onde seu tempo foi investido.' },
+  { id:'topicos',    focus:'topics',       icon:'i-disc',       title:'Meus tópicos',         desc:'Quais assuntos receberam mais atenção.' },
+  { id:'revisoes',   focus:'reviews',      icon:'i-review',     title:'Minhas revisões',      desc:'O que foi revisado e o que vem por aí.' },
+  { id:'meta',       focus:'planning',     icon:'i-target',     title:'Minha meta semanal',   desc:'O tempo estudado diante da meta.' },
+  { id:'como',       focus:'types',        icon:'i-t-theory',   title:'Como estudo',          desc:'Teoria, exercícios, revisão e outros.' },
+  { id:'descansos',  focus:'rest',         icon:'i-pause',      title:'Meus descansos',       desc:'Quanto e quantas vezes você descansou.' }
+];
 
 function presetRange(preset){
   const t = today();
@@ -13426,6 +14390,7 @@ function presetRange(preset){
     case 'hoje':   return { start:t, end:t };
     case '7d':     return { start:addDays(t,-6), end:t };
     case '30d':    return { start:addDays(t,-29), end:t };
+    case '90d':    return { start:addDays(t,-89), end:t };
     case 'semana': return { start:startOfWeek(t), end:endOfWeek(t) };
     case 'mes':    return { start:startOfMonth(t), end:endOfMonth(t) };
     case 'tudo': {
@@ -13440,16 +14405,22 @@ function presetRange(preset){
 function validPreset(p){ return ANALYTICS_PRESETS.some(x => x.v === p) ? p : 'semana'; }
 
 /* ---------- a consulta ---------- */
+/**
+ * { scopeType, scopeIds:[…], types:[…], periodPreset, startDate, endDate, focus }
+ * v6.8: `scopeIds` (vários) e `types` (filtro). `scopeId` continua aceito e é
+ * devolvido como o primeiro de `scopeIds` (consultas guardadas por versões anteriores).
+ */
 function defaultAnalyticsQuery(){
-  return { scopeType:'all', scopeId:null, periodPreset: validPreset(state.settings.defaultPeriod),
+  return { scopeType:'all', scopeId:null, scopeIds:[], types:[], periodPreset: validPreset(state.settings.defaultPeriod),
            startDate:null, endDate:null, focus:'overview' };
 }
 /** Saneia uma consulta vinda da interface ou da memória. Nunca lança. */
 function normalizeAnalyticsQuery(raw){
   const q = Object.assign(defaultAnalyticsQuery(), raw || {});
   if(!ANALYTICS_SCOPE_KINDS.some(k => k.v === q.scopeType)) q.scopeType = 'all';
-  if(q.scopeType === 'all') q.scopeId = null;
-  q.scopeId = q.scopeId ? String(q.scopeId) : null;
+  let ids = Array.isArray(q.scopeIds) && q.scopeIds.length ? q.scopeIds : (q.scopeId ? [q.scopeId] : []);
+  ids = ids.map(x => String(x)).filter((x, i, arr) => x && arr.indexOf(x) === i).slice(0, 40);
+  if(q.scopeType === 'all') ids = [];
   if(q.periodPreset !== 'custom') q.periodPreset = validPreset(q.periodPreset);
   if(q.periodPreset === 'custom'){
     q.startDate = parseISO(q.startDate) ? String(q.startDate).slice(0, 10) : null;
@@ -13457,7 +14428,8 @@ function normalizeAnalyticsQuery(raw){
     if(q.startDate && q.endDate && q.startDate > q.endDate){ const x = q.startDate; q.startDate = q.endDate; q.endDate = x; }
   } else { q.startDate = null; q.endDate = null; }
   if(!ANALYTICS_FOCUS.some(f => f.v === q.focus)) q.focus = 'overview';
-  return { scopeType:q.scopeType, scopeId:q.scopeId, periodPreset:q.periodPreset, startDate:q.startDate, endDate:q.endDate, focus:q.focus };
+  return { scopeType:q.scopeType, scopeId: ids[0] || null, scopeIds: ids, types: SessionModel.cleanTypes(q.types),
+           periodPreset:q.periodPreset, startDate:q.startDate, endDate:q.endDate, focus:q.focus };
 }
 function analyticsQueryRange(q){
   if(q.periodPreset === 'custom' && q.startDate && q.endDate) return { start: parseISO(q.startDate), end: parseISO(q.endDate) };
@@ -13465,10 +14437,12 @@ function analyticsQueryRange(q){
 }
 /** Consulta → escopo bruto que o AnalyticsScope entende. */
 function analyticsQueryScope(q){
-  if(q.scopeType === 'area') return { type:'area', areaId:q.scopeId };
-  if(q.scopeType === 'discipline') return { type:'discipline', disciplineId:q.scopeId };
-  if(q.scopeType === 'topic') return { type:'topic', topicId:q.scopeId };
-  return { type:'all' };
+  const ids = q.scopeIds && q.scopeIds.length ? q.scopeIds : (q.scopeId ? [q.scopeId] : []);
+  const types = q.types && q.types.length ? q.types.slice() : null;
+  if(q.scopeType === 'area') return { type:'area', ids, areaId: ids[0] || null, types };
+  if(q.scopeType === 'discipline') return { type:'discipline', ids, disciplineId: ids[0] || null, types };
+  if(q.scopeType === 'topic') return { type:'topic', ids, topicId: ids[0] || null, types };
+  return { type:'all', types };
 }
 function analyticsPeriodLabel(q){
   const p = ANALYTICS_PRESETS.find(x => x.v === q.periodPreset);
@@ -13477,8 +14451,9 @@ function analyticsPeriodLabel(q){
 /** O que ainda falta escolher (null = pronta para gerar). */
 function analyticsQueryMissing(q){
   if(q.scopeType !== 'all'){
-    if(!q.scopeId) return q.scopeType === 'area' ? 'Escolha a Área de Estudo.' : q.scopeType === 'discipline' ? 'Escolha a disciplina.' : 'Escolha o tópico.';
-    if(AnalyticsScope.resolve(analyticsQueryScope(q)).fellBack) return 'O item escolhido não existe mais. Escolha outro.';
+    const ids = q.scopeIds && q.scopeIds.length ? q.scopeIds : (q.scopeId ? [q.scopeId] : []);
+    if(!ids.length) return q.scopeType === 'area' ? 'Escolha a Área de Estudo.' : q.scopeType === 'discipline' ? 'Escolha pelo menos uma disciplina.' : 'Escolha pelo menos um tópico.';
+    if(AnalyticsScope.resolve(analyticsQueryScope(q)).fellBack) return 'O que foi escolhido não existe mais. Escolha de novo.';
   }
   if(q.periodPreset === 'custom'){
     if(!q.startDate) return 'Escolha o primeiro dia do período.';
@@ -13491,7 +14466,14 @@ function analyticsQueryMissing(q){
 }
 function analyticsQueryText(q){
   const sc = AnalyticsScope.resolve(analyticsQueryScope(q));
-  return `${AnalyticsScope.pathText(sc)} · ${analyticsPeriodLabel(q)} · ${focusInfo(q.focus).label}`;
+  return `${focusInfo(q.focus).label} · ${AnalyticsScope.pathText(sc)} · ${analyticsPeriodLabel(q)}`;
+}
+/** Um nome curto para uma consulta ("Matemática — últimos 30 dias"). */
+function analyticsQueryName(q){
+  const sc = AnalyticsScope.resolve(analyticsQueryScope(q));
+  const what = sc.type === 'all' ? focusInfo(q.focus).label : sc.label;
+  const per = q.periodPreset === 'custom' && q.startDate && q.endDate ? fmtRangeLabel({ start:parseISO(q.startDate), end:parseISO(q.endDate) }) : analyticsPeriodLabel(q).toLowerCase();
+  return `${what} — ${per}`;
 }
 /* ---------- disponibilidade: só oferecer o que tem dado real ---------- */
 function analyticsScopeAvailability(){
@@ -13508,16 +14490,18 @@ function analyticsScopeAvailability(){
   };
 }
 function hasAnyPlan(){
-  return state.plans.some(p => (p.allocations || []).some(a => (a.targetMinutes || 0) > 0)) ||
-         state.weeklyPlans.some(w => (w.allocations || []).some(a => (a.targetMinutes || 0) > 0));
+  return state.plans.some(p => (p.weeklyAvailableMinutes || 0) > 0 || (p.allocations || []).some(a => (a.targetMinutes || 0) > 0)) ||
+         state.weeklyPlans.some(w => PlanRules.weekGoal(w) > 0);
 }
 /** Combinações sem sentido ficam desabilitadas COM explicação, nunca geram página vazia. */
 function analyticsFocusAvailability(q){
   const out = {};
   ANALYTICS_FOCUS.forEach(f => { out[f.v] = { disabled:false }; });
-  if(q.scopeType === 'topic') out.planning = { disabled:true, reason:'O plano semanal é por disciplina. Para ver planejado e realizado, analise a disciplina deste tópico.' };
-  else if(!hasAnyPlan()) out.planning = { disabled:true, reason:'Você ainda não definiu tempo semanal em Planejamento.' };
-  const complete = q.scopeType === 'all' || !!q.scopeId;
+  if(q.scopeType === 'topic') out.planning = { disabled:true, reason:'A meta é semanal, não por tópico. Para compará-la, analise todos os estudos.' };
+  else if(q.types && q.types.length) out.planning = { disabled:true, reason:'A meta semanal vale para qualquer tipo de estudo. Tire o filtro de tipos para ver a meta.' };
+  else if(!hasAnyPlan()) out.planning = { disabled:true, reason:'Você ainda não definiu uma meta semanal em Planejamento.' };
+  const ids = q.scopeIds && q.scopeIds.length ? q.scopeIds : (q.scopeId ? [q.scopeId] : []);
+  const complete = q.scopeType === 'all' || ids.length > 0;
   if(!complete) return out;
   const sc = AnalyticsScope.resolve(analyticsQueryScope(q));
   if(sc.fellBack) return out;
@@ -13551,12 +14535,20 @@ function applyAnalyticsQuery(raw, opts){
   ui.calMonth = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
   ui.weekOffset = 0;
   setMeta('analyticsLastQuery', q).catch(err => console.error(err));
+  rememberRecentAnalysis(q);
   if(ui.view !== 'analytics'){ ui.analyticsKeepMode = true; setView('analytics'); }
   else {
     renderAnalytics({ animate:true });
     window.scrollTo({ top:0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   }
   return true;
+}
+/** v6.8 — análises recentes: só nesta sessão do navegador (as SALVAS ficam nas configurações). */
+function rememberRecentAnalysis(q){
+  const key = JSON.stringify([q.scopeType, q.scopeIds, q.types, q.periodPreset, q.startDate, q.endDate, q.focus]);
+  const list = (ui.analyticsRecent || []).filter(x => x.key !== key);
+  list.unshift({ key, q });
+  ui.analyticsRecent = list.slice(0, 5);
 }
 /** Muda só o período, mantendo escopo e foco (calendário, "analisar este dia"). */
 function setAnalyticsPeriod(range, preset){
@@ -13565,16 +14557,31 @@ function setAnalyticsPeriod(range, preset){
   const base = ui.analyticsQuery || defaultAnalyticsQuery();
   applyAnalyticsQuery(Object.assign({}, base, preset
     ? { periodPreset:preset }
-    : { periodPreset:'custom', startDate:dateToISO(s), endDate:dateToISO(e) }));
+    : { periodPreset:'custom', startDate:dateToISO(s), endDate:dateToISO(e) }), { keepExplore:true });
 }
-/** Muda só o escopo, mantendo período e foco (drill-down). */
+/** Muda só o escopo, mantendo período e foco (drill-down). `ids` = { areaId | disciplineId | topicId } ou { ids:[…] }. */
 function setAnalyticsScope(type, ids){
   const i = ids || {};
-  const id = type === 'area' ? i.areaId : type === 'discipline' ? i.disciplineId : type === 'topic' ? i.topicId : null;
+  const list = Array.isArray(i.ids) ? i.ids : [type === 'area' ? i.areaId : type === 'discipline' ? i.disciplineId : type === 'topic' ? i.topicId : null].filter(Boolean);
   const base = ui.analyticsQuery || defaultAnalyticsQuery();
-  const next = Object.assign({}, base, { scopeType:type, scopeId:id || null });
+  const next = Object.assign({}, base, { scopeType:type, scopeIds: type === 'all' ? [] : list, scopeId: list[0] || null });
   // o foco atual pode não fazer sentido no novo escopo: volta para a visão geral
   if(analyticsFocusAvailability(next)[next.focus].disabled) next.focus = 'overview';
+  applyAnalyticsQuery(next);
+}
+/** Muda só o filtro de tipos (lista vazia = todos os tipos). */
+function setAnalyticsTypes(types){
+  const base = ui.analyticsQuery || defaultAnalyticsQuery();
+  const next = Object.assign({}, base, { types: SessionModel.cleanTypes(types) });
+  if(analyticsFocusAvailability(next)[next.focus].disabled) next.focus = 'overview';
+  applyAnalyticsQuery(next, { keepExplore:true });
+}
+/** Muda só o que ver, mantendo o resto (exploração progressiva). */
+function setAnalyticsFocus(focus){
+  const base = ui.analyticsQuery || defaultAnalyticsQuery();
+  const next = Object.assign({}, base, { focus });
+  const fa = analyticsFocusAvailability(next)[focus];
+  if(fa && fa.disabled){ toast(fa.reason, 'info'); return; }
   applyAnalyticsQuery(next);
 }
 /** Atalho usado pelos detalhes: "Analisar só esta disciplina". */
@@ -13584,15 +14591,16 @@ function analyzeOnly(type, id){
   setAnalyticsScope(type, ids);
   toast('Período e foco foram mantidos.', 'info', { title:'Análise atualizada' });
 }
-/** Volta para o seletor com a consulta atual pré-selecionada. */
+/** Volta para o seletor com a consulta atual pré-selecionada (aberto em "Personalizar"). */
 function openAnalyticsSelector(opts){
   const o = opts || {};
   ui.analyticsDraft = normalizeAnalyticsQuery(ui.analyticsQuery || defaultAnalyticsQuery());
   ui.analyticsMode = 'select';
-  ui.anPick = { search:'', month:null, editing: !!ui.analyticsQuery, revealed: ui.analyticsDraft.scopeType };
+  ui.anPick = { search:'', month:null, editing: !!ui.analyticsQuery, revealed: ui.analyticsDraft.scopeType,
+                custom: o.custom !== false && !!ui.analyticsQuery, period: ui.analyticsDraft.periodPreset !== 'custom' ? ui.analyticsDraft.periodPreset : null };
   if(ui.view !== 'analytics'){ ui.analyticsKeepMode = true; setView('analytics'); }
   else renderAnalytics({ animate:true });
-  const sel = o.section === 'period' ? '#an-step-period' : '#an-step-scope';
+  const sel = o.section === 'period' ? '#an-step-period' : (ui.anPick.custom ? '#an-step-scope' : '#an-ready');
   requestAnimationFrame(() => {
     const box = $(sel);
     if(!box) return;
@@ -13629,7 +14637,7 @@ function onEnterAnalytics(){
   }
   ui.analyticsMode = 'select';
   ui.analyticsDraft = defaultAnalyticsQuery();
-  ui.anPick = { search:'', month:null, editing:false, revealed:'all' };
+  ui.anPick = { search:'', month:null, editing:false, revealed:'all', custom:false, period:null };
 }
 
 function renderAnalytics(opts){
@@ -13643,8 +14651,8 @@ function renderAnalytics(opts){
   } else {
     ui.analyticsMode = 'select';
     if(!ui.analyticsDraft) ui.analyticsDraft = defaultAnalyticsQuery();
-    if(!ui.anPick) ui.anPick = { search:'', month:null, editing:false, revealed:ui.analyticsDraft.scopeType };
-    if(sub) sub.textContent = 'O que você quer entender?';
+    if(!ui.anPick) ui.anPick = { search:'', month:null, editing:false, revealed:ui.analyticsDraft.scopeType, custom:false, period:null };
+    if(sub) sub.textContent = 'O que você quer descobrir sobre seus estudos?';
     renderAnalyticsSelector(root);
   }
   if(o.animate && !prefersReducedMotion()){
@@ -13684,30 +14692,110 @@ function rovingInit(group){
 }
 
 /* =========================================================================
-   SELETOR — "O que você quer entender?"
+   SELETOR — "O que você quer descobrir?"
+   v6.8 — dois caminhos:
+     A) ANÁLISES PRONTAS: um período (chips) + uma pergunta (cards compactos).
+        Um clique e a resposta aparece.
+     B) PERSONALIZAR: o que analisar (todos, disciplinas, tópicos, área — com
+        seleção múltipla), tipos de estudo (filtro opcional), período e o que
+        ver. A profundidade de antes continua toda aqui.
+   Por cima, quando existem: a última análise, as recentes desta sessão e as
+   salvas pela pessoa (só a configuração; o resultado é sempre recalculado).
    ========================================================================= */
 function renderAnalyticsSelector(root){
   const d = ui.analyticsDraft;
   const pick = ui.anPick;
   const parts = [];
-
-  /* atalho discreto: repetir a última análise (só se existir e ainda for válida) */
-  const last = state.meta.analyticsLastQuery ? normalizeAnalyticsQuery(state.meta.analyticsLastQuery) : null;
-  if(!pick.editing && last && !analyticsQueryMissing(last) && !AnalyticsScope.resolve(analyticsQueryScope(last)).fellBack){
-    parts.push(h('div', { class:'an-repeat' },
-      h('span', { class:'an-repeat-l', text:'Última análise' }),
-      h('span', { class:'an-repeat-v', text: analyticsQueryText(last) }),
-      h('button', { class:'linkbtn', type:'button', text:'Repetir', onclick:() => applyAnalyticsQuery(last) })));
-  }
-  if(!state.sessions.length){
-    parts.push(h('p', { class:'an-note', text:'Você ainda não registrou nenhum estudo. Prazos e conteúdo já podem ser analisados; tempo e constância aparecem depois dos primeiros estudos.' }));
-  }
-
   const rerender = (focusKey) => {
     renderAnalytics();
     if(focusKey){ const el = root.querySelector(`[data-k="${focusKey}"]`); if(el) el.focus({ preventScroll:true }); }
   };
 
+  /* ---------- análises guardadas e recentes (discretas) ---------- */
+  const shelf = analyticsShelf(pick, rerender);
+  if(shelf) parts.push(shelf);
+  if(!state.sessions.length){
+    parts.push(h('p', { class:'an-note', text:'Você ainda não registrou nenhum estudo. Prazos e conteúdo já podem ser analisados; tempo e constância aparecem depois dos primeiros estudos.' }));
+  }
+
+  /* ---------- A) análises prontas ---------- */
+  const period = pick.period && READY_PERIODS.includes(pick.period) ? pick.period : (READY_PERIODS.includes(validPreset(state.settings.defaultPeriod)) ? validPreset(state.settings.defaultPeriod) : '30d');
+  const pGroup = h('div', { class:'an-chips an-ready-period', role:'radiogroup', 'aria-label':'Período das análises prontas' });
+  READY_PERIODS.forEach(v => {
+    const p = ANALYTICS_PRESETS.find(x => x.v === v);
+    pGroup.append(h('button', { class:'an-chip', type:'button', role:'radio', 'aria-checked': period === v ? 'true' : 'false',
+      dataset:{ k:'rp-' + v }, text:p.label, onclick:() => { if(pick.period === v) return; pick.period = v; rerender('rp-' + v); } }));
+  });
+  rovingInit(pGroup);
+  const r = presetRange(period);
+  const readyBase = { scopeType:'all', scopeIds:[], types:[], periodPreset:period };
+  const grid = h('div', { class:'an-ready-grid', role:'list' });
+  ANALYTICS_READY.forEach(it => {
+    const fa = analyticsFocusAvailability(Object.assign({}, readyBase, { focus:it.focus }))[it.focus];
+    grid.append(h('div', { role:'listitem' }, h('button', { class:'an-ready', type:'button', disabled: fa.disabled, dataset:{ k:'ready-' + it.id },
+        'aria-describedby':'an-rd-' + it.id, onclick:() => applyAnalyticsQuery(Object.assign({}, readyBase, { focus:it.focus })) },
+      h('span', { class:'an-ready-ic', 'aria-hidden':'true' }, icon(it.icon, 'nav-icon')),
+      h('span', { class:'an-ready-text' },
+        h('span', { class:'an-ready-t', text:it.title }),
+        h('span', { class:'an-ready-s', id:'an-rd-' + it.id, text: fa.disabled ? fa.reason : it.desc })),
+      h('span', { class:'an-ready-go', 'aria-hidden':'true' }, icon('i-next', 'btn-icon')))));
+  });
+  parts.push(h('section', { class:'an-step an-ready-box', id:'an-ready', 'aria-labelledby':'an-q-ready' },
+    h('div', { class:'an-ready-head' },
+      h('h3', { class:'an-step-q', id:'an-q-ready', text:'Análises prontas' }),
+      h('p', { class:'an-step-help' }, 'Escolha uma pergunta. ', h('strong', { text: fmtRangeLabel(r) }), ` · ${plural(rangeDays(r), 'dia', 'dias')}`)),
+    pGroup, grid));
+
+  /* ---------- B) personalizar ---------- */
+  const customOpen = !!pick.custom;
+  const customToggle = h('button', { class:'an-custom-toggle', type:'button', 'aria-expanded': customOpen ? 'true' : 'false', 'aria-controls':'an-custom',
+    dataset:{ k:'custom-toggle' }, onclick:() => { pick.custom = !pick.custom; rerender('custom-toggle'); } },
+    h('span', { class:'an-custom-t', text:'Personalizar análise' }),
+    h('span', { class:'an-custom-s', text:'Escolha disciplinas, tópicos, tipos de estudo, período e o que ver.' }),
+    icon('i-chev', 'an-custom-chev'));
+  const custom = h('div', { class:'an-custom', id:'an-custom', hidden: !customOpen });
+  if(customOpen) analyticsCustomBuilder(custom, d, pick, rerender);
+  parts.push(h('section', { class:'an-custom-box' + (customOpen ? ' is-open' : ''), 'aria-label':'Personalizar análise' }, customToggle, custom));
+
+  mount(root, h('div', { class:'an-ask' }, parts));
+}
+
+/** Última análise, recentes desta sessão e salvas — tudo pequeno, nunca um painel. */
+function analyticsShelf(pick, rerender){
+  const items = [];
+  const seen = new Set();
+  const push = (q, kind, saved) => {
+    const nq = normalizeAnalyticsQuery(q);
+    if(analyticsQueryMissing(nq)) return;
+    const key = JSON.stringify([nq.scopeType, nq.scopeIds, nq.types, nq.periodPreset, nq.startDate, nq.endDate, nq.focus]);
+    if(seen.has(key)) return;
+    seen.add(key);
+    items.push({ q:nq, kind, saved });
+  };
+  (state.settings.savedAnalyses || []).forEach(sv => push(sv.query, 'saved', sv));
+  if(!pick.editing){
+    (ui.analyticsRecent || []).forEach(x => push(x.q, 'recent'));
+    if(state.meta.analyticsLastQuery) push(state.meta.analyticsLastQuery, 'recent');
+  }
+  if(!items.length) return null;
+  const list = h('ul', { class:'an-shelf-list' });
+  items.slice(0, 8).forEach(it => {
+    const name = it.saved ? it.saved.name : analyticsQueryName(it.q);
+    list.append(h('li', { class:'an-shelf-item' + (it.saved ? ' is-saved' : '') },
+      h('button', { class:'an-shelf-open', type:'button', title: analyticsQueryText(it.q), onclick:() => applyAnalyticsQuery(it.q) },
+        it.saved ? icon('i-bookmark', 'btn-icon an-shelf-ic') : icon('i-history', 'btn-icon an-shelf-ic'),
+        h('span', { class:'an-shelf-t', text:name })),
+      it.saved ? menuButton('', [
+        { label:'Renomear…', run:() => renameSavedAnalysis(it.saved.id) },
+        { label:'Remover', run:() => removeSavedAnalysis(it.saved.id) }
+      ], { className:'icon-btn mini', icon:'i-more', iconOnly:true, ariaLabel:`Mais ações: ${name}` }) : null));
+  });
+  return h('section', { class:'an-shelf', 'aria-labelledby':'an-shelf-t' },
+    h('h3', { class:'an-shelf-h', id:'an-shelf-t', text: (state.settings.savedAnalyses || []).length ? 'Suas análises' : 'Análises recentes' }), list);
+}
+
+/** Caminho B: o construtor completo, em passos curtos. */
+function analyticsCustomBuilder(box, d, pick, rerender){
   /* ---------- 1. o que analisar ---------- */
   const av = analyticsScopeAvailability();
   const scopeGroup = h('div', { class:'an-options an-options-4', role:'radiogroup', 'aria-labelledby':'an-q-scope' });
@@ -13719,7 +14807,9 @@ function renderAnalyticsSelector(root){
         onclick:() => {
           if(d.scopeType === k.v) return;
           d.scopeType = k.v;
-          d.scopeId = k.v === 'all' ? null : defaultScopeIdFor(k.v);
+          const first = k.v === 'all' ? null : defaultScopeIdFor(k.v);
+          d.scopeIds = first ? [first] : [];
+          d.scopeId = first;
           pick.search = '';
           if(analyticsFocusAvailability(d)[d.focus].disabled) d.focus = 'overview';
           rerender('scope-' + k.v);
@@ -13728,15 +14818,14 @@ function renderAnalyticsSelector(root){
       h('span', { class:'an-option-s', id:'an-sd-' + k.v, text: a.disabled ? a.reason : k.short })));
   });
   rovingInit(scopeGroup);
-
   let picker = null;
   if(d.scopeType !== 'all'){
     picker = scopePicker(d, pick, rerender);
     if(pick.revealed !== d.scopeType){ picker.classList.add('is-revealing'); pick.revealed = d.scopeType; }
   }
-  parts.push(h('section', { class:'an-step', id:'an-step-scope', 'aria-labelledby':'an-q-scope' },
+  box.append(h('section', { class:'an-step', id:'an-step-scope', 'aria-labelledby':'an-q-scope' },
     h('h3', { class:'an-step-q', id:'an-q-scope' }, h('span', { class:'an-step-n', 'aria-hidden':'true', text:'1' }), 'O que você quer analisar?'),
-    scopeGroup, picker));
+    scopeGroup, picker, analyticsTypeFilter(d, rerender)));
 
   /* ---------- 2. período ---------- */
   const periodGroup = h('div', { class:'an-chips', role:'radiogroup', 'aria-labelledby':'an-q-period' });
@@ -13753,16 +14842,14 @@ function renderAnalyticsSelector(root){
       } }));
   });
   rovingInit(periodGroup);
-  let periodExplain;
-  if(d.periodPreset === 'custom'){
-    periodExplain = null;
-  } else {
+  let periodExplain = null;
+  if(d.periodPreset !== 'custom'){
     const r = presetRange(d.periodPreset);
     const p = ANALYTICS_PRESETS.find(x => x.v === d.periodPreset);
     periodExplain = h('p', { class:'an-step-help', 'aria-live':'polite' },
       h('strong', { text: fmtRangeLabel(r) }), ` · ${plural(rangeDays(r), 'dia', 'dias')}. ${p ? p.explain : ''}`);
   }
-  parts.push(h('section', { class:'an-step', id:'an-step-period', 'aria-labelledby':'an-q-period' },
+  box.append(h('section', { class:'an-step', id:'an-step-period', 'aria-labelledby':'an-q-period' },
     h('h3', { class:'an-step-q', id:'an-q-period' }, h('span', { class:'an-step-n', 'aria-hidden':'true', text:'2' }), 'Qual período?'),
     periodGroup, periodExplain, d.periodPreset === 'custom' ? rangePicker(d, pick, rerender) : null));
 
@@ -13779,21 +14866,40 @@ function renderAnalyticsSelector(root){
       h('span', { class:'an-option-s', id:'an-fd-' + f.v, text: a.disabled ? a.reason : f.short })));
   });
   rovingInit(focusGroup);
-  parts.push(h('section', { class:'an-step', id:'an-step-focus', 'aria-labelledby':'an-q-focus' },
+  box.append(h('section', { class:'an-step', id:'an-step-focus', 'aria-labelledby':'an-q-focus' },
     h('h3', { class:'an-step-q', id:'an-q-focus' }, h('span', { class:'an-step-n', 'aria-hidden':'true', text:'3' }), 'O que você quer ver?'),
     focusGroup));
 
   /* ---------- gerar ---------- */
   const missing = analyticsQueryMissing(d);
-  parts.push(h('div', { class:'an-generate' },
+  box.append(h('div', { class:'an-generate' },
     h('p', { class:'an-generate-status', role:'status', 'aria-live':'polite', id:'an-gen-status',
       text: missing || analyticsQueryText(d) }),
     h('div', { class:'an-generate-actions' },
       pick.editing ? h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick: cancelAnalyticsSelector }) : null,
       h('button', { class:'btn primary lg', type:'button', disabled: !!missing, 'aria-describedby':'an-gen-status',
         onclick:() => applyAnalyticsQuery(d) }, 'Gerar análise'))));
+}
 
-  mount(root, h('div', { class:'an-ask' }, parts));
+/** Filtro opcional de tipos: chips; nenhum marcado = todos os tipos. */
+function analyticsTypeFilter(d, rerender){
+  const types = d.types || [];
+  const group = h('div', { class:'an-chips an-type-chips', role:'group', 'aria-labelledby':'an-types-l' });
+  group.append(h('button', { class:'an-chip', type:'button', 'aria-pressed': types.length ? 'false' : 'true', dataset:{ k:'type-all' },
+    text:'Todos os tipos', onclick:() => { if(!types.length) return; d.types = []; rerender('type-all'); } }));
+  SESSION_TYPES.forEach(t => {
+    const on = types.includes(t.v);
+    group.append(h('button', { class:'an-chip', type:'button', 'aria-pressed': on ? 'true' : 'false', dataset:{ k:'type-' + t.v }, text:t.label,
+      onclick:() => {
+        d.types = on ? types.filter(x => x !== t.v) : SessionModel.cleanTypes(types.concat([t.v]));
+        if(analyticsFocusAvailability(d)[d.focus].disabled) d.focus = 'overview';
+        rerender('type-' + t.v);
+      } }));
+  });
+  return h('div', { class:'an-types' },
+    h('p', { class:'an-picker-l', id:'an-types-l' }, 'Tipos de estudo ', h('span', { class:'optional', text:'opcional' })),
+    group,
+    types.length ? h('p', { class:'an-step-help', text:'Entram os estudos que tiveram algum desses tipos — cada estudo uma vez, com o tempo dele.' }) : null);
 }
 
 /** Um bom padrão ao escolher o tipo: o item mais estudado recentemente — nunca um fictício. */
@@ -13835,10 +14941,12 @@ function analyticsRecentIds(kind){
   const bump = (k, date) => { if(k && (!last.has(k) || date > last.get(k))) last.set(k, date); };
   state.sessions.forEach(s => {
     if(kind === 'topic') SessionModel.topicIds(s).forEach(id => bump(id, s.date));
-    else if(kind === 'discipline') bump(s.disciplineId, s.date);
+    else if(kind === 'discipline') SessionModel.disciplineIds(s).forEach(id => bump(id, s.date));
     else if(kind === 'area'){
-      const d = getDiscipline(s.disciplineId);
-      bump(d && d.areaId && getArea(d.areaId) && !getArea(d.areaId).archived ? d.areaId : NO_AREA_ID, s.date);
+      SessionModel.disciplineIds(s).forEach(id => {
+        const d = getDiscipline(id);
+        bump(d && d.areaId && getArea(d.areaId) && !getArea(d.areaId).archived ? d.areaId : NO_AREA_ID, s.date);
+      });
     }
   });
   const valid = new Set(analyticsScopeItems(kind).map(i => i.id));
@@ -13846,32 +14954,41 @@ function analyticsRecentIds(kind){
 }
 
 /**
- * Escolha do item. Poucos itens: lista direta. Muitos: busca instantânea,
- * com "Recentes" quando houver histórico. Nunca três selects encadeados.
+ * Escolha dos itens. v6.8: disciplinas, tópicos e áreas aceitam VÁRIOS — cada
+ * item é uma caixa de marcar; os escolhidos aparecem como chips removíveis,
+ * com "Limpar". Poucos itens: lista direta. Muitos: busca instantânea, com
+ * "Recentes" quando houver histórico. Nunca selects encadeados.
  */
 function scopePicker(d, pick, rerender){
   const kind = d.scopeType;
   const items = analyticsScopeItems(kind);
   const byId = new Map(items.map(i => [i.id, i]));
-  const labels = { area:'Qual Área de Estudo?', discipline:'Qual disciplina?', topic:'Qual tópico?' };
+  const chosen = (d.scopeIds || []).filter(id => byId.has(id));
+  const labels = { area:'Quais Áreas de Estudo?', discipline:'Quais disciplinas?', topic:'Quais tópicos?' };
   const box = h('div', { class:'an-picker', role:'group', 'aria-labelledby':'an-picker-l' },
-    h('p', { class:'an-picker-l', id:'an-picker-l', text: labels[kind] }));
-  const choose = (id) => {
-    d.scopeId = id;
+    h('p', { class:'an-picker-l', id:'an-picker-l' }, labels[kind], h('span', { class:'an-picker-hint', text:' · pode escolher mais de um' })));
+  const toggle = (id) => {
+    const set = (d.scopeIds || []).filter(x => byId.has(x));
+    const next = set.includes(id) ? set.filter(x => x !== id) : set.concat([id]);
+    d.scopeIds = next; d.scopeId = next[0] || null;
     if(analyticsFocusAvailability(d)[d.focus].disabled) d.focus = 'overview';
     rerender('pick-' + id);
   };
-  const itemBtn = (it) => h('button', { class:'an-pick', type:'button', role:'radio',
-      'aria-checked': d.scopeId === it.id ? 'true' : 'false', dataset:{ k:'pick-' + it.id }, onclick:() => choose(it.id) },
-    h('span', { class:'an-pick-t', text:it.name }),
-    it.sub ? h('span', { class:'an-pick-s', text:it.sub }) : null);
+  const itemBtn = (it) => h('button', { class:'an-pick', type:'button', role:'checkbox',
+      'aria-checked': chosen.includes(it.id) ? 'true' : 'false', dataset:{ k:'pick-' + it.id }, onclick:() => toggle(it.id) },
+    h('span', { class:'an-pick-box', 'aria-hidden':'true' }, icon('i-check', 'btn-icon')),
+    h('span', { class:'an-pick-main' }, h('span', { class:'an-pick-t', text:it.name }), it.sub ? h('span', { class:'an-pick-s', text:it.sub }) : null));
+  const listOf = (arr, label) => h('div', { class:'an-pick-list' + (arr.length > 8 ? ' is-scroll' : ''), role:'group', 'aria-label':label }, arr.map(itemBtn));
+
+  if(chosen.length){
+    box.append(h('div', { class:'filter-chips an-picked-chips', role:'group', 'aria-label':'Escolhidos' },
+      chosen.map(id => h('button', { class:'filter-chip', type:'button', 'aria-label':`Tirar ${byId.get(id).name}`, dataset:{ k:'chip-' + id },
+        onclick:() => toggle(id) }, h('span', { text:byId.get(id).name }), icon('i-close', 'btn-icon'))),
+      chosen.length > 1 ? h('button', { class:'linkbtn muted', type:'button', text:'limpar', onclick:() => { d.scopeIds = []; d.scopeId = null; rerender(null); } }) : null));
+  }
 
   const needsSearch = items.length > 6 || kind === 'topic';
-  if(!needsSearch){
-    const list = h('div', { class:'an-pick-list', role:'radiogroup', 'aria-labelledby':'an-picker-l' }, items.map(itemBtn));
-    box.append(rovingInit(list));
-    return box;
-  }
+  if(!needsSearch){ box.append(listOf(items, labels[kind])); return box; }
 
   const listBox = h('div', { class:'an-pick-results' });
   // v6.3: texto de busca normalizado uma vez por abertura, não a cada tecla
@@ -13881,13 +14998,13 @@ function scopePicker(d, pick, rerender){
     const q = normalizeText(pick.search);
     let shown, heading = null;
     if(q){
-      shown = items.filter(i => keys.get(i.id).includes(q)).slice(0, 30);
+      shown = items.filter(i => keys.get(i.id).includes(q)).slice(0, 40);
       heading = shown.length ? null : `Nada encontrado para “${pick.search}”.`;
     } else {
       const recent = analyticsRecentIds(kind).slice(0, kind === 'topic' ? 6 : 4).map(id => byId.get(id)).filter(Boolean);
       if(recent.length){
         listBox.append(h('p', { class:'an-pick-group', text:'Recentes' }));
-        listBox.append(rovingInit(h('div', { class:'an-pick-list', role:'radiogroup', 'aria-label':'Recentes' }, recent.map(itemBtn))));
+        listBox.append(listOf(recent, 'Recentes'));
       }
       if(kind === 'topic'){
         shown = [];
@@ -13897,23 +15014,81 @@ function scopePicker(d, pick, rerender){
         if(recent.length) listBox.append(h('p', { class:'an-pick-group', text:'Todas' }));
       }
     }
-    if(shown.length) listBox.append(rovingInit(h('div', { class:'an-pick-list is-scroll', role:'radiogroup', 'aria-label': labels[kind] }, shown.map(itemBtn))));
+    if(shown.length) listBox.append(listOf(shown, labels[kind]));
     if(heading) listBox.append(h('p', { class:'an-pick-empty', text:heading }));
   };
   const input = h('input', { type:'search', class:'an-pick-search', value: pick.search, autocomplete:'off', spellcheck:'false', 'data-context-search':'',
-    placeholder: kind === 'topic' ? 'Buscar um tópico… ex.: OSPF' : kind === 'area' ? 'Buscar uma área…' : 'Buscar uma disciplina…', 'aria-label': labels[kind] });
+    placeholder: kind === 'topic' ? 'Buscar um tópico… ex.: Derivadas' : kind === 'area' ? 'Buscar uma área…' : 'Buscar uma disciplina…', 'aria-label': labels[kind] });
   input.addEventListener('input', () => { pick.search = input.value; drawList(); });
   input.addEventListener('keydown', (e) => {
-    if(e.key === 'ArrowDown'){ const f = listBox.querySelector('[role="radio"]'); if(f){ e.preventDefault(); f.focus(); } }
-    if(e.key === 'Enter'){ const f = listBox.querySelector('[role="radio"]'); if(f){ e.preventDefault(); f.click(); } }
+    if(e.key === 'ArrowDown'){ const f = listBox.querySelector('[role="checkbox"]'); if(f){ e.preventDefault(); f.focus(); } }
+    if(e.key === 'Enter'){ const f = listBox.querySelector('[role="checkbox"]'); if(f){ e.preventDefault(); f.click(); } }
   });
-  const cur = d.scopeId ? byId.get(d.scopeId) : null;
-  box.append(
-    cur ? h('p', { class:'an-picked' }, h('span', { class:'an-picked-k', text:'Escolhido:' }), h('strong', { text:cur.name }), cur.sub ? h('span', { class:'an-pick-s', text:cur.sub }) : null) : null,
-    h('div', { class:'an-search' }, icon('i-search'), input),
-    listBox);
+  listBox.addEventListener('keydown', (e) => {
+    const all = $$('[role="checkbox"]', listBox), i = all.indexOf(document.activeElement);
+    if(i < 0) return;
+    if(e.key === 'ArrowDown'){ e.preventDefault(); (all[i + 1] || all[i]).focus(); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); (i > 0 ? all[i - 1] : input).focus(); }
+  });
+  box.append(h('div', { class:'an-search' }, icon('i-search'), input), listBox);
   drawList();
   return box;
+}
+
+/* ---------- análises salvas (só a configuração; o resultado é sempre recalculado) ---------- */
+function saveCurrentAnalysis(q){
+  const nq = normalizeAnalyticsQuery(q);
+  const list = (state.settings.savedAnalyses || []).slice();
+  if(list.length >= MAX_SAVED_ANALYSES){ toast(`Você já tem ${MAX_SAVED_ANALYSES} análises salvas. Remova uma para salvar outra.`, 'info', { title:'Limite de análises salvas' }); return; }
+  openModal(close => {
+    const input = h('input', { type:'text', id:'sa-name', maxlength:'60', value: analyticsQueryName(nq) });
+    const save = () => {
+      const name = input.value.trim();
+      if(!name){ input.setAttribute('aria-invalid', 'true'); input.focus(); toast('Dê um nome para a análise.', 'err'); return; }
+      state.settings.savedAnalyses = (state.settings.savedAnalyses || []).concat([{ id: uid(), name, query: nq, createdAt: nowISO() }]);
+      saveSettings();
+      close();
+      toast('Ela aparece no começo de Análises. O resultado é sempre recalculado com os seus dados de agora.', 'ok', { title:'Análise salva' });
+    };
+    input.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); save(); } });
+    return {
+      title:'Salvar esta análise',
+      content: h('div',
+        h('div', { class:'field' }, h('label', { for:'sa-name', text:'Nome' }), input),
+        h('p', { class:'hint', text:'Fica guardado só o que analisar, o período e o que ver — nunca uma cópia dos números.' })),
+      actions:[ h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
+                h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: save }) ],
+      focus: input
+    };
+  }, { size:'narrow' });
+}
+function renameSavedAnalysis(id){
+  const it = (state.settings.savedAnalyses || []).find(x => x.id === id);
+  if(!it) return;
+  openModal(close => {
+    const input = h('input', { type:'text', id:'sa-rename', maxlength:'60', value: it.name });
+    const save = () => {
+      const name = input.value.trim();
+      if(!name){ input.setAttribute('aria-invalid', 'true'); input.focus(); return; }
+      state.settings.savedAnalyses = (state.settings.savedAnalyses || []).map(x => x.id === id ? Object.assign({}, x, { name }) : x);
+      saveSettings(); close(); renderAnalytics();
+      toast('Análise renomeada.', 'ok');
+    };
+    input.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); save(); } });
+    return { title:'Renomear análise', content: h('div', { class:'field' }, h('label', { for:'sa-rename', text:'Nome' }), input),
+      actions:[ h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }), h('button', { class:'btn primary', type:'button', text:'Salvar', onclick: save }) ],
+      focus: input };
+  }, { size:'narrow' });
+}
+async function removeSavedAnalysis(id){
+  const it = (state.settings.savedAnalyses || []).find(x => x.id === id);
+  if(!it) return;
+  const ok = await confirmModal(`Remover "${it.name}" das análises salvas? Seus estudos não mudam.`, { confirmLabel:'Remover', danger:false });
+  if(!ok) return;
+  state.settings.savedAnalyses = (state.settings.savedAnalyses || []).filter(x => x.id !== id);
+  saveSettings();
+  renderAnalytics();
+  toast('Análise removida.', 'ok');
 }
 
 /**
@@ -14032,31 +15207,76 @@ function renderAnalyticsResult(root){
     h('h3', { class:'an-block-t', id:'an-viz-t', text:viz.title }), viz.node));
   const ins = analyticsInsightsBlock(a, focus);
   if(ins) parts.push(ins);
+  const next = analyticsNextQuestions(a, focus);
+  if(next) parts.push(next);
   const ex = analyticsExploreBlock(a, focus);
   if(ex) parts.push(ex);
   mount(root, h('div', { class:'an-result' }, parts));
+}
+
+/**
+ * v6.8 — "Continue explorando": a próxima pergunta natural, com o mesmo recorte
+ * e o mesmo período. Quanto estudei? → em quais disciplinas? → em quais dias?
+ * → em quais tópicos? Sem refazer a escolha do zero.
+ */
+const NEXT_QUESTIONS = {
+  overview:['time','distribution','consistency','topics'], time:['distribution','consistency','topics'],
+  consistency:['time','distribution'], distribution:['topics','time','types'], topics:['distribution','reviews','content'],
+  types:['time','distribution'], rest:['time','consistency'], planning:['distribution','time','consistency'],
+  reviews:['topics','content'], content:['topics','reviews'], deadlines:['content','reviews']
+};
+function analyticsNextQuestions(a, focus){
+  const fav = analyticsFocusAvailability(a.query);
+  const list = (NEXT_QUESTIONS[focus] || []).filter(f => f !== focus && fav[f] && !fav[f].disabled)
+    .filter(f => !(a.scope.type === 'topic' && !a.scope.multi && (f === 'topics' || f === 'distribution')))
+    .filter(f => !(f === 'distribution' && a.scope.type === 'discipline' && !a.scope.multi));
+  if(!list.length) return null;
+  return h('section', { class:'an-block an-next', 'aria-labelledby':'an-next-t' },
+    h('h3', { class:'an-block-t', id:'an-next-t', text:'Continue explorando' }),
+    h('div', { class:'an-next-list' }, list.map(f => h('button', { class:'an-next-q', type:'button', onclick:() => setAnalyticsFocus(f) },
+      h('span', { class:'an-next-t', text: focusInfo(f).question }), icon('i-arrow', 'btn-icon')))));
 }
 
 function analyticsResultHeader(a){
   const q = a.query;
   const sc = a.scope;
   const kicker = sc.type === 'all' ? 'Todos os estudos'
-    : sc.type === 'area' ? AREA_TERM
-    : sc.path.length > 1 ? `${AnalyticsScope.kindLabel(sc)} · ${sc.path.slice(0, -1).join(' › ')}` : AnalyticsScope.kindLabel(sc);
+    : sc.type === 'area' ? (sc.multi ? 'Áreas de Estudo' : AREA_TERM)
+    : sc.path.length > 1 && !sc.multi ? `${AnalyticsScope.kindLabel(sc)} · ${sc.path.slice(0, -1).join(' › ')}` : AnalyticsScope.kindLabel(sc);
+  /* v6.8 — o que está valendo, em chips: cada filtro sai com um clique; o
+     período troca sem refazer a análise (exploração progressiva). */
+  const chips = [];
+  if(sc.type !== 'all') chips.push(h('button', { class:'filter-chip', type:'button', 'aria-label':`Tirar o filtro ${sc.label}: analisar todos os estudos`,
+    onclick:() => setAnalyticsScope('all') }, h('span', { text: sc.label }), icon('i-close', 'btn-icon')));
+  if(sc.types) chips.push(h('button', { class:'filter-chip', type:'button', 'aria-label':`Tirar o filtro de tipos ${sc.typesLabel}`,
+    onclick:() => setAnalyticsTypes([]) }, h('span', { text: 'Estudos com ' + sc.typesLabel }), icon('i-close', 'btn-icon')));
+  const periods = h('div', { class:'an-chips an-head-periods', role:'radiogroup', 'aria-label':'Trocar o período' });
+  READY_PERIODS.concat(q.periodPreset === 'custom' || READY_PERIODS.includes(q.periodPreset) ? [] : [q.periodPreset]).forEach(v => {
+    const p = ANALYTICS_PRESETS.find(x => x.v === v);
+    periods.append(h('button', { class:'an-chip sm', type:'button', role:'radio', 'aria-checked': q.periodPreset === v ? 'true' : 'false', text:p.label,
+      onclick:() => { if(q.periodPreset !== v) setAnalyticsPeriod(presetRange(v), v); } }));
+  });
+  periods.append(h('button', { class:'an-chip sm', type:'button', role:'radio', 'aria-checked': q.periodPreset === 'custom' ? 'true' : 'false',
+    text: q.periodPreset === 'custom' ? fmtRangeLabel(a.range) : 'Outro…', onclick:() => openAnalyticsSelector({ section:'period' }) }));
+  rovingInit(periods);
   return h('header', { class:'an-head', id:'an-context' },
     h('div', { class:'an-head-main' },
       h('p', { class:'an-head-k', text: kicker }),
       h('h3', { class:'an-head-t', text: sc.type === 'all' ? 'Seus estudos' : sc.label }),
       h('p', { class:'an-head-meta' },
-        h('span', { text: analyticsPeriodLabel(q) }),
-        h('span', { class:'an-head-range', text: fmtRangeLabel(a.range) }),
-        h('span', { class:'an-head-focus', text: focusInfo(q.focus).label }))),
+        h('span', { class:'an-head-focus', text: focusInfo(q.focus).label }),
+        h('span', { class:'an-head-range', text: `${analyticsPeriodLabel(q)} · ${fmtRangeLabel(a.range)}` })),
+      chips.length ? h('div', { class:'filter-chips an-head-chips', role:'group', 'aria-label':'Filtros desta análise' }, chips,
+        chips.length > 1 ? h('button', { class:'linkbtn muted', type:'button', text:'limpar', onclick:() => applyAnalyticsQuery(Object.assign({}, q, { scopeType:'all', scopeIds:[], scopeId:null, types:[] })) }) : null) : null,
+      periods),
     h('div', { class:'an-head-actions' },
       h('button', { class:'btn ghost sm', type:'button', onclick:() => openAnalyticsSelector() }, 'Alterar análise'),
-      menuButton('Exportar', [
+      menuButton('Mais', [
+        { label:'Salvar esta análise…', run:() => saveCurrentAnalysis(q) },
+        { label:'Análises prontas', run:() => openAnalyticsSelector({ custom:false }) },
         { label:'Copiar resumo', run:() => copySummary(a) },
         { label:'Baixar relatório (.txt)', run: () => downloadReport(a) }
-      ], { ariaLabel:'Exportar esta análise' })));
+      ], { ariaLabel:'Mais ações desta análise' })));
 }
 
 /** Sem dado para esta escolha: nada de painel zerado — uma frase e caminhos úteis. */
@@ -14064,7 +15284,7 @@ function analyticsEmptyFor(a, focus){
   const t = a.totals, sc = a.scope, q = a.query;
   const where = sc.type === 'all' ? '' : ` de ${sc.label}`;
   let title = null, text = '', extra = null;
-  if((focus === 'overview' || focus === 'time') && t.count === 0){
+  if(['overview','time','consistency','distribution','topics','types'].includes(focus) && t.count === 0){
     if(!state.sessions.length){
       title = 'Nada para analisar ainda';
       text = 'Registre seu primeiro estudo e o Ciclo mostra aqui quanto você estudou, com que frequência e onde o tempo foi parar.';
@@ -14073,9 +15293,18 @@ function analyticsEmptyFor(a, focus){
       title = `Ainda não há registros${where} neste período.`;
       text = `${analyticsPeriodLabel(q)}: ${fmtRangeLabel(a.range)}.`;
     }
+  } else if(focus === 'rest' && !a.rest.count){
+    title = `Nenhum descanso registrado${where} neste período.`;
+    text = 'No cronômetro, use "Descansar"; num estudo que já aconteceu, "+ Adicionar descanso". Descanso nunca entra no tempo estudado.';
+  } else if(focus === 'topics' && !a.byTopic.some(x => x.key !== '__none__')){
+    title = `Nenhum tópico informado nos estudos${where} deste período.`;
+    text = 'Tópicos são opcionais. Quando você escolhe tópicos ao registrar, esta análise mostra quais receberam mais atenção.';
+  } else if(focus === 'types' && !(a.typeStats && a.typeStats.typed)){
+    title = 'Nenhum tipo de estudo informado neste período.';
+    text = 'O tipo (Teoria, Exercícios, Revisão…) é opcional no registro. Quando informado, esta análise mostra como você estuda.';
   } else if(focus === 'planning' && !a.planAdherence.hasPlan){
-    title = 'Não havia tempo planejado neste período.';
-    text = 'O plano semanal é opcional. Quando você define quanto tempo tem por semana, esta análise compara o planejado com o realizado.';
+    title = 'Não havia meta semanal neste período.';
+    text = 'A meta é opcional. Quando você define quanto quer estudar por semana, esta análise mostra o tempo estudado diante dela.';
     extra = h('button', { class:'btn ghost', type:'button', text:'Abrir Planejamento', onclick:() => setView('plan') });
   } else if(focus === 'reviews' && !a.reviews.completed && !a.reviews.overdueNow && !a.reviews.dueToday && !a.reviews.upcoming.length){
     title = `Nenhuma revisão${where} neste período.`;
@@ -14102,10 +15331,11 @@ function analyticsEmptyFor(a, focus){
 }
 
 /* ---------- 1. resumo humano ---------- */
+/* v6.8 — a análise começa pela PERGUNTA e pela resposta principal; o resto é contexto. */
 function analyticsSummaryBlock(a, focus){
   const lines = analyticsFocusSummary(a, focus);
   return h('section', { class:'an-block an-summary', 'aria-labelledby':'an-sum-t' },
-    h('h3', { class:'an-block-t', id:'an-sum-t', text:'Seu período em resumo' }),
+    h('h3', { class:'an-block-t an-question', id:'an-sum-t', text: focusInfo(focus).question }),
     h('div', { class:'an-summary-text' }, lines.map((s, i) => h('p', { class: i === 0 ? 'lead' : null, text:s }))));
 }
 
@@ -14121,16 +15351,81 @@ function analyticsFocusSummary(a, focus){
     if(a.days >= 7 && t.count >= 3 && best && best.minutes > 0) out.push(`${best.label} foi o dia da semana com mais tempo (${fmtDuration(best.minutes)}).`);
     restSentences(a).forEach(s => out.push(s));
     pushComparison(a, out);
+  } else if(focus === 'consistency'){
+    out.push(t.activeDays ? `Você estudou em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')}${where} (${safePct(t.consistency)}).` : `Nenhum dia com estudo${where} neste período.`);
+    const wk = a.weeklyRhythm.filter(w => w.days === 7);
+    if(wk.length >= 2){
+      const withStudy = wk.filter(w => w.activeDays > 0).length;
+      out.push(`Em ${withStudy} de ${plural(wk.length, 'semana completa', 'semanas completas')} houve estudo; a média foi de ${fmtNumber(sum(wk, w => w.activeDays) / wk.length, 1)} dias por semana.`);
+    }
+    if(t.activeDays > 1) out.push(`Nos dias com estudo, a média foi ${fmtDuration(t.avgPerActiveDay)}.`);
+    const best = a.byWeekday.slice().sort((x,y) => y.minutes - x.minutes)[0];
+    if(a.days >= 7 && t.count >= 3 && best && best.minutes > 0) out.push(`${best.label} foi o dia da semana com mais estudo.`);
+    const cmp = a.previousComparison;
+    if(cmp.available && cmp.prev && a.days >= 7){
+      const pd = cmp.prev.activeDays;
+      out.push(pd === t.activeDays ? 'O número de dias com estudo foi o mesmo do período anterior equivalente.'
+        : `No período anterior equivalente foram ${plural(pd, 'dia', 'dias')} com estudo.`);
+    }
+  } else if(focus === 'distribution'){
+    const rows = a.byDiscipline;
+    if(rows.length === 1) out.push(`Todo o tempo${where} foi para ${rows[0].label}: ${fmtDuration(rows[0].minutes)}.`);
+    else if(rows.length){
+      out.push(`${rows[0].label} recebeu a maior parte do tempo: ${fmtDuration(rows[0].minutes)} (${safePct(rows[0].pct)}).`);
+      out.push(`O tempo foi dividido entre ${plural(rows.length, 'disciplina', 'disciplinas')}; no total, ${fmtDuration(t.minutes)}.`);
+      if(rows.length >= 3) out.push(`Depois vieram ${rows[1].label} (${fmtDuration(rows[1].minutes)}) e ${rows[2].label} (${fmtDuration(rows[2].minutes)}).`);
+    }
+    const multi = a.sessions.filter(x => SessionModel.isMulti(x)).length;
+    if(multi) out.push(`${plural(multi, 'estudo teve', 'estudos tiveram')} mais de uma disciplina: cada um conta uma vez no total e é dividido entre elas.`);
+    pushComparison(a, out);
+  } else if(focus === 'topics'){
+    const rows = a.byTopic.filter(x => x.key !== '__none__');
+    const none = a.byTopic.find(x => x.key === '__none__');
+    if(rows.length){
+      out.push(`${rows[0].label} foi o tópico com mais tempo: ${rows[0].estimated > 0 ? 'cerca de ' : ''}${fmtDuration(rows[0].minutes)}.`);
+      out.push(`${plural(rows.length, 'tópico recebeu', 'tópicos receberam')} estudo neste período.`);
+    }
+    if(none && none.minutes > 0) out.push(`${fmtDuration(none.minutes)} ${none.minutes === 1 ? 'foi' : 'foram'} de estudos sem tópico definido.`);
+    if(a.content.notStarted && a.content.notStarted.length && sc.type !== 'topic') out.push(`${plural(a.content.notStarted.length, 'tópico cadastrado ainda não foi iniciado', 'tópicos cadastrados ainda não foram iniciados')}.`);
+  } else if(focus === 'types'){
+    const typed = a.byType.filter(x => x.key !== '__none__' && x.count > 0).sort((x, y) => y.count - x.count);
+    const ts = a.typeStats || { typed:0, multi:0 };
+    if(typed.length){
+      out.push(`"${typed[0].label}" foi o tipo mais frequente: apareceu em ${plural(typed[0].count, 'estudo', 'estudos')} de ${ts.typed} com tipo informado.`);
+      const byTime = typed.slice().sort((x, y) => y.minutes - x.minutes)[0];
+      if(byTime.key !== typed[0].key) out.push(`Em tempo, "${byTime.label}" ficou à frente: ${byTime.estimated > 0 ? 'cerca de ' : ''}${fmtDuration(byTime.minutes)}.`);
+    }
+    if(ts.multi) out.push(`${plural(ts.multi, 'estudo teve', 'estudos tiveram')} mais de um tipo: ele aparece na contagem de cada tipo, mas o tempo não é contado duas vezes.`);
+    const untyped = t.count - ts.typed;
+    if(untyped > 0) out.push(`${plural(untyped, 'estudo ficou', 'estudos ficaram')} sem tipo informado.`);
+  } else if(focus === 'rest'){
+    restSentences(a).forEach(s2 => out.push(s2));
+    if(a.rest.sessionsWithBreaks) out.push(`${a.rest.sessionsWithBreaks} de ${plural(t.count, 'estudo teve', 'estudos tiveram')} pelo menos um descanso.`);
+    if(a.rest.longest && a.rest.longest.withBreaks > 0) out.push(`Entre os ${a.rest.longest.of} estudos mais longos, ${a.rest.longest.withBreaks} tiveram descanso.`);
+    out.push('Descanso nunca entra no tempo estudado nem na meta da semana.');
   } else if(focus === 'planning'){
     const pa = a.planAdherence;
-    out.push(`Você cumpriu ${safePct(pa.pct)} do plano: ${fmtDuration(pa.counted)} das ${fmtDuration(pa.planned)} planejadas, contando cada disciplina até o que foi planejado para ela.`);
-    if(pa.extra >= 1) out.push(`Além disso, estudou ${fmtDuration(pa.extra)} fora do planejado — tempo a mais numa disciplina ou em disciplinas sem plano. No total foram ${fmtDuration(pa.realized)}.`);
+    out.push(planGoalSentence(pa));
+    if(pa.basis === 'goal'){
+      if(pa.weeksWithGoal > 1) out.push(`A meta foi alcançada em ${pa.weeksReached} de ${plural(pa.weeksWithGoal, 'semana', 'semanas')} com meta neste período.`);
+      out.push('Qualquer estudo conta para a meta, de qualquer disciplina — a distribuição sugerida é só uma referência.');
+    } else {
+      out.push('Num recorte de disciplinas, a comparação é com a sugestão delas no plano — uma referência, não uma meta.');
+    }
+    const noGoal = pa.weeks.length - pa.weeksWithGoal;
+    if(noGoal > 0) out.push(`${plural(noGoal, 'semana do período não tinha meta e ficou', 'semanas do período não tinham meta e ficaram')} fora desta comparação.`);
+    // v6.8 — explica por que a meta daqui pode ser menor que a da tela Planejamento
+    const cut = pa.weeks.filter(w => w.planned > 0 && w.coveredDays < 7);
+    if(cut.length){
+      const cur = cut.find(w => w.weekStart === dateToISO(startOfWeek(today())));
+      out.push(cur && cut.length === 1
+        ? `A semana atual entra só até hoje: a meta dela conta proporcional aos ${plural(cur.coveredDays, 'dia', 'dias')} incluídos.`
+        : 'Semanas cortadas pelo período (como a atual) contam com a meta proporcional aos dias incluídos.');
+    }
     const planned = pa.perDiscipline.filter(x => x.planned > 0 && !x.archived);
-    const below = planned.filter(x => x.pct !== null && x.pct < 70).slice(0, 2);
-    const above = planned.filter(x => x.pct !== null && x.pct > 110).slice(0, 1);
-    below.forEach(x => out.push(`${x.label} ficou abaixo do planejado: ${fmtDuration(x.realized)} de ${fmtDuration(x.planned)}.`));
-    above.forEach(x => out.push(`${x.label} passou do planejado (${safePct(x.pct)}).`));
-    if(planned.length > 1 && planned.every(x => (x.pct || 0) >= 100)) out.push('Todas as disciplinas alcançaram o planejado.');
+    const top = pa.perDiscipline.filter(x => x.realized > 0)[0];
+    if(top && pa.perDiscipline.length > 1) out.push(`${top.label} recebeu mais tempo: ${fmtDuration(top.realized)}${top.planned > 0 ? ` (sugestão de ${fmtDuration(top.planned)})` : ' (fora da sugestão)'}.`);
+    if(planned.length > 1 && planned.every(x => (x.pct || 0) >= 100)) out.push('Todas as disciplinas da sugestão receberam pelo menos o tempo sugerido.');
   } else if(focus === 'reviews'){
     const r = a.reviews;
     out.push(r.completed ? `Você concluiu ${plural(r.completed, 'revisão', 'revisões')}${where} neste período.` : `Nenhuma revisão concluída${where} neste período.`);
@@ -14141,7 +15436,7 @@ function analyticsFocusSummary(a, focus){
     if(r.avgMastery !== null && sc.type !== 'topic') out.push(`A consolidação média dos tópicos em revisão está em ${fmtNumber(r.avgMastery, 1)} de 5.`);
   } else if(focus === 'content'){
     const c = a.content;
-    if(sc.type === 'topic'){
+    if(sc.type === 'topic' && sc.topicId){
       const tp = getTopic(sc.topicId);
       const st = tp ? topicStatus(tp) : 'nao_iniciado';
       out.push(`${sc.label} está ${TOPIC_STATUS_LABEL[st].toLowerCase()}.`);
@@ -14235,7 +15530,9 @@ function analyticsFocusMetrics(a, focus){
     avgDay:   () => ({ key:'avgday', when:'period', label:'Média por dia de estudo', value:fmtDuration(t.avgPerActiveDay), sub:`${fmtDuration(t.avgPerDay)} por dia do período`, onOpen:open('time') }),
     // v6.4 — descanso é um número à parte: nunca somado ao tempo estudado
     rest:     () => ({ key:'rest', when:'period', label:'Descansos', value:fmtDuration(a.rest.minutes), sub: a.rest.count === 1 ? '1 descanso' : `${a.rest.count} descansos · média de ${fmtDurationWords(a.rest.avg)}`, onOpen:open('rest') }),
-    plan:     () => ({ key:'plan', when:'period', label:METRIC_WORDS.adherence.title, value:safePct(a.planAdherence.pct), sub:`${fmtDuration(a.planAdherence.counted)} de ${fmtDuration(a.planAdherence.planned)}`, onOpen:open('plan') }),
+    plan:     () => ({ key:'plan', when:'period', label: a.planAdherence.basis === 'goal' ? 'Meta semanal' : 'Diante da sugestão',
+                         value: a.planAdherence.pct >= 100 ? 'Alcançada' : safePct(a.planAdherence.pct),
+                         sub:`${fmtDuration(a.planAdherence.realized)} de ${fmtDuration(a.planAdherence.planned)}`, onOpen:open('plan') }),
     reviews:  () => ({ key:'reviews', when:'period', label:'Revisões concluídas', value:String(a.reviews.completed), sub: a.reviews.overdueNow ? `${plural(a.reviews.overdueNow, 'atrasada', 'atrasadas')} agora` : 'nenhuma atrasada agora', onOpen:open('reviews') }),
     coverage: () => ({ key:'content', when:'now', label:METRIC_WORDS.coverage.title, value:`${a.content.covered} de ${a.content.totalTopics}`, sub:`${safePct(a.content.coverage)} dos tópicos`, onOpen:open('content') })
   };
@@ -14245,13 +15542,52 @@ function analyticsFocusMetrics(a, focus){
   const r = a.reviews, c = a.content, pa = a.planAdherence, dl = a.deadlines;
 
   if(focus === 'time') return [M.time(), M.days(), M.avgDay(), a.rest.count > 0 ? M.rest() : M.sessions()];
+  if(focus === 'consistency'){
+    const wk = a.weeklyRhythm.filter(w => w.days === 7);
+    return [M.days(),
+      { key:'cpct', when:'period', label:'Dias com estudo', value:safePct(t.consistency), sub:'do período', onOpen:open('sessions') },
+      { key:'cweek', when:'period', label:'Por semana', value: wk.length ? fmtNumber(sum(wk, w => w.activeDays) / wk.length, 1) : '—', sub: wk.length ? 'dias, em média' : 'sem semana completa no período', muted: !wk.length },
+      M.avgDay()];
+  }
+  if(focus === 'distribution'){
+    const top = a.byDiscipline[0];
+    return [M.time(),
+      { key:'ddisc', when:'period', label:'Disciplinas estudadas', value:String(a.byDiscipline.length), onOpen:open('time') },
+      { key:'dtop', when:'period', label:'Mais tempo', value: top ? top.label : '—', sub: top ? `${minutesText(top)} · ${safePct(top.pct)}` : null, muted: !top },
+      M.sessions()];
+  }
+  if(focus === 'topics'){
+    const rows = a.byTopic.filter(x => x.key !== '__none__');
+    const none = a.byTopic.find(x => x.key === '__none__');
+    return [
+      { key:'ttopics', when:'period', label:'Tópicos estudados', value:String(rows.length) },
+      { key:'ttop', when:'period', label:'Mais tempo', value: rows[0] ? rows[0].label : '—', sub: rows[0] ? minutesText(rows[0]) : null, muted: !rows[0] },
+      { key:'tnone', when:'period', label:'Sem tópico definido', value: fmtDuration(none ? none.minutes : 0), muted: !(none && none.minutes) },
+      c.totalTopics ? M.coverage() : M.time()];
+  }
+  if(focus === 'types'){
+    const ts = a.typeStats || { typed:0, multi:0, sessions:0 };
+    const typed = a.byType.filter(x => x.key !== '__none__' && x.count > 0).sort((x, y) => y.count - x.count);
+    return [
+      { key:'ytyped', when:'period', label:'Estudos com tipo', value:`${ts.typed} de ${ts.sessions}` },
+      { key:'ytop', when:'period', label:'Tipo mais frequente', value: typed[0] ? typed[0].label : '—', sub: typed[0] ? plural(typed[0].count, 'estudo', 'estudos') : null, muted: !typed[0] },
+      { key:'ymulti', when:'period', label:'Com mais de um tipo', value:String(ts.multi), sub:'contam em cada tipo' },
+      M.time()];
+  }
+  if(focus === 'rest'){
+    return [M.rest(),
+      { key:'rcount', when:'period', label:'Descansos', value:String(a.rest.count), sub: a.rest.count ? `média de ${fmtDurationWords(a.rest.avg)}` : null },
+      { key:'rsess', when:'period', label:'Estudos com descanso', value:`${a.rest.sessionsWithBreaks} de ${t.count}` },
+      { key:'rratio', when:'period', label:'Estudo por 1h de descanso', value: isNum(a.rest.studyPerRestHour) ? fmtDuration(a.rest.studyPerRestHour) : '—', muted: !isNum(a.rest.studyPerRestHour) }];
+  }
   if(focus === 'planning'){
-    // v6.5 — volume e distribuição lado a lado, sem se confundirem: o que foi estudado no total
-    // e, à parte, o que passou do planejado (não entra em "Plano cumprido").
+    // v6.8 — a meta é o tempo total: estudado, meta e o que passou dela, sem nota por disciplina
     return [M.plan(),
-      { key:'planned', when:'period', label:'Planejado', value:fmtDuration(pa.planned), onOpen:open('plan') },
-      { key:'realized', when:'period', label:'Estudado no total', value:fmtDuration(pa.realized), sub: pa.volumePct !== null ? `${safePct(pa.volumePct)} do tempo planejado` : null, onOpen:open('plan') },
-      { key:'pextra', when:'period', label:'Além do plano', value:fmtDuration(pa.extra), sub: pa.extra >= 1 ? 'não conta para o plano cumprido' : 'nada fora do planejado', muted: !(pa.extra >= 1), onOpen:open('plan') }];
+      { key:'planned', when:'period', label: pa.basis === 'goal' ? 'Meta no período' : 'Sugerido no período', value:fmtDuration(pa.planned), sub: pa.weeksWithGoal > 1 ? plural(pa.weeksWithGoal, 'semana', 'semanas') : null, onOpen:open('plan') },
+      { key:'realized', when:'period', label:'Estudado', value:fmtDuration(pa.realized), sub: pa.volumePct !== null ? `${safePct(pa.volumePct)} ${pa.basis === 'goal' ? 'da meta' : 'do sugerido'}` : null, onOpen:open('plan') },
+      pa.basis === 'goal' && pa.weeksWithGoal > 1
+        ? { key:'preach', when:'period', label:'Semanas com a meta alcançada', value:`${pa.weeksReached} de ${pa.weeksWithGoal}`, onOpen:open('plan') }
+        : { key:'pextra', when:'period', label: pa.basis === 'goal' ? 'Além da meta' : 'Além do sugerido', value:fmtDuration(pa.extra), muted: !(pa.extra >= 1), onOpen:open('plan') }];
   }
   if(focus === 'reviews'){
     return [
@@ -14288,7 +15624,7 @@ function analyticsFocusMetrics(a, focus){
     ];
   }
   // visão geral
-  if(sc.type === 'topic') return [M.time(), M.sessions(), M.reviews(), masteryMetric()];
+  if(sc.type === 'topic' && sc.topicId) return [M.time(), M.sessions(), M.reviews(), masteryMetric()];
   const out = [M.time(), M.days(), M.sessions()];
   if(pa.hasPlan) out.push(M.plan());
   else if(r.completed || r.overdueNow) out.push(M.reviews());
@@ -14306,44 +15642,91 @@ function analyticsMainViz(a, focus){
     return { title: `Tempo ${bd.title.toLowerCase()}`, node: h('div', null, bd.rows.slice(0, 10).map(x =>
       hbarRow(x.label, x.minutes / mx * 100, `${fmtDuration(x.minutes)} · ${safePct(x.pct)}`, null, x.go))) };
   }
-  if(focus === 'planning') return { title:'Planejado × realizado', node: planVsActualViz(a) };
+  if(focus === 'consistency') return { title:'Calendário de estudo', node: h('div', null, calendarHeatmap(a), a.weeklyRhythm.length > 1 ? h('div', { style:'margin-top:16px' }, weeklyRhythmViz(a)) : null) };
+  if(focus === 'distribution') return { title:'Tempo por disciplina', node: distributionViz(a, 'discipline') };
+  if(focus === 'topics') return { title:'Tempo por tópico', node: distributionViz(a, 'topic') };
+  if(focus === 'types') return { title:'Tipos de estudo', node: typesViz(a) };
+  if(focus === 'rest') return { title:'Descansos do período', node: restDetail(a) };
+  if(focus === 'planning') return { title: a.planAdherence.basis === 'goal' ? 'Meta × estudado' : 'Sugerido × estudado', node: planVsActualViz(a) };
   if(focus === 'reviews') return a.reviews.completed
     ? { title:'Como foram as revisões', node: reviewOutcomesViz(a) }
     : { title:'Para revisar agora', node: dueReviewsViz(a) };
-  if(focus === 'content') return { title: a.scope.type === 'topic' ? 'Situação do tópico' : 'Situação dos tópicos', node: contentStatusViz(a) };
+  if(focus === 'content') return { title: a.scope.type === 'topic' && a.scope.topicId ? 'Situação do tópico' : 'Situação dos tópicos', node: contentStatusViz(a) };
   if(focus === 'deadlines') return { title:'Linha do tempo', node: deadlineTimelineViz(a) };
   return null;
 }
 
-/** Planejado (contorno) × realizado (preenchido), na mesma escala. */
+/**
+ * v6.8 — meta (contorno) × estudado (preenchido), na mesma escala.
+ * Várias semanas → uma linha por semana (a meta é semanal). Uma semana só →
+ * como o tempo foi usado por disciplina, com a sugestão como referência.
+ */
 function planVsActualViz(a){
   const pa = a.planAdherence;
-  const perDisc = pa.perDiscipline.filter(x => x.planned > 0 || x.realized > 0);
-  const useWeeks = a.scope.type === 'discipline' || perDisc.length <= 1;
+  const weeks = pa.weeks.filter(w => w.planned > 0 || w.realized > 0);
+  const useWeeks = weeks.length > 1;
+  const word = pa.basis === 'goal' ? 'meta' : 'sugestão';
   const rows = useWeeks
-    ? pa.weeks.filter(w => w.planned > 0 || w.realized > 0).map(w => ({
-        label:`Semana ${w.weekNumber}${w.coveredDays < 7 ? ` (${plural(w.coveredDays, 'dia', 'dias')})` : ''}`, planned:w.planned, realized:w.realized, go:null }))
-    : perDisc.map(x => ({ label:x.label, planned:x.planned, realized:x.realized,
+    ? weeks.map(w => ({ label:`Semana ${w.weekNumber}${w.coveredDays < 7 ? ` (${plural(w.coveredDays, 'dia', 'dias')})` : ''}`, planned:w.planned, realized:w.realized, go:null }))
+    : pa.perDiscipline.filter(x => x.planned > 0 || x.realized > 0).map(x => ({ label:x.label, planned:x.planned, realized:x.realized,
         go: getDiscipline(x.disciplineId) ? () => openDistributionDrawer(
           a.byDiscipline.find(r => r.key === x.disciplineId) || { key:x.disciplineId, label:x.label, minutes:x.realized, count:0, pct:0 }, 'discipline', a) : null }));
   const mx = Math.max(1, ...rows.map(r => Math.max(r.planned, r.realized)));
   const box = h('div', { class:'pva' });
   rows.forEach(r => {
-    const pct = r.planned > 0 ? (r.realized / r.planned) * 100 : null;
-    const value = r.planned > 0 ? `${fmtDuration(r.realized)} de ${fmtDuration(r.planned)}` : `${fmtDuration(r.realized)} · sem plano`;
+    const reached = r.planned > 0 && r.realized >= r.planned - 0.5;
+    const value = r.planned > 0 ? `${fmtDuration(r.realized)} de ${fmtDuration(r.planned)}` : `${fmtDuration(r.realized)} · ${useWeeks ? 'sem meta' : 'fora da sugestão'}`;
     const track = h('span', { class:'pva-track', 'aria-hidden':'true' },
       h('span', { class:'pva-plan', style:`width:${(r.planned / mx) * 100}%` }),
-      h('span', { class:'pva-real' + (pct !== null && pct >= 100 ? ' is-done' : ''), style:`width:${(r.realized / mx) * 100}%` }));
-    const inner = [h('span', { class:'pva-l', text:r.label }), track,
-      h('span', { class:'pva-v' }, h('span', { text:value }), pct !== null ? h('span', { class:'pva-pct', text:safePct(pct) }) : null)];
+      h('span', { class:'pva-real' + (useWeeks && reached ? ' is-done' : ''), style:`width:${(r.realized / mx) * 100}%` }));
+    const tag = useWeeks && r.planned > 0 ? h('span', { class:'pva-pct', text: reached ? 'alcançada' : safePct(r.realized / r.planned * 100) }) : null;
+    const inner = [h('span', { class:'pva-l', text:r.label }), track, h('span', { class:'pva-v' }, h('span', { text:value }), tag)];
     box.append(r.go
       ? h('button', { class:'pva-row is-action', type:'button', 'aria-label':`${r.label}: ${value}. Ver detalhes`, onclick:r.go }, inner)
       : h('div', { class:'pva-row', role:'img', 'aria-label':`${r.label}: ${value}` }, inner));
   });
   box.append(h('p', { class:'viz-legend' },
-    h('span', { class:'lg-plan', 'aria-hidden':'true' }), 'planejado',
-    h('span', { class:'lg-real', 'aria-hidden':'true' }), 'realizado',
-    useWeeks ? null : h('span', { class:'viz-hint', text:'Clique numa linha para ver os detalhes.' })));
+    h('span', { class:'lg-plan', 'aria-hidden':'true' }), useWeeks ? word : 'sugestão',
+    h('span', { class:'lg-real', 'aria-hidden':'true' }), 'estudado',
+    h('span', { class:'viz-hint', text: useWeeks ? 'Uma linha por semana.' : 'A sugestão é uma referência: a meta da semana é o tempo total.' })));
+  return box;
+}
+
+/** v6.8 — barras horizontais por disciplina ou tópico, com "≈" nas partes estimadas e clique para aprofundar. */
+function distributionViz(a, mode){
+  const rows = (mode === 'topic' ? a.byTopic : a.byDiscipline).filter(x => x.minutes > 0);
+  if(!rows.length) return h('p', { class:'hint', text:'Sem registros neste período.' });
+  const LIMIT = 12;
+  const shown = rows.slice(0, LIMIT);
+  const mx = Math.max(1, ...shown.map(x => x.minutes));
+  const box = h('div', { class:'dist-viz' }, shown.map(x => {
+    const label = x.label;
+    const go = distributionAction(x, mode);
+    return hbarRow(label, x.minutes / mx * 100, `${minutesText(x)} · ${safePct(x.pct)}`, x.key === '__none__' ? 'var(--text-tertiary)' : null,
+      go ? () => openDistributionDrawer(x, mode, a) : null);
+  }));
+  if(rows.length > LIMIT) box.append(h('p', { class:'hint', style:'margin-top:8px', text:`E mais ${plural(rows.length - LIMIT, 'item', 'itens')} com menos tempo — veja em "Explorar mais".` }));
+  const note = estimateNote(shown, mode);
+  if(note) box.append(note);
+  box.append(h('p', { class:'viz-legend' }, h('span', { class:'viz-hint', text:'Clique numa linha para ver os estudos e aprofundar.' })));
+  return box;
+}
+
+/** v6.8 — tipos de estudo: frequência (em quantos estudos) e tempo (a parte de cada tipo), lado a lado e sem se misturar. */
+function typesViz(a){
+  const rows = a.byType.filter(x => x.count > 0).sort((x, y) => (y.count - x.count) || (y.minutes - x.minutes));
+  if(!rows.length) return h('p', { class:'hint', text:'Nenhum estudo neste período.' });
+  const mxC = Math.max(1, ...rows.map(x => x.count));
+  const box = h('div', { class:'types-viz' });
+  rows.forEach(x => box.append(h('div', { class:'tv-row', role:'img', 'aria-label': `${x.label}: em ${plural(x.count, 'estudo', 'estudos')}, ${minutesText(x)} de tempo` },
+    h('span', { class:'tv-l', text:x.label }),
+    h('span', { class:'tv-track', 'aria-hidden':'true' }, h('span', { class:'tv-fill', style:`width:${x.count / mxC * 100}%` })),
+    h('span', { class:'tv-v' }, h('span', { class:'num', text: plural(x.count, 'estudo', 'estudos') }), h('span', { class:'tv-time num', text: minutesText(x) })))));
+  if(a.typeStats && a.typeStats.multi) box.append(h('p', { class:'hint', style:'margin-top:8px',
+    text:`${plural(a.typeStats.multi, 'estudo tem', 'estudos têm')} mais de um tipo e aparece${a.typeStats.multi === 1 ? '' : 'm'} na contagem de cada um. O tempo de um estudo com dois tipos é dividido entre eles — nunca contado duas vezes.` }));
+  const note = estimateNote(rows, 'type');
+  if(note) box.append(note);
+  box.append(h('p', { class:'viz-legend' }, h('span', { class:'viz-hint', text:'A barra mostra em quantos estudos o tipo apareceu; à direita, o tempo atribuído a ele.' })));
   return box;
 }
 
@@ -14376,7 +15759,7 @@ function dueReviewsViz(a){
 /** Uma barra empilhada com a situação dos tópicos + detalhe por disciplina. */
 function contentStatusViz(a){
   const c = a.content;
-  if(a.scope.type === 'topic'){
+  if(a.scope.type === 'topic' && a.scope.topicId){
     const tp = getTopic(a.scope.topicId);
     if(!tp) return h('p', { class:'hint', text:'Tópico não encontrado.' });
     const dl = h('dl', { class:'kv-list' });
@@ -14441,6 +15824,11 @@ function deadlineLine(dl, extra, done, opts){
 const FOCUS_INSIGHT_TAGS = {
   overview:  null,
   time:      ['time','rest','distribution','types','difficulty','projection'],
+  consistency:['time','projection'],
+  distribution:['distribution','priority','plan'],
+  topics:    ['content','priority','difficulty'],
+  types:     ['types'],
+  rest:      ['rest'],
   planning:  ['plan','priority','projection'],
   reviews:   ['reviews'],
   content:   ['content','priority'],
@@ -14525,7 +15913,7 @@ function analyticsExploreItems(a, focus){
     calendar:     { label:'Calendário', meta:'ver um dia ou escolher um intervalo', show:true, build:() => exploreContent(analyticsCalendarCard(a)) },
     rhythm:       { label:'Dias com estudo, semana a semana', show: t.count > 0 && a.weeklyRhythm.length > 1, build:() => h('div', { class:'an-explore-content' }, weeklyRhythmViz(a)) },
     rest:         { label:'Descansos', meta:'quanto e quantos', show: a.rest.count > 0, build:() => h('div', { class:'an-explore-content' }, restDetail(a)) },
-    plan:         { label:'Planejado × realizado', show: a.planAdherence.hasPlan && a.planAdherence.perDiscipline.length > 0, build:() => h('div', { class:'an-explore-content' }, planVsActualViz(a)) },
+    plan:         { label: a.planAdherence.basis === 'goal' ? 'Meta × estudado' : 'Sugerido × estudado', show: a.planAdherence.hasPlan && a.planAdherence.perDiscipline.length > 0, build:() => h('div', { class:'an-explore-content' }, planVsActualViz(a)) },
     weeks:        { label:'Semana a semana', show: sc.type !== 'topic', build:() => exploreContent(weeklyReportCard(sc)) },
     reviews:      { label:'Revisões', show: a.reviews.scheduled > 0 || a.reviews.completed > 0 || a.reviews.overdueNow > 0, build:() => exploreContent(analyticsReviewsCard(a)) },
     due:          { label:'Para revisar agora', show: a.reviews.dueList.length > 0, build:() => h('div', { class:'an-explore-content' }, dueReviewsViz(a)) },
@@ -14541,7 +15929,12 @@ function analyticsExploreItems(a, focus){
   const order = {
     overview:  ['distribution','calendar','rhythm','rest','plan','reviews','content','attention','deadlines','priority','weeks','projection','difficulty','types'].concat(mainIsTime ? [] : ['time']),
     time:      ['rhythm','weekday','calendar','rest','distribution','types','difficulty','weeks','projection'].concat(mainIsTime ? [] : ['time']),
-    planning:  ['weeks','distribution','calendar','projection','priority'],
+    planning:  ['weeks','distribution','calendar','projection'],
+    consistency:['weekday','time','weeks','projection'],
+    distribution:['time','weeks','priority','types','calendar'],
+    topics:    ['attention','content','priority','difficulty','distribution'],
+    types:     ['distribution','time','calendar'],
+    rest:      ['time','calendar','rhythm'],
     reviews:   (a.reviews.completed ? ['due'] : []).concat(['attention','reviews','calendar','content']),
     content:   ['attention','priority','distribution','reviews'],
     deadlines: ['calendar','attention','distribution']
@@ -14611,7 +16004,7 @@ function restDetail(a){
         onclick:() => { if(Drawer.isOpen) Drawer.close(); openEditSessionModal(s.id); } },
       h('span', { class:'an-sess-date', text: fmtDateBR(s.date) }),
       h('span', { class:'an-sess-main' },
-        h('span', { class:'an-sess-title', text: disciplineName(s.disciplineId) + (topic ? ' › ' + topic : '') }),
+        h('span', { class:'an-sess-title', text: SessionModel.title(s) + (topic ? ' › ' + topic : '') }),
         h('span', { class:'an-sess-sub', text: `${fmtDuration(s.minutes)} de estudo` })),
       h('span', { class:'an-sess-min', text: fmtDurationWords(breakMinutesOf(s)) }))));
   });
@@ -14716,7 +16109,10 @@ function breakdownRows(a){
   if(sc.type === 'area'){
     return { title:'Por disciplina', rows: a.byDiscipline.map(x => ({ ...x, go: getDiscipline(x.key) ? () => analyzeOnly('discipline', x.key) : null })) };
   }
-  if(sc.type === 'discipline'){
+  if(sc.type === 'discipline' && sc.multi){
+    return { title:'Por disciplina', rows: a.byDiscipline.map(x => ({ ...x, go: getDiscipline(x.key) ? () => analyzeOnly('discipline', x.key) : null })) };
+  }
+  if(sc.type === 'discipline' || (sc.type === 'topic' && sc.multi)){
     return { title:'Por tópico', rows: a.byTopic.map(x => ({ ...x, go: getTopic(x.key) ? () => analyzeOnly('topic', x.key) : null })) };
   }
   return { title:'Por tipo de estudo', rows: a.byType.filter(x => x.count > 0).map(x => ({ key:x.key, label:x.label, minutes:x.minutes, count:x.count,
@@ -14727,9 +16123,12 @@ function minutesText(row){ return (row && row.estimated > 0 ? '≈ ' : '') + fmt
 /** Nota curta, só quando alguma linha mostrada tem parte estimada. */
 function estimateNote(rows, kind){
   if(!(rows || []).some(r => r.estimated > 0)) return null;
-  return h('p', { class:'hint est-note', text: kind === 'type'
+  const text = kind === 'type'
     ? '≈ inclui partes estimadas: um estudo com mais de um tipo tem o tempo dividido igualmente entre eles. O total continua sendo o tempo real estudado.'
-    : '≈ inclui partes estimadas: um estudo com vários tópicos e sem divisão informada tem o tempo repartido igualmente entre eles. O total continua sendo o tempo real estudado.' });
+    : (kind === 'discipline' || kind === 'area')
+    ? '≈ inclui partes estimadas: um estudo com várias disciplinas e sem divisão informada tem o tempo repartido igualmente entre elas. O total continua sendo o tempo real estudado, contado uma vez.'
+    : '≈ inclui partes estimadas: um estudo com vários tópicos e sem divisão informada tem o tempo repartido igualmente entre eles. O total continua sendo o tempo real estudado.';
+  return h('p', { class:'hint est-note', text });
 }
 
 function openAnalyticsDrawer(kind, a){
@@ -14789,7 +16188,7 @@ function openAnalyticsDrawer(kind, a){
             onclick:() => { Drawer.close(); openEditSessionModal(s.id); } },
           h('span', { class:'an-sess-date', text: fmtDateBR(s.date) }),
           h('span', { class:'an-sess-main' },
-            h('span', { class:'an-sess-title', text: disciplineName(s.disciplineId) + (topic ? ' › ' + topic : '') }),
+            h('span', { class:'an-sess-title', text: SessionModel.title(s) + (topic ? ' › ' + topic : '') }),
             h('span', { class:'an-sess-sub', text: [SessionModel.typesText(s) || 'Tipo não informado', SessionModel.outcomesText(s) || null].filter(Boolean).join(' · ') })),
           h('span', { class:'an-sess-min', text: (s._shareEstimated ? '≈ ' : '') + fmtDuration(s.minutes), title: s._projected ? 'Parte deste tópico no estudo' + (s._shareEstimated ? ' (estimada)' : '') : null }))));
       });
@@ -14812,31 +16211,36 @@ function openAnalyticsDrawer(kind, a){
   }
 
   else if(kind === 'plan'){
-    title = METRIC_WORDS.adherence.title;
     const pa = a.planAdherence;
-    body.append(drawerIntro('Quanto do que foi planejado para cada disciplina foi realmente estudado. Tempo a mais numa disciplina não compensa o que faltou em outra. Cada semana é comparada com o plano que existia naquela semana.'));
+    title = pa.basis === 'goal' ? 'Meta semanal' : 'Sugerido × estudado';
+    body.append(drawerIntro(pa.basis === 'goal'
+      ? 'A meta é o tempo total estudado em cada semana. Qualquer estudo conta, de qualquer disciplina. A divisão entre disciplinas é uma sugestão — aparece aqui só como referência. Cada semana usa a meta que valia naquela semana.'
+      : 'Num recorte de disciplinas, o tempo estudado é comparado com o que a sugestão do plano previa para elas. É só uma referência: a meta da semana é o tempo total.'));
     if(!pa.applicable){
-      body.append(h('p', { class:'influence-note', text:'O plano semanal distribui tempo entre disciplinas, não entre tópicos. Para ver o plano cumprido, analise a disciplina deste tópico.' }));
-      if(a.scope.disciplineId) body.append(h('button', { class:'btn sm', type:'button', text:'Analisar a disciplina', onclick:() => analyzeOnly('discipline', a.scope.disciplineId) }));
+      body.append(h('p', { class:'influence-note', text: a.scope.types ? 'A meta semanal vale para qualquer tipo de estudo. Tire o filtro de tipos para ver a meta.' : 'A meta é semanal e vale para todos os estudos — não se aplica a tópicos isolados.' }));
+      body.append(h('button', { class:'btn sm', type:'button', text:'Analisar todos os estudos', onclick:() => { Drawer.close(); applyAnalyticsQuery(Object.assign({}, a.query, { scopeType:'all', scopeIds:[], scopeId:null, types:[] })); } }));
     } else if(!pa.hasPlan){
-      body.append(h('p', { class:'influence-note', text:'Não havia tempo planejado para este período (ou para esta seleção). O plano é opcional: as análises de tempo continuam funcionando sem ele.' }));
+      body.append(h('p', { class:'influence-note', text:'Não havia meta semanal neste período (ou sugestão para esta seleção). A meta é opcional: as análises de tempo continuam funcionando sem ela.' }));
       body.append(h('button', { class:'btn sm', type:'button', text:'Abrir Planejamento', onclick:() => { Drawer.close(); setView('plan'); } }));
     } else {
       body.append(h('div', { class:'stat-grid compact' },
-        statBox(safePct(pa.pct), 'plano cumprido'),
-        statBox(fmtDuration(pa.planned), 'planejado'),
-        statBox(fmtDuration(pa.realized), 'estudado no total'),
-        pa.extra >= 1 ? statBox(fmtDuration(pa.extra), 'além do plano') : null));
-      body.append(drawerSection('Por disciplina', pa.perDiscipline.filter(x => x.planned > 0 || x.realized > 0).map(x =>
-        hbarRow(x.label, x.pct === null ? 0 : x.pct,
-          x.pct === null ? `${fmtDuration(x.realized)} (sem plano)` : `${fmtDuration(x.realized)} de ${fmtDuration(x.planned)} · ${safePct(x.pct)}`,
-          x.pct === null ? null : x.pct >= 100 ? 'var(--teal)' : x.pct < 60 ? 'var(--danger)' : 'var(--brass)',
-          a.scope.type !== 'discipline' && getDiscipline(x.disciplineId) ? () => analyzeOnly('discipline', x.disciplineId) : null))));
+        statBox(pa.pct >= 100 ? 'Alcançada' : safePct(pa.pct), pa.basis === 'goal' ? 'da meta' : 'do sugerido'),
+        statBox(fmtDuration(pa.planned), pa.basis === 'goal' ? 'meta' : 'sugerido'),
+        statBox(fmtDuration(pa.realized), 'estudado'),
+        pa.extra >= 1 ? statBox(fmtDuration(pa.extra), pa.basis === 'goal' ? 'além da meta' : 'além do sugerido') : null));
       const weeks = pa.weeks.filter(w => w.planned > 0 || w.realized > 0);
       if(weeks.length > 1) body.append(drawerSection('Por semana', weeks.map(w =>
         hbarRow(`Semana ${w.weekNumber}${w.coveredDays < 7 ? ` (${w.coveredDays} ${w.coveredDays === 1 ? 'dia' : 'dias'})` : ''}`,
-          w.pct === null ? 0 : w.pct, w.pct === null ? `${fmtDuration(w.realized)} (sem plano)` : `${safePct(w.pct)}` + (w.extra >= 1 ? ` · +${fmtDuration(w.extra)} além` : '')))));
-      body.append(h('p', { class:'hint', style:'margin-top:8px', text:'Em semanas cortadas pelo período, o tempo planejado é proporcional aos dias incluídos.' }));
+          w.planned > 0 ? Math.min(100, w.realized / w.planned * 100) : 0,
+          w.planned > 0 ? `${fmtDuration(w.realized)} de ${fmtDuration(w.planned)}` + (w.reached ? ' · alcançada' : '') : `${fmtDuration(w.realized)} (sem meta)`,
+          w.reached ? 'var(--teal)' : null))));
+      const per = pa.perDiscipline.filter(x => x.planned > 0 || x.realized > 0);
+      const mx = Math.max(1, ...per.map(x => Math.max(x.planned, x.realized)));
+      body.append(drawerSection('Como o tempo foi usado', per.map(x =>
+        hbarRow(x.label, x.realized / mx * 100,
+          x.planned > 0 ? `${fmtDuration(x.realized)} · sugestão ${fmtDuration(x.planned)}` : `${fmtDuration(x.realized)} · fora da sugestão`, null,
+          a.scope.type !== 'discipline' && getDiscipline(x.disciplineId) ? () => analyzeOnly('discipline', x.disciplineId) : null))));
+      body.append(h('p', { class:'hint', style:'margin-top:8px', text:'Em semanas cortadas pelo período, a meta é proporcional aos dias incluídos.' }));
     }
   }
 
@@ -14871,7 +16275,7 @@ function openAnalyticsDrawer(kind, a){
 
   else if(kind === 'content'){
     const c = a.content;
-    if(a.scope.type === 'topic'){
+    if(a.scope.type === 'topic' && a.scope.topicId){
       const tp = getTopic(a.scope.topicId);
       title = 'Situação do tópico';
       body.append(drawerIntro('Como este tópico está agora, independentemente do período escolhido.'));
@@ -15086,7 +16490,7 @@ function dayTip(iso, scope){
   const list = sessionsOfDay(iso, sc);
   if(!list.length) return tipBody(fmtDateBR(iso), [], 'Sem registros neste dia.');
   const byDisc = new Map();
-  list.forEach(x => byDisc.set(x.disciplineId, (byDisc.get(x.disciplineId) || 0) + (x.minutes || 0)));
+  minutesByDiscipline(list).forEach((m, id) => byDisc.set(id, m));
   const rows = [...byDisc.entries()].sort((a,b) => b[1] - a[1]).slice(0, 5).map(([id, min]) => [disciplineName(id), fmtDuration(min)]);
   return tipBody(fmtDateBR(iso), [
     ['Tempo', fmtDuration(sum(list, x => x.minutes || 0))],
@@ -15117,7 +16521,7 @@ function openDayDrawer(iso, scope){
       ul.append(h('li', null, h('button', { class:'an-sess', type:'button', 'aria-label':'Editar este estudo',
           onclick:() => { Drawer.close(); openEditSessionModal(s.id); } },
         h('span', { class:'an-sess-main' },
-          h('span', { class:'an-sess-title', text: disciplineName(s.disciplineId) + (topic ? ' › ' + topic : '') }),
+          h('span', { class:'an-sess-title', text: SessionModel.title(s) + (topic ? ' › ' + topic : '') }),
           h('span', { class:'an-sess-sub', text: [SessionModel.typesText(s) || 'Tipo não informado', s.difficulty ? 'dificuldade ' + s.difficulty + '/5' : null, SessionModel.outcomesText(s) || null].filter(Boolean).join(' · ') })),
         h('span', { class:'an-sess-min', text: (s._shareEstimated ? '≈ ' : '') + fmtDuration(s.minutes), title: s._projected ? 'Parte deste tópico no estudo' + (s._shareEstimated ? ' (estimada)' : '') : null }))));
     });
@@ -15170,17 +16574,23 @@ function timeChart(a){
   const max = Math.max(...series.map(s => s.minutes), 1);
   const unit = { day:'dia', week:'semana', month:'mês' }[granularity];
   const chart = h('div', { class:'tchart', role:'group', 'aria-label':`Tempo por ${unit}` });
-  series.forEach(s => {
+  // v6.8: rótulos que cabem — em telas estreitas ou com muitas barras, um rótulo a cada `step`, alinhado ao período mais recente
+  const fit = (window.innerWidth || 1024) < 600 ? 7 : 14;
+  const step = Math.max(1, Math.ceil(series.length / fit));
+  series.forEach((s, i) => {
     const col = h('button', { class:'tcol' + (s.minutes ? '' : ' is-empty'), type:'button',
       'aria-label': `${granularity === 'day' ? fmtDateBR(s.key) : (granularity === 'week' ? 'Semana de ' + s.label : s.label)}: ${fmtDuration(s.minutes)}. Ver detalhes`,
       onclick:() => openBucketDrawer(s, granularity, a) },
       h('span', { class:'tb', style:`height:${(s.minutes / max) * 100}%` }),
-      h('span', { class:'tl', text:s.label }));
+      h('span', { class:'tl' + (((series.length - 1 - i) % step === 0) ? '' : ' is-skip'), text:s.label }));
     Tooltip.attach(col, () => bucketTip(s, granularity, a.scope));
     chart.appendChild(col);
   });
-  return h('div', null, chart,
-    h('p', { class:'hint', style:'margin-top:6px', text:`Cada barra é um ${unit}. Clique em uma barra para ver os detalhes.` }));
+  const top = series.reduce((m, x) => x.minutes > m.minutes ? x : m, series[0]);
+  return h('div', null,
+    h('p', { class:'tchart-scale', text:`Maior ${unit}: ${fmtDuration(top.minutes)}${granularity === 'day' ? ' (' + fmtDateBR(top.key) + ')' : ''}` }),
+    chart,
+    h('p', { class:'hint', style:'margin-top:6px', text:`Cada barra é um ${unit}. Toque ou clique numa barra para ver os detalhes.` }));
 }
 
 function bucketSessions(bucket, scope){ return AnalyticsScope.sessions(scope, bucket.range); }
@@ -15188,7 +16598,7 @@ function bucketSessions(bucket, scope){ return AnalyticsScope.sessions(scope, bu
 function bucketTip(bucket, granularity, scope){
   const list = bucketSessions(bucket, scope || AnalyticsScope.resolve(ui.analyticsScope));
   const byDisc = new Map();
-  list.forEach(x => byDisc.set(x.disciplineId, (byDisc.get(x.disciplineId) || 0) + (x.minutes || 0)));
+  minutesByDiscipline(list).forEach((m, id) => byDisc.set(id, m));
   const rows = [...byDisc.entries()].sort((a,b) => b[1] - a[1]).slice(0, 5).map(([id, min]) => [disciplineName(id), fmtDuration(min)]);
   const head = granularity === 'day' ? fmtDateBR(bucket.key) : fmtRangeLabel(bucket.range);
   const sub = `${fmtDuration(bucket.minutes)} · ${plural(list.length, 'estudo', 'estudos')}`;
@@ -15207,7 +16617,7 @@ function openBucketDrawer(bucket, granularity, a){
   const useTopics = a.scope.type === 'discipline' || a.scope.type === 'topic';
   // v6.7: por tópico, cada estudo divide o próprio tempo entre os tópicos dele (nada é contado duas vezes)
   const rows = useTopics ? AnalyticsEngine.groupTopicMinutes(list)
-    : AnalyticsEngine.groupMinutes(list, s => s.disciplineId, id => disciplineName(id));
+    : AnalyticsEngine.groupDisciplineMinutes(list, id => id, id => disciplineName(id));
   if(rows.length){
     const mx = Math.max(1, ...rows.map(r => r.minutes));
     body.append(drawerSection(useTopics ? 'Por tópico' : 'Por disciplina', rows.slice(0, 12).map(r => hbarRow(r.label, r.minutes / mx * 100, `${fmtDuration(r.minutes)} · ${safePct(r.pct)}`))));
@@ -15225,8 +16635,8 @@ function distributionModes(scope){
   switch(scope.type){
     case 'all':        return (hasAreas ? [['area','Áreas']] : []).concat([['discipline','Disciplinas'], ['topic','Tópicos']]);
     case 'area':       return [['discipline','Disciplinas'], ['topic','Tópicos']];
-    case 'discipline': return [['topic','Tópicos'], ['type','Tipos de estudo']];
-    default:           return [['type','Tipos de estudo']];
+    case 'discipline': return (scope.multi ? [['discipline','Disciplinas']] : []).concat([['topic','Tópicos'], ['type','Tipos de estudo']]);
+    default:           return (scope.multi ? [['topic','Tópicos']] : []).concat([['type','Tipos de estudo']]);
   }
 }
 
@@ -15254,7 +16664,7 @@ function analyticsDistributionCard(a){
   const content = shown.length
     ? h('div', { class:'donut-wrap' }, donutChart(shown, mode, a), donutLegend(shown, mode, a))
     : h('p', { class:'hint', text:'Sem registros neste período.' });
-  const est = (mode === 'topic' || mode === 'type') ? estimateNote(shown, mode) : null;
+  const est = estimateNote(shown, mode);
   return cardWithAction('Para onde foi o tempo', toggle, content, est);
 }
 
@@ -15284,7 +16694,7 @@ function openDistributionDrawer(row, mode, a){
     kv(AREA_TERM, areaNameOf(d));
     kv('Prioridade', PriorityEngine.text(d.priority));
     const pd = a.planAdherence.perDiscipline.find(x => x.disciplineId === d.id);
-    if(pd && pd.planned > 0) kv('Plano', `${fmtDuration(pd.realized)} de ${fmtDuration(pd.planned)} (${safePct(pd.pct)})`);
+    if(pd && pd.planned > 0) kv('Sugestão no período', `${fmtDuration(pd.planned)} (estudado: ${fmtDuration(pd.realized)})`);
     body.append(dl);
   } else if(mode === 'topic' && getTopic(row.key)){
     const tp = getTopic(row.key);
@@ -15400,7 +16810,7 @@ function analyticsPriorityCard(a){
 function analyticsContentCard(a){
   const ct = a.content;
   const c = h('div', { class:'card' }, h('p', { class:'card-title' }, 'Progresso no conteúdo', helpDot('cobertura')));
-  if(a.scope.type === 'topic'){
+  if(a.scope.type === 'topic' && a.scope.topicId){
     const tp = getTopic(a.scope.topicId);
     const st = tp ? topicStatus(tp) : 'nao_iniciado';
     c.append(h('div', { class:'stat-grid compact' },
@@ -15496,16 +16906,14 @@ function weeklyReportCard(scope){
   const wp = state.weeklyPlans.find(w => w.weekStart === dateToISO(ws));
   const sess = AnalyticsScope.sessions(sc, range);
   const allocs = wp ? (wp.allocations || []).filter(x => AnalyticsScope.hasDiscipline(sc, x.disciplineId)) : [];
-  const planned = sum(allocs, x => x.targetMinutes || 0);
+  // v6.8 — "todos os estudos": a META da semana (tempo total). Recorte de disciplinas: a sugestão delas, como referência.
+  const basis = sc.type === 'all' && !sc.types ? 'goal' : 'suggestion';
+  const planned = sc.type === 'topic' || sc.types ? 0 : (basis === 'goal' ? PlanRules.weekGoal(wp) : sum(allocs, x => x.targetMinutes || 0));
   const realized = sum(sess, s => s.minutes || 0);
   const reviews = sum(sess, s => SessionModel.reviewItems(s).length);
   const a = dateToISO(ws), b = dateToISO(we);
-  // v6.5 — plano cumprido da semana: de cada disciplina conta no máximo o planejado para ela (PlanRules)
-  const plannedByDisc = new Map();
-  allocs.forEach(al => plannedByDisc.set(al.disciplineId, (plannedByDisc.get(al.disciplineId) || 0) + (al.targetMinutes || 0)));
-  let weekCounted = 0;
-  plannedByDisc.forEach((pl, id) => { weekCounted += PlanRules.counted(pl, sum(sess.filter(x => x.disciplineId === id), x => x.minutes || 0)); });
-  const weekExtra = Math.max(0, realized - weekCounted);
+  const g = PlanRules.goal(planned, realized);
+  const realByDisc = minutesByDiscipline(sess);
 
   const nav = h('div', { class:'row auto' },
     h('button', { class:'btn ghost sm', type:'button', text:'‹', 'aria-label':'Semana anterior', onclick:() => { ui.weekOffset--; renderAnalytics(); } }),
@@ -15516,28 +16924,30 @@ function weeklyReportCard(scope){
   const c = cardWithAction('Semana a semana', nav);
   c.append(h('div', { class:'stat-grid compact' },
     statBox(fmtDuration(realized), 'estudado'),
-    statBox(planned > 0 ? fmtDuration(planned) : '—', 'planejado'),
-    statBox(planned > 0 ? safePct((weekCounted / planned) * 100) : '—', 'plano cumprido'),
+    statBox(planned > 0 ? fmtDuration(planned) : '—', basis === 'goal' ? 'meta da semana' : 'sugerido'),
+    statBox(planned > 0 ? (g.reached ? 'Alcançada' : safePct(g.pct)) : '—', basis === 'goal' ? 'da meta' : 'da sugestão'),
     statBox(String(sess.length), sess.length === 1 ? 'estudo' : 'estudos'),
     statBox(String(new Set(sess.map(s => s.date)).size), 'dias com estudo'),
     /* v6.5 — antes: "feitas/previstas". O "previstas" de uma semana passada não
        pode ser reconstruído (o tópico só guarda a PRÓXIMA data), então a fração
        era inventada. Fica o que é fato: quantas revisões foram feitas. */
     statBox(String(reviews), reviews === 1 ? 'revisão feita' : 'revisões feitas')));
-  if(planned > 0 && weekExtra >= 1) c.append(h('p', { class:'hint', style:'margin-top:8px', text:`${fmtDuration(weekExtra)} além do plano nesta semana — tempo a mais numa disciplina ou fora do planejado. Não entra em "plano cumprido".` }));
-  if(allocs.length){
-    const perDisc = allocs.map(al => {
-      const r = sum(sess.filter(s => s.disciplineId === al.disciplineId), s => s.minutes || 0);
-      return { label: disciplineName(al.disciplineId), planned: al.targetMinutes || 0, realized: r,
-               pct: al.targetMinutes > 0 ? (r / al.targetMinutes) * 100 : null };
-    }).filter(x => x.planned > 0 || x.realized > 0).sort((x,y) => (y.pct || 0) - (x.pct || 0));
-    if(perDisc.length > 1){
-      c.append(h('p', { class:'section-label', style:'margin-top:14px', text:'Por disciplina' }));
-      perDisc.forEach(x => c.append(hbarRow(x.label, x.pct || 0, x.pct === null ? fmtDuration(x.realized) : safePct(x.pct),
-        (x.pct || 0) >= 100 ? 'var(--teal)' : 'var(--brass)')));
-    }
-  } else if(!wp){
-    c.append(h('p', { class:'hint', style:'margin-top:10px', text:'Esta semana não tinha um plano registrado.' }));
+  if(planned > 0 && g.extra >= 1) c.append(h('p', { class:'hint', style:'margin-top:8px', text:`${fmtDuration(g.extra)} além ${basis === 'goal' ? 'da meta' : 'da sugestão'} nesta semana.` }));
+  // sugerido × realizado por disciplina — informativo: a sugestão é uma referência, não uma nota
+  const ids = new Set(allocs.filter(al => (al.targetMinutes || 0) > 0).map(al => al.disciplineId));
+  if(sc.type !== 'topic') realByDisc.forEach((m, id) => { if(m > 0) ids.add(id); });
+  const perDisc = Array.from(ids).map(id => ({
+    label: disciplineName(id),
+    planned: sum(allocs.filter(al => al.disciplineId === id), al => al.targetMinutes || 0),
+    realized: realByDisc.get(id) || 0
+  })).sort((x, y) => (y.realized - x.realized) || (y.planned - x.planned));
+  if(perDisc.length > 1){
+    const mx = Math.max(1, ...perDisc.map(x => Math.max(x.planned, x.realized)));
+    c.append(h('p', { class:'section-label', style:'margin-top:14px', text:'Como o tempo foi usado' }));
+    perDisc.forEach(x => c.append(hbarRow(x.label, x.realized / mx * 100,
+      fmtDuration(x.realized) + (x.planned > 0 ? ` · sugestão ${fmtDuration(x.planned)}` : ''))));
+  } else if(!wp && sc.type === 'all'){
+    c.append(h('p', { class:'hint', style:'margin-top:10px', text:'Esta semana não tinha uma meta registrada.' }));
   }
   return c;
 }
@@ -15561,7 +16971,7 @@ function buildSummaryText(a){
   analyticsFocusSummary(a, reportFocus(a).v).forEach(s => L.push(`• ${s}`));
   L.push('');
   L.push(`Tempo: ${fmtDuration(a.totals.minutes)} · Estudos registrados: ${a.totals.count} · Dias com estudo: ${a.totals.activeDays} de ${a.days}`);
-  if(a.planAdherence.hasPlan) L.push(`Plano cumprido: ${safePct(a.planAdherence.pct)} (${fmtDuration(a.planAdherence.counted)} de ${fmtDuration(a.planAdherence.planned)})` + (a.planAdherence.extra >= 1 ? ` · além do plano: ${fmtDuration(a.planAdherence.extra)}` : ''));
+  if(a.planAdherence.hasPlan) L.push(planGoalSentence(a.planAdherence));
   if(a.reviews.completed || a.reviews.overdueNow) L.push(`Revisões: ${a.reviews.completed} concluídas · ${a.reviews.overdueNow} atrasadas agora`);
   if(a.deadlines.upcoming.length) L.push(`Próximos prazos: ${a.deadlines.upcoming.slice(0, 3).map(x => DeadlineEngine.phrase(x.dl)).join('; ')}`);
   const ins = analyticsFocusInsights(a, reportFocus(a).v);
@@ -15666,20 +17076,21 @@ function buildStudyReportText(a){
     if(a.difficulty.avg !== null) L.push(`Dificuldade percebida média: ${fmtNumber(a.difficulty.avg, 1)}/5 (${plural(a.difficulty.count, 'registro', 'registros')})`);
   }
 
-  section('PLANEJAMENTO');
+  section('META SEMANAL');
   const pa = a.planAdherence;
-  if(!pa.applicable) L.push('O plano semanal é definido por disciplina; não se aplica a um tópico isolado.');
-  else if(!pa.hasPlan) L.push('Sem tempo planejado para este período.');
+  if(!pa.applicable) L.push('A meta semanal vale para todos os estudos; não se aplica a tópicos isolados nem a um filtro de tipos.');
+  else if(!pa.hasPlan) L.push('Sem meta semanal neste período.');
   else {
-    L.push(`Planejado: ${fmtDuration(pa.planned)}`);
-    L.push(`Estudado no total: ${fmtDuration(pa.realized)}`);
-    L.push(`Plano cumprido: ${safePct(pa.pct)} (${fmtDuration(pa.counted)} dentro do planejado para cada disciplina)`);
-    if(pa.extra >= 1) L.push(`Além do plano: ${fmtDuration(pa.extra)} (não entra no plano cumprido)`);
+    L.push(`${pa.basis === 'goal' ? 'Meta' : 'Sugerido'} no período: ${fmtDuration(pa.planned)}`);
+    L.push(`Estudado: ${fmtDuration(pa.realized)}`);
+    L.push(planGoalSentence(pa));
+    if(pa.basis === 'goal' && pa.weeksWithGoal > 1) L.push(`Semanas com a meta alcançada: ${pa.weeksReached} de ${pa.weeksWithGoal}`);
+    L.push('Qualquer estudo conta para a meta. A divisão entre disciplinas é só uma sugestão.');
     L.push('Observação: semanas cortadas pelo período contam proporcionalmente.');
   }
 
   section('DISCIPLINAS');
-  const discRows = a.scope.type === 'topic' ? [getDiscipline(a.scope.disciplineId)].filter(Boolean) : AnalyticsScope.disciplines(a.scope);
+  const discRows = a.scope.type === 'topic' ? Array.from(a.scope.discIds || []).map(id => getDiscipline(id)).filter(Boolean) : AnalyticsScope.disciplines(a.scope);
   const extraIds = a.byDiscipline.map(x => x.key).filter(id => !discRows.some(d => d.id === id));
   const discLines = discRows.map(d => ({ d, id:d.id, name:d.name }))
     .concat(extraIds.map(id => ({ d:getDiscipline(id), id, name:disciplineName(id) })));
@@ -15691,7 +17102,7 @@ function buildStudyReportText(a){
       if(x.d) parts.push(`${AREA_TERM}: ${areaNameOf(x.d)}`, `prioridade ${PriorityEngine.text(x.d.priority)}`);
       if(x.d && x.d.archived) parts.push('arquivada');
       parts.push(`tempo ${x.g ? `${fmtDuration(x.g.minutes)} (${safePct(x.g.pct)})` : '0min'}`);
-      if(x.p && x.p.planned > 0) parts.push(`plano ${fmtDuration(x.p.realized)} de ${fmtDuration(x.p.planned)} (${safePct(x.p.pct)})`);
+      if(x.p && x.p.planned > 0) parts.push(`sugestão ${fmtDuration(x.p.planned)}`);
       const prog = x.d ? a.content.perDiscipline.find(r => r.discipline.id === x.id) : null;
       if(prog && a.scope.type !== 'topic') parts.push(`conteúdo estudado ${prog.covered}/${prog.total}`);
       bullet(`${x.name} — ${parts.join(' · ')}`);
@@ -15892,10 +17303,10 @@ function filteredSessions(){
   const f = ui.history;
   let list = state.sessions.slice();
   if(f.topicId) list = list.filter(s => SessionModel.hasTopic(s, f.topicId));
-  else if(f.disciplineId) list = list.filter(s => s.disciplineId === f.disciplineId);
+  else if(f.disciplineId) list = list.filter(s => SessionModel.hasDiscipline(s, f.disciplineId));      // v6.8: estudos em que a disciplina aparece
   else if(f.areaId){
     const ids = new Set(state.disciplines.filter(d => d.areaId === f.areaId).map(d => d.id));
-    list = list.filter(s => ids.has(s.disciplineId));
+    list = list.filter(s => SessionModel.touchesDisciplines(s, ids));
   }
   if(f.period === 'semana'){ const r = { start:startOfWeek(today()), end:endOfWeek(today()) }; const a = dateToISO(r.start), b = dateToISO(r.end); list = list.filter(s => s.date >= a && s.date <= b); }
   else if(f.period === 'mes'){ const a = dateToISO(startOfMonth(today())), b = dateToISO(endOfMonth(today())); list = list.filter(s => s.date >= a && s.date <= b); }
@@ -15918,11 +17329,15 @@ function historySearchIndex(){
   if(historyHay.key === key) return historyHay.map;
   const map = new Map();
   state.sessions.forEach(s => {
-    const d = getDiscipline(s.disciplineId);
-    const area = d && d.areaId ? getArea(d.areaId) : null;
-    // v6.7: todos os tópicos e tipos do estudo entram na busca (não só os mostrados na linha)
-    map.set(s.id, normalizeText([d ? d.name : '', area ? area.name : '', SessionModel.topicNames(s).join(' '), str(s.legacyTopicText),
-      SessionModel.typesText(s), str(s.comment)].join(' ')));
+    // v6.7/v6.8: todas as disciplinas (e áreas), tópicos e tipos do estudo entram na busca (não só os mostrados na linha)
+    const words = [];
+    SessionModel.disciplineIds(s).forEach(id => {
+      const d = getDiscipline(id);
+      const area = d && d.areaId ? getArea(d.areaId) : null;
+      words.push(d ? d.name : '', area ? area.name : '');
+    });
+    map.set(s.id, normalizeText(words.concat([SessionModel.topicNames(s).join(' '), str(s.legacyTopicText),
+      SessionModel.typesText(s), str(s.comment)]).join(' ')));
   });
   historyHay = { key, map };
   return map;
@@ -15961,13 +17376,16 @@ function renderHistoryTable(){
       h('ul', { class:'line-list' }, items.map(s => {
         /* v6.7 — UMA linha por estudo: "Frações · Equações · +2" na linha, todos os
            nomes no rótulo acessível e na edição. O tempo é o do estudo, uma vez. */
+        /* v6.8 — várias disciplinas continuam numa linha só: "Matemática · Inglês",
+           "4 tópicos · Teoria · Exercícios". A divisão do tempo fica nos detalhes. */
         const sub = SessionModel.subline(s, { maxTopics:2 });
         const allTopics = SessionModel.topicNames(s);
-        const label = `${disciplineName(s.disciplineId)}${allTopics.length ? ', ' + allTopics.join(', ') : (topicLabelOf(s) ? ', ' + topicLabelOf(s) : '')}, ${fmtDuration(s.minutes)}. Editar estudo`;
+        const title = SessionModel.title(s);
+        const label = `${SessionModel.disciplineNames(s).join(', ')}${allTopics.length ? ', ' + allTopics.join(', ') : (topicLabelOf(s) ? ', ' + topicLabelOf(s) : '')}, ${fmtDuration(s.minutes)}. Editar estudo`;
         return h('li', { class:'line' },
           h('button', { class:'line-main', type:'button', 'aria-label':label, title: allTopics.length > 3 ? allTopics.join(' · ') : null,
               onclick:() => openEditSessionModal(s.id) },
-            h('span', { class:'line-t', text: disciplineName(s.disciplineId) }),
+            h('span', { class:'line-t', text: title }),
             sub ? h('span', { class:'line-s', text: sub }) : null,
             s.comment ? h('span', { class:'line-why', text: '“' + s.comment + '”' }) : null),
           h('span', { class:'line-v num', text: fmtDuration(s.minutes) }));
@@ -15978,6 +17396,35 @@ function renderHistoryTable(){
       h('button', { class:'btn ghost', type:'button', text:`Mostrar mais (${list.length - shown.length} restantes)`,
         onclick:() => { ui.historyLimit += 150; renderHistoryTable(); } })));
   }
+}
+
+/**
+ * v6.8 — a divisão do tempo de um estudo, como está gravada: cada disciplina
+ * (e, dentro dela, cada tópico) com a parte dela. O que veio de divisão
+ * estimada aparece com "≈" e uma nota. Só aparece quando há o que dividir.
+ */
+function sessionBreakdown(s){
+  const discs = SessionModel.discShares(s);
+  const topics = SessionModel.topicShares(s);
+  const multi = discs.length > 1;
+  if(!multi && topics.length < 2) return null;
+  const est = discs.some(x => x.estimated) || topics.some(x => x.estimated);
+  const val = x => (x.estimated ? '≈ ' : '') + fmtDuration(x.minutes);
+  const list = h('ul', { class:'bd-list' });
+  discs.forEach(d => {
+    const own = topics.filter(t => t.disciplineId === d.disciplineId);
+    const li = h('li', { class:'bd-disc' + (multi ? '' : ' is-single') });
+    if(multi) li.append(h('div', { class:'bd-row' }, h('span', { class:'bd-name', text: disciplineName(d.disciplineId) }), h('span', { class:'bd-v num', text: val(d) })));
+    if(own.length > 1 || (multi && own.length)){
+      li.append(h('ul', { class:'bd-topics' }, own.map(t => { const tp = getTopic(t.topicId);
+        return h('li', { class:'bd-row' }, h('span', { class:'bd-name', text: tp ? tp.name : '(tópico removido)' }), h('span', { class:'bd-v num', text: val(t) })); })));
+    }
+    list.append(li);
+  });
+  return h('div', { class:'bd', role:'group', 'aria-label':'Como o tempo deste estudo está dividido' },
+    h('p', { class:'bd-t', text: multi ? `${fmtDuration(s.minutes)} divididos assim` : 'O tempo entre os tópicos' }),
+    list,
+    est ? h('p', { class:'hint bd-note', text:'≈ é estimativa: a divisão não foi informada, então o tempo foi repartido igualmente. Para informar, use "Distribuir o tempo" abaixo.' }) : null);
 }
 
 /**
@@ -16023,14 +17470,17 @@ function openEditSessionModal(id){
     // v6.3: disciplina e tópico atuais aparecem mesmo se foram arquivados — antes
     // sumiam da lista e salvar a edição desligava o estudo do tópico sem aviso.
     const curIds = SessionModel.topicIds(s);
-    const target = studyTargetFields({ close, idPrefix:'es', discId:s.disciplineId, topicIds:curIds, includeArchived:true,
+    const target = studyTargetFields({ close, idPrefix:'es', discIds: SessionModel.disciplineIds(s), topicIds:curIds, includeArchived:true,
       allowNewTopic:false, onChange: () => renderOutcome() });
     const typePick = studyTypePicker({ id:'es-type', value:types, onChange: v => { types = v; renderOutcome(); } });
     const legacyTopic = (!curIds.length && str(s.legacyTopicText)) ? str(s.legacyTopicText) : null;
-    // v6.7: a divisão informada antes volta preenchida (a estimada fica em branco)
-    const initialSplit = {};
-    SessionModel.entries(s).forEach(e => { if(e.minutes !== null) initialSplit[e.topicId] = e.minutes; });
+    // v6.7/v6.8: a divisão informada antes volta preenchida (a estimada fica em branco)
+    const initialSplit = { disc:{}, topic:{} };
+    SessionModel.entries(s).forEach(e => { if(e.minutes !== null) initialSplit.topic[e.topicId] = e.minutes; });
+    SessionModel.discEntries(s).forEach(d => { if(d.minutes !== null) initialSplit.disc[d.disciplineId] = d.minutes; });
     split = topicSplitField({ idPrefix:'es', initial: initialSplit, total: () => (lastWhen && lastWhen.complete) ? lastWhen.minutes : null });
+    // v6.8: como o tempo deste estudo está dividido agora (com o que é estimativa dito como estimativa)
+    const breakdown = sessionBreakdown(s);
 
     /** O que mudar o resultado de UM tópico faz com a agenda dele — dito antes de salvar. */
     function outcomeNote(topicId){
@@ -16047,7 +17497,7 @@ function openEditSessionModal(id){
     function renderOutcome(){
       const ids = target.topicIds;
       outcomes.update(ids, types.includes('revisao'));
-      split.update(ids);
+      split.update(target.groups);
     }
 
     const how = howGroup({ id:'es-g-how', type:typePick.node,
@@ -16061,6 +17511,7 @@ function openEditSessionModal(id){
           staleClock),
         h('section', { class:'rm-group rm-what', 'aria-labelledby':'es-g-what' },
           h('h4', { class:'rm-group-t', id:'es-g-what', text:'O que você estudou' }),
+          breakdown,
           target.node,
           split.node,
           legacyTopic ? h('p', { class:'hint', text:`Anotado na época como “${legacyTopic}”.` }) : null),
@@ -16144,7 +17595,7 @@ function openEditSessionModal(id){
           const topicIds = target.topicIds;
           const isReview = types.includes('revisao');
           const changes = {
-            disciplineId: discId, date: w.date,
+            disciplineId: discId, disciplineEntries: disciplinesFromForm(target.groups, sp), date: w.date,
             minutes: time.minutes, startedAt: time.startedAt || null, endedAt: time.endedAt || null, breaks: time.breaks,
             types, difficulty, comment: comment.value,
             topicEntries: topicEntriesFromForm(topicIds, sp, outcomes.values, isReview),
@@ -16365,7 +17816,7 @@ function beginRestore(text, fileName){
 /** Um estudo em andamento não está no banco nem no backup: a pessoa decide antes de trocar os dados. */
 function askTimerBeforeRestore(parsed, fileName){
   const d = TimerService.data;
-  const what = disciplineName(d.disciplineId) + ' · ' + fmtDurationWords(Math.max(1, Math.round(TimerService.getElapsed() / 60000)));
+  const what = TimerService.discText() + ' · ' + fmtDurationWords(Math.max(1, Math.round(TimerService.getElapsed() / 60000)));
   openModal(close => ({
     title:'Há um estudo em andamento',
     content: h('div', { class:'restore' },
@@ -16681,6 +18132,9 @@ function bindEvents(){
   window.addEventListener('unhandledrejection', (ev) => { crashNotice(ev && ev.reason); });
   window.addEventListener('error', (ev) => {
     if(ev && ev.target && ev.target !== window) return;       // falha de recurso (imagem etc.): não é erro do aplicativo
+    /* v6.8 — o aviso "ResizeObserver loop…" é do próprio navegador (uma medição
+       ficou para o quadro seguinte). Não é falha de nenhuma ação: nada a avisar. */
+    if(/ResizeObserver loop/i.test(String(ev && ev.message || ''))) return;
     crashNotice(ev && (ev.error || ev.message));
   });
 
@@ -16795,11 +18249,11 @@ async function init(){
       { title:'Não foi possível atualizar o formato dos estudos' });
   }
 
-  // v6.6 → v6.7: um tópico/um tipo → listas de tópicos e de tipos. Minutos e revisões intactos.
+  // v6.6 → v6.7 → v6.8: listas de tópicos, tipos e disciplinas. Minutos e revisões intactos.
   try {
-    await runV67Migration();
+    await runSessionMigration();
   } catch(err){
-    console.error('Falha na migração v6.7:', err);
+    console.error('Falha na migração dos estudos (v6.7/v6.8):', err);
     toast('Seus dados continuam intactos e o Ciclo lê os estudos no formato novo mesmo assim. Recarregue a página para tentar de novo.', 'err',
       { title:'Não foi possível atualizar o formato dos estudos' });
   }
@@ -17552,13 +19006,12 @@ const FocusMode = {
     if(!TimerService.isActive){ this.exit(); return; }
     const o = opts || {};
     const d = TimerService.data;
-    const disc = getDiscipline(d.disciplineId);
     const topicNames = (d.topicIds || []).map(id => (getTopic(id) || {}).name).filter(Boolean);
     const resting = TimerService.isOnBreak;
     this._resting = resting;
     const root = document.getElementById('focus-root');
     root.setAttribute('data-state', resting ? 'rest' : 'study');
-    document.getElementById('focus-disc').textContent = disc ? disc.name : '';
+    document.getElementById('focus-disc').textContent = TimerService.discText();
     // v6.7: todos os tópicos e tipos escolhidos (o modo foco tem espaço para a lista inteira)
     document.getElementById('focus-topic').textContent = [topicNames.join(' · ') || null, (d.presetTypes || []).map(sessionTypeLabel).join(' · ') || null].filter(Boolean).join(' — ');
     document.getElementById('focus-state').textContent = resting ? 'Descansando' : 'Estudando';
@@ -18625,7 +20078,7 @@ function openScreenHelp(){
    ========================================================================= */
 const FIRST_TIPS = {
   plan:        { id:'plan-intro',        title:'Seu plano é semanal e flexível',
-                 text:'Você define quanto pretende estudar por semana; não precisa escolher horários fixos nem estudar todo dia.' },
+                 text:'A meta é o tempo total da semana: qualquer estudo conta, de qualquer disciplina. A divisão e os dias são só sugestões.' },
   reviews:     { id:'reviews-intro',     title:'As revisões aparecem sozinhas',
                  text:'Depois de estudar um tópico, ele entra automaticamente no ciclo de revisão e volta aqui quando chegar a hora.' },
   disciplines: { id:'disciplines-v52',   title:'Seus estudos, organizados como um índice',
@@ -18840,107 +20293,37 @@ function startHereChecklistCard(){
 /* =========================================================================
    NOVIDADES DA VERSÃO — uma única vez, para quem já usava.
    ========================================================================= */
+/**
+ * v6.8 — NOVIDADES, SEM ATRAPALHAR QUEM SÓ QUER ESTUDAR.
+ * Uma janela curta, uma vez por versão: "O Ciclo foi atualizado.", uma frase,
+ * quatro pontos e dois botões. Fecha com Continuar, Esc ou clique fora — e
+ * qualquer uma dessas formas marca a versão como vista (não volta a cada F5).
+ * Quem quer detalhes abre "Ver todas as novidades" (seções recolhíveis).
+ * Quem nunca usou o Ciclo não vê novidade nenhuma: tem o primeiro acesso.
+ */
 function maybeShowWhatsNew(){
   if(state.settings.seenWhatsNew === APP_VERSION) return;
-  // usuário realmente novo não precisa de "novidades": ele tem o onboarding
-  if(!state.sessions.length && !activeDisciplines().length) return;
-
-  const markSeen = async () => { state.settings.seenWhatsNew = APP_VERSION; await saveSettings(); };
-  const seen = str(state.settings.seenWhatsNew);
-  const cameFrom5 = /^5\./.test(seen);             // já usava alguma versão 5.x
-  const saw52 = /^5\.[2-9]/.test(seen);            // já viu o anúncio da escala 1–5
-  const mig = state.meta.v52MigrationSummary || {};
-  const converted = !saw52 && isNum(mig.topics) && mig.topics > 0
-    ? `A importância de ${mig.topics} ${mig.topics === 1 ? 'tópico foi convertida' : 'tópicos foi convertida'} para a escala de prioridade 1–5. Nenhuma revisão foi reagendada.`
-    : null;
-
-  const cameFrom6 = /^6\./.test(seen);             // já usava alguma versão 6.x
-  const saw62 = /^6\.[2-9]/.test(seen);           // já viu a navegação da 6.2
-  const saw63 = /^6\.[3-9]/.test(seen);           // já viu a captura de tópico da 6.3
-  const saw64 = /^6\.[4-9]/.test(seen);           // já viu o fluxo de estudo da 6.4
-  /* v6.5 — confiabilidade. Nada novo para aprender: quem já estava na 6.4.1 lê
-     em cinco linhas o que ficou mais seguro; quem vem de antes vê a novidade da
-     versão em que parou, com uma linha sobre a 6.5 no fim. */
-  const saw641 = /^6\.4\.[1-9]/.test(seen) || /^6\.[5-9]/.test(seen);
-  const hardening = [
-    'O mesmo estudo não é mais registrado duas vezes — nem com o Ciclo aberto em duas abas.',
-    'Editar, mover ou excluir um estudo atualiza o tópico junto: a próxima revisão acompanha o histórico, e um tópico sem estudos volta a "não iniciado".',
-    'Restaurar um backup mostra antes o que vai entrar, o que foi ajustado e o que fica de fora. Um arquivo com problema não troca os seus dados.',
-    '"Plano cumprido" agora mede a divisão do tempo: o que passa do planejado de uma disciplina aparece à parte, como "além do plano".',
-    'As janelas só fecham depois de gravar. Se algo falhar, o que você digitou continua lá.'
-  ];
-  if(saw64 && !saw641) hardening.push('Também da 6.4.1: horários digitando só os números (2350 vira 23:50) e o registro em duas colunas.');
-  /* v6.6 — acabamento visual e de interação. Quem já estava na 6.5 lê só isto;
-     quem vem de antes vê a novidade da versão em que parou e uma linha sobre a 6.6. */
-  const saw65 = /^6\.([5-9]|\d{2,})/.test(seen);
-  const revival = [
-    'Cores mais fechadas e sérias, no tema escuro e no claro. O verde-petróleo ficou reservado para a ação principal de cada tela.',
-    'Botões, linhas e opções respondem ao mouse e ao toque — e o que está escolhido continua marcado depois que você tira o mouse.',
-    'Ao escolher uma opção (tema, aba, período, prioridade), a marca desliza até ela.',
-    'Menus abrem junto do botão e sempre dentro da tela; no celular, viram uma folha na parte de baixo. Clicar fora ou apertar Esc fecha.',
-    'Janelas e painéis entram e saem com uma transição curta. Uma janela com algo preenchido não fecha mais com um clique fora.',
-    'Tudo isso respeita "Reduzir animações", em Configurações → Aparência.'
-  ];
-  /* v6.7 — a semana em dias e estudos com vários tópicos e tipos. Quem já estava
-     na 6.6 lê só isto; quem vem de antes vê a novidade da versão em que parou e
-     uma linha sobre a 6.7 no fim. */
-  const saw66 = /^6\.([6-9]|\d{2,})/.test(seen);
-  const planner = [
-    'Planejamento ganhou a semana em dias: arraste uma disciplina até segunda, terça… — ou use "Colocar em um dia". Duração e horário são opcionais.',
-    'A meta semanal continua sendo a referência. Cada disciplina mostra quanto ainda está sem dia, e distribuir mais que a meta gera um aviso — nada muda sozinho.',
-    'O progresso de cada dia vem dos estudos que você registra, em qualquer horário daquele dia. Arrastar ou mover nunca cria estudo.',
-    '"Personalizar dias" tira do quadro os dias em que você não estuda. Prazos e estudos desses dias continuam à vista.',
-    'Um estudo pode ter vários tópicos e vários tipos. O tempo é contado uma vez só; a divisão entre os tópicos é opcional e, sem ela, aparece como estimativa (≈).',
-    'Numa revisão com vários tópicos, cada um recebe o próprio resultado.'
-  ];
-  const items = saw66 ? planner : saw65 ? revival : saw64 ? hardening : [
-    '"Registrar estudo" guarda algo que você já estudou — de qualquer tela, sem sair dela. "Começar a estudar" liga o cronômetro.',
-    'Em "Já estudei", diga a que horas começou e terminou: a duração sai sozinha, mesmo quando o estudo atravessa a meia-noite (23:50 → 00:12 são 22 minutos).',
-    'Descansos: no cronômetro, "Descansar" pausa o estudo e conta o descanso à parte. Ele nunca entra no tempo estudado nem no plano da semana.',
-    'Seu ritmo: Hoje mostra em quantos dos últimos 7 dias você estudou, e Análises ganhou os dias com estudo por semana e os descansos — sem nota e sem cobrança.',
-    'Créditos saíram do Ciclo: agora tudo é medido em tempo. Seus estudos e minutos continuam exatamente como estavam.',
-    'Horários no formato 24h, digitando só os números (2350 vira 23:50), e uma tipografia mais legível em todo o Ciclo.'
-  ];
-  if(!saw64) items.push('E, na 6.5: o mesmo estudo nunca é registrado duas vezes, editar ou excluir um estudo atualiza o tópico junto, e restaurar um backup mostra antes o que vai entrar.');
-  if(!saw65) items.push('E, na 6.6: cores mais sóbrias, botões e opções que respondem ao toque, a marca da escolha deslizando até ela e menus e janelas com transições curtas.');
-  if(!saw66) items.push('E, na 6.7: a semana em dias no Planejamento (arrastar ou "Colocar em um dia") e estudos com vários tópicos e vários tipos, com o tempo contado uma vez só.');
-  if(saw64){ /* nada a acrescentar: a lista acima já é só o que ficou mais seguro */ }
-  else if(cameFrom6 && !saw63) items.push('Também da 6.3: criar um tópico sem sair do registro e a frase do dia só com frases reais, com autor e obra.');
-  if(!saw64 && cameFrom6 && !saw62) items.push('Também da 6.2: o Voltar do navegador volta dentro do Ciclo, e cada lista tem busca e ordenação próprias.');
-  if(!cameFrom6) items.push('Também da 6.0 à 6.3: visual mais calmo, Disciplinas como um índice, Análises que começam por uma pergunta, Prazos numa aba própria e o Voltar do navegador funcionando dentro do Ciclo.');
-  const mig67 = state.meta.v67MigrationSummary || {};
-  const cfg = {
-    title: 'Ciclo 6.7',
-    sub: saw66
-      ? 'Sua semana em dias, se você quiser — e estudos com vários tópicos e tipos. A meta semanal continua sendo a referência.'
-      : saw65
-      ? 'Uma versão de acabamento: a mesma ferramenta, mais clara de ver e mais agradável de usar. Nada para reaprender, e nenhum dado foi alterado.'
-      : saw64
-      ? 'Confiabilidade e acabamento: nada novo para aprender, e nenhum dado foi alterado.'
-      : cameFrom5 || cameFrom6
-      ? 'Estudar, registrar, descansar e acompanhar a constância ficaram mais simples. Seus dados, revisões, prazos e planos continuam exatamente como estavam.'
-      : 'O Diário de Estudos agora se chama Ciclo — e ganhou uma interface nova. Seus dados, revisões e planos continuam como estavam.',
-    items,
-    note: [converted, isNum(mig67.sessions) && mig67.sessions > 0
-      ? `${plural(mig67.sessions, 'estudo foi convertido', 'estudos foram convertidos')} para o formato novo ("um tópico, um tipo"), com o mesmo tempo, as mesmas revisões e o mesmo histórico.` : null].filter(Boolean).join(' ') || null
-  };
-
+  const markSeen = async () => { if(state.settings.seenWhatsNew === APP_VERSION) return; state.settings.seenWhatsNew = APP_VERSION; await saveSettings(); };
+  // usuário realmente novo não precisa de "novidades": ele tem o primeiro acesso (e não as verá depois)
+  if(!state.sessions.length && !activeDisciplines().length){ markSeen(); return; }
+  const latest = CHANGELOG[0] || {};
+  const items = Array.isArray(latest.highlights) && latest.highlights.length ? latest.highlights.slice(0, 4) : [];
   openModal(close => ({
-    title: cfg.title,
+    title: 'O Ciclo foi atualizado.',
     content: h('div', { class:'whats-new' },
       h('div', { class:'wn-brand', 'aria-hidden':'true' }, icon('i-brand', 'welcome-icon')),
-      h('p', { class:'modal-sub', text: cfg.sub }),
-      h('ul', { class:'reasons' }, cfg.items.map(x => h('li', { text:x }))),
-      cfg.note ? h('p', { class:'hint', style:'margin-top:10px', text: cfg.note }) : null),
+      h('p', { class:'modal-sub', text: latest.intro || 'Uma nova versão do Ciclo está valendo.' }),
+      items.length ? h('ul', { class:'wn-list' }, items.map(x => h('li', null, icon('i-check', 'btn-icon wn-ic'), h('span', { text:x })))) : null,
+      h('p', { class:'hint wn-safe', text:'Seus estudos, revisões, prazos e planos continuam como estavam.' })),
     actions:[
-      h('button', { class:'btn ghost', type:'button', text:'Ver o histórico de versões', onclick: async () => {
+      h('button', { class:'btn ghost', type:'button', text:'Ver todas as novidades', onclick: async () => {
         close(); await markSeen(); openChangelog();
       } }),
       h('button', { class:'btn primary', type:'button', text:'Continuar', onclick: async () => {
         close(); await markSeen();
       } })
     ]
-  }), { size:'wide', onClose:(r) => { if(r === null) markSeen(); } });
+  }), { size:'narrow', onClose:(r) => { if(r === null) markSeen(); } });
 }
 
 /* =========================================================================
@@ -19172,7 +20555,7 @@ function planDemoNode(){
   const box = h('div', { class:'demo' });
   box.append(
     h('p', { class:'demo-label', text:'Demonstração' }),
-    h('p', { class:'hint', style:'margin-bottom:10px', text:`Imagine que você tem ${d.hours} horas nesta semana. O Ciclo sugeriria:` }));
+    h('p', { class:'hint', style:'margin-bottom:10px', text:`Imagine uma meta de ${d.hours} horas nesta semana. Uma sugestão para distribuir esse tempo:` }));
   const total = sum(d.rows, r => r.minutes);
   d.rows.forEach(r => box.append(h('div', { class:'demo-row' },
     h('div', null, h('div', { text:r.name }), h('div', { class:'hint', text:'Prioridade ' + PriorityEngine.text(r.priority) })),
@@ -19421,10 +20804,29 @@ function renderSettings(){
     h('div', { class:'set-content', id:'spanel', role:'tabpanel', 'aria-labelledby':'stab-' + cur.id }, cur.node)));
 }
 
+/**
+ * "Novidades": a versão atual primeiro, em seções recolhíveis (o que mudou,
+ * como usar, exemplos, correções, detalhes técnicos). As versões anteriores
+ * ficam recolhidas — o histórico existe, mas não aparece inteiro por padrão.
+ */
 function openChangelog(){
-  const body = h('div', CHANGELOG.map(c => h('div', { style:'margin-bottom:16px' },
-    h('p', { class:'cl-version num', text:'v' + c.v }),
-    h('p', { class:'hint prose', text:c.d }))));
+  const latest = CHANGELOG[0];
+  const body = h('div', { class:'cl' });
+  if(latest){
+    body.append(h('p', { class:'cl-version num', text:'v' + latest.v + (latest.title ? ' · ' + latest.title : '') }));
+    if(latest.intro) body.append(h('p', { class:'modal-sub', text: latest.intro }));
+    (latest.sections || []).forEach((sec, i) => body.append(h('details', { class:'cl-sec', open: i === 0 },
+      h('summary', null, sec.title),
+      h('ul', { class:'cl-items' }, sec.items.map(x => h('li', { text:x }))))));
+    if(!(latest.sections || []).length && latest.d) body.append(h('p', { class:'hint prose', text: latest.d }));
+  }
+  const older = CHANGELOG.slice(1);
+  if(older.length){
+    body.append(h('h3', { class:'section-label cl-older-t', text:'Versões anteriores' }));
+    older.forEach(c => body.append(h('details', { class:'cl-old' },
+      h('summary', null, h('span', { class:'num', text:'v' + c.v }), c.title ? h('span', { class:'cl-old-t', text:' · ' + c.title }) : null),
+      h('p', { class:'hint prose', text: c.d || '' }))));
+  }
   Drawer.open('Novidades', body);
 }
 

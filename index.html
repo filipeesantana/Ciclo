@@ -8,7 +8,7 @@
 <meta name="description" content="Ciclo é um sistema de estudos que roda no seu navegador: organize o que você estuda, registre seus estudos, receba revisões no momento certo e acompanhe seu progresso — sem conta e sem servidor.">
 <meta name="application-name" content="Ciclo">
 <title>Ciclo — Seu sistema de estudos</title>
-<link rel="stylesheet" href="styles.css?v=6.7.0">
+<link rel="stylesheet" href="styles.css?v=6.8.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4a8 8 0 1 1-6.93 4' fill='none' stroke='%2362B1A4' stroke-width='2.6' stroke-linecap='round'/%3E%3Ccircle cx='5.07' cy='8' r='2.1' fill='%23C7A46A'/%3E%3C/svg%3E">
 </head>
 <body>
@@ -56,6 +56,10 @@
   <symbol id="i-t-lab" viewBox="0 0 24 24"><path d="M9 3h6"/><path d="M10 3v6.2L4.8 18a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 9.2V3"/><path d="M7.4 15h9.2"/></symbol>
   <symbol id="i-t-project" viewBox="0 0 24 24"><path d="m12 3-9 4.5 9 4.5 9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></symbol>
   <symbol id="i-t-other" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></symbol>
+  <symbol id="i-pie" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16M8 3v3M11 3v3M14 3v3"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></symbol>
 </svg>
 
 <div class="app">
@@ -129,7 +133,7 @@
       </section>
 
       <section id="view-plan" class="view" aria-labelledby="h-plan">
-        <div class="page-head"><h2 id="h-plan" tabindex="-1">Planejamento</h2><p class="sub">Quanto tempo você tem e como ele se divide.</p></div>
+        <div class="page-head"><h2 id="h-plan" tabindex="-1">Planejamento</h2><p class="sub">Sua meta da semana e como o tempo foi usado.</p></div>
         <div id="plan-body" class="view-body"></div>
       </section>
 
@@ -144,7 +148,7 @@
       </section>
 
       <section id="view-analytics" class="view" aria-labelledby="h-an">
-        <div class="page-head"><h2 id="h-an" tabindex="-1">Análises</h2><p class="sub">O que você quer entender?</p></div>
+        <div class="page-head"><h2 id="h-an" tabindex="-1">Análises</h2><p class="sub">O que você quer descobrir sobre seus estudos?</p></div>
         <div id="analytics-body" class="view-body"></div>
       </section>
 
@@ -245,7 +249,7 @@
 <p class="sr-only" id="sr-live" role="status" aria-live="polite"></p>
 
 <noscript><p style="padding:24px">Este aplicativo precisa de JavaScript para funcionar.</p></noscript>
-<script src="content.js?v=6.7.0"></script>
-<script src="app.js?v=6.7.0"></script>
+<script src="content.js?v=6.8.0"></script>
+<script src="app.js?v=6.8.0"></script>
 </body>
 </html>

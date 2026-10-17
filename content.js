@@ -333,27 +333,29 @@ const HELP_GLOSSARY = {
   areaEstudo: { term:'Área de Estudo', article:'estrutura-conteudo', proper:true, alias:'area areas contexto grupo',
     short:'Opcional. Reúne disciplinas relacionadas — Faculdade, Trabalho, Música. Serve só para organizar e não tem prioridade.' },
   disciplina: { term:'Disciplina', article:'disciplinas', alias:'materia matéria assunto curso',
-    short:'Aquilo que você estuda. Todo estudo registrado fica ligado a uma disciplina.' },
+    short:'Aquilo que você estuda. Todo estudo registrado fica ligado a uma disciplina — ou a mais de uma, quando você estudou várias no mesmo tempo.' },
   topico: { term:'Tópico', article:'topicos', alias:'assunto conteudo parte capitulo',
     short:'Uma parte de uma disciplina. É o tópico que entra no ciclo de revisão e mostra seu progresso no conteúdo.' },
   sessao: { term:'Estudo registrado', article:'sessoes', alias:'sessao sessão sessoes de estudo registro tempo',
-    short:'Cada vez que você estuda e registra: disciplina, tempo e, se quiser, tópicos, tipos e dificuldade. Um estudo com vários tópicos continua sendo um estudo, com um tempo só.' },
+    short:'Cada vez que você estuda e registra: disciplina (ou disciplinas), tempo e, se quiser, tópicos, tipos e dificuldade. Um estudo com várias disciplinas ou tópicos continua sendo um estudo, com um tempo só.' },
   prioridade: { term:'Prioridade', article:'prioridades', alias:'peso importancia importância escala',
     short:'De 1 (muito baixa) a 5 (muito alta). Indica quanto algo merece sua atenção agora. O padrão é 3.' },
   minimoSemanal: { term:'Mínimo semanal', article:'distribuicao', alias:'minimo piso garantido reserva',
     short:'Tempo reservado para uma disciplina antes de qualquer divisão, para ela não ser esquecida.' },
-  disponibilidade: { term:'Disponibilidade semanal', article:'planejamento', alias:'horas semana tempo capacidade',
-    short:'Quantas horas por semana você pretende estudar. É o número que sustenta todo o planejamento.' },
+  disponibilidade: { term:'Meta semanal', article:'planejamento', alias:'meta horas semana tempo capacidade disponibilidade semanal objetivo',
+    short:'Quanto tempo você quer estudar por semana, no total. Qualquer estudo conta para ela — de qualquer disciplina, em qualquer dia.' },
+  sugestaoDistribuicao: { term:'Sugestão de organização', article:'distribuicao', alias:'distribuicao distribuição sugerida sugestao por disciplina divisao dividir a meta',
+    short:'Uma referência de como dividir a meta semanal entre as disciplinas, pela prioridade de cada uma. Opcional e editável: estudar diferente dela não muda o cumprimento da meta.' },
   planoBase: { term:'Plano semanal', article:'plano-base', alias:'plano base modelo semanal padrão padrao distribuicao meta semanal',
-    short:'O modelo de divisão do seu tempo por semana. Cada semana guarda uma cópia do plano que valia nela.' },
+    short:'A sua meta semanal e a sugestão de como dividi-la. Cada semana guarda uma cópia do que valia nela.' },
   semanaDias: { term:'Semana em dias', article:'semana-em-dias', alias:'calendario calendário agenda dias da semana bloco arrastar segunda terca horario',
-    short:'Uma camada opcional do plano: em que dia (e, se quiser, a que horas) estudar cada disciplina. A meta semanal continua sendo a referência.' },
+    short:'Uma camada opcional do plano: em que dia (e, se quiser, a que horas) estudar cada disciplina. Estudar em outro dia conta do mesmo jeito para a meta.' },
   diasEstudo: { term:'Dias de estudo', article:'dias-de-estudo', alias:'personalizar dias desativar dia folga quinta domingo',
     short:'Os dias que aparecem no quadro da semana. Tirar um dia não apaga nada: estudos e prazos dele continuam à vista.' },
-  parteEstimada: { term:'Parte estimada', article:'varios-topicos', alias:'estimativa estimado aproximado divisao tempo por topico tipo',
-    short:'Quando um estudo tem vários tópicos (ou tipos) e você não disse quanto foi de cada um, o tempo é dividido em partes iguais e marcado com ≈. O total continua sendo o tempo real.' },
-  aderencia: { term:'Plano cumprido', article:'planejado-realizado', alias:'aderencia aderência meta porcentagem planejado realizado',
-    short:'Quanto do que foi planejado para cada disciplina foi de fato estudado. Tempo a mais numa disciplina não compensa o que faltou em outra: ele aparece à parte, como "além do plano".' },
+  parteEstimada: { term:'Parte estimada', article:'varios-topicos', alias:'estimativa estimado aproximado divisao tempo por topico tipo disciplina',
+    short:'Quando um estudo tem várias disciplinas, tópicos ou tipos e você não disse quanto foi de cada um, o tempo é dividido em partes iguais e marcado com ≈. O total continua sendo o tempo real, contado uma vez.' },
+  aderencia: { term:'Meta alcançada', article:'planejado-realizado', alias:'aderencia aderência plano cumprido meta cumprida porcentagem planejado realizado',
+    short:'O tempo estudado na semana diante da meta. Qualquer estudo conta; estudar mais uma disciplina e menos outra não muda nada. O que passa da meta aparece como "além da meta".' },
   cobertura: { term:'Conteúdo estudado', article:'cobertura-dominio', alias:'cobertura percentual topicos progresso',
     short:'A parte dos tópicos que você já estudou pelo menos uma vez.' },
   dominio: { term:'Consolidação estimada', article:'dominio', alias:'dominio domínio retencao retenção consolidado consolidacao consolidação dominar memoria estimativa',
@@ -361,13 +363,13 @@ const HELP_GLOSSARY = {
   dificuldade: { term:'Dificuldade', article:'dificuldade', alias:'esforco esforço percepcao percebida',
     short:'De 1 a 5, quanto aquele estudo pareceu difícil para você. É só para análise: não altera o planejamento nem as revisões.' },
   descanso: { term:'Descanso', article:'descansos', alias:'descansar pausa intervalo parar voltar a estudar',
-    short:'Um intervalo durante um estudo. É guardado à parte: não entra no tempo estudado nem no plano da semana.' },
+    short:'Um intervalo durante um estudo. É guardado à parte: não entra no tempo estudado nem na meta da semana.' },
   constancia: { term:'Constância', article:'constancia', alias:'dias com estudo dias ativos assiduidade frequencia ritmo regularidade',
     short:'Em quantos dias você estudou. Um dia conta quando tem pelo menos um estudo registrado.' },
   prazo: { term:'Prazo', article:'prazos', alias:'prova trabalho entrega projeto data tarefa',
     short:'Uma data que importa: prova, trabalho, entrega. Pesa mais conforme a data chega e conforme a prioridade dele.' },
   escopo: { term:'Escopo', article:'analises', alias:'o que analisar filtro recorte',
-    short:'Nas Análises, aquilo que está sendo analisado: tudo, uma Área de Estudo, uma disciplina ou um tópico.' },
+    short:'Nas Análises, aquilo que está sendo analisado: todos os estudos, uma ou mais disciplinas, um ou mais tópicos ou uma Área de Estudo — e, se você quiser, só alguns tipos de estudo.' },
   revisao: { term:'Revisão', article:'o-que-e-revisao', alias:'revisar rever retomar',
     short:'Voltar a um conteúdo já estudado para testar o que você ainda consegue lembrar — antes de consultar.' },
   estrategiaRevisao: { term:'Quando revisar', article:'quando-revisar', alias:'estrategia estratégia de revisao adaptativa ciclo programado intensiva manutencao ritmo',
@@ -694,12 +696,16 @@ const HELP_ARTICLES = [
 },
 {
   id:'varios-topicos', section:'usar', group:'estudando',
-  title:'Vários tópicos no mesmo estudo',
-  oneLine:'Estudou Frações, Equações e Porcentagem em 1h30? É um estudo de 1h30, com três tópicos.',
-  summary:'Como escolher vários tópicos, dividir o tempo (se quiser) e o que acontece com as revisões.',
-  keywords:'varios topicos multiplos topicos mais de um topico dividir tempo distribuir minutos estimativa estimado aproximado chips',
+  title:'Várias disciplinas e tópicos no mesmo estudo',
+  oneLine:'Estudou Matemática e Inglês em 2h? É um estudo de 2h, com duas disciplinas — nunca dois estudos, nunca 4h.',
+  summary:'Como escolher várias disciplinas e vários tópicos, dividir o tempo (se quiser) e o que acontece com as revisões.',
+  keywords:'varias disciplinas multiplas disciplinas mais de uma disciplina varios topicos multiplos topicos mais de um topico dividir tempo distribuir minutos estimativa estimado aproximado chips',
   content:[
-    { h:'Como funciona' },
+    { h:'Várias disciplinas' },
+    { p:'No registro (e também em "Estudar agora"), escolha a primeira disciplina e use "+ Adicionar outra disciplina". Cada disciplina mostra só os tópicos dela — um tópico de Inglês nunca fica ligado a Matemática. "Remover" tira uma disciplina do estudo.' },
+    { p:'O tempo continua sendo um só: 2h com Matemática e Inglês contam 2h na meta da semana, no histórico e no total das Análises. Sem divisão informada, cada disciplina fica com 1h, marcada como estimativa (≈). Em "Distribuir o tempo entre as disciplinas" você informa, por exemplo, Matemática 70 min e Inglês 50 min — a soma é conferida na hora.' },
+    { ul:['Matemática 70 min: Frações 40 min · Equações 30 min.','Inglês 50 min: Simple Present 20 min · Vocabulário 30 min.','Total: 120 min, contados uma vez. O tempo de um tópico nunca passa do tempo da disciplina dele.'] },
+    { h:'Vários tópicos' },
     { p:'No registro, em "Tópicos", use "Adicionar tópico" e marque quantos quiser da mesma disciplina. Os escolhidos aparecem como pequenas etiquetas; o × tira um deles. Se trocar de disciplina, os tópicos da anterior saem da seleção.' },
     { h:'O tempo é contado uma vez' },
     { p:'1h30 com três tópicos continua sendo 1h30: no histórico, na disciplina, no plano da semana e nas análises. Os tópicos só dizem do que foi aquele tempo.' },
@@ -709,7 +715,7 @@ const HELP_ARTICLES = [
     { p:'O Ciclo não finge saber o que você não informou: quando a parte é estimada, as Análises e o tópico mostram "≈" ou "cerca de". A soma das partes é sempre o tempo real do estudo.' },
     { h:'Revisões' },
     { p:'Cada tópico estudado segue o próprio ciclo de revisão. Numa revisão com vários tópicos, o Ciclo pergunta como você se saiu em cada um — e há um atalho "Mesmo resultado para todos". Um tópico sem resposta conta como estudado, sem mexer na agenda dele.' },
-    { note:'Editar ou excluir um estudo com vários tópicos atualiza todos eles: um tópico que sai do estudo tem a agenda refeita sem ele, e um que entra recebe o estudo como novo.' }
+    { note:'Editar ou excluir um estudo com várias disciplinas ou tópicos atualiza todos eles: um tópico que sai do estudo (sozinho ou junto com a disciplina dele) tem a agenda refeita sem ele, e um que entra recebe o estudo como novo. No Histórico, o estudo continua numa linha só — "Matemática · Inglês · 4 tópicos" — e os detalhes mostram a divisão.' }
   ],
   related:['sessoes','tipos-de-estudo','resultados-revisao']
 },
@@ -842,24 +848,30 @@ const HELP_ARTICLES = [
 /* ------------------------------------------------- USAR · ORGANIZANDO MINHA SEMANA */
 {
   id:'planejamento', section:'usar', group:'semana',
-  title:'Planejamento semanal',
-  oneLine:'Você diz quanto tempo tem; o Ciclo distribui entre as disciplinas.',
-  summary:'Opcional, flexível e sempre editável.',
-  keywords:'planejamento plano semanal horas disponibilidade organizar semana distribuir tempo',
+  title:'Meta semanal',
+  oneLine:'Você diz quanto quer estudar por semana. Qualquer estudo conta para essa meta.',
+  summary:'A meta é o tempo total; a divisão entre disciplinas é só uma sugestão.',
+  keywords:'planejamento plano semanal meta horas disponibilidade organizar semana distribuir tempo cumprir objetivo liberdade',
   content:[
     { h:'Como funciona' },
-    { p:'Em Planejamento você informa a sua [[disponibilidade|disponibilidade semanal]]: quantas horas por semana pretende estudar. O Ciclo distribui esse tempo entre as disciplinas ativas e você pode editar qualquer valor.' },
+    { p:'Em Planejamento você informa a sua [[disponibilidade|meta semanal]]: quanto tempo quer estudar por semana, no total. A tela mostra "3h40 de 5h", quanto falta e, quando chegar lá, "Meta semanal concluída" — e, se passar, quanto foi além.' },
+    { p:'Qualquer estudo da semana conta para a meta: de qualquer disciplina, planejada ou não, em qualquer dia e horário.' },
     { demo:'plan' },
-    { h:'Como montar um bom plano' },
+    { h:'A sugestão de organização' },
+    { p:'Para quem não sabe por onde começar, o Ciclo sugere como dividir a meta entre as disciplinas, pela prioridade de cada uma — veja [[sugestaoDistribuicao|sugestão de organização]]. É uma referência: você pode aceitar, mudar ("Personalizar distribuição") ou ignorar.' },
+    { h:'Exemplo' },
+    { ul:[
+      'Meta: 5h. Sugestão: Matemática 2h, Português 1h30, Inglês 1h30.',
+      'Você estudou Matemática 1h, Português 1h e Inglês 3h — porque havia uma prova de Inglês.',
+      'Resultado: 5h de 5h. Meta semanal concluída. Nenhuma disciplina "falhou".'
+    ]},
+    { h:'Como escolher a meta' },
     { ul:[
       'Comece com um número que você cumpre numa semana comum, não no seu melhor cenário.',
-      'Use prioridade máxima só para o que realmente merece. Se tudo é 5, nada é prioritário.',
-      'Use mínimos semanais para o que você não quer negligenciar, mesmo com prioridade menor.',
-      'Ajuste o plano quando a realidade mudar — provas, semanas cheias, férias.'
+      'Use prioridade máxima só para o que realmente merece. Se tudo é 5, a sugestão divide quase por igual.',
+      'Ajuste a meta quando a realidade mudar — provas, semanas cheias, férias. Semanas passadas não mudam.'
     ]},
-    { h:'Por que não é uma agenda rígida' },
-    { p:'A referência é a meta da semana: quanto de cada disciplina. Se quiser, você também escolhe em que dia estudar cada uma (veja [[semanaDias|a semana em dias]]) — mas isso é opcional, e não estudar na terça não quebra nada: a recomendação apenas passa a puxar essa disciplina com mais força enquanto o tempo não for cumprido.' },
-    { note:'O planejamento é opcional. Sem ele, o Ciclo continua sugerindo o que estudar — só com menos informação.' }
+    { note:'O planejamento é opcional. Sem meta, o Ciclo continua sugerindo o que estudar e mostrando quanto você estudou na semana.' }
   ],
   cta:{ action:'plan', label:'Organizar minha semana' },
   related:['semana-em-dias','distribuicao','plano-base','planejado-realizado']
@@ -882,8 +894,9 @@ const HELP_ARTICLES = [
     { p:'Tudo também funciona por botões, no teclado e no celular: "Colocar em um dia" em cada disciplina, "Adicionar" em cada dia e o menu ⋯ de cada bloco, com "Mover para outro dia…", "Subir", "Descer" e "Tirar". Esc cancela um arraste no meio, sem mudar nada.' },
     { h:'Duração e horário (opcionais)' },
     { p:'Clique num bloco para escolher a duração ("Só o dia", 30 min, 1h…) e, se quiser, um horário de início em 24h — 1900 vira 19:00. Horários que se cruzam geram só um aviso: o Ciclo não impede.' },
-    { h:'Meta e dias andam juntos' },
-    { p:'A meta da semana continua sendo a referência. Cada disciplina mostra quanto ainda está "sem dia definido". Se você distribuir mais que a meta, o Ciclo avisa e deixa você escolher: ajustar os blocos, mudar a meta (só nesta semana, ou também nas próximas) ou manter assim. Nada muda sozinho.' },
+    { h:'Dias, sugestão e meta' },
+    { p:'Cada disciplina mostra quanto da sugestão dela ainda está "sem dia". Se você colocar nos dias mais do que a sugestão de uma disciplina, o Ciclo só avisa e deixa você escolher: ajustar os blocos, mudar a sugestão (só nesta semana, ou também nas próximas) ou manter assim. Nada muda sozinho.' },
+    { p:'Planejou Matemática para segunda e estudou na terça? Conta normalmente para a meta da semana. O histórico continua dizendo que foi na terça — nada é deslocado.' },
     { h:'Esta semana, próximas semanas' },
     { p:'Mudanças valem só para a semana mostrada. Quando gostar da organização, use "Repetir nas próximas semanas": as semanas seguintes começam com ela. Semanas que já passaram ficam só para consulta.' },
     { note:'Organizar a semana é planejamento: arrastar ou mover nunca registra estudo. O progresso vem dos estudos que você registra.' }
@@ -906,7 +919,7 @@ const HELP_ARTICLES = [
     { p:'O tempo do dia vai preenchendo os blocos na ordem em que aparecem; cada minuto conta uma vez só. Um bloco sem duração ("só o dia") fica realizado com qualquer tempo que sobrar.' },
     { h:'Sem cobrança' },
     { p:'Um dia que passou sem estudo mostra apenas "Sem estudo registrado". Não existe sequência, pontuação ou atraso — o Ciclo só mostra o que aconteceu.' },
-    { note:'Um estudo com vários tópicos conta uma vez para a disciplina. Os tópicos são detalhes dentro dela.' }
+    { note:'Um estudo com vários tópicos conta uma vez para a disciplina. Um estudo com várias disciplinas leva a cada uma a parte dela — informada por você, ou estimada em partes iguais. A meta da semana vale mais que o resultado de cada dia: um dia "sem estudo registrado" não muda uma meta já alcançada.' }
   ],
   related:['semana-em-dias','planejado-realizado']
 },
@@ -929,22 +942,24 @@ const HELP_ARTICLES = [
 },
 {
   id:'distribuicao', section:'usar', group:'semana',
-  title:'Como o tempo é distribuído',
-  oneLine:'Primeiro os mínimos, depois a divisão por prioridade.',
-  summary:'A sequência do botão "Distribuir automaticamente" e o papel dos mínimos.',
-  keywords:'distribuicao automatica calculo dividir tempo minimo semanal piso arredondar',
+  title:'Sugestão de organização',
+  oneLine:'Uma sugestão para dividir a meta: primeiro os mínimos, depois a prioridade.',
+  summary:'Como a sugestão é calculada, como mudar uma disciplina e o papel dos mínimos.',
+  keywords:'distribuicao automatica sugestao de organizacao sugerir calculo dividir tempo minimo semanal piso arredondar personalizar distribuicao',
   content:[
-    { h:'Como funciona' },
-    { p:'O botão "Distribuir automaticamente" segue sempre a mesma sequência:' },
+    { h:'Para que serve' },
+    { p:'A sugestão ajuda a decidir o que estudar, mas não é uma obrigação: a meta da semana é o tempo total. Em Planejamento, cada disciplina aparece num cartão compacto com prioridade, número de tópicos e a sugestão; clique na sugestão para mudar (30 min, 1h, 1h30… ou outro valor), só nesta semana ou também nas próximas. "Adicionar disciplina" inclui uma que estava de fora; "Tirar da sugestão" remove.' },
+    { h:'Como a sugestão é calculada' },
+    { p:'O botão "Sugerir automaticamente" (em "Personalizar distribuição") segue sempre a mesma sequência:' },
     { ol:[
       'Reserva o [[minimoSemanal|mínimo semanal]] de cada disciplina.',
       'Divide o tempo restante segundo a prioridade — prioridades altas recebem um peso bem maior.',
       'Aumenta o peso de disciplinas com prazo próximo.',
-      'Arredonda em blocos de 5 minutos e corrige a sobra para fechar exatamente na sua disponibilidade.'
+      'Arredonda em blocos de 5 minutos e corrige a sobra para fechar exatamente na sua meta.'
     ]},
     { h:'Mínimos semanais' },
     { p:'O mínimo é reservado antes de qualquer outra conta. Ele existe para conteúdos que você não quer deixar de lado, mesmo que não sejam a maior prioridade.' },
-    { note:'Se a soma dos mínimos passar da sua disponibilidade, o Ciclo avisa e mostra o excesso em vez de reduzir tudo em silêncio. Você decide se ajusta os mínimos ou aumenta a disponibilidade.' },
+    { note:'Se a soma dos mínimos passar da meta, o Ciclo avisa e mostra o excesso em vez de reduzir tudo em silêncio. Você decide se ajusta os mínimos ou aumenta a meta.' },
     { h:'No Ciclo' },
     { p:'O resultado é uma sugestão: todos os valores continuam editáveis à mão, e o total é recalculado enquanto você digita.' }
   ],
@@ -959,12 +974,12 @@ const HELP_ARTICLES = [
   keywords:'plano base semana atual historico snapshot alterar proxima semana',
   content:[
     { h:'Como funciona' },
-    { p:'O [[planoBase|plano semanal]] é o modelo. Toda semana recebe uma cópia própria dele no momento em que começa.' },
+    { p:'O [[planoBase|plano semanal]] é o modelo: a meta e a sugestão de organização. Toda semana recebe uma cópia própria dele no momento em que começa.' },
     { h:'Exemplo' },
     { ul:[
-      'Em março seu plano era: Matemática 2h, Inglês 1h.',
-      'Em abril você mudou para: Matemática 3h, Inglês 30min.',
-      'As análises de março continuam comparando com 2h e 1h — o plano que realmente valia lá.'
+      'Em março sua meta era 3h por semana.',
+      'Em abril você mudou para 5h.',
+      'As análises de março continuam comparando com 3h — a meta que realmente valia lá.'
     ]},
     { h:'No Ciclo' },
     { p:'Ao salvar, você escolhe entre valer a partir da próxima semana ou aplicar também na semana atual. Alterar o plano hoje nunca reescreve as metas de semanas anteriores.' },
@@ -975,23 +990,24 @@ const HELP_ARTICLES = [
 },
 {
   id:'planejado-realizado', section:'usar', group:'semana',
-  title:'Planejado × realizado',
-  oneLine:'"Plano cumprido" é quanto do planejado para cada disciplina foi de fato estudado.',
-  summary:'Como a conta é feita, e por que tempo a mais numa disciplina não compensa o que faltou em outra.',
-  keywords:'planejado realizado aderencia plano cumprido porcentagem meta comparacao',
+  title:'Meta semanal e sugestão: como é feita a conta',
+  oneLine:'A meta é o tempo total. A sugestão por disciplina é só uma referência.',
+  summary:'O que conta para a meta, o que aparece além dela e como comparar com a sugestão sem virar nota.',
+  keywords:'planejado realizado aderencia plano cumprido meta cumprida alcancada porcentagem comparacao sugerido x realizado alem da meta',
   content:[
     { h:'Como funciona' },
-    { p:'O plano divide o seu tempo entre disciplinas. [[aderencia|Plano cumprido]] mede se essa divisão aconteceu: de cada disciplina, conta o que você estudou até o limite do que foi planejado para ela. 100% significa que todas receberam pelo menos o tempo previsto.' },
+    { p:'A [[aderencia|meta]] da semana compara o tempo estudado com a meta: "3h40 de 5h". Todo estudo válido daquela semana entra, uma vez — de qualquer disciplina, planejada ou não. Quando o tempo chega à meta: "Meta semanal concluída". O que passa aparece à parte: "1h10 além da meta".' },
+    { h:'E a divisão entre disciplinas?' },
+    { p:'É a [[sugestaoDistribuicao|sugestão de organização]]. Em Planejamento, "Como o tempo foi usado" mostra o tempo real de cada disciplina; "Comparar com a sugestão" coloca a sugestão ao lado, como referência. Não existe "disciplina atrasada" nem semana "incompleta" por causa da distribuição.' },
     { h:'Exemplo' },
-    { p:'Você planejou 1h de Redes e 1h de Matemática e estudou 2h de Redes. O plano cumprido é 50%: Redes foi cumprida, Matemática não. A hora a mais de Redes aparece à parte, como "além do plano".' },
-    { h:'O que aparece na tela' },
+    { p:'Meta de 5h, sugestão de 2h de Matemática, 1h30 de Português e 1h30 de Inglês. Você estudou 1h, 1h e 3h. Resultado: 5h de 5h — meta alcançada. Comparando com a sugestão, Inglês recebeu 1h30 a mais: uma informação, não uma nota.' },
+    { h:'Nas Análises' },
     { ul:[
-      'Plano cumprido — a porcentagem acima. Nunca passa de 100%.',
-      'Estudado no total — todo o tempo estudado no período, com ou sem plano.',
-      'Além do plano — o tempo que passou do planejado de uma disciplina, ou foi para uma disciplina sem plano.'
+      '"Minha meta semanal" mostra o tempo estudado diante da meta, semana a semana, e em quantas semanas ela foi alcançada.',
+      'Num recorte de disciplinas, a comparação é com a sugestão delas — também só como referência.',
+      'Se o período cobre só três dias de uma semana, a meta daquela semana entra proporcionalmente a esses três dias.'
     ]},
-    { p:'A comparação usa o plano que existia em cada semana tocada pelo período. Se o período cobre apenas três dias de uma semana, o planejado daquela semana entra proporcionalmente a esses três dias.' },
-    { note:'Estudar mais do que o planejado não é problema nenhum — só não é a mesma coisa que cumprir o plano. Por isso os dois números aparecem separados.' }
+    { note:'Estudar mais do que a meta não é problema nenhum: o tempo a mais aparece como "além da meta". Descanso nunca entra na conta.' }
   ],
   cta:{ action:'openAnalytics', label:'Abrir Análises' },
   related:['analises-como-ler','consistencia-guia']
@@ -1144,28 +1160,34 @@ const HELP_ARTICLES = [
 /* ------------------------------------------------ USAR · ENTENDENDO MEU PROGRESSO */
 {
   id:'analises', section:'usar', group:'progresso',
-  title:'Análises: escolher o que entender',
-  oneLine:'Primeiro você escolhe; depois o Ciclo monta só a análise relevante.',
-  summary:'As três escolhas — o que analisar, qual período e o que ver — e a diferença entre os períodos.',
-  keywords:'analises analise periodo escopo filtro o que analisar hoje semana mes personalizado foco gerar alterar',
+  title:'Análises: perguntas prontas ou do seu jeito',
+  oneLine:'Escolha uma pergunta pronta — ou personalize o que analisar, o período e o que ver.',
+  summary:'As análises prontas, a personalização (várias disciplinas, tópicos e tipos), os períodos e as análises salvas.',
+  keywords:'analises analise periodo escopo filtro o que analisar hoje semana mes 90 dias personalizado foco gerar alterar prontas salvar salvas recentes varias disciplinas tipos',
   content:[
-    { h:'Como funciona' },
-    { p:'Análises começa com uma pergunta: o que você quer entender? Você responde três coisas e clica em "Gerar análise".' },
-    { steps:[
-      'O que analisar: todos os estudos, uma Área de Estudo, uma disciplina ou um tópico. É o [[escopo|escopo]].',
-      'Qual período: esta semana, últimos 7 dias, este mês, últimos 30 dias, tudo — ou datas que você escolhe.',
-      'O que ver: visão geral, tempo e constância, planejamento, revisões, conteúdo ou prazos.'
-    ]},
-    { h:'Diferença entre os períodos' },
+    { h:'Análises prontas' },
+    { p:'O caminho mais rápido: escolha o período (esta semana, 7, 30 ou 90 dias, ou todo o histórico) e clique numa pergunta.' },
     { ul:[
-      'Esta semana e Este mês cobrem o período inteiro, inclusive os dias que ainda vão chegar.',
-      'Últimos 7 e 30 dias terminam hoje.',
-      'Tudo começa no primeiro estudo registrado.',
-      'Personalizado: escolha o primeiro dia e depois o último, no calendário ou nos campos de data.'
+      'Meu tempo de estudo — quanto você estudou e como isso mudou.',
+      'Minha constância — em quantos dias você estudou.',
+      'Minhas disciplinas — onde o tempo foi investido.',
+      'Meus tópicos — quais assuntos receberam mais atenção.',
+      'Minhas revisões — o que foi revisado e o que vem por aí.',
+      'Minha meta semanal — o tempo estudado diante da meta.',
+      'Como estudo — teoria, exercícios, revisão e outros tipos.',
+      'Meus descansos — quanto e quantas vezes você descansou.'
     ]},
-    { h:'Exemplo' },
-    { p:'Redes de Computadores · Últimos 30 dias · Revisões mostra só as revisões dessa disciplina nesse período: quantas foram feitas, como foram e o que está atrasado.' },
-    { note:'Algumas combinações não fazem sentido e ficam indisponíveis com a explicação ao lado — por exemplo, Planejamento para um tópico, porque o plano semanal é por disciplina.' }
+    { h:'Personalizar análise' },
+    { steps:[
+      'O que analisar: todos os estudos, uma ou mais disciplinas, um ou mais tópicos, ou uma Área de Estudo. É o [[escopo|escopo]]. Se quiser, filtre também por tipos de estudo.',
+      'Qual período: hoje, esta semana, últimos 7, 30 ou 90 dias, este mês, todo o histórico — ou datas que você escolhe.',
+      'O que ver: visão geral, tempo, constância, disciplinas, tópicos, tipos, descansos, meta semanal, revisões, conteúdo ou prazos.'
+    ]},
+    { h:'Filtrar não é dividir' },
+    { p:'Um estudo de Matemática e Inglês entra uma vez em "Matemática + Inglês", com o tempo todo. Numa análise só de Matemática, entra com a parte de Matemática. O total nunca é contado duas vezes. Um filtro de tipos escolhe estudos: "Exercícios" mostra os estudos que tiveram exercícios.' },
+    { h:'Análises salvas e recentes' },
+    { p:'Em qualquer resultado, "Mais → Salvar esta análise" guarda a escolha (nunca os números): ao abrir de novo, o resultado é recalculado com os dados de agora. As salvas e as recentes aparecem no começo de Análises; as salvas podem ser renomeadas e removidas.' },
+    { note:'Algumas combinações não fazem sentido e ficam indisponíveis com a explicação ao lado — por exemplo, a meta semanal para um tópico, porque a meta é do tempo total da semana.' }
   ],
   cta:{ action:'openAnalytics', label:'Abrir Análises' },
   related:['analises-como-ler','calendario','relatorio']
@@ -1179,11 +1201,12 @@ const HELP_ARTICLES = [
   content:[
     { h:'A ordem do resultado' },
     { ul:[
-      'No topo, o que está sendo analisado, o período e o foco. "Alterar análise" volta às escolhas, já preenchidas; "Cancelar" mantém o resultado anterior.',
-      'Seu período em resumo — poucas frases com o que aconteceu.',
-      'Três ou quatro números essenciais. Os que têm seta abrem os detalhes.',
-      'Um gráfico principal, escolhido conforme o foco.',
-      'Principais insights — pontos de atenção e pontos positivos, sem julgamento.'
+      'No topo, o que está sendo analisado, o período e os filtros em etiquetas — o × tira um filtro, e os botões de período trocam o período sem refazer a análise.',
+      'A pergunta e a resposta principal ("Quanto estudei? — 13h15 em 15 de 30 dias").',
+      'Três ou quatro números essenciais, cada um dizendo se é do período, da situação atual ou do histórico inteiro. Os que têm seta abrem os detalhes.',
+      'Um gráfico principal, escolhido conforme a pergunta.',
+      'Principais insights — fatos, sem julgamento.',
+      '"Continue explorando" — a próxima pergunta natural (em quais disciplinas? em quais dias? em quais tópicos?), com o mesmo recorte.'
     ]},
     { h:'Explorar mais' },
     { p:'No fim da página ficam as outras visões — calendário, distribuição do tempo, semana a semana, prioridades, dificuldade e mais. Cada uma abre só quando você clicar. Nos gráficos, clique numa linha ou barra para ver mais e, quando fizer sentido, analisar só aquele item.' },
@@ -1245,7 +1268,7 @@ const HELP_ARTICLES = [
       'Análises → Explorar mais — os dias com estudo de cada semana e o calendário.'
     ]},
     { h:'O que ela não é' },
-    { p:'Constância não é [[aderencia|plano cumprido]]: uma mede em quantos dias houve estudo; o outro, quanto do tempo planejado foi feito. E não é uma nota — não existe sequência a perder. Um dia sem estudo é só um dia sem registro.' }
+    { p:'Constância não é a [[aderencia|meta]]: uma mede em quantos dias houve estudo; a outra, quanto tempo foi estudado na semana. E não é uma nota — não existe sequência a perder. Um dia sem estudo é só um dia sem registro.' }
   ],
   cta:{ action:'openAnalytics', label:'Abrir Análises' },
   related:['consistencia-guia','calendario','planejado-realizado']
@@ -1258,7 +1281,7 @@ const HELP_ARTICLES = [
   keywords:'observacoes insights atencao fatos pontos calculado motivo',
   content:[
     { h:'Como funciona' },
-    { p:'As observações são frases calculadas a partir dos seus registros, sempre as mesmas para os mesmos dados. Elas descrevem o que aconteceu ("Matemática recebeu 40% do tempo planejado") e nunca afirmam por quê.' },
+    { p:'As observações são frases calculadas a partir dos seus registros, sempre as mesmas para os mesmos dados. Elas descrevem o que aconteceu ("Matemática recebeu a maior parte do tempo no período") e nunca afirmam por quê.' },
     { h:'Tópicos que merecem atenção' },
     { p:'São escolhidos por fatos concretos — revisão atrasada, esquecimentos repetidos, pouca consolidação, prazo próximo, prioridade alta ainda não iniciada. A prioridade só ajuda a ordenar a lista.' }
   ],
@@ -1267,7 +1290,7 @@ const HELP_ARTICLES = [
 {
   id:'como-o-ciclo-sugere', section:'usar', group:'progresso',
   title:'Como o Ciclo escolhe o que devo estudar',
-  oneLine:'Uma pontuação local e determinística, sem nenhuma IA envolvida.',
+  oneLine:'Um cálculo local e determinístico, sem nenhuma IA envolvida.',
   summary:'O que entra na conta da tela Hoje — e por que você não precisa obedecer.',
   keywords:'recomendacao sugestao hoje decidir proxima acao porque obedecer motivo escolher',
   content:[
@@ -1275,13 +1298,13 @@ const HELP_ARTICLES = [
     { p:'A [[recomendacao|recomendação]] sai de um cálculo feito no seu navegador, com regras fixas. Não há IA, servidor nem aleatoriedade — com os mesmos dados, o resultado é sempre o mesmo.' },
     { h:'O que entra na conta' },
     { ul:[
-      'Quanto falta da disciplina no plano da semana (é o fator de maior peso).',
+      'Quanto da sugestão da semana ainda não foi estudado naquela disciplina (é o fator de maior peso).',
       'A prioridade da disciplina.',
       'Há quantos dias você não a estuda.',
       'Se existe prazo próximo.',
       'Quantas revisões pendentes ela tem e há quanto tempo estão atrasadas.',
       'O quanto os tópicos já estão consolidados.',
-      'Se você já passou bastante do tempo planejado — isso reduz a pontuação.'
+      'Se a disciplina já passou bastante da sugestão da semana — isso a deixa mais para trás.'
     ]},
     { details:{ title:'Qual tópico é escolhido dentro da disciplina', content:[
       { ol:[
@@ -1293,7 +1316,7 @@ const HELP_ARTICLES = [
     ]}},
     { h:'Preciso obedecer?' },
     { p:'Não. A recomendação existe para poupar você de decidir quando bate a indecisão. Estudar outra coisa é perfeitamente válido e não gera penalidade nenhuma — em "Outras opções", a tela Hoje mostra também a 2ª e a 3ª sugestão, e "Por quê?" explica cada motivo.' },
-    { note:'Os motivos sempre aparecem em texto claro, como "faltam 40min do plano semanal". O Ciclo não mostra a pontuação bruta porque o número em si não ajuda a decidir nada.' }
+    { note:'Os motivos sempre aparecem em texto claro, como "a sugestão desta semana tem mais 40min de Matemática". O Ciclo não mostra o número interno do cálculo porque ele não ajuda a decidir nada.' }
   ],
   cta:{ action:'openToday', label:'Abrir a tela Hoje' },
   related:['fila-revisao','planejamento','analises-observacoes']
@@ -1883,16 +1906,19 @@ const HELP_FAQ = [
     a:'Não. Ela é um atalho para quando você não quer decidir o que estudar. Estudar outra coisa não gera penalidade nenhuma.' },
   { id:'faq-como-escolhe', g:'estudando', article:'como-o-ciclo-sugere',
     q:'Como o Ciclo escolhe o que devo estudar?',
-    a:'Por uma pontuação calculada no seu navegador: o que falta no plano da semana, a prioridade, há quanto tempo você não estuda, prazos próximos e revisões pendentes. Os motivos sempre aparecem no card.' },
+    a:'Por um cálculo feito no seu navegador: o quanto da sugestão da semana ainda não foi estudado, a prioridade, há quanto tempo você não estuda, prazos próximos e revisões pendentes. Os motivos sempre aparecem no card.' },
   { id:'faq-varios-topicos-tempo', g:'estudando', article:'varios-topicos',
     q:'Estudei três tópicos em 1h30. Isso conta 4h30?',
     a:'Não. É um estudo de 1h30, com três tópicos. Se você não disser quanto foi de cada um, o Ciclo divide igualmente e mostra a parte de cada tópico como estimativa (≈).' },
+  { id:'faq-varias-disciplinas', g:'estudando', article:'varios-topicos',
+    q:'Estudei Matemática e Inglês no mesmo tempo. Registro dois estudos?',
+    a:'Não precisa. Registre um estudo e use "+ Adicionar outra disciplina". 2h com as duas continuam sendo 2h — na meta da semana, no histórico e nas análises. Se quiser, informe quanto foi de cada uma; senão, o Ciclo divide igualmente e marca como estimativa (≈).' },
   { id:'faq-tipos-100', g:'estudando', article:'tipos-de-estudo',
     q:'Por que as porcentagens dos tipos de estudo passam de 100%?',
     a:'Porque um estudo pode ter mais de um tipo, e a frequência conta o estudo em cada um deles. O tempo por tipo, ao contrário, divide o tempo do estudo — e sempre soma o total.' },
   { id:'faq-descanso-conta', g:'estudando', article:'descansos',
     q:'O descanso conta como tempo de estudo?',
-    a:'Não. Descanso é guardado à parte: não entra no tempo estudado, no plano da semana nem na ordem "Mais estudadas". Nas Análises ele aparece separado, só como informação.' },
+    a:'Não. Descanso é guardado à parte: não entra no tempo estudado, na meta da semana nem na ordem "Mais estudadas". Nas Análises ele aparece separado, só como informação.' },
   { id:'faq-meia-noite', g:'estudando', article:'registro-manual',
     q:'Estudei das 23:50 à 00:12. Como registro?',
     a:'Em Registrar estudo, escolha o dia em que começou e informe Comecei 23:50 e Terminei 00:12. O Ciclo entende que terminou no dia seguinte e registra 22 minutos.' },
@@ -1949,26 +1975,26 @@ const HELP_FAQ = [
 
   /* ---- planejamento ---- */
   { id:'faq-estudar-mais', g:'planejamento', article:'planejado-realizado',
-    q:'Posso estudar mais que o planejado?',
-    a:'Pode. O plano é uma referência, não um teto. O tempo a mais aparece como "além do plano" — ele não aumenta o plano cumprido — e a disciplina que passou do previsto apenas perde peso na recomendação, para abrir espaço às que estão atrás.' },
+    q:'Posso estudar outra disciplina, ou mais de uma, do que a sugestão diz?',
+    a:'Pode — e conta normalmente. A meta da semana é o tempo total: qualquer estudo entra nela, de qualquer disciplina. A sugestão por disciplina é só uma referência. A disciplina que já passou da sugestão apenas perde um pouco de peso na recomendação, para abrir espaço às outras.' },
   { id:'faq-plano-cumprido', g:'planejamento', article:'planejado-realizado',
-    q:'O que significa "plano cumprido"?',
-    a:'Quanto do que foi planejado para cada disciplina foi realmente estudado. Planejou 1h de Redes e 1h de Matemática e estudou 2h de Redes? O plano cumprido é 50%, com 1h "além do plano". 100% é ter dado a cada disciplina pelo menos o tempo previsto.' },
+    q:'Quando a meta da semana está cumprida?',
+    a:'Quando o tempo estudado na semana chega à meta. Meta de 5h e você estudou 1h de Matemática, 1h de Português e 3h de Inglês? 5h de 5h: meta concluída — mesmo que a sugestão fosse outra. O que passar da meta aparece como "além da meta".' },
   { id:'faq-plano-obrigatorio', g:'planejamento', article:'planejamento',
     q:'O planejamento é obrigatório?',
-    a:'Não. Sem ele o Ciclo continua sugerindo o que estudar, só com menos informação. Informar suas horas por semana melhora bastante as sugestões.' },
+    a:'Não. Sem ele o Ciclo continua sugerindo o que estudar, só com menos informação. Informar sua meta semanal mostra quanto falta na semana e melhora as sugestões.' },
   { id:'faq-prazo-distante', g:'planejamento', article:'prazos-influencia',
     q:'Um prazo distante já muda minhas sugestões?',
     a:'Muito pouco. A influência cresce conforme a data se aproxima e depende da prioridade do prazo. Com data de início, ele só começa a pesar a partir dela.' },
   { id:'faq-dias-obrigatorio', g:'planejamento', article:'semana-em-dias',
     q:'Preciso escolher dias e horários para cada disciplina?',
-    a:'Não. A meta semanal funciona sozinha, como sempre. Escolher dias — e, se quiser, horários — é uma camada opcional para quem gosta de ver a semana organizada.' },
+    a:'Não. A meta semanal funciona sozinha. Escolher dias — e, se quiser, horários — é uma camada opcional para quem gosta de ver a semana organizada. Estudar em outro dia conta do mesmo jeito.' },
   { id:'faq-arrastar-celular', g:'planejamento', article:'semana-em-dias',
     q:'Como organizo a semana no celular, sem arrastar?',
     a:'Use "Colocar em um dia" em cada disciplina, "Adicionar" em cada dia e o menu ⋯ de cada bloco ("Mover para outro dia…", "Tirar"). Tudo o que o arraste faz também existe nesses botões.' },
   { id:'faq-planejei-nao-estudei', g:'planejamento', article:'progresso-do-dia',
     q:'Planejei Matemática na segunda e não estudei. E agora?',
-    a:'Nada quebra. O bloco mostra "Sem estudo registrado" e a meta da semana continua contando o que falta. Estude em outro dia, ou mova o bloco: o progresso vem só do que você registra.' },
+    a:'Nada quebra. O bloco mostra "Sem estudo registrado" e a meta da semana mostra quanto falta. Estudou na terça? Conta normalmente — o histórico continua dizendo terça, e nada é deslocado.' },
   { id:'faq-dia-desativado-prazo', g:'planejamento', article:'dias-de-estudo',
     q:'Tirei a quinta do planejamento. Minha prova de quinta some?',
     a:'Não. Dias fora do planejamento vão para uma faixa abaixo da semana, com os prazos e os estudos deles. Tirar um dia nunca apaga nada.' },
@@ -1982,7 +2008,10 @@ const HELP_FAQ = [
     a:'Um dia com pelo menos um estudo registrado, de qualquer duração. Descanso sozinho não conta. Não é uma nota nem uma sequência: é só em quantos dias houve estudo.' },
   { id:'faq-analise-disciplina', g:'analises', article:'analises',
     q:'Como vejo as análises de uma só disciplina?',
-    a:'Em Análises, escolha "Uma disciplina" na primeira pergunta. Também dá para clicar numa disciplina em qualquer gráfico e usar "Analisar só esta disciplina".' },
+    a:'Em Análises, abra "Personalizar análise" e escolha "Disciplinas" — dá para marcar uma ou várias. Também dá para clicar numa disciplina em qualquer gráfico e usar "Analisar só esta disciplina".' },
+  { id:'faq-analise-salva', g:'analises', article:'analises',
+    q:'Dá para guardar uma análise que eu uso sempre?',
+    a:'Dá. No resultado, use "Mais → Salvar esta análise". Fica guardada só a escolha — o que analisar, o período e o que ver —, e o resultado é sempre recalculado com os dados de agora. Dá para renomear e remover.' },
   { id:'faq-relatorio-comentarios', g:'analises', article:'relatorio',
     q:'O relatório .txt inclui meus comentários?',
     a:'Não. Ele traz números, nomes, prioridades e prazos. Comentários dos estudos e anotações pessoais ficam de fora.' },
@@ -2078,8 +2107,8 @@ const CONTEXT_HELP = {
   insights:         { title:'Observações', article:'analises-observacoes',
                       tip:'Fatos calculados dos seus registros. Descrevem o que aconteceu, sem supor causas.' },
   minimo:           { term:'minimoSemanal' },
-  aderencia:        { title:'Plano cumprido', article:'planejado-realizado',
-                      tip:'Quanto do planejado para cada disciplina foi realmente estudado. Tempo a mais numa não compensa o que faltou em outra.' },
+  aderencia:        { title:'Meta da semana', article:'planejado-realizado',
+                      tip:'O tempo estudado diante da meta semanal. Qualquer estudo conta, de qualquer disciplina.' },
   cobertura:        { title:'Conteúdo estudado', article:'cobertura-dominio',
                       tip:'A parte dos tópicos que você já estudou pelo menos uma vez.' },
   dominio:          { term:'dominio' },
@@ -2089,7 +2118,7 @@ const CONTEXT_HELP = {
   disponibilidade:  { term:'disponibilidade' },
   recomendacao:     { term:'recomendacao' },
   planosemana:      { title:'Semana atual', article:'plano-base',
-                      tip:'Cada semana guarda o plano que valia nela; mudar o plano não reescreve o passado.' },
+                      tip:'Cada semana guarda a meta que valia nela; mudar a meta não reescreve o passado.' },
   distribuicao:     { title:'Distribuição', article:'distribuicao',
                       tip:'Respeita os mínimos, divide o resto por prioridade e fecha no total exato.' },
   tiposessao:       { title:'Tipo de estudo', article:'tipos-de-estudo',
@@ -2112,8 +2141,8 @@ const SCREEN_HELP = {
                 cta:{ action:'quickStart', label:'Começar a estudar agora' },
                 articles:['como-o-ciclo-sugere','comecar-sessao','cronometro'] },
   plan:       { title:'Planejamento',
-                intro:'Você diz quanto tempo tem por semana e o Ciclo distribui entre as disciplinas. Se quiser, também escolhe em que dia estudar cada uma.',
-                points:['No topo, a meta da semana e quanto já foi estudado — ela continua sendo a referência.','Arraste uma disciplina até um dia, ou use "Colocar em um dia". Clique num bloco para escolher duração e horário (opcionais).','O progresso de cada dia vem dos estudos registrados naquele dia. Arrastar nunca registra estudo.','"Personalizar dias" tira do quadro os dias em que você não estuda; prazos e estudos deles continuam à vista.','"Ajustar metas" abre horas, prioridade, mínimo e minutos de cada disciplina. Cada semana guarda o próprio registro.'],
+                intro:'Você diz quanto quer estudar por semana — essa é a meta. Qualquer estudo conta para ela. O Ciclo sugere como dividir o tempo e, se você quiser, em que dias.',
+                points:['No topo, "3h40 de 5h": o tempo estudado diante da meta, quanto falta ou quanto passou. "Alterar meta" muda as horas.','"Como o tempo foi usado" mostra o tempo real de cada disciplina. "Comparar com a sugestão" é só uma referência.','Arraste uma disciplina até um dia, ou use "Colocar em um dia". Clique num bloco para duração e horário (opcionais). Arrastar nunca registra estudo.','Em "Sugestão de organização", clique na sugestão de uma disciplina para mudar; "Adicionar disciplina" inclui outra.','"Personalizar dias" tira do quadro os dias em que você não estuda; prazos e estudos deles continuam à vista.'],
                 articles:['semana-em-dias','progresso-do-dia','dias-de-estudo','planejamento'] },
   reviews:    { title:'Revisões',
                 intro:'Tópicos estudados voltam automaticamente para revisão, em intervalos que se adaptam.',
@@ -2126,12 +2155,12 @@ const SCREEN_HELP = {
                 cta:{ action:'addDiscipline', label:'Adicionar uma disciplina' },
                 articles:['estrutura-conteudo','topicos','prioridades','prazos'] },
   analytics:  { title:'Análises',
-                intro:'Escolha o que analisar, o período e o que você quer ver. Depois clique em "Gerar análise".',
-                points:['O resultado mostra um resumo, poucos números, um gráfico e os principais insights.','"Alterar análise" volta às escolhas sem perder o resultado atual.','"Explorar mais" guarda calendário, distribuição e outras visões — cada uma abre só quando você pedir.','"Exportar" copia um resumo ou baixa o relatório em .txt da análise atual.'],
+                intro:'Escolha uma pergunta pronta — ou personalize o que analisar (várias disciplinas, tópicos, tipos), o período e o que ver.',
+                points:['O resultado começa pela pergunta e pela resposta principal; depois, poucos números, um gráfico e os principais insights.','As etiquetas no topo mostram os filtros: o × tira um. Os botões de período trocam o período na hora.','"Continue explorando" leva à próxima pergunta com o mesmo recorte; "Explorar mais" guarda calendário, distribuição e outras visões.','"Mais" salva a análise (só a escolha, nunca os números), copia um resumo ou baixa o relatório em .txt.'],
                 articles:['analises','analises-como-ler','calendario','relatorio'] },
   history:    { title:'Histórico',
                 intro:'Todos os estudos registrados, organizados por dia.',
-                points:['A busca procura só nos estudos registrados: disciplina, área, tópicos, tipos e comentário, com ou sem acento.','Um estudo é sempre uma linha, com o tempo dele uma vez só. Com muitos tópicos, a linha mostra alguns e "+2"; a edição mostra todos.','"Filtros" abre um painel; os filtros ativos aparecem abaixo da busca e saem com um clique.','Clique num estudo para ver o horário, o tempo estudado e os descansos — e para editar ou remover.'],
+                points:['A busca procura só nos estudos registrados: disciplinas, áreas, tópicos, tipos e comentário, com ou sem acento.','Um estudo é sempre uma linha, com o tempo dele uma vez só — mesmo com várias disciplinas ("Matemática · Inglês · 4 tópicos"). Os detalhes mostram como o tempo foi dividido.','"Filtros" abre um painel; os filtros ativos aparecem abaixo da busca e saem com um clique.','Clique num estudo para ver o horário, o tempo estudado e os descansos — e para editar ou remover.'],
                 articles:['sessoes','varios-topicos','registro-manual','descansos'] },
   data:       { title:'Dados',
                 intro:'Backup, restauração e informações de privacidade.',
@@ -2171,7 +2200,7 @@ const PLAN_DEMO = {
     { name:'Inglês',     priority:3, minutes:90 },
     { name:'História',   priority:2, minutes:60 }
   ],
-  note:'Isso é apenas uma sugestão. Você pode mudar qualquer valor.'
+  note:'Isso é apenas uma sugestão de organização. A meta é o tempo total: estudar 2h de Inglês e 1h de Matemática também cumpre as 5h.'
 };
 
 /* =========================================================================
@@ -2195,7 +2224,7 @@ const HOW_TO_START = [
     example:'Estudou hoje → revisa amanhã → depois em 4 dias…',
     action:'reviewDemo', actionLabel:'Ver como funciona' },
   { id:'plan', title:'Organize sua semana quando quiser',
-    text:'Dizer quanto tempo você tem ajuda o Ciclo a distribuir melhor seus estudos.',
+    text:'Uma meta de horas por semana mostra quanto falta — qualquer estudo conta para ela.',
     example:'5 horas por semana',
     action:'plan', actionLabel:'Organizar semana' }
 ];
@@ -2218,15 +2247,58 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 };
 
 const CHANGELOG = [
-  { v:'6.7', d:'Weekly Planner & Flexible Study Records. Planejamento ganhou a semana em dias: arraste uma disciplina até segunda, terça, quarta… — ou use "Colocar em um dia", sem arrastar, no teclado ou no celular. Cada bloco pode ter só o dia, uma duração ou também um horário (24h); horários que se cruzam geram só um aviso. A meta semanal continua sendo a referência: cada disciplina mostra quanto ainda está sem dia definido, e distribuir mais que a meta gera um aviso com três caminhos — ajustar os blocos, mudar a meta (só nesta semana ou também nas próximas) ou manter assim. O progresso de cada dia vem dos estudos registrados naquele dia, em qualquer horário, e cada minuto conta uma vez: "40 min de 1h", "Concluído", "20 min além do planejado" — sem cobrança. "Personalizar dias" tira do quadro os dias em que você não estuda, e os prazos e estudos desses dias continuam numa faixa própria. Provas e entregas aparecem no dia em que vencem. Dá para navegar entre semanas, repetir a organização nas próximas e voltar ao modelo; semanas passadas ficam como estavam. Um estudo agora pode ter vários tópicos e vários tipos: continua sendo um estudo, com o tempo contado uma vez só; a divisão do tempo entre os tópicos é opcional e, quando não é informada, aparece como estimativa (≈). Numa revisão com vários tópicos, cada um recebe o próprio resultado. Histórico, Análises (frequência e tempo por tipo, tempo por tópico), revisões, cronômetro, backup e CSV entendem o formato novo. Seus estudos foram convertidos automaticamente para "um tópico, um tipo", com o mesmo tempo, as mesmas revisões e o mesmo histórico; backups antigos continuam sendo aceitos.' },
-  { v:'6.6', d:'Visual & Interaction Revival. Uma versão de acabamento, sem funções novas e sem mudança nos dados. Cores mais fechadas e sérias: grafite levemente azulado no tema escuro, neutro quente no claro e um verde-petróleo reservado para a ação principal de cada tela. Todo botão, linha e opção responde ao mouse, ao toque e ao teclado, e o que está escolhido continua marcado sem o mouse — com fundo, contorno e, quando cabe, um ✓. Em controles de uma linha (tema, abas, período, prioridade, navegação) a marca da escolha desliza até a opção nova. Menus abrem junto do botão e sempre dentro da tela, viram uma folha embaixo no celular e fecham com clique fora ou Esc, devolvendo o foco ao botão. Janelas, painéis e a busca entram e saem com transições curtas; uma janela com algo preenchido não fecha mais com um clique fora em nenhum formulário. Respostas, detalhes e "Explorar mais" abrem e recolhem suavemente. Tudo respeita "Reduzir animações" e a preferência do sistema.' },
-  { v:'6.5', d:'Public Release Hardening. Uma versão de confiabilidade, sem funções novas: o que mudou foi o quanto você pode confiar no que está gravado. O cronômetro em duas abas não registra mais o mesmo estudo duas vezes — nem com cliques simultâneos; a segunda aba avisa que o estudo já foi registrado. Editar, mover ou excluir um estudo agora atualiza o tópico junto: excluir o único estudo de um tópico o devolve a "não iniciado", e registrar uma revisão com data antiga não empurra mais a próxima revisão para o passado. A restauração de backup confere o arquivo inteiro antes de gravar, mostra o que vai entrar, o que foi ajustado e o que fica de fora, recusa backups de uma versão mais nova e nunca troca uma data ilegível por "hoje". "Plano cumprido" passou a medir a divisão do tempo: estudar a mais numa disciplina não compensa o que faltou em outra, e esse tempo aparece à parte, como "além do plano". Um estudo é guardado por horário ou só por duração, nunca com as duas coisas se contradizendo. Com o Ciclo aberto em duas abas, uma avisa a outra quando os dados mudam, e um formulário aberto nunca é atropelado. Janelas só fecham depois de gravar; se a gravação falhar, o que você digitou continua lá. O CSV ficou seguro para abrir em planilhas, as Análises dizem se cada número é do período ou da situação atual, a análise que você montou continua lá quando você volta, e a navegação por teclado ficou mais firme (modo foco, "Ir para o conteúdo"). Nenhum dado seu foi alterado e nenhuma migração foi necessária.' },
-  { v:'6.4.1', d:'Interface Refinement. Uma versão de acabamento, sem funções novas. O horário do estudo ganhou um campo próprio, no formato 24h: basta digitar os números (2350 vira 23:50), colar um horário também funciona, e a roda do mouse não muda mais a hora. A duração aparece assim que o início e o fim são informados — com o que foi decorrido, o descanso e o tempo estudado separados quando há descansos. "Registrar estudo" passou a aproveitar a largura da tela: "Quando" e "O que você estudou" ficam lado a lado, e "Como foi" reúne tipo de estudo, dificuldade e comentário; o comentário só aparece quando você pede. Finalizar e editar um estudo seguem a mesma composição, e os botões de ação das janelas ficam sempre à vista. A tipografia foi revista: títulos e textos usam a mesma família de fontes do sistema, sem serifada, com menos negrito e sem maiúsculas decorativas. Nenhum dado foi alterado.' },
-  { v:'6.4', d:'Study Flow / Rest / Rhythm. "Registrar estudo" passou a dizer o que faz — guardar algo que você já estudou — e funciona em qualquer tela, sem tirar você de onde está; "Começar a estudar" liga o cronômetro. As duas ficam na mesma janela, em "Estudar agora" e "Já estudei". No registro de um estudo que já aconteceu, você informa a hora em que começou e terminou e a duração sai sozinha, inclusive quando o estudo atravessa a meia-noite (23:50 → 00:12 são 22 minutos); intervalos muito longos pedem confirmação. Disciplina e tópico ganharam seletores com busca que mostram o que foi escolhido, e os tipos de estudo vêm com ícone e uma linha de explicação. O cronômetro agora tem descansos: "Descansar" pausa o estudo e conta o descanso à parte, quantas vezes você quiser, e nada disso entra no tempo estudado, no plano ou em "Mais estudadas". A tela Hoje mostra seu ritmo (em quantos dos últimos 7 dias você estudou) e Análises ganhou dias com estudo por semana e descansos, sem nota e sem cobrança. Créditos deixaram de existir: o Ciclo trabalha só com tempo. Seus estudos e minutos continuam como estavam, e backups antigos continuam sendo aceitos.' },
-  { v:'6.3', d:'Editorial Polish / Smart Capture / Reliability. Criar um tópico sem sair do registro: no campo Tópico, "+ Criar novo tópico…" abre o mesmo formulário de tópico de sempre dentro do registro, com a disciplina já escolhida (e editável); ao salvar, disciplina e tópico voltam selecionados juntos, e nada do que foi preenchido se perde. Nomes repetidos não criam um segundo tópico — o Ciclo oferece usar o existente ou reativar o arquivado. O fim do cronômetro também permite escolher ou criar o tópico, e o estudo só é encerrado depois de gravado. A frase do dia foi reconstruída só com frases reais, com autor e obra, conferidas na fonte, e passou a aparecer logo abaixo da recomendação. Tipografia revista com fontes do próprio sistema, números mais legíveis e movimentos mais curtos. Correções: trocar a disciplina no registro não apaga mais os minutos e o comentário; salvar o plano duas vezes seguidas não cria dois planos; o cronômetro em duas abas não grava o mesmo estudo duas vezes; editar um estudo ou prazo ligado a um tópico arquivado não desfaz mais esse vínculo; "Hoje" se atualiza sozinho na virada do dia. Nenhum dado foi alterado.' },
-  { v:'6.2', d:'Navigation & Findability. O Voltar do navegador passou a voltar dentro do Ciclo (tópico → disciplina → área → Disciplinas) e só depois sair; o Avançar também funciona, e recarregar a página mantém você no mesmo lugar. Toda página dentro de Disciplinas tem um "voltar" que diz o destino. A busca de cada tela procura só ali: áreas, disciplinas da área aberta, tópicos da disciplina, prazos, revisões ou estudos registrados; a busca geral (Ctrl + K e tela Hoje) agrupa os resultados por tipo, e a Ajuda mostra primeiro as respostas e depois as funções relacionadas. Listas ganharam "Ordenar por" (mais estudadas, prioridade, modificadas ou criadas recentemente, nome, ordem personalizada) e Prazos, um filtro por situação. Ao voltar, a busca, a ordem e a posição da lista continuam como estavam. Nenhum dado foi alterado.' },
-  { v:'6.1', d:'Human Interface / Calm Structure. Disciplinas virou um índice navegável: Disciplinas → Área → Disciplina → Tópico, com caminho no topo (e "voltar" no celular). Uma área criada aparece mesmo vazia, com convite para adicionar a primeira disciplina; dá para criar a área no próprio formulário da disciplina, e renomear, arquivar ou excluir pela página da área. A prioridade ganhou um único símbolo para 1 a 5, em todo lugar, e pode ser mudada direto no detalhe. Linguagem mais simples em toda a interface ("Começar a estudar", "Registrar estudo", "Quando revisar", "Como revisar", "Consolidação"). Mais espaço, menos maiúsculas e movimento mais suave ao navegar. Nenhum dado foi alterado.' },
-  { v:'6.0', d:'Zero Visual Noise. Nova linguagem visual, mais calma: menos caixas, bordas, cores e informação ao mesmo tempo, com mais hierarquia e espaço. Cada tela responde uma pergunta. Hoje mostra uma recomendação e o que vem a seguir; Revisões começa pelo que é para agora; Planejamento mostra a divisão da semana e guarda os detalhes em "Ajustar"; Disciplinas ganhou uma aba de Prazos; o Histórico virou uma leitura por dia, com filtros num painel; Configurações foi organizada em grupos. Análises foi reconstruída: primeiro você escolhe o que analisar, o período e o que quer ver; depois recebe um resumo, poucos números, um gráfico principal e os principais insights, com aprofundamento sob demanda em "Explorar mais". Nenhum dado foi alterado.' },
+  /* v6.8 — a versão atual tem um resumo curto (janela "O Ciclo foi atualizado.")
+     e seções recolhíveis ("Ver todas as novidades"). As anteriores ficam como texto. */
+  { v:'6.8', title:'Freedom & Insights',
+    intro:'Agora você pode estudar várias disciplinas no mesmo registro, cumprir a meta da semana do seu jeito e explorar suas análises com perguntas prontas.',
+    highlights:[
+      'Planejamento mais flexível: a meta é o tempo total da semana — qualquer estudo conta.',
+      'Registros com várias disciplinas, cada uma com os próprios tópicos.',
+      'Análises mais fáceis de explorar, com perguntas prontas e filtros simples.',
+      'Melhorias de estabilidade e de acabamento em todas as telas.'
+    ],
+    sections:[
+      { title:'O que mudou', items:[
+        'A meta semanal passou a ser o TEMPO TOTAL estudado na semana. Estudou 5h de uma meta de 5h? Meta cumprida — mesmo que tenha estudado mais Inglês e menos Matemática do que a sugestão dizia.',
+        'Disciplinas fora da sugestão também contam para a meta. Estudar num dia diferente do planejado também.',
+        'A divisão por disciplina virou "Sugestão de organização": cartões compactos com prioridade, tópicos e a sugestão, que você ajusta com um clique. "Como o tempo foi usado" mostra o tempo real de cada disciplina, e "Comparar com a sugestão" é só uma referência.',
+        'Um estudo pode ter várias disciplinas — Matemática e Inglês no mesmo registro, cada uma com os próprios tópicos. Continua sendo um estudo, com um tempo só.',
+        'O cronômetro ("Estudar agora") também aceita várias disciplinas, e recarregar a página no meio do estudo não perde nenhuma escolha.',
+        'Análises ganharam oito perguntas prontas (tempo, constância, disciplinas, tópicos, revisões, meta semanal, tipos de estudo e descansos), o período de 90 dias, seleção de várias disciplinas ou tópicos, filtro por tipo de estudo e análises salvas.',
+        'A janela de novidades ficou curta: aparece uma vez por versão e fecha com um clique.'
+      ]},
+      { title:'Como usar', items:[
+        'Planejamento → "Alterar meta" muda as horas por semana. Clique na sugestão de uma disciplina para mudá-la; "Adicionar disciplina" inclui outra.',
+        'Registrar estudo → escolha a primeira disciplina e use "+ Adicionar outra disciplina". "Distribuir o tempo entre as disciplinas" é opcional.',
+        'Análises → escolha o período e clique numa pergunta. Para recortes específicos, abra "Personalizar análise". No resultado, "Mais → Salvar esta análise".'
+      ]},
+      { title:'Exemplos', items:[
+        'Meta de 5h: Matemática 1h, Português 1h e Inglês 3h → 5h de 5h, meta concluída.',
+        'Um estudo de 2h com Matemática (70 min: Frações 40, Equações 30) e Inglês (50 min) → 2h na meta, 70 min em Matemática, 50 min em Inglês, um estudo no histórico.',
+        'Sem informar a divisão, 2h com duas disciplinas viram 1h para cada, marcadas como estimativa (≈).'
+      ]},
+      { title:'Correções importantes', items:[
+        'Excluir definitivamente uma disciplina não apaga mais estudos que tinham outras disciplinas junto: eles continuam, só sem a parte dela.',
+        'A semana nunca aparece como "incompleta" quando a meta foi alcançada.',
+        'Nas Análises, um estudo de duas disciplinas escolhidas entra uma vez só no total.'
+      ]},
+      { title:'Detalhes técnicos (opcional)', items:[
+        'Formato dos dados 7 → 8: cada estudo ganhou a lista de disciplinas e cada tópico guarda a disciplina dele. A conversão é automática, feita uma vez e sem mudar duração, revisões nem histórico.',
+        'Backups de versões anteriores continuam sendo aceitos; backups novos incluem as disciplinas de cada estudo e as análises salvas.',
+        'O CSV continua com uma linha por estudo e ganhou a coluna "minutos_por_disciplina".',
+        'Nada mudou no armazenamento do navegador além disso: o banco local é o mesmo, sem servidor e sem conta.'
+      ]}
+    ],
+    d:'Freedom & Insights. A meta semanal passou a ser o tempo total estudado na semana; a divisão por disciplina virou uma sugestão de organização. Um estudo pode ter várias disciplinas, cada uma com os próprios tópicos, também no cronômetro. Análises ganharam perguntas prontas, seleção de várias disciplinas ou tópicos, filtro por tipo, 90 dias e análises salvas. A janela de novidades ficou curta.' },
+  { v:'6.7', title:'Weekly Planner & Flexible Study Records', d:'Planejamento ganhou a semana em dias: arraste uma disciplina até segunda, terça, quarta… — ou use "Colocar em um dia", sem arrastar, no teclado ou no celular. Cada bloco pode ter só o dia, uma duração ou também um horário (24h); horários que se cruzam geram só um aviso. A meta semanal continua sendo a referência: cada disciplina mostra quanto ainda está sem dia definido, e distribuir mais que a meta gera um aviso com três caminhos — ajustar os blocos, mudar a meta (só nesta semana ou também nas próximas) ou manter assim. O progresso de cada dia vem dos estudos registrados naquele dia, em qualquer horário, e cada minuto conta uma vez: "40 min de 1h", "Concluído", "20 min além do planejado" — sem cobrança. "Personalizar dias" tira do quadro os dias em que você não estuda, e os prazos e estudos desses dias continuam numa faixa própria. Provas e entregas aparecem no dia em que vencem. Dá para navegar entre semanas, repetir a organização nas próximas e voltar ao modelo; semanas passadas ficam como estavam. Um estudo agora pode ter vários tópicos e vários tipos: continua sendo um estudo, com o tempo contado uma vez só; a divisão do tempo entre os tópicos é opcional e, quando não é informada, aparece como estimativa (≈). Numa revisão com vários tópicos, cada um recebe o próprio resultado. Histórico, Análises (frequência e tempo por tipo, tempo por tópico), revisões, cronômetro, backup e CSV entendem o formato novo. Seus estudos foram convertidos automaticamente para "um tópico, um tipo", com o mesmo tempo, as mesmas revisões e o mesmo histórico; backups antigos continuam sendo aceitos.' },
+  { v:'6.6', title:'Visual & Interaction Revival', d:'Uma versão de acabamento, sem funções novas e sem mudança nos dados. Cores mais fechadas e sérias: grafite levemente azulado no tema escuro, neutro quente no claro e um verde-petróleo reservado para a ação principal de cada tela. Todo botão, linha e opção responde ao mouse, ao toque e ao teclado, e o que está escolhido continua marcado sem o mouse — com fundo, contorno e, quando cabe, um ✓. Em controles de uma linha (tema, abas, período, prioridade, navegação) a marca da escolha desliza até a opção nova. Menus abrem junto do botão e sempre dentro da tela, viram uma folha embaixo no celular e fecham com clique fora ou Esc, devolvendo o foco ao botão. Janelas, painéis e a busca entram e saem com transições curtas; uma janela com algo preenchido não fecha mais com um clique fora em nenhum formulário. Respostas, detalhes e "Explorar mais" abrem e recolhem suavemente. Tudo respeita "Reduzir animações" e a preferência do sistema.' },
+  { v:'6.5', title:'Public Release Hardening', d:'Uma versão de confiabilidade, sem funções novas: o que mudou foi o quanto você pode confiar no que está gravado. O cronômetro em duas abas não registra mais o mesmo estudo duas vezes — nem com cliques simultâneos; a segunda aba avisa que o estudo já foi registrado. Editar, mover ou excluir um estudo agora atualiza o tópico junto: excluir o único estudo de um tópico o devolve a "não iniciado", e registrar uma revisão com data antiga não empurra mais a próxima revisão para o passado. A restauração de backup confere o arquivo inteiro antes de gravar, mostra o que vai entrar, o que foi ajustado e o que fica de fora, recusa backups de uma versão mais nova e nunca troca uma data ilegível por "hoje". "Plano cumprido" passou a medir a divisão do tempo: estudar a mais numa disciplina não compensa o que faltou em outra, e esse tempo aparece à parte, como "além do plano". Um estudo é guardado por horário ou só por duração, nunca com as duas coisas se contradizendo. Com o Ciclo aberto em duas abas, uma avisa a outra quando os dados mudam, e um formulário aberto nunca é atropelado. Janelas só fecham depois de gravar; se a gravação falhar, o que você digitou continua lá. O CSV ficou seguro para abrir em planilhas, as Análises dizem se cada número é do período ou da situação atual, a análise que você montou continua lá quando você volta, e a navegação por teclado ficou mais firme (modo foco, "Ir para o conteúdo"). Nenhum dado seu foi alterado e nenhuma migração foi necessária.' },
+  { v:'6.4.1', title:'Interface Refinement', d:'Uma versão de acabamento, sem funções novas. O horário do estudo ganhou um campo próprio, no formato 24h: basta digitar os números (2350 vira 23:50), colar um horário também funciona, e a roda do mouse não muda mais a hora. A duração aparece assim que o início e o fim são informados — com o que foi decorrido, o descanso e o tempo estudado separados quando há descansos. "Registrar estudo" passou a aproveitar a largura da tela: "Quando" e "O que você estudou" ficam lado a lado, e "Como foi" reúne tipo de estudo, dificuldade e comentário; o comentário só aparece quando você pede. Finalizar e editar um estudo seguem a mesma composição, e os botões de ação das janelas ficam sempre à vista. A tipografia foi revista: títulos e textos usam a mesma família de fontes do sistema, sem serifada, com menos negrito e sem maiúsculas decorativas. Nenhum dado foi alterado.' },
+  { v:'6.4', title:'Study Flow / Rest / Rhythm', d:'"Registrar estudo" passou a dizer o que faz — guardar algo que você já estudou — e funciona em qualquer tela, sem tirar você de onde está; "Começar a estudar" liga o cronômetro. As duas ficam na mesma janela, em "Estudar agora" e "Já estudei". No registro de um estudo que já aconteceu, você informa a hora em que começou e terminou e a duração sai sozinha, inclusive quando o estudo atravessa a meia-noite (23:50 → 00:12 são 22 minutos); intervalos muito longos pedem confirmação. Disciplina e tópico ganharam seletores com busca que mostram o que foi escolhido, e os tipos de estudo vêm com ícone e uma linha de explicação. O cronômetro agora tem descansos: "Descansar" pausa o estudo e conta o descanso à parte, quantas vezes você quiser, e nada disso entra no tempo estudado, no plano ou em "Mais estudadas". A tela Hoje mostra seu ritmo (em quantos dos últimos 7 dias você estudou) e Análises ganhou dias com estudo por semana e descansos, sem nota e sem cobrança. Seus estudos e minutos continuam como estavam, e backups antigos continuam sendo aceitos.' },
+  { v:'6.3', title:'Editorial Polish / Smart Capture / Reliability', d:'Criar um tópico sem sair do registro: no campo Tópico, "+ Criar novo tópico…" abre o mesmo formulário de tópico de sempre dentro do registro, com a disciplina já escolhida (e editável); ao salvar, disciplina e tópico voltam selecionados juntos, e nada do que foi preenchido se perde. Nomes repetidos não criam um segundo tópico — o Ciclo oferece usar o existente ou reativar o arquivado. O fim do cronômetro também permite escolher ou criar o tópico, e o estudo só é encerrado depois de gravado. A frase do dia foi reconstruída só com frases reais, com autor e obra, conferidas na fonte, e passou a aparecer logo abaixo da recomendação. Tipografia revista com fontes do próprio sistema, números mais legíveis e movimentos mais curtos. Correções: trocar a disciplina no registro não apaga mais os minutos e o comentário; salvar o plano duas vezes seguidas não cria dois planos; o cronômetro em duas abas não grava o mesmo estudo duas vezes; editar um estudo ou prazo ligado a um tópico arquivado não desfaz mais esse vínculo; "Hoje" se atualiza sozinho na virada do dia. Nenhum dado foi alterado.' },
+  { v:'6.2', title:'Navigation & Findability', d:'O Voltar do navegador passou a voltar dentro do Ciclo (tópico → disciplina → área → Disciplinas) e só depois sair; o Avançar também funciona, e recarregar a página mantém você no mesmo lugar. Toda página dentro de Disciplinas tem um "voltar" que diz o destino. A busca de cada tela procura só ali: áreas, disciplinas da área aberta, tópicos da disciplina, prazos, revisões ou estudos registrados; a busca geral (Ctrl + K e tela Hoje) agrupa os resultados por tipo, e a Ajuda mostra primeiro as respostas e depois as funções relacionadas. Listas ganharam "Ordenar por" (mais estudadas, prioridade, modificadas ou criadas recentemente, nome, ordem personalizada) e Prazos, um filtro por situação. Ao voltar, a busca, a ordem e a posição da lista continuam como estavam. Nenhum dado foi alterado.' },
+  { v:'6.1', title:'Human Interface / Calm Structure', d:'Disciplinas virou um índice navegável: Disciplinas → Área → Disciplina → Tópico, com caminho no topo (e "voltar" no celular). Uma área criada aparece mesmo vazia, com convite para adicionar a primeira disciplina; dá para criar a área no próprio formulário da disciplina, e renomear, arquivar ou excluir pela página da área. A prioridade ganhou um único símbolo para 1 a 5, em todo lugar, e pode ser mudada direto no detalhe. Linguagem mais simples em toda a interface ("Começar a estudar", "Registrar estudo", "Quando revisar", "Como revisar", "Consolidação"). Mais espaço, menos maiúsculas e movimento mais suave ao navegar. Nenhum dado foi alterado.' },
+  { v:'6.0', title:'Zero Visual Noise', d:'Nova linguagem visual, mais calma: menos caixas, bordas, cores e informação ao mesmo tempo, com mais hierarquia e espaço. Cada tela responde uma pergunta. Hoje mostra uma recomendação e o que vem a seguir; Revisões começa pelo que é para agora; Planejamento mostra a divisão da semana e guarda os detalhes em "Ajustar"; Disciplinas ganhou uma aba de Prazos; o Histórico virou uma leitura por dia, com filtros num painel; Configurações foi organizada em grupos. Análises foi reconstruída: primeiro você escolhe o que analisar, o período e o que quer ver; depois recebe um resumo, poucos números, um gráfico principal e os principais insights, com aprofundamento sob demanda em "Explorar mais". Nenhum dado foi alterado.' },
   { v:'5.3', d:'Central de Ajuda reconstruída: dois caminhos claros (Usar o Ciclo e Aprender a estudar), busca com navegação por teclado e resultados ranqueados, artigos com estrutura única e exemplos, glossário contextual que explica um termo sem tirar você da página, FAQ organizado por assunto e caminho de volta previsível em qualquer ponto.' },
   { v:'5.2.1', d:'Revisão geral de estabilidade, interface, integrações, acessibilidade e acabamento pré-lançamento. Seus dados, revisões, prazos e planos continuam exatamente como estavam.' },
   { v:'5.2', d:'Estrutura clara em três níveis: Área de Estudo → Disciplina → Tópico, com Área de Estudo opcional. Uma única escala de prioridade, de 1 (muito baixa) a 5 (muito alta), para disciplinas, tópicos e prazos — a antiga importância dos tópicos foi convertida automaticamente, sem mexer nas revisões. Prazos completos: tipo, data de início, status, orientações e anotações. Análises reconstruídas: escolha o que analisar e o período, leia o resumo, clique nos cartões para ver detalhes, use o calendário para ver um dia ou escolher um intervalo e baixe um relatório em texto.' },
