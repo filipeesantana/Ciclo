@@ -78,6 +78,8 @@ As duas ações ficam na mesma janela — *Estudar agora* e *Já estudei* — e 
 - **Começar sem escolher a disciplina.** Com pressa, ligue o cronômetro e escolha a matéria só ao finalizar.
 - **Rascunhos.** Um registro que você começou e não terminou fica guardado neste navegador por até 7 dias. Ao voltar, o Ciclo avisa e oferece *Começar do zero*.
 
+Os rascunhos também recuperam descansos, divisões de tempo, respostas de revisão e o nome de uma disciplina ainda não criada. Um comentário na finalização não congela o tempo que o cronômetro continua medindo. Se o navegador impedir o armazenamento do rascunho, o Ciclo avisa.
+
 O descanso e a pausa são guardados junto do estudo, mas **nunca somados a ele**: 45 min de estudo, 10 de descanso, 35 de estudo, 8 de descanso e mais 40 de estudo são **2h estudadas e 18 min de descanso**.
 
 No cronômetro livre, nada é interrompido sozinho e não há alarme. Se a página for recarregada ou a aba fechada — inclusive no meio de um descanso, de uma pausa ou de um bloco de Pomodoro —, ele volta com os tempos certos. Com o Ciclo aberto em duas abas, o cronômetro é um só, e finalizar duas vezes nunca registra o mesmo estudo duas vezes.
@@ -439,3 +441,23 @@ Atualizar não apaga, duplica nem reinicia nada, e backups antigos continuam sen
 ---
 
 Desenvolvido por **Filipe Santana**
+
+## Auditoria e validação de desenvolvimento
+
+A evolução em revisão mantém a versão **7.1.0**, o schema lógico **10** e o IndexedDB físico **1**. Consulte [o relatório da auditoria](audit/RELATORIO-FINAL.md), a [matriz funcional](audit/MATRIZ-FUNCIONALIDADES.md) e os [testes executados](audit/TESTES-EXECUTADOS.md) para separar resultados comprovados de validações pendentes. A próxima versão sugerida é **7.1.1**, após a revisão; não há publicação automática.
+
+O aplicativo continua sendo servido diretamente pelos quatro arquivos estáticos, sem dependências de produção. Para desenvolver e testar, use Node.js 24:
+
+```sh
+npm ci --ignore-scripts
+npx playwright install chromium
+npm run check
+npm test
+npm run audit:browser
+npm run audit:inventory
+npm run audit:benchmark
+```
+
+Os testes abrem um servidor local e contextos de navegador descartáveis, com dados sintéticos. Se houver Chromium instalado no sistema, ele é usado; `CHROMIUM_PATH` permite escolher o executável. `BROWSER=firefox` ou `BROWSER=webkit` executa as jornadas nesses motores depois de instalar o navegador correspondente pelo Playwright. Isso não equivale a testar Safari no iPhone ou Edge real. Relatórios temporários ficam em `test-results/`.
+
+O workflow de qualidade verifica Chromium, Firefox e WebKit em pull requests e por execução manual. Ele não publica o site.

@@ -1,0 +1,61 @@
+
+> test
+> node --test --test-concurrency=1 tests/*.test.cjs
+
+✔ 120 minutos em duas disciplinas continuam sendo um estudo de 120 minutos (610.063839ms)
+✔ divisão estimada de 90 minutos e tipos preserva totais e indica estimativa (368.003682ms)
+✔ percentual ponderado é 51/101; zero não gera percentual (427.084222ms)
+✔ resultados sem disciplina específica não vazam para o recorte de uma disciplina (412.962142ms)
+✔ revisão geral não altera os tópicos; revisão retroativa preserva a agenda atual (427.945737ms)
+✔ excluir o único estudo reconcilia o tópico e os totais (416.653081ms)
+✔ finalização simultânea em duas abas grava uma única sessão (641.526703ms)
+✔ edições conflitantes recusam a sobrescrita (403.2773ms)
+✔ backup atual preserva resultados, pausas e Pomodoro; migração é idempotente (410.198571ms)
+✔ versão futura, JSON truncado e IDs que colidem são recusados sem alterar o banco (429.972874ms)
+✔ restauração é atômica quando uma gravação falha depois da limpeza (407.234392ms)
+✔ CSV escapa fórmulas e comentários com aspas, vírgulas e quebras; sem texto privado (401.410116ms)
+✔ comentários são texto inerte e não criam HTML (581.524278ms)
+✔ datas civis respeitam bissexto, virada do ano e meia-noite em São Paulo (615.091217ms)
+✔ REGRESSÃO: pausar após suspensão aplica o limite do Pomodoro antes da pausa (837.452886ms)
+✔ REGRESSÃO: um rascunho recupera descansos sem inflar o tempo líquido (863.075007ms)
+✔ REGRESSÃO: schema ilegível e truncamento de resultados são sinalizados (901.550076ms)
+✔ REGRESSÃO: revisão de tópico sem autoavaliação não gera descoberta de revisão ausente (941.844844ms)
+✔ REGRESSÃO: período em andamento não conta registros com data futura (884.73456ms)
+✔ REGRESSÃO: backup V2 normaliza referências numéricas e recusa duplicatas ambíguas (781.229778ms)
+✔ backups dos schemas 6, 7 e 9 mantêm minutos e resultados de revisão (1207.677108ms)
+✔ Português: registrar 30 minutos sem tópicos, permanecer no Histórico e recuperar após F5 (2166.93919ms)
+✔ primeiro uso rápido: só o nome, sem plano, tópico ou prazo inventado (1531.883516ms)
+✔ guitarra: marco opcional aparece na evolução sem exigir organização (458.564983ms)
+✔ meta global cumprida com distribuição diferente da sugestão (429.124407ms)
+✔ adiar revisão não muda data, intervalo nem histórico (391.170378ms)
+✔ Voltar, Avançar e F5 preservam o caminho sem criar loop (586.038679ms)
+✔ rascunho completo persiste antes dos 400 ms e recupera descansos, divisão e revisão (806.668241ms)
+✔ falha de escrita mantém o formulário e o rascunho; retentativa grava uma vez (1938.666822ms)
+✔ Pomodoro: dois blocos são 50 minutos de estudo e 5 de descanso em um retrato (356.917565ms)
+✔ pausa e descanso sobrevivem a F5 com o estudo congelado (620.67997ms)
+✔ finalização com comentário não congela os minutos medidos ao reabrir (482.050397ms)
+✔ modal prende o foco e Esc devolve ao botão que o abriu (579.70651ms)
+✔ prazo usa rádios com teclado e conserva só aria-checked (481.098694ms)
+✔ resultados mostram a distribuição, revelam disciplinas além da 12ª e mantêm o período ao aprofundar (561.873855ms)
+✔ evolução oferece acesso aos marcos e conceitos além dos limites iniciais (531.453076ms)
+✔ rascunho recupera o nome de uma disciplina ainda não criada (617.817042ms)
+✔ REGRESSÃO: cronômetro iniciado em outra aba durante a prévia bloqueia a restauração (944.85745ms)
+✔ duas abas iniciando ao mesmo tempo compartilham um único cronômetro (630.79431ms)
+✔ cronômetro descartado pela restauração não pode ser finalizado depois (448.89059ms)
+✔ falha de restauração mantém o cronômetro e não confirma seu descarte (409.861087ms)
+✔ iniciar pela janela aguarda o cronômetro e finaliza o mesmo runId (684.791785ms)
+✔ começar sem disciplina mantém a janela se o início falhar (600.111756ms)
+✔ semanas parciais comparam os mesmos dias e zero não cria acerto (600.212253ms)
+✔ mover bloco preserva sua identidade e recusa revisão obsoleta de outra aba (437.190639ms)
+✔ dias ocultos conservam os prazos reais na tela móvel (543.106197ms)
+✔ arrastar para um dia grava um bloco e Esc cancela outro arraste (893.986562ms)
+✔ preferências persistem e valores inválidos voltam aos padrões (621.557034ms)
+✔ datas locais atravessam horário de verão, ano bissexto e o início da semana (1865.30218ms)
+ℹ tests 49
+ℹ suites 0
+ℹ pass 49
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35351.381897
