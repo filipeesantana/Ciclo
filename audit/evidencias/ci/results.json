@@ -1,0 +1,75 @@
+{
+  "runUrl": "https://github.com/filipeesantana/Ciclo/actions/runs/39149396389",
+  "testedCodeCommit": "77f8b1d83ba97165860a931df8809e32b6744a3b",
+  "sourceAppSha256": "2fc2a5a57db0e16fd37437ba4aa57f27716b5e5a9076af27f267b41007762b1f",
+  "platform": "GitHub Actions ubuntu-latest, Playwright 1.62.1, headless",
+  "jobs": [
+    {
+      "engine": "chromium",
+      "jobId": 117739752545,
+      "url": "https://github.com/filipeesantana/Ciclo/actions/runs/39149396389/job/117739752545",
+      "conclusion": "success",
+      "tests": 51,
+      "passed": 51,
+      "failed": 0,
+      "versions": [
+        "Downloading Chrome for Testing 151.0.7922.34 (playwright chromium v1234) from https://cdn.playwright.dev/builds/cft/151.0.7922.34/linux64/chrome-linux64.zip",
+        "Downloading Chrome Headless Shell 151.0.7922.34 (playwright chromium-headless-shell v1234) from https://cdn.playwright.dev/builds/cft/151.0.7922.34/linux64/chrome-headless-shell-linux64.zip"
+      ],
+      "audit": {
+        "checks": 95,
+        "violations": [],
+        "overflows": [],
+        "articles": 91,
+        "articleFailures": [],
+        "errors": [],
+        "outgoing": [],
+        "out": "/home/runner/work/Ciclo/Ciclo/test-results/browser-audit"
+      }
+    },
+    {
+      "engine": "firefox",
+      "jobId": 117739752669,
+      "url": "https://github.com/filipeesantana/Ciclo/actions/runs/39149396389/job/117739752669",
+      "conclusion": "success",
+      "tests": 51,
+      "passed": 51,
+      "failed": 0,
+      "versions": [
+        "Downloading Firefox 153.0 (playwright firefox v1538) from https://cdn.playwright.dev/dbazure/download/playwright/builds/firefox/1538/firefox-ubuntu-24.04.zip"
+      ],
+      "audit": {
+        "checks": 95,
+        "violations": [],
+        "overflows": [],
+        "articles": 91,
+        "articleFailures": [],
+        "errors": [],
+        "outgoing": [],
+        "out": "/home/runner/work/Ciclo/Ciclo/test-results/browser-audit"
+      }
+    },
+    {
+      "engine": "webkit",
+      "jobId": 117739752799,
+      "url": "https://github.com/filipeesantana/Ciclo/actions/runs/39149396389/job/117739752799",
+      "conclusion": "success",
+      "tests": 51,
+      "passed": 51,
+      "failed": 0,
+      "versions": [
+        "Downloading WebKit 26.5 (playwright webkit v2336) from https://cdn.playwright.dev/dbazure/download/playwright/builds/webkit/2336/webkit-ubuntu-24.04.zip"
+      ],
+      "audit": {
+        "checks": 95,
+        "violations": [],
+        "overflows": [],
+        "articles": 91,
+        "articleFailures": [],
+        "errors": [],
+        "outgoing": [],
+        "out": "/home/runner/work/Ciclo/Ciclo/test-results/browser-audit"
+      }
+    }
+  ]
+}

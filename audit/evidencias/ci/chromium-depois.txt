@@ -1,0 +1,96 @@
+Fonte: https://github.com/filipeesantana/Ciclo/actions/runs/39149396389/job/117739752545
+Commit: 77f8b1d83ba97165860a931df8809e32b6744a3b
+
+Downloading Chrome for Testing 151.0.7922.34 (playwright chromium v1234) from https://cdn.playwright.dev/builds/cft/151.0.7922.34/linux64/chrome-linux64.zip
+Downloading Chrome Headless Shell 151.0.7922.34 (playwright chromium-headless-shell v1234) from https://cdn.playwright.dev/builds/cft/151.0.7922.34/linux64/chrome-headless-shell-linux64.zip
+
+##[group]Run npm test
+npm test
+shell: /usr/bin/bash -e {0}
+env:
+  BROWSER: chromium
+##[endgroup]
+
+> test
+> node --test --test-timeout=30000 --test-concurrency=1 tests/*.test.cjs
+
+✔ 120 minutos em duas disciplinas continuam sendo um estudo de 120 minutos (25223.552419ms)
+✔ divisão estimada de 90 minutos e tipos preserva totais e indica estimativa (537.585044ms)
+✔ percentual ponderado é 51/101; zero não gera percentual (546.415308ms)
+✔ resultados sem disciplina específica não vazam para o recorte de uma disciplina (511.567015ms)
+✔ revisão geral não altera os tópicos; revisão retroativa preserva a agenda atual (516.286288ms)
+✔ excluir o único estudo reconcilia o tópico e os totais (525.205928ms)
+✔ finalização simultânea em duas abas grava uma única sessão (814.706238ms)
+✔ edições conflitantes recusam a sobrescrita (520.01338ms)
+✔ backup atual preserva resultados, pausas e Pomodoro; migração é idempotente (539.269673ms)
+✔ versão futura, JSON truncado e IDs que colidem são recusados sem alterar o banco (508.960023ms)
+✔ restauração é atômica quando uma gravação falha depois da limpeza (518.186534ms)
+✔ CSV escapa fórmulas e comentários com aspas, vírgulas e quebras; sem texto privado (501.63764ms)
+✔ comentários são texto inerte e não criam HTML (645.937801ms)
+✔ datas civis respeitam bissexto, virada do ano e meia-noite em São Paulo (533.254634ms)
+✔ REGRESSÃO: pausar após suspensão aplica o limite do Pomodoro antes da pausa (522.373958ms)
+✔ REGRESSÃO: um rascunho recupera descansos sem inflar o tempo líquido (504.394636ms)
+✔ REGRESSÃO: schema ilegível e truncamento de resultados são sinalizados (514.9949ms)
+✔ REGRESSÃO: revisão de tópico sem autoavaliação não gera descoberta de revisão ausente (533.930826ms)
+✔ REGRESSÃO: período em andamento não conta registros com data futura (573.925403ms)
+✔ REGRESSÃO: backup V2 normaliza referências numéricas e recusa duplicatas ambíguas (542.788819ms)
+✔ backups dos schemas 6, 7 e 9 mantêm minutos e resultados de revisão (692.385692ms)
+✔ Português: registrar 30 minutos sem tópicos, permanecer no Histórico e recuperar após F5 (1193.721615ms)
+✔ primeiro uso rápido: só o nome, sem plano, tópico ou prazo inventado (1167.734155ms)
+✔ guitarra: marco opcional aparece na evolução sem exigir organização (608.494742ms)
+✔ meta global cumprida com distribuição diferente da sugestão (601.209367ms)
+✔ adiar revisão não muda data, intervalo nem histórico (589.449141ms)
+✔ Voltar, Avançar e F5 preservam o caminho sem criar loop (824.956195ms)
+✔ rascunho completo persiste antes dos 400 ms e recupera descansos, divisão e revisão (1098.679035ms)
+✔ falha de escrita mantém o formulário e o rascunho; retentativa grava uma vez (2111.685285ms)
+✔ Pomodoro: dois blocos são 50 minutos de estudo e 5 de descanso em um retrato (509.68723ms)
+✔ pausa e descanso sobrevivem a F5 com o estudo congelado (873.09065ms)
+✔ finalização com comentário não congela os minutos medidos ao reabrir (709.070091ms)
+✔ modal prende o foco e Esc devolve ao botão que o abriu (777.009915ms)
+✔ prazo usa rádios com teclado e conserva só aria-checked (683.376423ms)
+✔ resultados mostram a distribuição, revelam disciplinas além da 12ª e mantêm o período ao aprofundar (752.723053ms)
+✔ evolução oferece acesso aos marcos e conceitos além dos limites iniciais (692.508554ms)
+✔ rascunho recupera o nome de uma disciplina ainda não criada (909.362547ms)
+✔ REGRESSÃO: cronômetro iniciado em outra aba durante a prévia bloqueia a restauração (1187.189918ms)
+✔ duas abas iniciando ao mesmo tempo compartilham um único cronômetro (828.043465ms)
+✔ cronômetro descartado pela restauração não pode ser finalizado depois (546.17776ms)
+✔ falha de restauração mantém o cronômetro e não confirma seu descarte (545.523579ms)
+✔ iniciar pela janela aguarda o cronômetro e finaliza o mesmo runId (836.023655ms)
+✔ começar sem disciplina mantém a janela se o início falhar (742.319571ms)
+✔ reserva sem relógio após liberação interrompida pode ser cancelada ou descartada para continuar (719.416779ms)
+✔ recuperação de reserva não descarta relógio reaparecido nem reserva substituída na confirmação (710.738248ms)
+✔ semanas parciais comparam os mesmos dias e zero não cria acerto (802.872664ms)
+✔ mover bloco preserva sua identidade e recusa revisão obsoleta de outra aba (536.931011ms)
+✔ dias ocultos conservam os prazos reais na tela móvel (693.148614ms)
+✔ arrastar para um dia grava um bloco e Esc cancela outro arraste (1049.412128ms)
+✔ preferências persistem e valores inválidos voltam aos padrões (768.970819ms)
+✔ datas locais atravessam horário de verão, ano bissexto e o início da semana (2068.901012ms)
+ℹ tests 51
+ℹ suites 0
+ℹ pass 51
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 63885.641677
+##[group]Run npm run audit:browser
+npm run audit:browser
+shell: /usr/bin/bash -e {0}
+env:
+  BROWSER: chromium
+##[endgroup]
+
+> audit:browser
+> node tests/browser-audit.cjs
+
+{
+  "checks": 95,
+  "violations": [],
+  "overflows": [],
+  "articles": 91,
+  "articleFailures": [],
+  "errors": [],
+  "outgoing": [],
+  "out": "/home/runner/work/Ciclo/Ciclo/test-results/browser-audit"
+}
+

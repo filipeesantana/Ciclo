@@ -44,7 +44,7 @@ flowchart LR
   J --> K[Liberar somente esse runId]
 ```
 
-A reserva do IndexedDB também resolve a janela em que uma escrita no localStorage ainda não chegou à outra aba. Finalizar consulta o marcador de descarte dentro da transação. Falha de restauração não confirma o descarte nem remove o timer. Uma reserva só é removida se a identidade coincidir, para não liberar um novo estudo por engano.
+A reserva do IndexedDB também resolve a janela em que uma escrita no localStorage ainda não chegou à outra aba. Finalizar consulta o marcador de descarte dentro da transação. Falha de restauração não confirma o descarte nem remove o timer. Uma reserva só é removida se a identidade coincidir, para não liberar um novo estudo por engano. Se uma liberação interrompida deixar somente a reserva, iniciar ou restaurar oferece um descarte explícito, sem inventar minutos. Cancelar preserva a reserva. A confirmação relê a identidade e recusa o descarte se o relógio reapareceu, a leitura está bloqueada ou outra reserva passou a valer.
 
 ## Limites preservados e riscos residuais
 

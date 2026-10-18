@@ -2,7 +2,7 @@
 
 ## Antes da publicação
 
-1. Executar e analisar o workflow de Chromium/Firefox/WebKit; validar Chrome e Edge oficiais e Safari em dispositivo real conforme [COMPATIBILIDADE](COMPATIBILIDADE.md).
+1. Validar Chrome e Edge oficiais e Safari em dispositivo real conforme [COMPATIBILIDADE](COMPATIBILIDADE.md).
 2. Fazer validação com leitor de tela, zoom real de 200%, teclado virtual e aparelho suspenso. As ferramentas desta máquina não comprovam esses cenários.
 3. Validar exportação/importação com cópias consentidas de backups reais de longa duração. Aqui foram usados somente fixtures sintéticos V2/6/7/9/10.
 4. Recarregar todas as abas ao atualizar. Abas antigas não conhecem a reserva transacional de timer.

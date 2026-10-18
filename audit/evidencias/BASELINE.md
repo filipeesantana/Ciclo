@@ -22,3 +22,5 @@ AUDIT_OUTPUT=/tmp/ciclo-depois npm run audit:benchmark
 As falhas anteriores dos testes REGRESSÃO foram também reproduzidas contra essa cópia. A versão alterada é verificada por npm test. O relatório final e os logs indicam os testes que de fato terminaram.
 
 As pastas antes/depois contêm JSONs e PNGs reais. Algumas capturas iniciais não foram incluídas no Git para evitar duplicação; o inventário de controles e a matriz funcional preservam o mapa. Não há screenshots simuladas, dados de uma pessoa real, benchmark estimado ou declaração de execução em navegador inexistente.
+
+A validação de múltiplos motores foi executada no GitHub Actions, com o código `77f8b1d`. O [resumo](ci/results.json) registra jobs, versões e URLs; os logs de teste e da checagem de interface foram extraídos dos jobs concluídos. A falha de transbordamento inicial no WebKit também foi preservada. Os commits seguintes de documentação não alteram os arquivos de produção validados.

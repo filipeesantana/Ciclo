@@ -10,5 +10,6 @@
 8. **Aprofundar sem reconstruir consulta.** Clique numa disciplina/tópico do resultado mantém período, tipo e foco. Back retorna ao recorte anterior.
 9. **Autoavaliação continua sendo autoavaliação.** Manter as respostas de revisão por compatibilidade; explicitar o significado do estado calculado e remover afirmações de domínio comprovado.
 10. **Preservar a identidade visual.** Sans-serif do sistema, cores existentes, painéis sóbrios e movimento reduzido já funcionam. Mudanças visuais se limitam a espaço útil, toque, contraste e estados acessíveis.
+11. **Começar com um layout que caiba.** A grade semanal usa uma coluna antes da primeira medição de largura. O observador continua escolhendo colunas proporcionais ao espaço, sem expor sete colunas apertadas no primeiro instante do móvel.
 
 Não foram adicionados serviços de IA, gamificação, conta, sincronização ou novas configurações de produto. As ferramentas npm são de desenvolvimento. A versão sugerida depois da revisão é 7.1.1; esta branch mantém 7.1.0 e não publica nada.

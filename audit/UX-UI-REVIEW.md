@@ -6,6 +6,8 @@ O primeiro uso já tem dois caminhos opcionais e uma ação clara para estudar. 
 
 | Antes | Depois | Benefício |
 |---|---|---|
+| Reserva de cronômetro indisponível bloqueando continuar | Recuperação com descarte explícito e conferência da identidade | Saída segura após liberação interrompida |
+| Grade semanal inicialmente com sete colunas antes da medição | Uma coluna até medir o espaço disponível | Evitar transbordamento inicial no WebKit em tela estreita |
 | Recuperação de registro omitindo descanso e partes | Recuperação completa, inclusive nome ainda não criado e último preenchimento antes do F5 | Menos retrabalho e tempo líquido coerente |
 | Distribuição de acerto recolhida e sem ação | Distribuição visível junto da evolução; clique aprofunda no mesmo período | Menos passos para uma pergunta natural |
 | Cortes em 12/30/40 itens | Contagem e carregamento em lotes | Histórico acessível sem desenhar tudo inicialmente |

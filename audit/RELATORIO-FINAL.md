@@ -12,6 +12,7 @@ O ganho principal para iniciantes é não perder nem reinterpretar o que preench
 
 - Backups V2 deixam de perder estudos por diferença entre ID numérico e textual; duplicatas ambíguas são recusadas.
 - Restauração não descarta um cronômetro iniciado depois da prévia. Início, descarte autorizado e finalização usam uma identidade conferida na fila transacional.
+- Reserva de cronômetro sem relógio recuperável tem saída explícita, com nova conferência de identidade antes do descarte.
 - Recuperar um estudo de uma hora com 15 minutos de descanso mantém 45 minutos líquidos.
 - Pomodoro aplica o limite do bloco antes de uma ação percebida depois da suspensão.
 - Semana parcial não inclui registros futuros que podiam elevar dias ativos a 133%.
@@ -30,14 +31,16 @@ Todos os 91 artigos foram abertos no navegador; destinos e glossário foram conf
 
 ## Qualidade e desempenho
 
-A suíte contém 49 casos de integridade, jornadas, datas e concorrência; a checagem ampliada cobre 95 configurações de acessibilidade automática. Os logs e resultados estão em [TESTES-EXECUTADOS](TESTES-EXECUTADOS.md). A documentação não trata um resultado do Chromium como aprovação do Safari, Edge ou de um telefone real.
+A suíte contém 51 casos de integridade, jornadas, datas e concorrência; a checagem ampliada cobre 95 configurações de acessibilidade automática. Os logs e resultados estão em [TESTES-EXECUTADOS](TESTES-EXECUTADOS.md). Os três motores — Chromium, Firefox e WebKit — aprovaram os 51 casos e as 95 configurações na CI. O transbordamento inicial do quadro semanal detectado no WebKit foi corrigido e revalidado. A documentação separa esse resultado da validação de Safari, Edge ou telefone real.
 
 Foram medidas seis bases, do vazio a 5.000 estudos em 1.000 dias, incluindo 400 tópicos, 100 prazos e 144 semanas. Tempos reais de renderização, reload, CSV, validação e restauração estão em [PERFORMANCE](PERFORMANCE.md). A variação entre execuções não foi apresentada como ganho comprovado. Não houve reescrita de arquitetura ou cache complexo sem gargalo demonstrado.
 
 ## Entrega
 
+Proposta de revisão: [PR #1 em rascunho](https://github.com/filipeesantana/Ciclo/pull/1), na branch `audit/product-engineering-2026-10`.
+
 Produção: app.js, content.js e styles.css. Documentação: README e audit/. Desenvolvimento: package.json/lock, tests/, .gitignore e workflow de qualidade. index.html, identificadores legados, stores, schema físico e dependências de produção foram preservados.
 
 O mapa está na [matriz funcional](MATRIZ-FUNCIONALIDADES.md), com [561 construções de controles e 59 camadas](INVENTARIO-CONTROLES.md), mais 25 controles fixos do HTML. O catálogo de conteúdo está em [CONTEUDO](CONTEUDO.md). Esse inventário não significa que cada combinação de estados recebeu teste manual.
 
-Próxima versão sugerida: **7.1.1**, depois da revisão. Antes de publicar: analisar a CI dos três motores, executar a validação real indicada em [COMPATIBILIDADE](COMPATIBILIDADE.md), conferir backups reais consentidos e recarregar todas as abas. As frentes parcialmente validadas permanecem expressamente em [PENDENCIAS](PENDENCIAS.md).
+Próxima versão sugerida: **7.1.1**, depois da revisão. Antes de publicar: conferir a CI do PR, executar a validação real indicada em [COMPATIBILIDADE](COMPATIBILIDADE.md), conferir backups reais consentidos e recarregar todas as abas. As frentes parcialmente validadas permanecem expressamente em [PENDENCIAS](PENDENCIAS.md).

@@ -17,6 +17,8 @@ Somente achados com reprodução ou evidência direta do código. Referência an
 | D11 | P2 | Axe: calendário futuro com contraste 3,97:1; aviso em tema claro com 4,46:1. | Texto pequeno pouco legível. | Retirar opacidade do número e escurecer discretamente o token de acento claro. | Medição automatizada do navegador disponível, não inspeção de toda plataforma. |
 | D12 | P2 | Ajuda afirmava “quanto realmente ficou” e inferia falta de revisão de percentuais de cobertura/consolidação. | Apresentar autoavaliação como conhecimento medido. | Critérios explícitos; rótulo “Consolidado (autoavaliação)”; remover diagnóstico causal. | Avaliação pedagógica independente permanece desejável. |
 | D13 | P3 | Instruções citavam Exportar, Continuar e Tempo e constância; exemplo de cinco horas era ambíguo; flashcard geral usava ARP. | Descoberta e compreensão piores. | Alinhar a Mais, Retomar e Meus descansos; corrigir exemplo e usar Português. | Alguns textos antigos podem pedir nova revisão conforme a interface evoluir. |
+| D14 | P1 | Revisão do próprio candidato: falha simulada ao liberar a reserva, depois da remoção do relógio, impedia iniciar/restaurar. | Bloquear o uso sem relógio recuperável. | Recuperação consentida com releitura transacional; cancelar preserva a reserva; relógio reaparecido ou reserva substituída impedem o descarte. | Não reconstrói tempo cujo snapshot já não existe. |
+| D15 | P2 | CI no WebKit: Planejamento transbordava a 360 px nos dois temas antes da primeira medição da grade; padrão inicial de sete colunas. | Primeira composição apertada no móvel. | Usar uma coluna antes da medição; a quantidade adequada continua calculada pelo observador de tamanho. | WebKit Linux não substitui Safari iOS real. |
 
 ## O que já estava bem implementado
 
