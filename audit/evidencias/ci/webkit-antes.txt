@@ -27,4 +27,3 @@ Downloading WebKit 26.5 (playwright webkit v2336) from https://cdn.playwright.de
   "outgoing": [],
   "out": "/home/runner/work/Ciclo/Ciclo/test-results/browser-audit"
 }
-

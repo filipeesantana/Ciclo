@@ -20,7 +20,7 @@ test at tests/integrity.test.cjs:98:1
 ✖ REGRESSÃO: pausar após suspensão aplica o limite do Pomodoro antes da pausa (703.409659ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
   + actual - expected
-  
+
     {
   +   blocks: 0,
   +   paused: 0,
@@ -29,7 +29,7 @@ test at tests/integrity.test.cjs:98:1
   -   paused: 5,
   -   study: 25
     }
-  
+
       at TestContext.<anonymous> (/workspace/Ciclo/tests/integrity.test.cjs:103:12)
       at async Test.run (node:internal/test_runner/test:1389:7)
       at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
@@ -44,9 +44,9 @@ test at tests/integrity.test.cjs:98:1
 test at tests/integrity.test.cjs:105:1
 ✖ REGRESSÃO: um rascunho recupera descansos sem inflar o tempo líquido (508.896113ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
-  
+
   60 !== 45
-  
+
       at TestContext.<anonymous> (/workspace/Ciclo/tests/integrity.test.cjs:109:12)
       at async Test.run (node:internal/test_runner/test:1389:7)
       at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
@@ -61,9 +61,9 @@ test at tests/integrity.test.cjs:105:1
 test at tests/integrity.test.cjs:111:1
 ✖ REGRESSÃO: schema ilegível e truncamento de resultados são sinalizados (534.314232ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
-  
+
   false !== true
-  
+
       at TestContext.<anonymous> (/workspace/Ciclo/tests/integrity.test.cjs:115:12)
       at async Test.run (node:internal/test_runner/test:1389:7)
       at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
@@ -79,7 +79,7 @@ test at tests/integrity.test.cjs:118:1
 ✖ REGRESSÃO: revisão de tópico sem autoavaliação não gera descoberta de revisão ausente (476.999862ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
   + actual - expected
-  
+
   + [
   +   {
   +     actions: [
@@ -100,7 +100,7 @@ test at tests/integrity.test.cjs:118:1
   +   }
   + ]
   - []
-  
+
       at TestContext.<anonymous> (/workspace/Ciclo/tests/integrity.test.cjs:123:12)
       at async Test.run (node:internal/test_runner/test:1389:7)
       at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
@@ -115,9 +115,9 @@ test at tests/integrity.test.cjs:118:1
 test at tests/integrity.test.cjs:126:1
 ✖ REGRESSÃO: período em andamento não conta registros com data futura (476.536212ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
-  
+
   160 !== 40
-  
+
       at TestContext.<anonymous> (/workspace/Ciclo/tests/integrity.test.cjs:131:12)
       at async Test.run (node:internal/test_runner/test:1389:7)
       at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
@@ -133,7 +133,7 @@ test at tests/integrity.test.cjs:134:1
 ✖ REGRESSÃO: backup V2 normaliza referências numéricas e recusa duplicatas ambíguas (401.005474ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
   + actual - expected
-  
+
     {
   +   count: 0,
   +   minutes: 0,
@@ -142,7 +142,7 @@ test at tests/integrity.test.cjs:134:1
   -   minutes: 40,
   -   refused: true
     }
-  
+
       at TestContext.<anonymous> (/workspace/Ciclo/tests/integrity.test.cjs:140:12)
       at async Test.run (node:internal/test_runner/test:1389:7)
       at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
@@ -158,10 +158,10 @@ test at tests/journeys.test.cjs:145:1
 ✖ REGRESSÃO: cronômetro iniciado em outra aba durante a prévia bloqueia a restauração (1151.23546ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
   + actual - expected
-  
+
   + 'Nome do backup'
   - 'Português'
-  
+
       at TestContext.<anonymous> (/workspace/Ciclo/tests/journeys.test.cjs:150:9)
       at async Test.run (node:internal/test_runner/test:1389:7)
       at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {

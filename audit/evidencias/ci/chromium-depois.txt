@@ -93,4 +93,3 @@ env:
   "outgoing": [],
   "out": "/home/runner/work/Ciclo/Ciclo/test-results/browser-audit"
 }
-
