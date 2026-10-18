@@ -24,7 +24,8 @@ const {start,open,seed,root}=require('./support.cjs');
     await page.evaluate(v=>setView(v),view);
     const r=await page.evaluate(async()=>({overflow:document.documentElement.scrollWidth>innerWidth,
      ...(await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}}))}));
-    results.push({theme,width,view,overflow:r.overflow,violations:r.violations.map(v=>({id:v.id,impact:v.impact,help:v.help,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary,html:n.html}))}))});
+    const overflowDetails=r.overflow ? await page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,nodes:[...document.querySelectorAll('#main *')].filter(e=>e.getBoundingClientRect().right>innerWidth).slice(0,15).map(e=>({tag:e.tagName,class:e.className,right:e.getBoundingClientRect().right}))})) : undefined;
+    results.push({theme,width,view,overflow:r.overflow,overflowDetails,violations:r.violations.map(v=>({id:v.id,impact:v.impact,help:v.help,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary,html:n.html}))}))});
    }
    for(const focus of ['time','consistency','distribution','topics','types','rest','planning','reviews','content','deadlines','results','learning','compare']){
     await page.evaluate(f=>applyAnalyticsQuery({periodPreset:'30d',focus:f}),focus);
@@ -45,7 +46,7 @@ const {start,open,seed,root}=require('./support.cjs');
     return out;
   });
   fs.writeFileSync(out+'/results.json',JSON.stringify({engine:process.env.BROWSER || 'chromium',version:runtime.browser.version(),errors,outgoing,results,articles},null,2));
-  console.log(JSON.stringify({checks:results.length,violations:results.filter(r=>r.violations.length).map(r=>({theme:r.theme,width:r.width,view:r.view,rules:r.violations.map(v=>v.id)})),overflows:results.filter(r=>r.overflow).map(r=>({theme:r.theme,width:r.width,view:r.view})),articles:articles.length,articleFailures:articles.filter(a=>!a.ok),errors,outgoing,out},null,2));
+  console.log(JSON.stringify({checks:results.length,violations:results.filter(r=>r.violations.length).map(r=>({theme:r.theme,width:r.width,view:r.view,rules:r.violations.map(v=>v.id)})),overflows:results.filter(r=>r.overflow).map(r=>({theme:r.theme,width:r.width,view:r.view,details:r.overflowDetails})),articles:articles.length,articleFailures:articles.filter(a=>!a.ok),errors,outgoing,out},null,2));
   if(errors.length || outgoing.length || results.some(r=>r.violations.length || r.overflow) || articles.some(a=>!a.ok)) process.exitCode=1;
   await context.close();
  } finally {await runtime.close();}
