@@ -10,7 +10,7 @@ O nome vem do próprio método: **planejar → estudar → revisar → analisar 
 
 ## O que é
 
-O Ciclo é uma plataforma pessoal de planejamento, revisão e análise de estudos. Você diz o que está estudando e registra o tempo; o Ciclo organiza o conteúdo, sugere quando revisar cada assunto e mostra, em linguagem simples, como está o seu progresso.
+O Ciclo é uma plataforma pessoal de planejamento, revisão e análise de estudos. Você diz o que está estudando e registra o tempo — e, se quiser, o que conseguiu fazer; o Ciclo organiza o conteúdo, sugere quando revisar cada assunto e mostra, em linguagem simples, como está o seu progresso.
 
 Ele é completo, mas não exige que você entenda tudo antes de começar. Abrir o Ciclo, dizer o que você estuda e começar a estudar leva poucos minutos. O resto — tópicos, prioridades, revisões, prazos, planejamento, análises — aparece conforme você usa, e só quando fizer sentido.
 
@@ -49,7 +49,7 @@ Cada tela responde a uma pergunta. O que importa aparece primeiro; o resto fica 
 
 **Hoje** — *o que eu quero estudar agora?* A tela começa pela ação: *O que você gostaria de estudar?*, com as matérias recentes a um clique, *Começar a estudar* e *Registrar estudo*. Se quiser, há uma sugestão do Ciclo com o motivo e um *Por quê?* — um convite, nunca uma ordem. No computador, ao lado, **Esta semana** mostra o tempo estudado, os dias com estudo, a meta (se houver) e um gráfico pequeno; clicar abre as Análises da semana. Abaixo vêm os **próximos passos** (assuntos que podem valer uma revisão, prazos próximos, a organização do dia) e atalhos para o resto do Ciclo. Sem histórico, não há gráfico vazio: *"Seu histórico começa com o primeiro estudo."*
 
-**Começar a estudar** — *quero estudar agora.* Você escolhe a disciplina — ou mais de uma — e, se quiser, tópicos e tipos de estudo. O cronômetro começa.
+**Começar a estudar** — *quero estudar agora.* Você escolhe a disciplina — ou mais de uma, ou nenhuma por enquanto — e, se quiser, tópicos, tipos de estudo e o jeito de contar o tempo: **cronômetro livre** (o padrão) ou **Pomodoro**. O cronômetro começa.
 
 **Registrar estudo** — *já estudei e quero guardar isso.* É o botão que acompanha todas as telas: abre por cima do que você está vendo e, ao registrar ou cancelar, você continua no mesmo lugar. Um estudo pode ter várias disciplinas, vários tópicos e vários tipos — ou só uma disciplina e mais nada. Se o tópico ainda não existe, escolha *Criar novo tópico…* no próprio campo, sem perder o que já preencheu.
 
@@ -61,11 +61,11 @@ Cada tela responde a uma pergunta. O que importa aparece primeiro; o resto fica 
 
 **Análises** — *como estão meus estudos?* Abre com o **panorama dos últimos 30 dias** e caminhos para aprofundar. Veja *Análises*, abaixo.
 
-**Histórico** — *o que já fiz?* Todos os estudos registrados, dia a dia, com busca e filtros.
+**Histórico** — *o que já fiz?* Todos os estudos registrados, dia a dia, com busca e filtros. No topo, **O que os seus registros sugerem** mostra até três descobertas explicadas. Veja *Descobertas do Histórico*, abaixo.
 
 **Ajuda** — *como faço isso?* Perguntas reais, com a resposta curta já visível. Veja *Ajuda e Como estudar*, abaixo.
 
-### Estudar, registrar e descansar
+### Estudar, registrar, pausar e descansar
 
 As duas ações ficam na mesma janela — *Estudar agora* e *Já estudei* — e alimentam o mesmo histórico.
 
@@ -74,11 +74,33 @@ As duas ações ficam na mesma janela — *Estudar agora* e *Já estudei* — e 
 - **Depois da meia-noite.** *23:50 → 00:12* são 22 minutos; a data é sempre a do dia em que o estudo começou.
 - **Engano de digitação.** Se o intervalo passar de 8 horas, o Ciclo pergunta se está certo antes de registrar. Ele só pergunta — estudos longos continuam valendo.
 - **Não lembra os horários?** Informe só quanto tempo estudou.
-- **Descansos.** No cronômetro, *Descansar* para o tempo de estudo e começa a contar o descanso; *Voltar a estudar* continua de onde você parou. Num estudo que já aconteceu, use *+ Adicionar descanso*.
+- **Pausar ou descansar.** O cronômetro tem três estados — *Estudando*, *Pausado* e *Descansando*. *Pausar* é para uma interrupção (alguém chamou, o telefone tocou): o relógio para e esse tempo não conta como estudo nem como descanso. *Descansar* é um intervalo planejado, contado à parte. Num estudo que já aconteceu, use *+ Adicionar descanso*.
+- **Começar sem escolher a disciplina.** Com pressa, ligue o cronômetro e escolha a matéria só ao finalizar.
+- **Rascunhos.** Um registro que você começou e não terminou fica guardado neste navegador por até 7 dias. Ao voltar, o Ciclo avisa e oferece *Começar do zero*.
 
-O descanso é guardado junto do estudo, mas **nunca é somado a ele**: 45 min de estudo, 10 de descanso, 35 de estudo, 8 de descanso e mais 40 de estudo são **2h estudadas e 18 min de descanso**.
+O descanso e a pausa são guardados junto do estudo, mas **nunca somados a ele**: 45 min de estudo, 10 de descanso, 35 de estudo, 8 de descanso e mais 40 de estudo são **2h estudadas e 18 min de descanso**.
 
-O cronômetro não interrompe nada sozinho e não toca alarme. Se a página for recarregada ou a aba fechada — inclusive no meio de um descanso —, ele volta com os tempos certos. Com o Ciclo aberto em duas abas, o cronômetro é um só, e finalizar duas vezes nunca registra o mesmo estudo duas vezes.
+No cronômetro livre, nada é interrompido sozinho e não há alarme. Se a página for recarregada ou a aba fechada — inclusive no meio de um descanso, de uma pausa ou de um bloco de Pomodoro —, ele volta com os tempos certos. Com o Ciclo aberto em duas abas, o cronômetro é um só, e finalizar duas vezes nunca registra o mesmo estudo duas vezes.
+
+### Pomodoro e modo foco
+
+O **Pomodoro** é opcional e fica em *Começar a estudar → Como contar o tempo*:
+
+- **Durações prontas ou suas.** *Clássico* (25 min de estudo, 5 de descanso, descanso longo de 15 a cada 4 blocos), *Concentração prolongada* (50/10, descanso longo de 20 a cada 3) ou *Personalizado*.
+- **No fim de cada bloco, o Ciclo para e espera.** Você escolhe: descansar, fazer mais um bloco ou encerrar. Se voltar meia hora depois, esse tempo não vira estudo nem descanso. Avançar sozinho, um som curto e o aviso do navegador são opcionais, em *Configurações → Estudos e planejamento* — o aviso só é pedido quando você liga a opção.
+- **Um estudo só.** Dois blocos de 25/5 viram **50 min estudados e 5 min de descanso**, com o número de blocos completos. Encerrar no meio de um bloco registra o tempo realmente estudado.
+
+O **modo foco** deixa só o essencial na tela: a disciplina, o estado, o relógio, o progresso do bloco e as ações principais, com tela cheia quando o navegador permite. *Esc* sai do foco sem encerrar o estudo.
+
+### Resultado do estudo (opcional)
+
+Tempo é importante, mas não é tudo. Ao registrar ou finalizar um estudo, *Adicionar resultado (opcional)* permite guardar:
+
+- **Questões e acertos** — *20 questões, 17 acertos* → 85% de acerto, com o assunto, se quiser.
+- **Conceito explicado sem consulta** — *consegui*, *em parte* ou *com dificuldade*.
+- **Algo que consegui fazer** — *"Antes eu não conseguia trocar de Dó para Sol no tempo. Agora consigo tocar a sequência a 80 bpm."*
+
+Nada disso é obrigatório, e o Ciclo **nunca transforma resultados em "domínio" ou nota**. O acerto é sempre a **soma dos acertos dividida pela soma das questões** (6 de 10 e 45 de 50 dão 85%, não a média 72,5%), e com poucas questões o Ciclo avisa que a amostra é pequena. Num estudo com várias disciplinas, você diz de qual é o resultado; se não disser, ele fica como *disciplina não especificada* e entra só nos totais gerais.
 
 ### Várias disciplinas, tópicos e tipos no mesmo estudo
 
@@ -136,12 +158,13 @@ A meta é **o tempo total que você quer estudar na semana**. Estudou 5h de uma 
 
 ## Revisões
 
-Depois que você estuda um assunto, o Ciclo passa a sugerir quando vale revê-lo. **São sugestões, não obrigações**: nada no seu histórico muda por você não revisar, e um assunto sugerido há alguns dias aparece como *"sugerido desde 12/10"*, nunca como atraso.
+Depois que você estuda um assunto, o Ciclo passa a sugerir quando vale revê-lo. **São sugestões, não obrigações**: nada no seu histórico muda por você não revisar, e um assunto cuja data já passou aparece como *"Data sugerida já passou · 15 de out"*, nunca como atraso.
 
 - **Por matéria.** A tela Revisões agrupa os assuntos sugeridos por disciplina. Se preferir, *Configurações → Revisões e sugestões → Lista única* mostra tudo numa lista.
 - **Revisar a disciplina.** Uma revisão geral da matéria inteira, sem escolher assuntos. Ela fica registrada como revisão daquela disciplina e **não muda a agenda de nenhum assunto** — porque o Ciclo não sabe quais você revisou.
 - **Escolher assuntos.** Marque os assuntos que vai revisar. Ao terminar, cada um recebe o próprio resultado (*Esqueci*, *Lembrei com dificuldade*, *Lembrei bem*, *Dominei*) e a própria próxima data. Só os assuntos escolhidos são afetados.
-- **Deixar para depois.** No menu ⋯ de um assunto (ou da matéria): para amanhã, daqui a 3 dias ou para a semana que vem. Adiar esconde só a sugestão: a data marcada, o intervalo e o histórico continuam iguais. Se a data do assunto mudar (por exemplo, porque você o revisou), o adiamento deixa de valer sozinho. Também dá para parar de sugerir um assunto.
+- **Em que pé está cada sugestão.** *"Sugerida para hoje"*, *"Data sugerida já passou · 15 de out"* ou *"Programada · em 3 dias"* — e, ao lado, *Revisar agora*.
+- **Deixar para depois.** No menu ⋯ de um assunto (que também abre o assunto) ou da matéria: para amanhã, daqui a 3 dias ou para a semana que vem. Adiar esconde só a sugestão: a data marcada, o intervalo e o histórico continuam iguais. Se a data do assunto mudar (por exemplo, porque você o revisou), o adiamento deixa de valer sozinho. Também dá para parar de sugerir um assunto.
 - **Revisar com o tempo que você tem.** *Revisar por 20 min* escolhe os assuntos que cabem nesse tempo.
 - **Desligar as sugestões.** Em *Configurações → Revisões e sugestões*. O número ao lado de Revisões some; a agenda continua sendo calculada e você revisa quando quiser.
 
@@ -155,11 +178,29 @@ Análises abre com o **panorama dos últimos 30 dias**:
 - **Três números** que abrem os detalhes: dias com estudo, tempo por dia de estudo e a meta semanal (ou as revisões).
 - **Dois gráficos lado a lado:** o tempo ao longo do período e onde o tempo foi.
 - **O que se destaca:** até três observações calculadas dos seus registros, sem palpites sobre causas.
-- **Explore seus estudos:** oito caminhos com o mesmo período — *Meu tempo*, *Minha constância*, *Minhas disciplinas*, *Meus tópicos*, *Minhas revisões*, *Meu planejamento*, *Meus descansos* e *Como estudo* —, cada um com uma prévia do que vai mostrar.
+- **Explore seus estudos:** caminhos com o mesmo período — *Meu tempo*, *Minha constância*, *Minhas disciplinas*, *Meus tópicos*, *Minhas revisões*, *Meu planejamento*, *Meus descansos*, *Como estudo*, *Meus resultados*, *Minha evolução* e *Comparar semanas* —, cada um com uma prévia do que vai mostrar.
+
+Os caminhos novos da v7.1:
+
+- **Meus resultados** — questões e acertos por semana, por matéria e por assunto. Diferenças entre períodos aparecem em **pontos percentuais**: de 60% para 80% são *+20 p.p.*
+- **Minha evolução** — conceitos explicados e marcos (*"Agora consigo…"*), em ordem de data. São relatos seus, mostrados como relatos.
+- **Comparar semanas** — tempo, dias com estudo, estudos e acerto, lado a lado, com as datas sempre à vista. Por padrão, *Até hoje*: numa quarta-feira, segunda a quarta desta semana contra segunda a quarta da anterior. Também dá para comparar *Semanas completas*.
+
+**Comparações justas.** Com um período em andamento (*Esta semana*, *Este mês*), as médias usam só os dias que já passaram e a comparação usa a mesma quantidade de dias do período anterior. Quando um dos lados não tem dados, o Ciclo diz isso em vez de inventar uma porcentagem, e um período sem estudos aparece como *"Nenhum estudo registrado"*.
 
 O período muda com um clique. **Personalizar análise** permite escolher uma ou várias disciplinas, áreas ou tópicos, filtrar por tipo de estudo e definir datas. Uma análise usada sempre pode ser salva. Se preferir, *Configurações → Análises* faz a tela abrir na última análise vista ou direto na escolha do que analisar.
 
-Com várias disciplinas, tópicos ou tipos no mesmo estudo, os totais contam cada minuto uma vez só; partes estimadas são identificadas. Em *Mais*, você copia um resumo, baixa um relatório em texto ou prepara o relatório para IA.
+Com várias disciplinas, tópicos ou tipos no mesmo estudo, os totais contam cada minuto uma vez só; partes estimadas são identificadas como estimativa (≈), separadas do tempo que você informou. Em *Mais*, você copia um resumo, baixa um relatório em texto ou prepara o relatório para IA.
+
+## Descobertas do Histórico
+
+No topo do Histórico, **O que os seus registros sugerem** mostra até três padrões dos últimos 30 dias, calculados por regras simples — sempre o mesmo resultado para os mesmos dados:
+
+- *"Em 4 dos últimos 5 registros de Equações, você informou dificuldade alta."* → **Revisar Equações**
+- *"Você registrou 2 estudos de Porcentagem, mas ainda não há uma revisão específica registrada para esse assunto."* → **Revisar Porcentagem**
+- *"Você dedicou mais tempo a Português nesta semana: 3h02 até hoje, contra 1h10 nos mesmos dias da semana anterior."* → **Comparar semanas**
+
+Cada descoberta diz em quantos registros se baseia, e **Ver registros usados** filtra o Histórico exatamente por eles. Nenhuma afirma causas, dá nota ou muda algo sozinha; editar ou excluir um estudo recalcula tudo. Uma revisão geral da disciplina é mencionada, mas não conta como revisão de um assunto específico.
 
 ## Ajuda e Como estudar
 
@@ -181,7 +222,7 @@ O Ciclo funciona inteiro sem inteligência artificial e **não se conecta a nenh
 3. Clique em **Baixar CSV e copiar prompt**. O Ciclo diz separadamente se o download começou e se o texto foi copiado; se o navegador não deixar copiar, o texto aparece para você copiar à mão.
 4. Abra a ferramenta de IA, anexe o arquivo e cole o prompt.
 
-O arquivo tem **uma linha por estudo** — data, início e fim, minutos de estudo, descansos, disciplinas, tópicos, a divisão do tempo entre eles, tipos, dificuldade, resultados de revisão e, se você quiser, os comentários completos. O prompt explica cada coluna, pede que a IA não invente dados, não multiplique o tempo de um estudo com várias disciplinas e trate o conteúdo do arquivo como dados, nunca como instruções. **Comentários podem conter informações pessoais**: você escolhe se eles entram, e seus registros no Ciclo não mudam. A IA pode errar; use o relatório como apoio.
+O arquivo tem **uma linha por estudo** — data, início e fim, minutos de estudo, descansos, minutos pausados, blocos de Pomodoro, disciplinas, tópicos, a divisão do tempo entre eles, tipos, dificuldade, resultados de revisão, questões e acertos e, se você quiser, os comentários completos e os textos de conceitos e marcos. O prompt explica cada coluna, pede que a IA não invente dados, não multiplique o tempo de um estudo com várias disciplinas, calcule acerto pela soma das questões, não afirme causas e trate o conteúdo do arquivo como dados, nunca como instruções. **Comentários, conceitos e marcos podem conter informações pessoais**: você escolhe se eles entram, e seus registros no Ciclo não mudam. A IA pode errar; use o relatório como apoio.
 
 Outros usos: o **histórico (.csv)** abre em qualquer planilha; o **relatório em texto** das Análises vai fácil para um documento; e o Planejamento pode servir de base para montar sua rotina numa agenda — à mão, sem sincronização.
 
@@ -191,7 +232,7 @@ Organizadas pelo que você quer mudar, cada grupo dizendo o que muda:
 
 - **Aparência** — tema, densidade e animações.
 - **Minha experiência** — quanto o Ciclo orienta você (mais orientação, discreta ou desativada), quais blocos aparecem em Hoje, a tela inicial e o guia do primeiro uso.
-- **Estudos e planejamento** — tempo sugerido para estudar e o primeiro dia da semana.
+- **Estudos e planejamento** — tempo sugerido para estudar, o primeiro dia da semana, como começar a estudar (cronômetro livre ou Pomodoro), as durações do Pomodoro e os avisos opcionais (avançar sozinho, som, aviso do navegador).
 - **Revisões e sugestões** — mostrar ou não as sugestões, por matéria ou em lista, duração, ritmo e jeito de revisar, e as sugestões deixadas para depois.
 - **Análises** — o que aparece primeiro e o período já escolhido.
 - **Dados e segurança** — backup e relatório para IA.
@@ -213,13 +254,18 @@ Os dados ficam no **IndexedDB**, um pequeno banco de dados que todo navegador mo
 - os dados **não sincronizam** entre navegadores ou dispositivos;
 - **limpar os dados do site** (ou usar uma janela anônima) apaga o histórico.
 
+A tela **Dados** explica isso sem rodeios em *Como seus dados ficam guardados*: quanto espaço o navegador informa usar e se o **armazenamento persistente** foi concedido. Alguns navegadores podem apagar dados de sites quando falta espaço; *Pedir ao navegador* solicita que isso não aconteça com o Ciclo. O navegador pode aceitar ou recusar, e o Ciclo mostra a resposta real. Mesmo concedido, limpar os dados manualmente continua apagando tudo.
+
 Por isso existe o backup, na tela **Dados**:
 
-- **Backup completo (.json)**: guarda tudo — áreas, disciplinas, tópicos, prioridades, estudos com suas disciplinas, descansos, tópicos, tipos e resultados de revisão, sugestões deixadas para depois, metas e planos, a semana em dias, prazos, análises salvas e configurações. É o arquivo que restaura o Ciclo em outro computador ou depois de limpar o navegador.
-- **Histórico (.csv)**: a lista de estudos no formato de sempre, para abrir numa planilha — uma linha por estudo.
+- **Backup completo (.json)**: guarda tudo — áreas, disciplinas, tópicos, prioridades, estudos com suas disciplinas, descansos, pausas, blocos de Pomodoro, tópicos, tipos, resultados de revisão, questões, conceitos e marcos, sugestões deixadas para depois, metas e planos, a semana em dias, prazos, análises salvas e configurações. É o arquivo que restaura o Ciclo em outro computador ou depois de limpar o navegador.
+- **Soma de verificação**: cada backup novo leva uma soma calculada sobre os dados. Ao restaurar, a prévia diz se o arquivo confere ou se parece ter sido alterado depois de gerado. Ela detecta alterações acidentais; **não é criptografia** nem prova de autoria — o backup continua sendo um arquivo legível por quem tiver acesso a ele.
+- **Histórico (.csv)**: a lista de estudos no formato de sempre, para abrir numa planilha — uma linha por estudo, agora com as colunas *questoes* e *acertos* no fim. Comentários e textos de resultados não entram.
 - **Relatório para IA (.csv)**: o CSV completo descrito acima, com o período que você escolher.
 
 Em todos os CSV, textos que uma planilha poderia interpretar como fórmula (começando com =, +, - ou @) ganham um apóstrofo na frente.
+
+Depois de muitos estudos registrados desde o último backup, a tela Hoje mostra um lembrete discreto. Ele não bloqueia nada.
 
 **Restaurar** é feito com cuidado: o arquivo é conferido por inteiro antes de qualquer gravação, você vê uma prévia do que vai entrar, do que foi ajustado e do que fica de fora, e só depois de confirmar os dados são trocados, numa operação única. Um arquivo corrompido ou criado por uma versão mais nova é recusado, e os dados do navegador continuam intactos. Backups de versões anteriores, inclusive da época do Diário de Estudos, continuam sendo aceitos.
 
@@ -233,7 +279,7 @@ Em todos os CSV, textos que uma planilha poderia interpretar como fórmula (come
 - **Explicação no momento certo.** Os conceitos são explicados quando aparecem, com exemplo e ação, e não num manual que precisa ser lido antes.
 - **Palavras comuns.** Se um termo precisa de glossário, primeiro o Ciclo tenta usar uma palavra melhor.
 - **Sério, sem virar jogo.** Sem pontos, rankings ou sequências punitivas.
-- **Tempo é a medida.** Tudo no Ciclo é contado em horas e minutos de estudo.
+- **Tempo é a medida — e o resultado é seu.** O Ciclo conta horas e minutos de estudo; questões, conceitos e marcos entram só se você quiser registrá-los, e nunca viram nota ou "domínio".
 
 ## Como é feito
 
@@ -243,14 +289,16 @@ O Ciclo é uma aplicação local-first feita em HTML, CSS e JavaScript puro, sem
 
 Curto e direto, para quem quer saber exatamente o que esperar.
 
-- **Navegadores.** A v7.0 foi testada de forma automatizada no Chromium (a base do Chrome e do Edge), em telas de 360 px a 1440 px, nos dois temas, em quatro fusos horários, com movimento reduzido e com 5.000 estudos ao longo de três anos. Firefox, Safari (inclusive no iPhone) e o Edge propriamente dito não foram testados nesta versão: o Ciclo usa apenas recursos padrão da web, mas isso não é uma garantia. Leitores de tela também não foram testados.
+- **Navegadores.** A v7.1 foi testada de forma automatizada no Chromium (a base do Chrome e do Edge), em telas de 360 px a 1280 px, nos dois temas, com movimento reduzido, com a atualização a partir da v7.0 e com um histórico grande (cerca de 5.000 estudos ao longo de um ano). Firefox, Safari (inclusive no iPhone) e o Edge propriamente dito não foram testados nesta versão: o Ciclo usa apenas recursos padrão da web, mas isso não é uma garantia. Leitores de tela também não foram testados.
+- **Avisos do Pomodoro.** O som e o aviso do navegador dependem de permissões e do próprio navegador. Com a aba em segundo plano ou o aparelho bloqueado, o aviso pode atrasar ou não aparecer — o tempo registrado continua certo mesmo assim. A tela cheia do modo foco também depende do navegador.
 - **Animações.** São curtas e opcionais: com *Reduzir animações* (em Configurações → Aparência) ou com a preferência do sistema ligada, tudo muda de estado na hora. Nenhuma informação depende de uma animação.
-- **Onde os dados ficam.** No IndexedDB do navegador; o cronômetro em andamento e o tema ficam no `localStorage`, e o rascunho do guia do primeiro uso, no `sessionStorage` da aba. Nada é enviado para fora.
+- **Onde os dados ficam.** No IndexedDB do navegador; o cronômetro em andamento, o tema e os rascunhos de registro ficam no `localStorage`, e o rascunho do guia do primeiro uso, no `sessionStorage` da aba. Nada é enviado para fora.
 - **Internet.** O Ciclo é uma página comum: a rede serve só para abri-la. Ele não se instala como aplicativo.
 - **O que as datas significam.** Datas de estudo, de prazo e de revisão são dias do calendário **no fuso do seu aparelho**. Um estudo pertence ao dia em que começou.
 - **Copiar o prompt.** Depende da permissão do navegador para a área de transferência. Quando ela é negada, o Ciclo avisa e mostra o texto para copiar à mão.
 - **Duas abas.** Pode usar. As abas compartilham os dados e se avisam quando algo muda; com um formulário aberto, o Ciclo avisa em vez de mexer no que você está digitando.
-- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v7.0 não converte nada — ela só acrescenta campos opcionais (a sugestão adiada de um assunto e as preferências novas, que começam com valores padrão). O banco do navegador é o mesmo. Se o Ciclo estiver aberto em outras abas durante a atualização, recarregue-as.
+- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v7.1 não converte nada — ela só acrescenta campos opcionais (resultados, minutos pausados e o resumo do Pomodoro em cada estudo, e as preferências do Pomodoro, que começam com valores padrão). O banco do navegador é o mesmo. Se o Ciclo estiver aberto em outras abas durante a atualização, recarregue-as — principalmente se houver um cronômetro pausado ou em Pomodoro, que uma aba antiga não entende.
+- **Voltar para uma versão anterior.** Uma versão anterior recusa backups gerados pela v7.1 (por serem de uma versão mais nova); os dados do navegador continuam intactos.
 - **Se algo der errado.** Recarregar a página é seguro: tudo o que foi registrado já está gravado. Se uma gravação falhar, o Ciclo diz isso e mantém a janela aberta com o que você digitou. Se os dados sumirem, restaure o último backup em **Dados → Restaurar backup**.
 
 ## Contato
@@ -261,9 +309,23 @@ O endereço também está no aplicativo, em **Ajuda** e em **Configurações →
 
 ## Versão atual
 
-**v7.0.0 — Learning for Everyone**
+**v7.1.0 — Learning Intelligence & Focus**
 
-Menos esforço para utilizar, mais liberdade para aprender.
+Registrar o que você conseguiu fazer — não só o tempo —, estudar com mais foco e ver o seu histórico com mais clareza.
+
+- **Resultado do estudo, opcional:** questões e acertos, conceitos explicados sem consulta e marcos *"Antes eu não conseguia… / Agora consigo…"*.
+- **Cronômetro com pausa de verdade** (Estudando, Pausado, Descansando), **Pomodoro nativo** que espera você no fim de cada bloco e **modo foco** renovado.
+- **Começar sem escolher a disciplina** e **rascunhos** que não se perdem.
+- **Análises novas:** *Meus resultados*, *Minha evolução* e *Comparar semanas*, sempre comparando os mesmos dias e com acerto pela soma das questões.
+- **Descobertas do Histórico**, explicadas, com os registros usados e uma ação.
+- **Revisões com estados claros** e *Revisar agora* à mão.
+- **Dados mais honestos:** onde o histórico fica, espaço informado pelo navegador, armazenamento persistente e soma de verificação no backup.
+
+Os dados não precisam de conversão: a v7.1 só acrescenta campos opcionais. Backups de qualquer versão anterior continuam sendo aceitos.
+
+### v7.0
+
+**Learning for Everyone.** Menos esforço para utilizar, mais liberdade para aprender.
 
 - **Primeiro uso por perguntas.** *"O que você gostaria de aprender?"* — começar agora ou receber ajuda para organizar, com tudo confirmado antes de ser criado e nada inventado.
 - **Hoje como ponto de partida.** A ação primeiro, a semana num painel, os próximos passos e atalhos; nenhum gráfico vazio.

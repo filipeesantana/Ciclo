@@ -5209,6 +5209,7 @@ button.tc-sug:hover{ border-color:var(--border-hover); background:var(--surface-
   .today-v7,.today-main{ gap:22px }
   .today-card{ padding:16px 16px 18px }
   .today-sugg{ flex-direction:column; align-items:stretch }
+  .today-sugg .ts-text{ flex:0 0 auto }
   .ts-actions{ justify-content:flex-start }
   .wk-big{ font-size:28px }
   .an-hero{ padding:18px 16px }
@@ -5241,3 +5242,222 @@ button.tc-sug:hover{ border-color:var(--border-hover); background:var(--surface-
   .wk-mini-bar{ background:CanvasText; forced-color-adjust:none }
   .ev-dot,.an-fact-list li::before,.an-hero-d::before{ background:CanvasText; forced-color-adjust:none }
 }
+
+/* =========================================================================
+   v7.1 — LEARNING INTELLIGENCE & FOCUS
+   Cronômetro com pausa e Pomodoro · modo foco · resultado do estudo ·
+   rascunhos · análises de resultados · descobertas do histórico · dados.
+   Tudo com as mesmas cores, raios e tempos de movimento das versões
+   anteriores; nenhuma animação infinita.
+   ========================================================================= */
+
+/* ---------- cronômetro: pausado e fim de bloco ---------- */
+.timerbar[data-state="paused"]{ border-color:var(--border-strong) }
+.timerbar[data-state="paused"] .tb-status{ background:transparent; box-shadow:inset 0 0 0 2px var(--text-tertiary) }
+.timerbar[data-state="paused"] .tb-label{ color:var(--text-secondary) }
+.timerbar[data-state="paused"] .tb-clock{ color:var(--text-secondary) }
+.timerbar[data-state="done"]{ border-color:var(--accent-line) }
+.timerbar[data-state="done"] .tb-status{ background:var(--accent); box-shadow:0 0 0 4px var(--accent-soft) }
+.timerbar[data-state="done"] .tb-label{ color:var(--accent) }
+.timerbar .tb-disc.is-unset{ color:var(--text-secondary); font-style:italic }
+.timerbar .tb-sub{ white-space:normal; text-align:right; max-width:30ch }
+.tb-progress{ display:block; width:100%; height:3px; margin-top:6px; border-radius:2px; background:var(--track); overflow:hidden }
+.tb-progress-fill{ display:block; height:100%; background:var(--primary); transform-origin:left center; transition:transform 1s linear }
+.timerbar[data-state="rest"] .tb-progress-fill{ background:var(--info) }
+.timerbar[data-state="paused"] .tb-progress-fill{ background:var(--text-tertiary) }
+@media (max-width:640px){
+  .timerbar .tb-sub{ text-align:left; max-width:none }
+}
+
+/* ---------- começar: cronômetro livre × Pomodoro ---------- */
+.tm-opts{ margin-top:2px }
+.rm-pomo .chips{ margin-top:2px }
+.pomo-grid{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px; margin-top:12px }
+.pomo-grid .field{ margin-bottom:0 }
+.pomo-grid label{ font-size:12.5px }
+.pomo-grid input{ width:100% }
+.rm-unset{ display:inline-block; margin-top:4px; font-size:13px; text-align:left }
+@media (max-width:640px){ .pomo-grid{ grid-template-columns:repeat(2, minmax(0,1fr)) } }
+
+/* ---------- finalizar: pausa e Pomodoro no resumo ---------- */
+.fs-item.is-pause .fs-v{ font-size:22px; line-height:1.25; letter-spacing:-.01em; color:var(--text-secondary) }
+.fs-pomo{ flex-basis:100%; font-size:13px; color:var(--text-secondary); margin:0 }
+.fin-unset{ color:var(--accent) }
+
+/* ---------- modo foco: um ambiente para estudar ---------- */
+.focus-mode{ align-items:stretch; padding:20px 24px calc(20px + env(safe-area-inset-bottom,0px)) }
+.focus-inner{ display:flex; flex-direction:column; width:100%; max-width:none; min-height:100% }
+.focus-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100% }
+.focus-brand{ display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:500; letter-spacing:.01em; color:var(--text-tertiary) }
+.focus-brand .brand-mark{ width:18px; height:18px; color:var(--text-tertiary); --brand-dot:var(--text-tertiary) }
+.focus-top-actions{ display:inline-flex; gap:6px }
+.focus-top-actions .icon-btn{ color:var(--text-tertiary) }
+.focus-top-actions .icon-btn:hover{ color:var(--text) }
+.focus-center{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; width:100%; max-width:640px; margin:0 auto; padding:24px 0 }
+.focus-line{ min-height:20px; margin-top:16px; font-size:14px; color:var(--text-secondary) }
+.focus-progress{ width:min(320px, 70vw); height:4px; margin:22px auto 0; border-radius:2px; background:var(--track); overflow:hidden }
+.focus-progress[hidden]{ display:none }
+.focus-progress-fill{ display:block; height:100%; background:var(--primary); transform-origin:left center; transition:transform 1s linear }
+.focus-mode[data-state="rest"] .focus-progress-fill{ background:var(--info) }
+.focus-mode[data-state="paused"] .focus-state{ color:var(--text-secondary) }
+.focus-mode[data-state="paused"] .focus-clock{ color:var(--text-secondary) }
+.focus-mode[data-state="paused"] .focus-progress-fill{ background:var(--text-tertiary) }
+.focus-mode[data-state="done"]{ background:radial-gradient(ellipse 70% 55% at 50% 38%, var(--accent-tint), transparent 70%), var(--bg) }
+.focus-mode[data-state="done"] .focus-state{ color:var(--accent) }
+.focus-sub{ max-width:46ch }
+.focus-hint{ text-align:center; margin-top:8px }
+.focus-mode:fullscreen{ padding-top:28px }
+@media (max-width:640px){
+  .focus-mode{ padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px)) }
+  .focus-center{ padding:12px 0 }
+  .focus-actions{ width:100% }
+  .focus-actions .btn{ flex:1 1 140px }
+  .wk-cmp{ min-width:420px; font-size:13px }
+  .wk-cmp th,.wk-cmp td{ padding:8px 7px }
+}
+/* toque: alvos maiores no modo foco; a dica do Esc só faz sentido com teclado */
+@media (pointer:coarse){
+  .focus-actions .btn{ min-height:44px }
+  .focus-top .icon-btn{ min-width:44px; min-height:44px }
+  .focus-hint{ display:none }
+}
+
+/* ---------- resultado do estudo (opcional) ---------- */
+.how-results{ margin-top:16px; padding-top:14px; border-top:1px solid var(--border-soft) }
+.res-open{ display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 10px }
+.res-open-hint{ font-size:12.5px; color:var(--text-tertiary) }
+.res-box{ animation:fadeUp var(--motion-base) var(--ease-emphasized) }
+.res-intro{ margin:2px 0 10px }
+.res-list{ display:flex; flex-direction:column; gap:10px }
+.res-card{ padding:12px 14px; border:1px solid var(--border-soft); border-radius:var(--radius-md); background:var(--surface-sunken) }
+.res-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px }
+.res-kind{ display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:var(--text) }
+.res-kind .btn-icon{ width:15px; height:15px; color:var(--primary) }
+.res-card[data-kind="milestone"] .res-kind .btn-icon{ color:var(--accent) }
+.res-fields .field{ margin-bottom:10px }
+.res-fields .field:last-child{ margin-bottom:0 }
+.res-qrow{ display:grid; grid-template-columns:168px 120px minmax(0,1fr); gap:10px; align-items:end }
+.res-qrow .field{ margin-bottom:0 }
+.res-qrow input{ width:100% }
+.res-out{ min-height:18px; margin:8px 0 0; font-size:13px; color:var(--text-secondary) }
+.res-out.is-ok{ color:var(--primary) }
+.res-out.is-error{ color:var(--danger) }
+.res-target-f{ margin:10px 0 0 }
+.res-target-f select{ max-width:100% }
+.res-total{ margin:10px 0 0; font-size:13.5px; font-weight:500; color:var(--text) }
+.res-add{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px }
+.res-add-btn{ display:inline-flex; align-items:center; gap:6px }
+.res-add-btn .btn-icon{ width:14px; height:14px }
+@media (max-width:560px){
+  .res-qrow{ grid-template-columns:minmax(0,1fr) minmax(0,1fr) }
+  .res-qrow .res-label-f{ grid-column:1 / -1 }
+}
+
+/* ---------- rascunho recuperado ---------- */
+.draft-notice{
+  display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; margin:0 0 16px; padding:10px 12px;
+  border:1px solid var(--info-line); border-radius:var(--radius-md); background:var(--info-tint);
+  font-size:13.5px; color:var(--text); animation:fadeUp var(--motion-base) var(--ease-emphasized)
+}
+.draft-notice .btn-icon{ width:16px; height:16px; color:var(--info); flex-shrink:0 }
+.draft-text{ flex:1 1 220px }
+
+/* ---------- configurações do Pomodoro ---------- */
+.set-row.pomo-custom{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px 14px; align-items:end }
+.pomo-set{ display:flex; flex-direction:column; gap:4px; font-size:12.5px; color:var(--text-secondary) }
+.pomo-set input{ width:100% }
+@media (max-width:640px){ .set-row.pomo-custom{ grid-template-columns:repeat(2, minmax(0,1fr)) } }
+
+@media (prefers-reduced-motion:reduce){
+  .tb-progress-fill,.focus-progress-fill{ transition:none !important }
+  .res-box,.draft-notice{ animation:none !important }
+}
+@media (forced-colors:active){
+  .res-card,.draft-notice{ border:1px solid CanvasText }
+  .tb-progress-fill,.focus-progress-fill{ background:CanvasText; forced-color-adjust:none }
+}
+
+/* ---------- aviso depois de registrar: próximos passos discretos ---------- */
+.toast .t-actions{ display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:8px }
+.toast .t-actions .linkbtn{ font-size:13px }
+
+/* ---------- Análises: resultados, aprendizagem e semanas ---------- */
+.an-hero-facts.is-four{ grid-template-columns:repeat(2, minmax(0,1fr)) }
+.an-hero-cmp{ margin:4px 0 0; font-size:12.5px; color:var(--text-tertiary) }
+.res-weeks{ display:flex; flex-direction:column; gap:6px }
+.res-week{ display:flex; flex-direction:column; gap:1px }
+.res-week-s{ font-size:12px; color:var(--text-tertiary); padding-left:2px }
+.res-concept-sum{ font-size:14px; color:var(--text); margin:0 0 8px }
+.res-status{ flex-shrink:0; font-size:12.5px; padding:3px 9px; border-radius:999px; border:1px solid var(--border); color:var(--text-secondary) }
+.res-status.is-yes{ border-color:var(--primary-line); color:var(--primary) }
+.res-status.is-no{ border-color:var(--accent-line); color:var(--accent) }
+.ms-list{ display:flex; flex-direction:column; gap:0; margin:0; padding:0; list-style:none; border-top:1px solid var(--border-soft) }
+.ms-item{ display:grid; grid-template-columns:86px minmax(0,1fr); gap:14px; padding:12px 0; border-bottom:1px solid var(--border-soft) }
+.ms-date{ font-size:12.5px; color:var(--text-tertiary); padding-top:2px }
+.ms-now{ margin:0; font-size:15px; color:var(--text); line-height:1.45 }
+.ms-k{ color:var(--accent); font-weight:500 }
+.ms-before{ margin:3px 0 0; font-size:13px; color:var(--text-secondary) }
+.ms-where{ margin:4px 0 0; font-size:12.5px; color:var(--text-tertiary) }
+.ms-where .linkbtn{ font-size:12.5px }
+.wk-cmp-modes{ margin-bottom:12px }
+.wk-cmp-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch }
+.wk-cmp{ width:100%; border-collapse:collapse; font-size:14px; min-width:520px }
+.wk-cmp th,.wk-cmp td{ padding:9px 10px; text-align:left; border-bottom:1px solid var(--border-soft); vertical-align:top }
+.wk-cmp thead th{ font-size:12.5px; font-weight:500; color:var(--text-secondary) }
+.wk-cmp-r{ display:block; font-size:12px; color:var(--text-tertiary); font-weight:400 }
+.wk-cmp tbody th{ font-weight:400; color:var(--text-secondary) }
+.wk-cmp td.is-cur{ color:var(--text); font-weight:500 }
+.wk-cmp-d{ color:var(--text-secondary) }
+.wk-cmp-discs{ margin-top:18px }
+.wk-cmp-disc{ display:grid; grid-template-columns:minmax(90px, 1fr) minmax(120px, 2fr) auto; gap:10px; align-items:center; padding:6px 0 }
+.wk-cmp-dl{ font-size:13.5px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.wk-cmp-bars{ display:flex; flex-direction:column; gap:3px }
+.wk-cmp-bars .hbar{ height:6px }
+.hbar.is-prev > span{ background:var(--text-tertiary); opacity:.55 }
+.wk-cmp-dv{ font-size:12.5px; color:var(--text-secondary); white-space:nowrap }
+@media (max-width:560px){
+  .ms-item{ grid-template-columns:minmax(0,1fr); gap:2px }
+  .wk-cmp-disc{ grid-template-columns:minmax(0,1fr) auto; }
+  .wk-cmp-bars{ grid-column:1 / -1; grid-row:2 }
+}
+
+.res-bars .hbar-row{ grid-template-columns:minmax(90px,150px) minmax(60px,1fr) auto }
+.res-bars .hbar-row .hv{ white-space:nowrap; text-align:right }
+
+
+/* ---------- Hoje: resultados da semana (discreto) ---------- */
+.wk-results{ display:inline-flex; align-items:center; gap:6px; margin-top:10px; font-size:13px; text-align:left }
+.wk-results .btn-icon{ width:15px; height:15px }
+
+/* ---------- Histórico: descobertas (separadas do que aconteceu) ---------- */
+.disc-block{ margin:0 0 28px; padding:16px 18px 14px; border:1px solid var(--border-soft); border-radius:var(--radius-lg); background:var(--surface) }
+.disc-head{ display:flex; flex-direction:column; gap:2px; margin-bottom:6px }
+.disc-head .block-label{ display:inline-flex; align-items:center; gap:7px; margin:0 }
+.disc-head .block-label .btn-icon{ width:16px; height:16px; color:var(--accent) }
+.disc-head-s{ font-size:12.5px; color:var(--text-tertiary) }
+.disc-list{ list-style:none; margin:0; padding:0 }
+.disc-item{ display:grid; grid-template-columns:22px minmax(0,1fr); gap:10px; padding:12px 0; border-top:1px solid var(--border-soft) }
+.disc-item:first-child{ border-top:0 }
+.disc-ic{ padding-top:2px; color:var(--text-tertiary) }
+.disc-ic .btn-icon{ width:16px; height:16px }
+.disc-item[data-kind="milestone"] .disc-ic{ color:var(--accent) }
+.disc-item[data-kind="results"] .disc-ic{ color:var(--primary) }
+.disc-text{ margin:0; font-size:14.5px; line-height:1.5; color:var(--text) }
+.disc-basis{ margin:3px 0 0; font-size:12.5px; color:var(--text-tertiary) }
+.disc-actions{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin-top:8px }
+.disc-actions:empty{ display:none }
+.disc-actions .linkbtn{ font-size:13px }
+.disc-more{ margin-top:4px; font-size:13px }
+.hist-what{ margin:0 0 10px }
+.line-ms{ display:flex; align-items:flex-start; gap:6px; margin-top:3px; font-size:13px; color:var(--text-secondary) }
+.line-ms .btn-icon{ width:13px; height:13px; margin-top:3px; color:var(--accent); flex-shrink:0 }
+@media (max-width:560px){ .disc-block{ padding:14px 14px 12px } }
+
+/* ---------- Revisões: situação escrita (com cor discreta, nunca só cor) ---------- */
+.rvg-item[data-state="today"] .rvg-s{ color:var(--primary) }
+.rvg-item[data-state="passed"] .rvg-s{ color:var(--text-secondary) }
+
+/* ---------- Dados: como os dados ficam guardados ---------- */
+.dp-facts{ list-style:none; margin:4px 0 12px; padding:0; display:flex; flex-direction:column; gap:10px }
+.dp-facts li{ display:grid; grid-template-columns:18px minmax(0,1fr); gap:10px; font-size:14px; line-height:1.5; color:var(--text-secondary) }
+.dp-facts .btn-icon{ width:16px; height:16px; margin-top:3px; color:var(--text-tertiary) }
