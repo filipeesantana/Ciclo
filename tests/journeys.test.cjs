@@ -190,3 +190,39 @@ test('começar sem disciplina mantém a janela se o início falhar',async()=>{
  await page.getByRole('button',{name:/Começar sem escolher a disciplina/}).click();await page.waitForFunction(()=>TimerService.isActive&&!Overlay.isOpen);
  assert.deepEqual(await page.evaluate(()=>TimerService.discIds()),[]);
 });
+
+test('reserva sem relógio após liberação interrompida pode ser cancelada ou descartada para continuar',async()=>{
+ const old=await page.evaluate(async()=>{
+  await startTimer(['portugues'],[],[]);const id=TimerService.data.runId;
+  TimerService._releaseReservation=()=>Promise.resolve();TimerService.clear();return id;
+ });
+ const cancelled=page.evaluate(()=>startTimer(['matematica'],[],[]));
+ await page.getByRole('heading',{name:'Cronômetro indisponível',exact:true}).waitFor();
+ await page.locator('#modal-actions').getByRole('button',{name:'Cancelar',exact:true}).click();
+ assert.equal(await cancelled,false);assert.equal(await page.evaluate(()=>DB.count('sessions')),0);
+ assert.equal(await page.evaluate(async()=> (await DB.get('meta','activeTimer')).value),old);
+ const retry=page.evaluate(()=>startTimer(['matematica'],[],[]));
+ await page.getByRole('heading',{name:'Cronômetro indisponível',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Descartar e continuar',exact:true}).click();
+ assert.equal(await retry,true);
+ const result=await page.evaluate(async()=>({id:TimerService.data.runId,disc:TimerService.discIds(),reservation:(await DB.get('meta','activeTimer')).value,discarded:(await DB.get('meta','lastDiscardedTimer')).value}));
+ assert.notEqual(result.id,old);assert.equal(result.reservation,result.id);assert.equal(result.discarded,old);assert.deepEqual(result.disc,['matematica']);
+});
+test('recuperação de reserva não descarta relógio reaparecido nem reserva substituída na confirmação',async()=>{
+ const old=await page.evaluate(async()=>{
+  await startTimer(['portugues'],[],[]);const id=TimerService.data.runId;
+  window.savedTimer=localStorage.getItem(TIMER_LS_KEY);TimerService.forget();localStorage.removeItem(TIMER_LS_KEY);return id;
+ });
+ for(const change of ['clock','reservation']){
+  const recovery=page.evaluate(id=>recoverTimerReservation(id),old);
+  await page.getByRole('heading',{name:'Cronômetro indisponível',exact:true}).waitFor();
+  await page.evaluate(async change=>{
+   if(change==='clock'){localStorage.setItem(TIMER_LS_KEY,window.savedTimer);TimerService.restore();}
+   else await DB.put('meta',{key:'activeTimer',value:'outro-cronometro'});
+  },change);
+  await page.getByRole('button',{name:'Descartar e continuar',exact:true}).click();
+  assert.equal(await recovery,false);assert.equal(await page.evaluate(()=>DB.get('meta','lastDiscardedTimer')),undefined);
+  if(change==='clock')await page.evaluate(()=>{TimerService.forget();localStorage.removeItem(TIMER_LS_KEY);});
+ }
+ assert.equal(await page.evaluate(async()=> (await DB.get('meta','activeTimer')).value),'outro-cronometro');
+});

@@ -5161,6 +5161,7 @@ const Backup = {
       if(active && active !== allowedRunId){
         const err = new Error('Um estudo foi iniciado enquanto a prévia estava aberta.');
         err.code = 'timer-active';
+        err.runId = active;
         throw err;
       }
       stores.forEach(st => api.clear(st));
@@ -7668,15 +7669,42 @@ async function discardTimer(){
   toast('Nada foi registrado.', 'info', { title:'Tempo descartado' });
 }
 
+/** Uma liberação interrompida pode deixar só a reserva, sem o relógio recuperável. */
+async function recoverTimerReservation(runId){
+  if(!runId || TimerService.isActive || TimerService.storedRunId() !== null) return false;
+  const ok = await confirmModal('Existe um cronômetro reservado, mas o tempo não pôde ser recuperado. Confira a aba em que estava estudando. Para continuar aqui, você pode descartar esse cronômetro indisponível; nenhum estudo será registrado.',
+    { title:'Cronômetro indisponível', confirmLabel:'Descartar e continuar' });
+  if(!ok) return false;
+  try {
+    const released = await DB.atomic(['meta'], async api => {
+      const reserved = await api.get('meta', 'activeTimer');
+      // A confirmação vale apenas para a reserva que a pessoa acabou de ver.
+      // Uma leitura bloqueada ou um relógio que reapareceu nunca autoriza descarte.
+      if(!reserved || reserved.value !== runId || TimerService.isActive || TimerService.storedRunId() !== null) return false;
+      api.put('meta', { key:'lastDiscardedTimer', value:runId });
+      api.delete('meta', 'activeTimer');
+      return true;
+    });
+    if(!released) toast('Confira o cronômetro atual antes de tentar de novo.', 'info', { title:'O cronômetro mudou em outra aba' });
+    return released;
+  } catch(err){
+    console.error('Falha ao liberar a reserva do cronômetro:', err);
+    toast('Nada foi descartado. Tente novamente.', 'err', { title:'Não foi possível continuar' });
+    return false;
+  }
+}
+
 /* ---------- INICIAR SESSÃO ---------- */
 /** v6.7: `topicIds` e `presetTypes` podem ser listas ou um valor só (null = nenhum). v6.8: disciplinas também. */
 async function startTimer(disciplineIds, topicIds, presetTypes, presetMethod, targetMinutes, opts){
   let startedRunId = null;
+  let unavailableRunId = null;
   try {
-    return await DB.atomic(['meta','disciplines'], async api => {
+    const started = await DB.atomic(['meta','disciplines'], async api => {
       const reserved = await api.get('meta', 'activeTimer');
       if(reserved && reserved.value){
         if(!TimerService.isActive){ TimerService.restore(); renderTimerBar(); }
+        if(!TimerService.isActive && TimerService.storedRunId() === null){ unavailableRunId = reserved.value; return false; }
         toast('Finalize o estudo atual antes de começar outro.', 'info', { title:'Há um cronômetro em andamento' });
         return false;
       }
@@ -7712,6 +7740,8 @@ async function startTimer(disciplineIds, topicIds, presetTypes, presetMethod, ta
         { title: TimerService.data.presetTypes.includes('revisao') ? 'Revisão iniciada' : p ? 'Pomodoro iniciado' : 'Estudo iniciado' });
       return true;
     });
+    if(unavailableRunId && await recoverTimerReservation(unavailableRunId)) return startTimer(disciplineIds, topicIds, presetTypes, presetMethod, targetMinutes, opts);
+    return started;
   } catch(err){
     if(startedRunId) { TimerService.release(startedRunId); renderTimerBar(); }
     console.error('Falha ao iniciar o cronômetro:', err);
@@ -21033,7 +21063,7 @@ function openRestorePreview(parsed, fileName, discardTimer){
           close();
           await loadAll(); TimerService.restore();
           if(TimerService.isActive) askTimerBeforeRestore(parsed, fileName);
-          else openRestorePreview(parsed, fileName, false);
+          else if(await recoverTimerReservation(err.runId)) openRestorePreview(parsed, fileName, false);
           return;
         }
         // A transação é uma só: se algo falhou, NADA foi trocado.

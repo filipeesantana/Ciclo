@@ -45,7 +45,7 @@ const {start,open,seed,root}=require('./support.cjs');
     return out;
   });
   fs.writeFileSync(out+'/results.json',JSON.stringify({engine:process.env.BROWSER || 'chromium',version:runtime.browser.version(),errors,outgoing,results,articles},null,2));
-  console.log(JSON.stringify({checks:results.length,violations:results.filter(r=>r.violations.length).map(r=>({theme:r.theme,width:r.width,view:r.view,rules:r.violations.map(v=>v.id)})),articles:articles.length,articleFailures:articles.filter(a=>!a.ok),errors,out},null,2));
+  console.log(JSON.stringify({checks:results.length,violations:results.filter(r=>r.violations.length).map(r=>({theme:r.theme,width:r.width,view:r.view,rules:r.violations.map(v=>v.id)})),overflows:results.filter(r=>r.overflow).map(r=>({theme:r.theme,width:r.width,view:r.view})),articles:articles.length,articleFailures:articles.filter(a=>!a.ok),errors,outgoing,out},null,2));
   if(errors.length || outgoing.length || results.some(r=>r.violations.length || r.overflow) || articles.some(a=>!a.ok)) process.exitCode=1;
   await context.close();
  } finally {await runtime.close();}
