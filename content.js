@@ -361,7 +361,7 @@ const HELP_GLOSSARY = {
   cobertura: { term:'Conteúdo estudado', article:'cobertura-dominio', alias:'cobertura percentual topicos progresso',
     short:'A parte dos tópicos que você já estudou pelo menos uma vez.' },
   dominio: { term:'Consolidação estimada', article:'dominio', alias:'dominio domínio retencao retenção consolidado consolidacao consolidação dominar memoria estimativa',
-    short:'Uma estimativa, de 1 a 5, de quanto um tópico já está firme na memória. Ela sai só das suas respostas nas revisões ("esqueci", "lembrei bem"…) — não é uma medição da sua memória.' },
+    short:'Um indicador de 1 a 5 calculado das suas respostas nas revisões ("esqueci", "lembrei bem"…). Ele orienta a agenda; não mede sua memória nem comprova domínio.' },
   dificuldade: { term:'Dificuldade', article:'dificuldade', alias:'esforco esforço percepcao percebida',
     short:'De 1 a 5, quanto aquele estudo pareceu difícil para você. É só para análise: não altera o planejamento nem as revisões.' },
   descanso: { term:'Descanso', article:'descansos', alias:'descansar intervalo voltar a estudar',
@@ -458,7 +458,7 @@ const HELP_ARTICLES = [
     { tree:{ area:'Escola', discipline:'Português', topics:['Pontuação','Uso da crase'] } },
     { demo:'structure' },
     { h:'O que é obrigatório' },
-    { p:'Só a [[disciplina|disciplina]]. Disciplinas sem Área de Estudo aparecem como "Sem área" e funcionam normalmente. Dá para registrar estudos sem tópico algum — você só não terá revisões nem progresso de conteúdo enquanto não criar tópicos.' },
+    { p:'Só a [[disciplina|disciplina]]. Disciplinas sem Área de Estudo aparecem como "Sem área" e funcionam normalmente. Sem tópicos, você acompanha tempo e resultados e pode registrar revisões gerais da disciplina. As sugestões por assunto e a cobertura de tópicos dependem de cadastrar tópicos.' },
     { h:'No Ciclo' },
     { p:'Em Disciplinas, cada nível abre o próximo, como o índice de um caderno: toque numa área para ver as disciplinas dela e numa disciplina para ver os tópicos. Uma área criada aparece mesmo vazia.' },
     { note:'Área de Estudo não tem prioridade: ela apenas agrupa. Prioridade existe para disciplinas, tópicos e prazos.' }
@@ -781,7 +781,7 @@ const HELP_ARTICLES = [
     { p:'Ao começar a estudar, "Como contar o tempo" oferece o cronômetro livre (o padrão: conta até você finalizar) ou o [[pomodoro|Pomodoro]] (blocos de estudo e descanso). A escolha fica lembrada para a próxima vez e pode ser mudada em Configurações.' },
     { h:'Pausar, descansar e voltar' },
     { ul:[
-      '"Pausar" é para uma interrupção: o relógio para e a [[pausa|pausa]] não conta como estudo nem como descanso. "Continuar" retoma de onde parou.',
+      '"Pausar" é para uma interrupção: o relógio para e a [[pausa|pausa]] não conta como estudo nem como descanso. "Retomar" volta de onde parou.',
       '"Descansar" é um intervalo planejado: o tempo de estudo para e o [[descanso|descanso]] passa a ser contado. "Voltar a estudar" encerra o descanso.',
       'Você pode pausar e descansar quantas vezes quiser. No cronômetro livre, ele nunca para sozinho.'
     ]},
@@ -822,7 +822,7 @@ const HELP_ARTICLES = [
     { h:'Num estudo que já aconteceu' },
     { p:'Em "Registrar estudo", depois de informar os horários, use "+ Adicionar descanso". O descanso precisa estar dentro do horário do estudo; o Ciclo desconta sozinho.' },
     { h:'Nas Análises' },
-    { p:'No foco "Tempo e constância" aparecem o tempo de descanso, quantos descansos você fez e a média de cada um. São só números: o Ciclo não diz se foi muito ou pouco.' }
+    { p:'Em Análises → "Meus descansos" aparecem o tempo de descanso, quantos descansos você fez e a média de cada um. São só números: o Ciclo não diz se foi muito ou pouco.' }
   ],
   related:['cronometro','registro-manual','descanso-guia']
 },
@@ -857,7 +857,7 @@ const HELP_ARTICLES = [
   content:[
     { h:'Como funciona' },
     { ul:[
-      'Pausar → o cronômetro mostra "Pausado". Nada é contado como estudo nem como descanso. "Continuar" volta exatamente para o que você estava fazendo — estudo ou descanso.',
+      'Pausar → o cronômetro mostra "Pausado". Nada é contado como estudo nem como descanso. "Retomar" volta exatamente para o que você estava fazendo — estudo ou descanso.',
       'Descansar → o cronômetro mostra "Descansando" e o [[descanso|descanso]] é contado à parte. Serve para intervalos que fazem parte do estudo.'
     ]},
     { h:'Ao finalizar' },
@@ -973,7 +973,7 @@ const HELP_ARTICLES = [
     { p:'Se houve [[descanso|descanso]], use "+ Adicionar descanso": ele é descontado do tempo estudado e guardado à parte. A data pode ser anterior a hoje, o que é útil para recuperar estudos que não foram lançados na hora.' },
     { p:'Se quiser, use "Adicionar resultado (opcional)" para registrar questões e acertos, um conceito explicado ou um marco.' },
     { h:'Se a janela fechar antes de registrar' },
-    { p:'O que você preencheu fica guardado como rascunho neste navegador por até 7 dias. Ao abrir "Registrar estudo" de novo, o Ciclo avisa e oferece "Começar do zero". Cancelar descarta o rascunho. Descansos adicionados não entram no rascunho.' }
+    { p:'O que você preencheu fica guardado como rascunho neste navegador por até 7 dias, incluindo descansos, divisão de tempo e respostas de revisão. Ao abrir "Registrar estudo" de novo, o Ciclo avisa e oferece "Começar do zero". Cancelar descarta o rascunho. Se o navegador não permitir guardar o rascunho, um aviso pede que você mantenha a janela aberta até registrar.' }
   ],
   cta:{ action:'openHistory', label:'Abrir Histórico' },
   related:['descansos','cronometro','dificuldade']
@@ -1267,30 +1267,30 @@ const HELP_ARTICLES = [
       'Dominei — o intervalo cresce bastante (no mínimo 7 dias) e a consolidação vai direto para 5.'
     ]},
     { p:'"Esqueci" e "Lembrei com dificuldade" também zeram a sequência de acertos seguidos.' },
-    { note:'Responder com honestidade é o que faz o sistema trabalhar a seu favor. Marcar "Dominei" sem ter dominado só adia o problema.' }
+    { note:'Essas respostas são autoavaliações para orientar a próxima revisão. Escolha a que melhor descreve sua tentativa; ela não comprova domínio do conteúdo.' }
   ],
   related:['dominio','desativar-revisao']
 },
 {
   id:'dominio', section:'usar', group:'revisando',
   title:'O que é consolidação?',
-  oneLine:'Uma estimativa de quanto um tópico já está firme na sua memória.',
+  oneLine:'Um indicador calculado das suas respostas nas revisões.',
   summary:'De 1 a 5, calculado a partir dos resultados das suas revisões.',
   keywords:'consolidacao consolidado dominio dominado status topico nao iniciado em estudo em revisao consolidado retencao',
   content:[
     { h:'Como funciona' },
     { p:'A [[dominio|consolidação]] começa em 2, sobe quando você lembra e cai quando você esquece. Ela é uma estimativa a partir do seu histórico de revisões — não é uma medição exata do que está na sua cabeça.' },
     { h:'Exemplo' },
-    { ul:['Uso da crase · consolidação 2 de 5 — "Você teve dificuldade nas últimas revisões."','Verb to be · consolidação 5 de 5 — "As últimas revisões foram bem."'] },
-    { h:'Quando um tópico é considerado dominado' },
+    { ul:['Uso da crase · consolidação 2 de 5 — valor inicial ou resultado das autoavaliações.','Pontuação · consolidação 5 de 5 — resultado das respostas registradas, sem comprovar domínio.'] },
+    { h:'Quando aparece "Consolidado (autoavaliação)"' },
     { p:'Consolidação 4 ou 5 e pelo menos duas revisões seguidas bem-sucedidas. O status é sempre calculado do histórico, nunca definido à mão:' },
     { ul:[
       'Não iniciado — nenhum estudo registrado.',
       'Em estudo — já estudado, mas ainda sem nenhuma revisão concluída.',
       'Em revisão — já tem histórico de revisão, mas ainda não atingiu o critério.',
-      'Dominado — consolidação 4 ou 5 e duas revisões seguidas bem-sucedidas.'
+      'Consolidado (autoavaliação) — indicador 4 ou 5 e duas revisões seguidas com "Lembrei bem" ou "Dominei".'
     ]},
-    { note:'Um tópico dominado pode voltar para "em revisão" se você esquecer depois. Isso é esperado: o status reflete a situação atual, não uma conquista permanente.' }
+    { note:'O status pode voltar para "Em revisão" conforme suas próximas respostas. Ele descreve registros atuais, sem medir sua memória nem avaliar sua capacidade.' }
   ],
   related:['cobertura-dominio','analises-observacoes']
 },
@@ -1395,7 +1395,7 @@ const HELP_ARTICLES = [
     { h:'Amostras pequenas' },
     { p:'Com menos de 20 questões, o Ciclo indica que a amostra é pequena. 3 de 4 são 75%, mas dizem muito menos do que 75 de 100.' },
     { h:'Por matéria e por assunto' },
-    { p:'O resultado vai para a matéria escolhida no registro (ou para a única matéria do estudo). Resultados sem matéria definida aparecem como "não especificada" e entram só nos totais gerais. Nenhuma questão é contada duas vezes.' },
+    { p:'O resultado vai para a matéria escolhida no registro (ou para a única matéria do estudo). Resultados sem matéria definida aparecem como "não especificada" e entram só nos totais gerais. Nenhuma questão é contada duas vezes. Clique numa matéria ou assunto da distribuição para explorar seus resultados no mesmo período. Em listas longas, "Mostrar mais" e "Ver semanas anteriores" dão acesso aos demais registros sem abrir tudo de uma vez.' },
     { h:'O que esses números não dizem' },
     { p:'Acerto depende da dificuldade das questões que você escolheu, e marcos são relatos seus. As análises mostram o que foi registrado — não medem quanto você aprendeu nem explicam por que algo mudou.' }
   ],
@@ -1475,14 +1475,14 @@ const HELP_ARTICLES = [
 {
   id:'cobertura-dominio', section:'usar', group:'progresso',
   title:'Conteúdo estudado e consolidação',
-  oneLine:'Conteúdo estudado é quanto você já viu; consolidação é quanto realmente ficou.',
+  oneLine:'Conteúdo estudado conta tópicos com registro; consolidação resume suas autoavaliações.',
   summary:'Duas medidas diferentes de propósito.',
   keywords:'cobertura dominio consolidacao conteudo estudado percentual progresso diferenca',
   content:[
     { h:'Como funciona' },
-    { p:'[[cobertura|Conteúdo estudado]] é a parte dos tópicos que você já estudou pelo menos uma vez. Consolidados são os tópicos que atingiram o status "dominado" (veja [[dominio|consolidação]]).' },
+    { p:'[[cobertura|Conteúdo estudado]] é a parte dos tópicos que você já estudou pelo menos uma vez. "Consolidado (autoavaliação)" identifica tópicos cujo indicador chegou a 4 ou 5, com duas respostas seguidas de "Lembrei bem" ou "Dominei". Isso não mede quanto você aprendeu (veja [[dominio|consolidação]]).' },
     { h:'Exemplo' },
-    { p:'80% de conteúdo estudado com 20% consolidado normalmente indica que faltou revisar, não estudar: você passou por quase tudo, mas pouca coisa ficou.' },
+    { p:'Com 10 tópicos cadastrados, 8 com estudo registrado e 2 nesse estado de revisão, aparecem 80% estudados e 20% consolidados por autoavaliação. Esses números não dizem quanto ficou na memória nem por que os demais tópicos não atingiram o critério.' },
     { note:'Só entram na conta os tópicos cadastrados em disciplinas ativas. Disciplinas arquivadas ficam de fora do cálculo atual, mas o histórico delas permanece.' }
   ],
   related:['analises-observacoes','relatorio']
@@ -1568,7 +1568,7 @@ const HELP_ARTICLES = [
   content:[
     { h:'Como funciona' },
     { ul:[
-      'No resultado de uma análise, o botão "Exportar" oferece as duas opções.',
+      'No resultado de uma análise, o menu "Mais" oferece as duas opções.',
       '"Copiar resumo" coloca na área de transferência um texto curto com o escopo, o período, o foco, o resumo, os números principais e os principais insights.',
       '"Baixar relatório (.txt)" gera um arquivo completo, com seções de Escopo, Período, Foco, Resumo, Prioridades, Tempo, Planejamento, Disciplinas, Tópicos, Revisões, Prazos e Observações.'
     ]},
@@ -1794,9 +1794,9 @@ const HELP_ARTICLES = [
   keywords:'reconhecer lembrar recuperar ilusao fluencia relendo reler por que nao basta reler',
   content:[
     { h:'Como funciona' },
-    { p:'Reconhecimento é identificar a informação quando ela está na sua frente. Recuperação é produzi-la do zero. São habilidades diferentes, e só a segunda é cobrada numa prova ou numa aplicação real.' },
+    { p:'Reconhecimento é identificar a informação quando ela está na sua frente. Recuperação é produzi-la sem consultar. São habilidades diferentes: o que você precisa treinar depende da tarefa, da prova ou da situação em que usará o conteúdo.' },
     { h:'Por que importa' },
-    { p:'A releitura cria uma sensação de domínio que some quando o material fecha. Quanto mais fluente a leitura, mais forte a ilusão.' },
+    { p:'A familiaridade com um texto pode dar a impressão de que você conseguiria explicá-lo sem consultar. Tentar recuperar e depois conferir ajuda a verificar essa impressão.' },
     { h:'Como fazer' },
     { ul:['Sempre que sentir "isso eu já sei", feche o material e tente explicar.','Se não sair, você estava reconhecendo, não lembrando.'] },
     { h:'Exemplo' },
@@ -1814,7 +1814,7 @@ const HELP_ARTICLES = [
   actions:[{"action": "openReviewDiscipline", "label": "Revisar uma matéria"}, {"action": "registerStudy", "label": "Registrar uma revisão"}],
   evidence:"solid",
   refs:["Roediger, H. L., & Karpicke, J. D. (2006). Test-enhanced learning: Taking memory tests improves long-term retention. Psychological Science, 17(3).", "Dunlosky, J., Rawson, K. A., Marsh, E. J., Nathan, M. J., & Willingham, D. T. (2013). Improving students’ learning with effective learning techniques. Psychological Science in the Public Interest, 14(1)."],
-  oneLine:'Tente lembrar antes de consultar — é o que mais fortalece a memória.',
+  oneLine:'Tente lembrar antes de consultar e confira sua resposta.',
   summary:'O hábito com melhor retorno por minuto investido.',
   keywords:'recordacao ativa recuperacao active recall lembrar testar como lembrar melhor memorizar',
   content:[
@@ -1879,7 +1879,7 @@ const HELP_ARTICLES = [
     { h:'Como funciona' },
     { p:'Muita gente entende revisão como "passar os olhos de novo". Isso é a forma mais confortável e geralmente a menos eficiente.' },
     { h:'Por que importa' },
-    { p:'O que fortalece a memória é o esforço de recuperar, não a exposição repetida ao texto. Uma revisão de 10 minutos tentando lembrar costuma render mais que 30 minutos relendo.' },
+    { p:'Tentar recuperar e conferir a resposta pode favorecer a retenção de muitos conteúdos. Reler também pode ajudar a compreender ou corrigir uma lacuna; não existe uma equivalência universal entre minutos de cada método.' },
     { h:'Como fazer' },
     { ul:['Escolha um método ativo: lembrar, explicar, resolver ou escrever de memória.','Use a leitura apenas para conferir depois.'] },
     { h:'Exemplo' },
@@ -1906,7 +1906,7 @@ const HELP_ARTICLES = [
     { h:'Por que importa' },
     { p:'O mesmo tempo total distribuído costuma render memória mais duradoura do que concentrado. E o intervalo pode crescer conforme o conteúdo fica mais firme.' },
     { h:'Exemplo' },
-    { p:'Quatro blocos de 30 minutos em quatro dias rendem mais que duas horas seguidas na véspera.' },
+    { p:'Para conteúdos que você quer lembrar depois, experimente distribuir duas horas em quatro blocos de 30 minutos, em dias diferentes, em vez de concentrar tudo na véspera. Confira o que consegue recuperar em cada encontro.' },
     { h:'No Ciclo' },
     { p:'É exatamente o que o Ciclo faz em "Quando revisar": escolher quando o conteúdo deve voltar.' }
   ],
@@ -1926,7 +1926,7 @@ const HELP_ARTICLES = [
     { h:'Como fazer' },
     { ul:['Faça cartões curtos, com uma ideia por cartão.','Responda antes de virar.','Repita mais os que errou.'] },
     { h:'Exemplo' },
-    { p:'Frente: "O que faz o protocolo ARP?" Verso: a resposta em uma frase. Ou, num idioma, a palavra de um lado e o significado do outro.' },
+    { p:'Frente: "Por que há crase em Vou à escola?" Verso: a preposição "a" se junta ao artigo "a". Ou, num idioma, a palavra de um lado e o significado do outro.' },
     { h:'No Ciclo' },
     { p:'O Ciclo não tem um sistema próprio de flashcards. Ele agenda a revisão e você usa papel ou o aplicativo que preferir — depois registra como foi.' }
   ],
@@ -1939,14 +1939,14 @@ const HELP_ARTICLES = [
   example:"Português: explique por que \"Vou à escola\" tem crase e \"Vou a pé\" não tem.",
   evidence:"moderate",
   refs:["Chi, M. T. H., de Leeuw, N., Chiu, M.-H., & LaVancher, C. (1994). Eliciting self-explanations improves understanding. Cognitive Science, 18(3)."],
-  oneLine:'Se você não consegue explicar com palavras simples, ainda não entendeu.',
+  oneLine:'Explicar com suas palavras ajuda a encontrar pontos que precisam de atenção.',
   summary:'A explicação revela rapidamente onde está a lacuna.',
   keywords:'explicacao explicar feynman ensinar simples palavras proprias',
   content:[
     { h:'Como funciona' },
     { p:'Você explica o conteúdo como se fosse para alguém que nunca ouviu falar dele: sem jargão e sem repetir a frase do livro.' },
     { h:'Por que importa' },
-    { p:'É muito difícil explicar algo que você não entendeu. Os pontos em que você trava ou fica vago são exatamente as lacunas.' },
+    { p:'Tentar explicar pode revelar lacunas de compreensão. Travar também pode ter outras causas, como dificuldade para encontrar as palavras; confira o material e tente um exemplo antes de concluir.' },
     { h:'Como fazer' },
     { steps:[
       'Escolha o conceito.',
@@ -1982,7 +1982,7 @@ const HELP_ARTICLES = [
       'Guarde o resumo para revisões futuras.'
     ]},
     { h:'Exemplo' },
-    { p:'Um resumo de meia página feito de memória vale mais que cinco páginas copiadas do livro.' },
+    { p:'Depois de ler um trecho, escreva a ideia principal de memória em meia página. Compare com o material e complete o que faltou.' },
     { h:'No Ciclo' },
     { p:'Use o método "Resumo de memória" nas revisões e registre no comentário do estudo o que ficou de fora.' }
   ],
@@ -2080,7 +2080,7 @@ const HELP_ARTICLES = [
   keywords:'quanto tempo sessao duracao longa curta bloco estudar horas minutos',
   content:[
     { h:'Como funciona' },
-    { p:'Não existe uma duração certa. O que decide o resultado é o tipo de trabalho: 25 minutos tentando lembrar valem mais que duas horas passando os olhos.' },
+    { p:'Não existe uma duração certa. Escolha um tempo que permita trabalhar o conteúdo com atenção e verificar o que conseguiu fazer. O resultado também depende da tarefa e das condições do estudo.' },
     { h:'Como fazer' },
     { ul:[
       'Prefira blocos que você consegue sustentar com atenção real.',
@@ -2180,7 +2180,7 @@ const HELP_ARTICLES = [
 {id:"cs-comecar", section:"aprender", group:"nivel-1", title:"Como começar a estudar", oneLine:"Comece pequeno e concreto: um assunto, um tempo curto, uma pergunta para responder no fim.", summary:"O primeiro passo de qualquer estudo, sem precisar de um plano perfeito.", keywords:"comecar estudar primeiro passo procrastinacao nao sei por onde comecar iniciar rotina", quick:"Escolha um assunto pequeno, separe um tempo curto (20 a 30 minutos) e termine tentando explicar o que aprendeu. Um começo simples vale mais do que um plano perfeito.", example:"Português → Uso da crase, 25 minutos: ler as regras, fazer 5 frases, explicar de memória quando a crase aparece.", evidence:"practical", actions:[{"action": "quickStart", "label": "Começar a estudar"}], content:[{"h": "Como fazer"}, {"steps": ["Escolha UM assunto, não uma matéria inteira: \"Uso da crase\", e não \"Português\".", "Defina um tempo possível hoje — 20, 25 ou 30 minutos.", "Estude com um objetivo concreto: \"saber quando usar crase\".", "No fim, feche o material e tente explicar o que aprendeu.", "Anote o que ficou confuso para começar por aí da próxima vez."]}, {"h": "Por que funciona"}, {"p": "Tarefas grandes e vagas são difíceis de começar. Um assunto pequeno, com tempo e objetivo definidos, reduz a decisão e deixa claro quando você terminou."}, {"h": "No Ciclo"}, {"p": "Clique em Começar a estudar, escolha a matéria e, se quiser, o assunto. O Ciclo conta o tempo; ao finalizar, você pode anotar o que ficou confuso no comentário."}], related:["cs-escolher", "cs-tempo-possivel"]},
 {id:"cs-escolher", section:"aprender", group:"nivel-1", title:"Como escolher o que aprender", oneLine:"Parta do seu objetivo e escolha o que destrava o resto.", summary:"Prioridades para quem tem muito a estudar e pouco tempo.", keywords:"escolher o que estudar prioridade objetivo por onde comecar muita coisa edital ementa", quick:"Comece pelo seu objetivo (uma prova, uma habilidade, um projeto) e escolha o que ele exige primeiro — de preferência, o que é base para o resto.", example:"Prova de Inglês em um mês: Verb to be e Vocabulário antes de Present Perfect.", evidence:"practical", actions:[{"action": "addDiscipline", "label": "Adicionar uma matéria"}, {"action": "addDeadline", "label": "Cadastrar a data da prova"}], content:[{"h": "Perguntas que ajudam"}, {"ul": ["O que eu preciso conseguir fazer, e até quando?", "Que assunto é base para os outros? (Frações antes de Equações.)", "O que mais aparece no que vou enfrentar — a prova, o trabalho, a apresentação?", "O que eu já sei e posso deixar para depois?"]}, {"h": "Exemplo"}, {"p": "Quem estuda para um concurso pode transformar o edital em tópicos e começar pelos que mais caem. Quem aprende guitarra pode começar pelos acordes que aparecem nas músicas que quer tocar."}, {"h": "No Ciclo"}, {"p": "Matérias e assuntos podem ter prioridade de 1 a 5 (opcional). Prazos ligados a uma matéria fazem o Ciclo dar mais atenção a ela conforme a data chega."}], related:["cs-organizar-materia", "prioridades"]},
 {id:"cs-organizar-materia", section:"aprender", group:"nivel-1", title:"Como organizar uma matéria", oneLine:"Divida a matéria em assuntos do tamanho de um estudo.", summary:"Do \"Português\" vago para uma lista de assuntos que dá para estudar e revisar.", keywords:"organizar materia dividir assuntos topicos ementa capitulos lista conteudo", quick:"Divida a matéria em assuntos que caibam em um ou dois estudos. Em Português: Pontuação, Uso da crase, Concordância. Não precisa listar tudo de uma vez.", example:"Matemática → Frações · Equações · Porcentagem", evidence:"practical", actions:[{"action": "addTopic", "label": "Adicionar um tópico"}], content:[{"h": "Como fazer"}, {"steps": ["Use o que você já tem: índice do livro, ementa, edital, lista de músicas.", "Quebre em assuntos que caibam em 30 a 60 minutos de estudo.", "Comece pelos próximos três ou quatro. A lista cresce conforme você avança."]}, {"h": "No Ciclo"}, {"p": "Cada assunto vira um tópico da disciplina. Com tópicos, o Ciclo mostra o que você já estudou e sugere quando revisar cada um. Sem tópicos, tudo continua funcionando — você só não terá essas duas coisas."}], related:["topicos", "cs-escolher"]},
-{id:"cs-tempo-possivel", section:"aprender", group:"nivel-1", title:"Como definir um tempo possível", oneLine:"Uma meta que você cumpre vale mais do que uma meta ambiciosa que você abandona.", summary:"Quanto estudar por semana sem transformar o estudo em obrigação.", keywords:"quanto tempo estudar por semana meta realista horas rotina tempo possivel", quick:"Comece com uma meta semanal que caiba na sua rotina real — por exemplo, 5 horas — e ajuste depois de duas ou três semanas, olhando quanto você de fato estudou.", example:"5 horas por semana = 1 hora em 5 dias, ou 2h30 no fim de semana. As duas formas cumprem a meta.", evidence:"practical", actions:[{"action": "plan", "label": "Definir minha meta semanal"}], content:[{"h": "Como fazer"}, {"steps": ["Olhe a sua semana real: trabalho, aulas, deslocamentos, descanso.", "Escolha um total semanal que você consegue mesmo numa semana corrida.", "Depois de algumas semanas, compare com o que você estudou e ajuste."]}, {"h": "No Ciclo"}, {"p": "Em Planejamento, a meta é o tempo total da semana: qualquer estudo conta, de qualquer matéria e em qualquer dia. As Análises mostram quanto você estudou em cada semana — uma referência, não uma nota."}], related:["planejamento", "cs-pouco-tempo"]},
+{id:"cs-tempo-possivel", section:"aprender", group:"nivel-1", title:"Como definir um tempo possível", oneLine:"Uma meta que você cumpre vale mais do que uma meta ambiciosa que você abandona.", summary:"Quanto estudar por semana sem transformar o estudo em obrigação.", keywords:"quanto tempo estudar por semana meta realista horas rotina tempo possivel", quick:"Comece com uma meta semanal que caiba na sua rotina real — por exemplo, 5 horas — e ajuste depois de duas ou três semanas, olhando quanto você de fato estudou.", example:"5 horas por semana = 1 hora em 5 dias, ou 2h30 em cada dia do fim de semana. As duas formas cumprem a meta.", evidence:"practical", actions:[{"action": "plan", "label": "Definir minha meta semanal"}], content:[{"h": "Como fazer"}, {"steps": ["Olhe a sua semana real: trabalho, aulas, deslocamentos, descanso.", "Escolha um total semanal que você consegue mesmo numa semana corrida.", "Depois de algumas semanas, compare com o que você estudou e ajuste."]}, {"h": "No Ciclo"}, {"p": "Em Planejamento, a meta é o tempo total da semana: qualquer estudo conta, de qualquer matéria e em qualquer dia. As Análises mostram quanto você estudou em cada semana — uma referência, não uma nota."}], related:["planejamento", "cs-pouco-tempo"]},
 {id:"cs-pouco-tempo", section:"aprender", group:"nivel-1", title:"Como estudar quando se tem pouco tempo", oneLine:"Blocos curtos, frequentes e com recuperação rendem muito.", summary:"O que fazer com 10 ou 15 minutos.", keywords:"pouco tempo rapido 10 minutos 15 minutos correria intervalo onibus estudo curto", quick:"Use blocos curtos para o que mais rende em pouco tempo: tentar lembrar, resolver poucas questões, revisar vocabulário. Dez minutos de recuperação valem mais do que dez minutos relendo.", example:"Inglês → Vocabulário: 10 minutos tentando lembrar 15 palavras, conferindo as que errou.", evidence:"moderate", actions:[{"action": "quickStart", "label": "Começar um estudo curto"}], content:[{"h": "Boas atividades para blocos curtos"}, {"ul": ["Responder de memória 3 a 5 perguntas sobre o último assunto.", "Resolver 2 ou 3 exercícios e conferir.", "Revisar um assunto sugerido pelo Ciclo.", "Praticar um trecho curto de uma música ou de um texto em voz alta."]}, {"h": "O que deixar para blocos longos"}, {"p": "Conteúdo novo e complexo costuma pedir mais tempo seguido. Em dias corridos, prefira revisar e praticar; em dias livres, avançar."}, {"h": "No Ciclo"}, {"p": "Um estudo de 10 minutos conta como qualquer outro: entra na meta da semana e no histórico."}], related:["recordacao-ativa", "espacamento"]},
 {id:"cs-leitura", section:"aprender", group:"nivel-2", title:"Como fazer uma boa leitura", oneLine:"Leia com uma pergunta na cabeça e feche o texto para conferir o que ficou.", summary:"Leitura ativa: antes, durante e depois.", keywords:"leitura ler texto livro apostila sublinhar grifar leitura ativa compreensao", quick:"Antes de ler, olhe títulos e faça uma pergunta. Durante, leia buscando a resposta. Depois, feche o texto e explique o principal com suas palavras.", example:"História → Era Vargas: \"O que mudou no trabalho nesse período?\" — leia, feche e responda.", evidence:"moderate", actions:[{"action": "quickStart", "label": "Começar a estudar"}], content:[{"h": "Como fazer"}, {"steps": ["Antes: passe os olhos pelos títulos e destaques e escreva uma ou duas perguntas.", "Durante: leia por trechos curtos; ao fim de cada um, diga em uma frase do que se tratava.", "Depois: feche o material e tente responder às perguntas do começo."]}, {"h": "Cuidado"}, {"p": "Grifar muito e reler várias vezes dá sensação de estudo, mas ajuda pouco a lembrar. O que mais ajuda é o \"depois\": tentar recuperar sem olhar."}, {"h": "No Ciclo"}, {"p": "Marque o tipo de estudo como Teoria. Se ficou alguma dúvida, escreva no comentário — ela ajuda a escolher o próximo estudo."}], related:["reconhecer-x-lembrar", "resumos-guia"]},
 {id:"cs-praticar", section:"aprender", group:"nivel-2", title:"Como praticar algo novo", oneLine:"Prática focada: um pedaço difícil por vez, devagar, com retorno.", summary:"Para instrumentos, idiomas falados, programação, desenho, teatro — habilidades que se treinam.", keywords:"praticar pratica instrumento guitarra violao musica desenho teatro programar habilidade treino deliberada", quick:"Escolha um pedaço que você ainda não domina, pratique devagar e com atenção, peça ou busque retorno, e só então aumente a dificuldade. Repetir o que já sai fácil ajuda pouco.", example:"Guitarra → Acordes: 15 minutos trocando só entre Dó e Sol, devagar, até sair limpo; depois, no ritmo da música.", evidence:"moderate", actions:[{"action": "quickStart", "label": "Começar a praticar"}], refs:["Ericsson, K. A., Krampe, R. T., & Tesch-Römer, C. (1993). The role of deliberate practice in the acquisition of expert performance. Psychological Review, 100(3)."], content:[{"h": "Como fazer"}, {"steps": ["Escolha um ponto específico: uma troca de acordes, uma pronúncia, uma função de código, uma cena.", "Pratique devagar, prestando atenção ao que sai errado.", "Busque retorno: grave-se, compare com uma referência, peça a alguém, rode o código.", "Aumente aos poucos a velocidade ou a dificuldade."]}, {"h": "Exemplos"}, {"ul": ["Música: um trecho de quatro compassos, não a música inteira.", "Idioma: repetir em voz alta frases com o mesmo som difícil.", "Programação: refazer o mesmo exercício sem olhar a solução.", "Artes cênicas: ensaiar a mesma fala com intenções diferentes."]}, {"h": "O que se sabe"}, {"p": "A prática focada e com retorno está associada a melhor desempenho em muitas áreas, mas não explica tudo: talento, idade, contexto e motivação também contam. Use como orientação, não como fórmula."}, {"h": "No Ciclo"}, {"p": "Registre o tempo de prática como qualquer estudo, com o tipo Laboratório (prática) ou Projeto. Os tópicos podem ser as habilidades: Acordes, Escalas, Ritmo."}], related:["cs-projetos", "corrigir-erros"]},
@@ -2281,7 +2281,7 @@ const HELP_FAQ = [
     a:'Nada é marcado como falha. As sugestões de revisão continuam esperando por você, sem "atraso" a pagar, e as matérias não estudadas ganham um pouco mais de peso nas sugestões.' },
   { id:'faq-dificuldade-dominio', g:'estudando', article:'dominio',
     q:'Dificuldade e consolidação são a mesma coisa?',
-    a:'Não. Dificuldade é o quanto um estudo pareceu difícil, informada por você na hora. Consolidação é o quanto o tópico ficou na memória ao longo do tempo, calculada pelos resultados das revisões.' },
+    a:'Não. Dificuldade é o quanto um estudo pareceu difícil, informada por você na hora. Consolidação é um indicador calculado das suas respostas nas revisões; não mede o que ficou na memória.' },
   { id:'faq-arquivar', g:'estudando', article:'disciplinas',
     q:'Arquivar apaga meu histórico?',
     a:'Não. Arquivar tira do uso ativo e preserva tudo. Só a exclusão definitiva, que fica como ação secundária, remove os estudos registrados.' },
@@ -2295,7 +2295,7 @@ const HELP_FAQ = [
     a:'Depois que você estuda um tópico, ele entra sozinho no ciclo. Quando chega a hora, o Ciclo avisa; você tenta lembrar antes de consultar e depois diz como foi. Sua resposta decide quando o tópico volta.' },
   { id:'faq-dominio', g:'revisoes', article:'dominio',
     q:'O que é consolidação?',
-    a:'Uma estimativa, de 1 a 5, de quanto um tópico já está firme na memória, com base nos resultados das suas revisões. Começa em 2, sobe quando você lembra e cai quando esquece.' },
+    a:'Um indicador de 1 a 5 calculado das suas respostas nas revisões. Começa em 2, sobe ou cai conforme a autoavaliação e orienta a próxima data. Não mede sua memória nem comprova domínio.' },
   { id:'faq-revisao-cedo', g:'revisoes', article:'resultados-revisao',
     q:'Por que uma revisão apareceu de novo tão cedo?',
     a:'Provavelmente o último resultado foi "Esqueci" (volta para o dia seguinte) ou "Lembrei com dificuldade" (o intervalo cresce pouco).' },
@@ -2322,7 +2322,7 @@ const HELP_FAQ = [
     a:'O Ciclo alterna entre as opções adequadas ao tipo de conteúdo da disciplina para variar a forma de revisar. Se a última revisão foi "esqueci", ele passa a sugerir recordação ativa.' },
   { id:'faq-dominei', g:'revisoes', article:'resultados-revisao',
     q:'Marcar "Dominei" sem ter dominado atrapalha?',
-    a:'Sim. O intervalo cresce bastante e o conteúdo pode voltar tarde demais. Responder com honestidade é o que faz o sistema trabalhar a seu favor.' },
+    a:'Essa resposta aumenta o intervalo até a próxima revisão. Escolha a que melhor descreve sua tentativa de lembrar; as respostas são autoavaliações para orientar a agenda.' },
 
   /* ---- planejamento ---- */
   { id:'faq-estudar-mais', g:'planejamento', article:'planejado-realizado',

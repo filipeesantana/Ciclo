@@ -1,0 +1,6 @@
+node_modules/
+test-results/
+audit/evidencias/*/inventario-conteudo.json
+audit/evidencias/antes/*.png
+!audit/evidencias/antes/primeiro-uso.png
+!audit/evidencias/antes/hoje-iniciante.png

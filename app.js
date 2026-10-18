@@ -1882,6 +1882,7 @@ const SessionModel = {
       if(e.disciplineId && !discs.some(d => d.disciplineId === e.disciplineId)) discs.push({ disciplineId:e.disciplineId, minutes:null });
     });
     entries = entries.filter(e => !!e.disciplineId);
+    if(discs.length > MAX_DISCIPLINES_PER_STUDY) rep('session-disc-limit');
     discs = discs.slice(0, MAX_DISCIPLINES_PER_STUDY);
     const discSet = new Set(discs.map(d => d.disciplineId));
     // um tópico aparece uma vez só
@@ -1891,7 +1892,9 @@ const SessionModel = {
       if(seen.has(e.topicId)){ rep('session-topic-dup'); return false; }
       seen.add(e.topicId);
       return true;
-    }).slice(0, MAX_TOPICS_PER_STUDY);
+    });
+    if(entries.length > MAX_TOPICS_PER_STUDY) rep('session-topic-limit');
+    entries = entries.slice(0, MAX_TOPICS_PER_STUDY);
     if(this.settleAll(discs, entries, raw.minutes)) rep('session-split');
     s.disciplineId = discs.length ? discs[0].disciplineId : primary;
     s.disciplineEntries = discs;
@@ -2211,7 +2214,7 @@ function topicStatus(topic){
   if(topic.lastReviewedAt) return 'em_revisao';
   return 'em_estudo';
 }
-const TOPIC_STATUS_LABEL = { nao_iniciado:'Não iniciado', em_estudo:'Em estudo', em_revisao:'Em revisão', dominado:'Dominado' };
+const TOPIC_STATUS_LABEL = { nao_iniciado:'Não iniciado', em_estudo:'Em estudo', em_revisao:'Em revisão', dominado:'Consolidado (autoavaliação)' };
 
 /** Cobertura (tópicos vistos) e domínio (tópicos dominados) de uma disciplina. */
 function disciplineProgress(discId){
@@ -2337,12 +2340,12 @@ const EvidenceModel = {
     if(!Array.isArray(list)) return [];
     const out = [], seen = new Set();
     for(const raw of list){
+      if(out.length >= MAX_RESULTS_PER_STUDY){ if(typeof report === 'function') report('result-limit'); continue; }
       const r = this.clean(raw, report);
       if(!r) continue;
       if(seen.has(r.id)) r.id = uid();
       seen.add(r.id);
       out.push(r);
-      if(out.length >= MAX_RESULTS_PER_STUDY) break;
     }
     return out;
   },
@@ -3505,7 +3508,6 @@ const AnalyticsEngine = {
   },
 
   _compute(range, scope){
-    const sessions = AnalyticsScope.sessions(scope, range);
     /* v7.1 — PERÍODO EM ANDAMENTO. "Esta semana" e "Este mês" incluem dias que ainda
        não chegaram. Contar esses dias faria "estudou em 2 de 7 dias" numa terça e
        compararia uma semana pela metade com uma semana inteira. Regra:
@@ -3518,12 +3520,15 @@ const AnalyticsEngine = {
     const partial = range.start <= t0 && range.end > t0;
     const effEnd = partial ? t0 : range.end;
     const days = range.start > t0 ? fullDays : rangeDays({ start: range.start, end: effEnd });
+    // Backups antigos podem conter estudos com data futura. Num período em
+    // andamento, numerador e denominador usam o mesmo limite: hoje.
+    const sessions = AnalyticsScope.sessions(scope, { start:range.start, end:effEnd });
     const prevRange = this.previousRange(range, partial ? days : null);
     const prevSessions = AnalyticsScope.sessions(scope, prevRange);
 
     const totals = this.totals(sessions, days);
     const rest = this.restStats(sessions, totals);
-    const weeklyRhythm = this.weeklyRhythm(range, sessions);
+    const weeklyRhythm = this.weeklyRhythm({ start:range.start, end:effEnd }, sessions);
     const previousComparison = this.compare(totals, this.totals(prevSessions, rangeDays(prevRange)), prevRange);
     previousComparison.curRange = { start: range.start, end: effEnd };
     previousComparison.partial = partial;
@@ -3540,7 +3545,7 @@ const AnalyticsEngine = {
     const typeStats = this.typeStats(sessions);
     const byWeekday = this.weekdayDistribution(sessions);
     const difficulty = this.difficulty(sessions);
-    const planAdherence = this.planAdherence(range, scope);
+    const planAdherence = this.planAdherence(range, scope, effEnd);
     const reviews = this.reviewStats(range, scope, sessions);
     const content = this.contentStats(scope);
     const deadlines = this.deadlineStats(range, scope, sessions);
@@ -3548,7 +3553,7 @@ const AnalyticsEngine = {
     const attention = this.attentionTopics(scope, range);
     const projection = this.projection(scope);
 
-    const results = this.resultStats(sessions, range);
+    const results = this.resultStats(sessions, { start:range.start, end:effEnd });
     const a = { range, days, fullDays, partial, effEnd, scope, sessions, totals, rest, weeklyRhythm, previousComparison, byDiscipline, byArea, byTopic,
                 byType, typeStats, byWeekday, difficulty, planAdherence, reviews, content, deadlines, priorities,
                 attention, projection, results };
@@ -3881,7 +3886,7 @@ const AnalyticsEngine = {
    * `pct` = quanto da meta foi alcançado (até 100%); `volumePct` pode passar.
    * Por disciplina: sugerido × realizado, informativo (nunca nota).
    */
-  planAdherence(range, scope){
+  planAdherence(range, scope, realizedEnd){
     const basis = scope.type === 'all' ? 'goal' : 'suggestion';
     const empty = { applicable: scope.type !== 'topic' && !scope.types, basis, hasPlan:false, planned:0, realized:0, counted:0, extra:0,
                     weeks:[], perDiscipline:[], pct:null, volumePct:null, weeksWithGoal:0, weeksReached:0 };
@@ -3890,7 +3895,7 @@ const AnalyticsEngine = {
     let cursor = startOfWeek(range.start);
     const last = startOfWeek(range.end);
     let guard = 0;
-    const scoped = AnalyticsScope.sessions(scope, range);
+    const scoped = AnalyticsScope.sessions(scope, { start:range.start, end:realizedEnd || range.end });
     while(cursor <= last && guard++ < 520){
       const ws = dateToISO(cursor);
       const wp = state.weeklyPlans.find(w => w.weekStart === ws);
@@ -4537,6 +4542,18 @@ const TimerService = {
       return (d && typeof d.runId === 'string' && d.runId) ? d.runId : null;
     } catch(_){ return undefined; }
   },
+  currentRunId(){
+    const stored = this.storedRunId();
+    return stored === undefined || (stored === null && !this.persisted)
+      ? (this.data ? this.data.runId : null) : stored;
+  },
+  _releaseReservation(runId){
+    if(!runId || !DB.isOpen) return;
+    return DB.atomic(['meta'], async api => {
+      const current = await api.get('meta', 'activeTimer');
+      if(current && current.value === runId) api.delete('meta', 'activeTimer');
+    }).catch(err => console.warn('Não foi possível liberar a reserva do cronômetro:', err));
+  },
   /** v6.7: `topicIds` e `presetTypes` são listas (um id/tipo solto também é aceito). */
   /**
    * v6.7 — o que está sendo estudado mudou no fim do cronômetro (tópicos, tipos,
@@ -4602,6 +4619,7 @@ const TimerService = {
   startBreak(){
     if(!this.data) return false;
     const now = Date.now(), d = this.data;
+    this.settlePomodoro(now);
     if(d.paused){
       this._closePause(now);
       this._toRest(now);
@@ -4624,6 +4642,7 @@ const TimerService = {
   endBreak(){
     if(!this.data) return false;
     const now = Date.now(), d = this.data;
+    this.settlePomodoro(now);
     if(d.paused) this._closePause(now);
     else if(d.running) return false;
     else this._closeRest(now);
@@ -4639,6 +4658,10 @@ const TimerService = {
   pause(){
     if(!this.data || this.data.paused) return false;
     const now = Date.now(), d = this.data;
+    // Um clique pode chegar antes do tick que perceberia o fim do bloco,
+    // especialmente ao retornar de uma aba suspensa. Primeiro aplica o limite.
+    const settled = this.settlePomodoro(now);
+    if(d.paused){ if(settled.changed) this._persist(); return settled.changed; }
     if(d.running){
       d.accumulatedMs = this.getElapsed(now);
       d.running = false;
@@ -4777,6 +4800,7 @@ const TimerService = {
     const d = this.data;
     if(!d || !d.pomo) return false;
     const now = Date.now();
+    this.settlePomodoro(now);
     this._closePause(now);
     this._toRest(now);
     d.pomo.phaseRest = 0; d.pomo.awaiting = null;
@@ -4825,7 +4849,7 @@ const TimerService = {
       pomodoro: p ? { blocks: p.done, focusMin: p.focusMin, shortMin: p.shortMin, longMin: p.longMin, every: p.every } : null
     };
   },
-  clear(){ this.data = null; this._persist(); this.stopTicking(); },
+  clear(){ const runId = this.data && this.data.runId; this.data = null; this._persist(); this.stopTicking(); this._releaseReservation(runId); },
   /** Esquece o cronômetro só na memória desta aba (outra aba já cuidou do armazenamento). */
   forget(){ this.data = null; this.persisted = true; this.stopTicking(); },
   /**
@@ -4836,6 +4860,7 @@ const TimerService = {
   release(runId){
     const stored = this.storedRunId();
     if(stored === runId || stored === undefined){ this.clear(); return; }
+    this._releaseReservation(runId);
     if(stored === null){ this.forget(); return; }
     this.stopTicking();
     this.restore();
@@ -5125,9 +5150,19 @@ const Backup = {
    * já garante que não há ids repetidos; se algum escapasse, a transação inteira
    * seria desfeita em vez de um registro sobrescrever outro em silêncio.
    */
-  async restoreInto(data){
+  async restoreInto(data, opts){
+    const allowedRunId = opts && opts.discardTimerRunId || null;
     const stores = ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings'];
-    await DB.transactional(stores, api => {
+    await DB.atomic(stores.concat('meta'), async api => {
+      // Esta leitura adquire a mesma fila transacional usada para iniciar um
+      // cronômetro. A decisão da prévia precisa continuar válida AGORA.
+      const reserved = await api.get('meta', 'activeTimer');
+      const active = (reserved && reserved.value) || TimerService.currentRunId();
+      if(active && active !== allowedRunId){
+        const err = new Error('Um estudo foi iniciado enquanto a prévia estava aberta.');
+        err.code = 'timer-active';
+        throw err;
+      }
       stores.forEach(st => api.clear(st));
       data.areas.forEach(x => api.add('areas', x));
       data.disciplines.forEach(x => api.add('disciplines', x));
@@ -5137,6 +5172,10 @@ const Backup = {
       data.weeklyPlans.forEach(x => api.add('weeklyPlans', x));
       data.deadlines.forEach(x => api.add('deadlines', x));
       api.put('settings', { key:'settings', value:data.settings });
+      if(allowedRunId){
+        api.put('meta', { key:'lastDiscardedTimer', value:allowedRunId });
+        if(reserved && reserved.value === allowedRunId) api.delete('meta', 'activeTimer');
+      }
     });
   }
 };
@@ -5213,6 +5252,8 @@ const IntegrityValidator = {
     'session-split':         n => `${plural(n, 'divisão de tempo não fechava', 'divisões de tempo não fechavam')} com a duração do estudo (ou da disciplina) e ${n === 1 ? 'passa' : 'passam'} a ser estimada${n === 1 ? '' : 's'}. A duração foi mantida.`,
     'session-disc-missing':  n => `${plural(n, 'estudo citava', 'estudos citavam')} uma disciplina que não existe no arquivo: o estudo continua com as outras disciplinas dele.`,
     'session-disc-dup':      n => `${plural(n, 'disciplina repetida dentro de um estudo foi contada', 'disciplinas repetidas dentro de estudos foram contadas')} uma vez só.`,
+    'session-disc-limit':    n => `${plural(n, 'estudo excedeu', 'estudos excederam')} o limite de ${MAX_DISCIPLINES_PER_STUDY} disciplinas: os vínculos excedentes ficaram de fora; a duração foi mantida.`,
+    'session-topic-limit':   n => `${plural(n, 'estudo excedeu', 'estudos excederam')} o limite de ${MAX_TOPICS_PER_STUDY} tópicos: os vínculos excedentes ficaram de fora; a duração foi mantida.`,
     'session-topic-disc':    n => `${plural(n, 'tópico de um estudo estava', 'tópicos de estudos estavam')} ligado${n === 1 ? '' : 's'} à disciplina errada dentro do mesmo estudo e ${n === 1 ? 'voltou' : 'voltaram'} para a disciplina certa.`,
     'block-orphan':          n => `${plural(n, 'bloco da semana era', 'blocos da semana eram')} de uma disciplina que não existe no arquivo.`,
     'block-date':            n => `${plural(n, 'bloco da semana tinha', 'blocos da semana tinham')} um dia fora daquela semana ou ilegível.`,
@@ -5228,6 +5269,7 @@ const IntegrityValidator = {
     'deadline-field':        n => `${plural(n, 'data ilegível de prazo ficou', 'datas ilegíveis de prazos ficaram')} em branco (início ou conclusão).`,
     'stamp':                 n => `${plural(n, 'registro sem data de criação legível recebe', 'registros sem data de criação legível recebem')} a data de agora.`,
     'result-invalid':        n => `${plural(n, 'resultado ilegível (questões, conceito ou marco) ficou', 'resultados ilegíveis (questões, conceitos ou marcos) ficaram')} de fora. O estudo continua.`,
+    'result-limit':          n => `${plural(n, 'resultado ficou', 'resultados ficaram')} de fora por exceder o limite de ${MAX_RESULTS_PER_STUDY} resultados por estudo.`,
     'result-link':           n => `${plural(n, 'resultado apontava', 'resultados apontavam')} para uma disciplina ou um tópico que não está no estudo: ${n === 1 ? 'passa' : 'passam'} a valer para o estudo como um todo.`,
     'session-paused':        n => `${plural(n, 'tempo pausado ilegível (ou sem horário) ficou', 'tempos pausados ilegíveis (ou sem horário) ficaram')} de fora. A duração do estudo foi mantida.`,
     // ignorados
@@ -5256,6 +5298,11 @@ const IntegrityValidator = {
     // Um backup de uma versão futura pode ter campos e regras que esta versão não conhece:
     // restaurar "o que der" perderia dados sem ninguém perceber.
     const sv = Number(raw.schemaVersion);
+    if(isV3 && 'schemaVersion' in raw &&
+       ((typeof raw.schemaVersion !== 'number' && typeof raw.schemaVersion !== 'string') ||
+        !Number.isInteger(sv) || sv < 3)){
+      throw this.fatal('A versão do formato deste backup está ilegível. Use uma cópia íntegra do arquivo. Seus dados atuais não foram alterados.', 'Versão de backup inválida');
+    }
     if(isV3 && isFinite(sv) && sv > APP_SCHEMA_VERSION){
       throw this.fatal('Este backup foi criado por uma versão mais nova do Ciclo. Atualize o Ciclo (recarregue a página) e tente restaurar de novo. Seus dados atuais não foram alterados.',
         'Backup de uma versão mais nova');
@@ -5273,10 +5320,41 @@ const IntegrityValidator = {
 
     let source, notes = [];
     if(isV2){
-      const c = convertV2(raw, { keepRawDate:true });
+      // Confere o formato original ANTES da conversão: o conversor antigo
+      // ignorava duplicatas e comparava referências por tipo (1 !== "1").
+      // Isso podia esconder conflito ou descartar um estudo recuperável.
+      const legacy = Object.assign({}, raw), duplicates = {};
+      for(const [key, store] of [['areas','areas'],['subjects','disciplines'],['logs','sessions']]){
+        if(key in raw && raw[key] != null && !Array.isArray(raw[key])){
+          throw this.fatal(`A parte "${this.STORE_LABELS[store]}" do arquivo está corrompida.`, 'Arquivo corrompido');
+        }
+        const seen = new Map();
+        duplicates[store] = 0;
+        legacy[key] = (Array.isArray(raw[key]) ? raw[key] : []).map(rec => {
+          if(!rec || typeof rec !== 'object' || Array.isArray(rec)) return rec;
+          const r = Object.assign({}, rec, { id:this.normId(rec.id) });
+          if(key === 'subjects') r.areaId = this.normId(rec.areaId) || null;
+          if(key === 'logs') r.subjectId = this.normId(rec.subjectId);
+          if(!r.id) return r;
+          const canonical = JSON.stringify(Object.keys(r).sort().map(k => [k, r[k]]));
+          if(seen.has(r.id)){
+            if(seen.get(r.id) !== canonical) throw this.fatal(`O arquivo tem dois registros diferentes com o mesmo identificador em ${this.STORE_LABELS[store]}. Nada foi alterado.`, 'Identificadores repetidos no backup');
+            duplicates[store]++;
+            return null;
+          } else seen.set(r.id, canonical);
+          return r;
+        }).filter(Boolean);
+      }
+      const c = convertV2(legacy, { keepRawDate:true });
       source = { areas:c.areas, disciplines:c.disciplines, topics:[], sessions:c.sessions, plans:[], weeklyPlans:[], deadlines:[], settings:c.settings };
       notes.push('Backup no formato da V2 (Diário de Estudos): convertido automaticamente.');
       const out = this.analyze(source);
+      Object.entries(duplicates).forEach(([store, n]) => {
+        if(!n) return;
+        out.report.ignoredCodes.duplicate = (out.report.ignoredCodes.duplicate || 0) + n;
+        out.report.counts[store].found += n;
+        out.report.counts[store].ignored += n;
+      });
       if(c.orphanLogs){ out.report.ignoredCodes['session-orphan'] = (out.report.ignoredCodes['session-orphan'] || 0) + c.orphanLogs; out.report.counts.sessions.found += c.orphanLogs; out.report.counts.sessions.ignored += c.orphanLogs; }
       return this._finish(out, { format:'v2', notes, raw });
     }
@@ -7592,27 +7670,54 @@ async function discardTimer(){
 
 /* ---------- INICIAR SESSÃO ---------- */
 /** v6.7: `topicIds` e `presetTypes` podem ser listas ou um valor só (null = nenhum). v6.8: disciplinas também. */
-function startTimer(disciplineIds, topicIds, presetTypes, presetMethod, targetMinutes, opts){
-  // v6.5: um estudo iniciado em outra aba também conta — o armazenamento é consultado antes de começar outro.
-  if(!TimerService.isActive && TimerService.storedRunId()){ TimerService.restore(); renderTimerBar(); }
-  if(TimerService.isActive){
-    toast('Termine o estudo atual antes de começar outro.', 'err', { title:'Você já está estudando' });
+async function startTimer(disciplineIds, topicIds, presetTypes, presetMethod, targetMinutes, opts){
+  let startedRunId = null;
+  try {
+    return await DB.atomic(['meta','disciplines'], async api => {
+      const reserved = await api.get('meta', 'activeTimer');
+      if(reserved && reserved.value){
+        if(!TimerService.isActive){ TimerService.restore(); renderTimerBar(); }
+        toast('Finalize o estudo atual antes de começar outro.', 'info', { title:'Há um cronômetro em andamento' });
+        return false;
+      }
+      // v6.5: um estudo iniciado em outra aba também conta — o armazenamento é consultado antes de começar outro.
+      if(!TimerService.isActive && TimerService.storedRunId()){ TimerService.restore(); renderTimerBar(); }
+      if(TimerService.isActive){
+        toast('Termine o estudo atual antes de começar outro.', 'err', { title:'Você já está estudando' });
+        return false;
+      }
+      const selected = TimerService.cleanIds(Array.isArray(disciplineIds) ? disciplineIds : [disciplineIds]);
+      for(const id of selected){
+        if(id !== UNCLASSIFIED_DISC && !(await api.get('disciplines', id))){
+          toast('Escolha uma disciplina dos dados atuais e tente de novo.', 'info', { title:'Os dados mudaram em outra aba' });
+          return false;
+        }
+      }
+      PomodoroAlerts.unlock();
+      TimerService.start(disciplineIds, topicIds, presetTypes, presetMethod, targetMinutes, opts);
+      startedRunId = TimerService.data.runId;
+      // O localStorage pode chegar à outra aba depois deste commit. A reserva no
+      // IndexedDB é a decisão transacional; o relógio continua sendo o de sempre.
+      if(TimerService.persisted) api.put('meta', { key:'activeTimer', value:TimerService.data.runId });
+      renderTimerBar();
+      if(!TimerService.persisted){
+        toast('Se a página for fechada, este estudo não poderá ser recuperado. Finalize antes de sair.', 'warn',
+          { title:'Não foi possível garantir a recuperação deste cronômetro', duration:7000 });
+      }
+      const names = TimerService.data.topicIds.map(id => (getTopic(id) || {}).name).filter(Boolean);
+      const topicText = names.length > 2 ? names.slice(0, 2).join(' · ') + ' · +' + (names.length - 2) : names.join(' · ');
+      const p = TimerService.data.pomo;
+      const what = TimerService.discIds().length ? TimerService.discText() + (topicText ? ' · ' + topicText : '') : 'Você escolhe a disciplina ao finalizar';
+      toast(what + (p ? ` — bloco de ${p.focusMin} min, depois ${p.shortMin} de descanso.` : ' — o tempo já está contando.'), 'ok',
+        { title: TimerService.data.presetTypes.includes('revisao') ? 'Revisão iniciada' : p ? 'Pomodoro iniciado' : 'Estudo iniciado' });
+      return true;
+    });
+  } catch(err){
+    if(startedRunId) { TimerService.release(startedRunId); renderTimerBar(); }
+    console.error('Falha ao iniciar o cronômetro:', err);
+    toast('Tente novamente. O cronômetro não foi iniciado.', 'err', { title:'Não foi possível começar' });
     return false;
   }
-  PomodoroAlerts.unlock();
-  TimerService.start(disciplineIds, topicIds, presetTypes, presetMethod, targetMinutes, opts);
-  renderTimerBar();
-  if(!TimerService.persisted){
-    toast('Se a página for fechada, este estudo não poderá ser recuperado. Finalize antes de sair.', 'warn',
-      { title:'Não foi possível garantir a recuperação deste cronômetro', duration:7000 });
-  }
-  const names = TimerService.data.topicIds.map(id => (getTopic(id) || {}).name).filter(Boolean);
-  const topicText = names.length > 2 ? names.slice(0, 2).join(' · ') + ' · +' + (names.length - 2) : names.join(' · ');
-  const p = TimerService.data.pomo;
-  const what = TimerService.discIds().length ? TimerService.discText() + (topicText ? ' · ' + topicText : '') : 'Você escolhe a disciplina ao finalizar';
-  toast(what + (p ? ` — bloco de ${p.focusMin} min, depois ${p.shortMin} de descanso.` : ' — o tempo já está contando.'), 'ok',
-    { title: TimerService.data.presetTypes.includes('revisao') ? 'Revisão iniciada' : p ? 'Pomodoro iniciado' : 'Estudo iniciado' });
-  return true;
 }
 
 /* =========================================================================
@@ -8345,6 +8450,8 @@ function studyTargetFields(o){
   blocks.forEach(b => syncBlock(b, false));
   const api = {
     node, ensure,
+    get draft(){ return creating ? { newName:newIn.value } : null; },
+    get dirty(){ return creating && !!newIn.value.trim(); },
     get discButton(){ return blocks[0].picker.button; },
     get topicButton(){ return blocks[0].topicPicker.button; },
     get discId(){ return creating ? '' : (blocks[0].discId || ''); },
@@ -8368,7 +8475,8 @@ function studyTargetFields(o){
     get topicId(){ const ids = api.topicIds; return ids.length ? ids[0] : null; }
   };
   drawMeta();
-  if(o.allowNewDiscipline && !blocks[0].discId && !discList(blocks[0]).length) startCreating('');
+  if(o.allowNewDiscipline && o.draft && typeof o.draft.newName === 'string') startCreating(o.draft.newName);
+  else if(o.allowNewDiscipline && !blocks[0].discId && !discList(blocks[0]).length) startCreating('');
   ready = true;
   return api;
 }
@@ -8621,6 +8729,7 @@ function topicSplitField(o){
       });
       return { ok:true, minutes:topic, disc };
     },
+    get draft(){ return opened ? { disc:Object.fromEntries(dTyped), topic:Object.fromEntries(tTyped) } : {}; },
     get dirty(){ return opened && Array.from(tTyped.values()).concat(Array.from(dTyped.values())).some(x => str(x).trim() !== ''); }
   };
 }
@@ -9131,6 +9240,14 @@ function breaksEditor(o){
     start: b.startedAt ? fmtClockOfDay(b.startedAt) : '', end: b.endedAt ? fmtClockOfDay(b.endedAt) : '',
     minutes: String(b.minutes), inputs: []
   }));
+  // Rascunho conserva inclusive uma linha incompleta ou inválida, para que a
+  // pessoa possa corrigi-la; não passa pela normalização de estudos gravados.
+  if(Array.isArray(o.draft)) o.draft.slice(0, MAX_BREAKS_PER_STUDY).forEach(b => {
+    if(!b || typeof b !== 'object') return;
+    rows.push({ key:++seq, id:str(b.id) || uid(), startedAt:validInstant(b.startedAt) === null ? null : b.startedAt,
+      endedAt:validInstant(b.endedAt) === null ? null : b.endedAt, origMinutes:b.origMinutes,
+      start:str(b.start), end:str(b.end), minutes:str(b.minutes), inputs:[] });
+  });
   const changed = () => { if(o.onChange) o.onChange(); };
 
   const head = h('p', { class:'breaks-title', text:'Descansos' });
@@ -9254,6 +9371,8 @@ function breaksEditor(o){
   draw();
   return {
     node, read, addButton: addBtn,
+    get draft(){ return rows.map(r => ({ id:r.id, start:r.start, end:r.end, minutes:r.minutes,
+      startedAt:r.startedAt, endedAt:r.endedAt, origMinutes:r.origMinutes })); },
     get count(){ return rows.length; },
     /** Retrato do que está digitado (para saber se algo mudou desde a abertura). */
     get signature(){ return mode + '|' + rows.map(r => mode === 'time' ? r.start + '>' + r.end : r.minutes).join(','); },
@@ -9319,14 +9438,29 @@ const FormDraft = {
       return d;
     } catch(_){ return null; }
   },
-  clear(kind){ try { localStorage.removeItem(this.PREFIX + kind); } catch(_){} },
+  clear(kind){ this.cancel(kind); try { localStorage.removeItem(this.PREFIX + kind); } catch(_){} },
   /** Gravação adiada: várias teclas seguidas viram uma gravação só. */
   _timers: {},
+  _pending: new Map(),
+  _warned: false,
   schedule(kind, build){
     clearTimeout(this._timers[kind]);
-    this._timers[kind] = setTimeout(() => { const d = build(); if(d) this.save(kind, d); else this.clear(kind); }, 400);
+    this._pending.set(kind, build);
+    this._timers[kind] = setTimeout(() => this.flush(kind), 400);
   },
-  cancel(kind){ clearTimeout(this._timers[kind]); },
+  flush(kind){
+    const build = this._pending.get(kind);
+    if(!build) return;
+    this.cancel(kind);
+    const d = build();
+    if(!d){ this.clear(kind); return; }
+    if(!this.save(kind, d) && !this._warned){
+      this._warned = true;
+      toast('Mantenha esta janela aberta até registrar. O navegador não permitiu guardar o rascunho para recuperar depois.', 'warn', { title:'Rascunho não guardado' });
+    }
+  },
+  flushAll(){ Array.from(this._pending.keys()).forEach(kind => this.flush(kind)); },
+  cancel(kind){ clearTimeout(this._timers[kind]); delete this._timers[kind]; this._pending.delete(kind); },
   /** "Rascunho recuperado" — dito no alto da janela, com a saída para começar do zero. */
   notice(savedAt, onDiscard){
     const when = fmtClockOfDay(savedAt);
@@ -9370,7 +9504,7 @@ function studyWhenFields(o){
   const fixBtn = h('button', { class:'linkbtn', type:'button', hidden:true });
   const note = h('p', { class:'when-note', 'aria-live':'polite' });
   const modeBtn = h('button', { class:'linkbtn muted', type:'button', onclick:() => setMode(mode === 'time' ? 'duration' : 'time') });
-  const breaks = breaksEditor({ idPrefix:p, mode: mode === 'time' ? 'time' : 'minutes', breaks: init ? init.breaks : [], compact:true, footExtra:modeBtn, clockHelpId, onChange:() => refresh() });
+  const breaks = breaksEditor({ idPrefix:p, mode: mode === 'time' ? 'time' : 'minutes', breaks: init ? init.breaks : [], draft:dr ? dr.breaks : null, compact:true, footExtra:modeBtn, clockHelpId, onChange:() => refresh() });
 
   const quick = h('div', { class:'chips', role:'group', 'aria-label':'Durações comuns' },
     [20, 30, 40, 60].map(v => h('button', { class:'chip', type:'button', text:v + ' min',
@@ -9535,8 +9669,8 @@ function studyWhenFields(o){
     node, evaluate: () => evaluate(false), refresh, firstField: dateIn,
     /** Algo já foi preenchido aqui? (para a janela não fechar com um clique fora) */
     isDirty: () => !!dr || dateIn.value !== date0 || (init ? timeTouched() : !!(startF.text || endF.text || breaks.count || mode !== 'time' || minIn.value !== minText0)),
-    /** v7.1 — o que está escrito agora, para guardar como rascunho (sem os descansos). */
-    snapshot: () => ({ date: dateIn.value, mode, start: startF.text, end: endF.text, minutes: minIn.value }),
+    /** O que está escrito agora, inclusive descansos que ainda precisam de correção. */
+    snapshot: () => ({ date: dateIn.value, mode, start: startF.text, end: endF.text, minutes: minIn.value, breaks:breaks.draft }),
     /** Edição: a pessoa mexeu em horário, duração ou descansos? E na data? */
     timeTouched, dateChanged: () => dateIn.value !== date0
   };
@@ -9627,10 +9761,10 @@ function openRegisterModal(preset){
     // v6.7: a divisão do tempo entre tópicos acompanha a duração calculada em "Quando"
     let lastWhen = null, split = null, results = null;
     const when = studyWhenFields({ idPrefix:'rm', date:p.date, draft: draft ? draft.when : null, onChange: r => { lastWhen = r; if(split) split.refreshTotal(); } });
-    const target = studyTargetFields({ close, idPrefix:'rm', discIds: discIds0, topicIds: draftTopics || topicIds0, allowNewDiscipline:true,
+    const target = studyTargetFields({ close, idPrefix:'rm', discIds: discIds0, topicIds: draftTopics || topicIds0, draft:draft ? draft.target : null, allowNewDiscipline:true,
       onChange: () => { renderOutcome(); if(results) results.refreshContext(); } });
     const typePick = studyTypePicker({ id:'rm-type', value:types, onChange: v => { types = v; renderOutcome(); } });
-    split = topicSplitField({ idPrefix:'rm', total: () => (lastWhen && lastWhen.complete) ? lastWhen.minutes : null });
+    split = topicSplitField({ idPrefix:'rm', initial:draft ? draft.split : null, total: () => (lastWhen && lastWhen.complete) ? lastWhen.minutes : null });
     results = resultsField({ idPrefix:'rm', initial: draft ? draft.results : [], context: () => target.groups });
 
     /* estudar agora: como contar o tempo (v7.1) e, no cronômetro livre, uma duração de referência opcional */
@@ -9682,13 +9816,13 @@ function openRegisterModal(preset){
       pomoBox.hidden = timerMode !== 'pomodoro';
     };
     const quickStart = h('button', { class:'linkbtn rm-unset', type:'button', text:'Começar sem escolher a disciplina — você escolhe ao finalizar',
-      onclick:() => { if(beginTimer([], [])) { close(); } } });
+      onclick:async () => { if(await beginTimer([], [])) { close(); } } });
     const timerBlock = h('div', { class:'rm-group rm-timer' },
       h('div', { class:'field' }, h('span', { class:'pick-label', text:'Como contar o tempo' }), tmGroup),
       freeBox, pomoBox, quickStart);
     syncTimerMode();
     /** Começa o cronômetro com o modo escolhido. A escolha fica lembrada para a próxima vez. */
-    function beginTimer(discIds, topicIds){
+    async function beginTimer(discIds, topicIds){
       let cfg = null;
       if(timerMode === 'pomodoro'){
         if(pomo.preset === 'custom'){
@@ -9711,7 +9845,7 @@ function openRegisterModal(preset){
     }
 
     /* já estudei: como foi — v6.7: um resultado POR tópico (as respostas dadas ficam ao trocar tópicos) */
-    const outcomes = reviewOutcomesField({ idPrefix:'rm' });
+    const outcomes = reviewOutcomesField({ idPrefix:'rm', initial:draft ? draft.outcomes : null });
     const generalNote = h('p', { class:'hint rv-general-note', hidden:true });
     const outcomeField = h('div', null, outcomes.node, generalNote);
     function renderOutcome(){
@@ -9736,12 +9870,12 @@ function openRegisterModal(preset){
     const grid = h('div', { class:'rm-grid' }, whenBlock, whatBlock, howBlock, timerBlock);
     // Já há algo preenchido além do que veio pronto? Então um clique fora da janela não a fecha.
     isDirty = () => when.isDirty() || !!comment.textarea.value.trim() || types.join(',') !== types0 || difficulty !== null || outcomes.dirty
-      || target.discIds.join(',') !== (discId0 || '') || target.topicIds.join(',') !== topicIds0.join(',') || targetMin !== null || split.dirty || results.dirty;
+      || target.dirty || target.discIds.join(',') !== (discId0 || '') || target.topicIds.join(',') !== topicIds0.join(',') || targetMin !== null || split.dirty || results.dirty;
 
     /* v7.1 — rascunho: guardado a cada mudança (só no "Já estudei", que é o que pode ter muita coisa digitada) */
     const draftOf = () => (mode === 'manual' && isDirty()) ? {
       when: when.snapshot(), discIds: target.discIds, topicIds: target.topicIds, types, difficulty,
-      comment: comment.textarea.value, results: results.draft
+      target:target.draft, comment: comment.textarea.value, results: results.draft, split:split.draft, outcomes:Object.fromEntries(outcomes.values)
     } : null;
     const saveDraft = () => { if(!close.isClosed()) FormDraft.schedule('register', draftOf); };
     const draftNotice = draft ? FormDraft.notice(draft.savedAt, (n) => {
@@ -9816,7 +9950,7 @@ function openRegisterModal(preset){
 
         if(mode === 'timer'){
           // v6.5: só fecha se o cronômetro começou (outra aba pode ter iniciado um estudo neste meio-tempo)
-          if(beginTimer(target.discIds, topicIds)) close();
+          if(await beginTimer(target.discIds, topicIds)) close();
           return;
         }
         if(w.needsConfirm && !(await confirmLong(w))) return;
@@ -9877,7 +10011,7 @@ function openRegisterModal(preset){
       ],
       focus: timerBusy ? when.firstField : $('.mode-opt[aria-checked="true"]', modes)
     };
-  }, { size:'study', keepOnBackdrop: () => isDirty() });
+  }, { size:'study', keepOnBackdrop: () => isDirty(), onClose:() => FormDraft.flush('register') });
 }
 
 /**
@@ -9907,6 +10041,8 @@ function openQuickStart(preset){
  */
 function openFinishModal(){
   if(!TimerService.isActive) return;
+  const settled = TimerService.settlePomodoro();
+  if(settled.changed) TimerService._persist();
   const d = TimerService.data;
   const runId = d.runId;                         // v6.5: a identidade deste cronômetro; vira o id do estudo
   const snap = TimerService.snapshot();
@@ -9934,7 +10070,7 @@ function openFinishModal(){
   openModal(close => {
     /* ---------- resumo: estudo e descanso, lado a lado e nunca somados ---------- */
     const minInput = h('input', { type:'number', class:'no-spin', id:'fin-min', min:'1', step:'1', value:String(studyMin), inputmode:'numeric' });
-    const breaks = breaksEditor({ idPrefix:'fin', mode:'minutes', breaks:snapBreaks, onChange:() => drawSummary() });
+    const breaks = breaksEditor({ idPrefix:'fin', mode:'minutes', breaks:draft && Array.isArray(draft.breaks) ? [] : snapBreaks, draft:draft ? draft.breaks : null, onChange:() => drawSummary() });
     const studyV = h('span', { class:'fs-v num' });
     const restV = h('span', { class:'fs-v num' });
     const restL = h('span', { class:'fs-l' });
@@ -9988,11 +10124,11 @@ function openFinishModal(){
 
     // v6.7: os tópicos escolhidos ao começar (todos) voltam aqui — inclusive depois de recarregar a página
     let split = null, results = null;
-    const target = studyTargetFields({ close, idPrefix:'fin', discIds: TimerService.discIds(), topicIds: d.topicIds || [],
+    const target = studyTargetFields({ close, idPrefix:'fin', discIds: TimerService.discIds(), topicIds: d.topicIds || [], draft:draft ? draft.target : null,
       allowNewDiscipline: noDisc,                    // v7.1: começou sem disciplina — dá para criar uma aqui
       onChange: () => { renderOutcome(); if(results) results.refreshContext(); } });
     const typePick = studyTypePicker({ id:'fin-type', value:types, onChange: v => { types = v; renderOutcome(); } });
-    split = topicSplitField({ idPrefix:'fin', total: () => { const m = Math.round(Number(minInput.value)); return m > 0 ? m : null; } });
+    split = topicSplitField({ idPrefix:'fin', initial:draft ? draft.split : null, total: () => { const m = Math.round(Number(minInput.value)); return m > 0 ? m : null; } });
     results = resultsField({ idPrefix:'fin', initial: draft ? draft.results : [], context: () => target.groups });
 
     const outcomes = reviewOutcomesField({ idPrefix:'fin', initial: draft && draft.outcomes && typeof draft.outcomes === 'object' ? draft.outcomes : null });
@@ -10041,8 +10177,14 @@ function openFinishModal(){
     /* v7.1 — rascunho do fim do cronômetro (disciplinas, tópicos e tipos já ficam no próprio cronômetro) */
     const draftOf = () => {
       const outs = {}; outcomes.values.forEach((v, k) => { outs[k] = v; });
-      const has = comment.textarea.value.trim() || difficulty !== null || results.dirty || Object.keys(outs).length || minInput.value !== String(studyMin) || (methodTouched && method !== d.presetMethod);
-      return has ? { runId, minutes: minInput.value, comment: comment.textarea.value, difficulty, results: results.draft, outcomes: outs, method: methodTouched ? method : null } : null;
+      const minutesChanged = minInput.value !== String(studyMin);
+      const breaksChanged = JSON.stringify(breaks.draft.map(b => b.minutes)) !== JSON.stringify(snapBreaks.map(b => String(b.minutes)));
+      const has = comment.textarea.value.trim() || difficulty !== null || target.dirty || results.dirty || Object.keys(outs).length || split.dirty || minutesChanged || breaksChanged || (methodTouched && method !== d.presetMethod);
+      // Um comentário não congela a medição. Ao reabrir, só correções explícitas
+      // substituem os minutos/descansos que o cronômetro continuou medindo.
+      return has ? { runId, minutes:minutesChanged ? minInput.value : undefined,
+        breaks:breaksChanged ? breaks.draft : undefined, target:target.draft, split:split.draft, comment: comment.textarea.value,
+        difficulty, results: results.draft, outcomes: outs, method: methodTouched ? method : null } : null;
     };
     const saveDraft = () => { if(!close.isClosed()) FormDraft.schedule('finish', draftOf); };
     content.addEventListener('input', saveDraft);
@@ -10101,13 +10243,13 @@ function openFinishModal(){
         pomodoro: snap.pomodoro,
         results: rs.results
       }, { timerRunId: runId });
-      if(!res.ok && res.reason === 'duplicate'){
+      if(!res.ok && (res.reason === 'duplicate' || res.reason === 'timer-ended')){
         // Já estava no banco (outra aba, ou a página fechou logo depois de gravar): nada é aplicado de novo.
         TimerService.release(runId);
         FormDraft.clear('finish');
         close(); renderTimerBar();
         await safeRefresh();
-        toast('Nada foi gravado de novo.', 'info', { title:'Esse estudo já foi registrado.' });
+        toast('Nada foi gravado de novo.', 'info', { title:res.reason === 'duplicate' ? 'Esse estudo já foi registrado.' : 'Esse estudo já foi encerrado em outra aba.' });
         return;
       }
       if(!res.ok){ unlock(); saveDraft(); return; }
@@ -10130,7 +10272,7 @@ function openFinishModal(){
       ],
       focus: noDisc ? target.discButton : fixToggle          // o primeiro controle: a janela abre no resumo, não no fim do formulário
     };
-  }, { size:'study', dismissible:false, onClose: () => { if(TimerService.isActive) renderTimerBar(); } });
+  }, { size:'study', dismissible:false, onClose: () => { FormDraft.flush('finish'); if(TimerService.isActive) renderTimerBar(); } });
 }
 
 /** Sessão esquecida aberta por muito tempo. */
@@ -10543,10 +10685,17 @@ const SessionCommands = {
     if(o.id) session.id = str(o.id);
 
     try {
-      return await DB.atomic(this.STORES, async api => {
+      return await DB.atomic(o.unique ? this.STORES.concat('meta') : this.STORES, async api => {
+        let timerReservation = null;
         if(o.unique){
           const dup = await api.get('sessions', session.id);
           if(dup) return { ok:false, reason:'duplicate', session:dup };
+          const discarded = await api.get('meta', 'lastDiscardedTimer');
+          timerReservation = await api.get('meta', 'activeTimer');
+          if((discarded && discarded.value === session.id) ||
+             (timerReservation && timerReservation.value !== session.id) || TimerService.currentRunId() !== session.id){
+            return { ok:false, reason:'timer-ended' };
+          }
         }
         // cada disciplina e cada tópico precisam existir (outra aba pode ter mudado algo)
         const chk = await this._check(api, session);
@@ -10563,7 +10712,10 @@ const SessionCommands = {
           recs.push({ topic: rec.topic, effect: rec.effect, outcome: e.outcome || null });
         }
         // `add` recusa um id repetido: é a garantia final de que o mesmo cronômetro não vira dois estudos.
-        if(o.unique) await api.add('sessions', session); else api.put('sessions', session);
+        if(o.unique){
+          await api.add('sessions', session);
+          if(timerReservation && timerReservation.value === session.id) api.delete('meta', 'activeTimer');
+        } else api.put('sessions', session);
         recs.forEach(r => api.put('topics', r.topic));
         return {
           ok:true, session, effects: recs,
@@ -11595,11 +11747,11 @@ function openDisciplineReview(disciplineId, opts){
           close();
           openRegisterModal({ mode:'manual', disciplineId:d.id, topicIds: ids, types:['revisao'] });
         } }),
-        h('button', { class:'btn primary', type:'button', onclick:() => {
+        h('button', { class:'btn primary', type:'button', onclick:async () => {
           if(!valid()){ toast('Marque pelo menos um assunto.', 'err'); return; }
           const ids = topicIds();
           const method = ids.length === 1 ? ReviewEngine.effectiveMethod(getTopic(ids[0])).method : null;
-          if(startTimer(d.id, ids, ['revisao'], method)) close();
+          if(await startTimer(d.id, ids, ['revisao'], method)) close();
         } }, icon('i-play'), 'Começar revisão')
       ]
     };
@@ -11648,7 +11800,7 @@ function startReview(topicId, presetMethod){
         h('button', { class:'btn ghost', type:'button', text:'Registrar sem cronômetro',
           onclick:() => { close(); openReviewOutcomeModal(t.id, method, ReviewEngine.estimateMinutes(t, method)); } }),
         h('button', { class:'btn primary', type:'button', text:'Começar revisão',
-          onclick:() => { if(startTimer(t.disciplineId, [t.id], ['revisao'], method)) close(); } })
+          onclick:async () => { if(await startTimer(t.disciplineId, [t.id], ['revisao'], method)) close(); } })
       ]
     };
   }, { size:'wide' });
@@ -12746,7 +12898,7 @@ function planUsage(view, prog){
   shown.forEach(r => {
     const name = disciplineName(r.id);
     const val = fmtDuration(r.real) + (compare && r.sug > 0 ? ` · sugestão ${fmtDuration(r.sug)}` : (compare ? ' · fora da sugestão' : ''));
-    list.append(h('li', { class:'wk-usage-row', role:'img', 'aria-label': `${name}: ${val}` },
+    list.append(h('li', { class:'wk-usage-row', 'aria-label': `${name}: ${val}` },
       h('span', { class:'wu-name', text:name, title:name }),
       h('span', { class:'wu-track', 'aria-hidden':'true' },
         h('span', { class:'wu-fill', style:`width:${(r.real / mx) * 100}%` }),
@@ -16203,7 +16355,7 @@ function openDeadlineModal(dl, preset){
     let discId = dl ? (dl.disciplineId || '') : (p.disciplineId || '');
     let topicId = dl ? (dl.topicId || '') : (p.topicId || '');
 
-    const titleIn = h('input', { type:'text', id:'dl-title', value: dl ? dl.title : '', maxlength:'120', autocomplete:'off', placeholder:'Ex.: Prova de Redes' });
+    const titleIn = h('input', { type:'text', id:'dl-title', value: dl ? dl.title : '', maxlength:'120', autocomplete:'off', placeholder:'Ex.: Prova de Inglês' });
     const dateIn = h('input', { type:'date', id:'dl-date', value: dl ? dl.date : '' , required:true });
     const dateLabel = h('label', { for:'dl-date' });
     const startIn = h('input', { type:'date', id:'dl-start', value: dl && dl.startDate ? dl.startDate : '' });
@@ -16212,16 +16364,17 @@ function openDeadlineModal(dl, preset){
 
     const typeChips = h('div', { class:'chips', role:'radiogroup', 'aria-label':'Tipo de prazo' });
     DEADLINE_TYPES.forEach(t => {
-      const b = h('button', { class:'chip', type:'button', role:'radio', 'aria-checked': t.v === type ? 'true':'false', 'aria-pressed': t.v === type ? 'true':'false', text:t.label });
+      const b = h('button', { class:'chip', type:'button', role:'radio', 'aria-checked': t.v === type ? 'true':'false', text:t.label });
       b.addEventListener('click', () => {
         type = t.v;
-        $$('.chip', typeChips).forEach(x => { x.setAttribute('aria-pressed','false'); x.setAttribute('aria-checked','false'); });
-        b.setAttribute('aria-pressed','true'); b.setAttribute('aria-checked','true');
+        $$('.chip', typeChips).forEach(x => x.setAttribute('aria-checked','false'));
+        b.setAttribute('aria-checked','true');
         setDateLabel();
-        titleIn.placeholder = `Ex.: ${t.v === 'exam' ? 'Prova de Redes' : t.v === 'project' ? 'Projeto de Redes' : t.v === 'assignment' ? 'Trabalho de História' : t.label + ' de Inglês'}`;
+        titleIn.placeholder = `Ex.: ${t.v === 'exam' ? 'Prova de Inglês' : t.v === 'project' ? 'Projeto de Artes' : t.v === 'assignment' ? 'Trabalho de Matemática' : t.label + ' de Inglês'}`;
       });
       typeChips.appendChild(b);
     });
+    rovingInit(typeChips);
 
     const discSel = h('select', { id:'dl-disc' });
     discSel.appendChild(h('option', { value:'' }, 'Nenhuma'));
@@ -17242,8 +17395,16 @@ function renderAnalyticsResult(root){
   const metrics = analyticsFocusMetrics(a, focus);
   if(metrics.length) parts.push(h('div', { class:'an-metrics', role:'group', 'aria-label':'Números principais' }, metrics.map(metricCard)));
   const viz = analyticsMainViz(a, focus);
-  if(viz) parts.push(h('section', { class:'an-block an-viz', 'aria-labelledby':'an-viz-t' },
-    h('h3', { class:'an-block-t', id:'an-viz-t', text:viz.title }), viz.node));
+  const vizNode = viz ? h('section', { class:'an-block an-viz', 'aria-labelledby':'an-viz-t' },
+    h('h3', { class:'an-block-t', id:'an-viz-t', text:viz.title }), viz.node) : null;
+  const resultKind = focus === 'results' ? resultsBreakdownKind(a) : null;
+  const resultNode = resultKind ? h('section', { class:'an-block', 'aria-labelledby':'an-results-by' },
+    h('h3', { class:'an-block-t', id:'an-results-by', text:resultKind === 'topic' ? 'Acerto por tópico' : 'Acerto por disciplina' }),
+    resultsByViz(a, resultKind)) : null;
+  if(vizNode && resultNode){
+    vizNode.classList.add('an-pan-card'); resultNode.classList.add('an-pan-card');
+    parts.push(h('div', { class:'an-pan-grid an-results-grid' }, vizNode, resultNode));
+  } else parts.push(vizNode, resultNode);
   const ins = analyticsInsightsBlock(a, focus);
   if(ins) parts.push(ins);
   const next = analyticsNextQuestions(a, focus);
@@ -17548,27 +17709,56 @@ function fmtMinutesDiff(cur, prev){
 }
 function fmtCountDiff(cur, prev){ const d = cur - prev; return d === 0 ? 'igual' : (d > 0 ? '+' : '−') + Math.abs(d); }
 
+/** Resultados longos continuam acessíveis em lotes, sem desenhar tudo de uma vez. */
+function resultPages(items, size, row, opts){
+  const o = opts || {};
+  let shown = Math.min(size, items.length);
+  const list = h(o.tag || 'div', { class:o.className || '' });
+  const status = h('span', { class:'hint', role:'status', tabindex:'-1' });
+  const more = h('button', { class:'linkbtn', type:'button', text:o.more || 'Mostrar mais', onclick:() => {
+    shown = Math.min(shown + size, items.length);
+    draw();
+    if(more.hidden) status.focus({ preventScroll:true });
+  } });
+  const foot = h('div', { class:'result-pages-foot', hidden:items.length <= size }, status, more);
+  function draw(){
+    mount(list, (o.latest ? items.slice(-shown) : items.slice(0, shown)).map(row));
+    status.textContent = `${shown} de ${items.length} ${o.label || 'resultados'} no período.`;
+    more.hidden = shown >= items.length;
+  }
+  draw();
+  return h('div', null, list, foot);
+}
+
 /** Acerto por semana: o percentual de cada semana com questões (e o tempo da semana ao lado, só como contexto). */
 function resultsWeeklyViz(a){
-  const weeks = a.results.weeks.filter(w => w.total > 0).slice(-12);
+  const weeks = a.results.weeks.filter(w => w.total > 0);
   if(!weeks.length) return h('p', { class:'hint', text:'Nenhuma questão registrada neste período.' });
   return h('div', { class:'res-weeks' },
-    weeks.map(w => {
+    resultPages(weeks, 12, w => {
       const d = parseISO(w.start);
       const label = a.results.weeks.length > 1 ? `Semana de ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, '0')}` : fmtShortRange({ start:parseISO(w.start), end:parseISO(w.end) });
       return h('div', { class:'res-week res-bars' },
         hbarRow(label, w.pct, `${w.correct} de ${w.total} · ${fmtAccuracy(w.pct)}`, null, null),
         h('span', { class:'res-week-s', text: `${fmtDuration(w.minutes)} estudadas${w.total < SMALL_SAMPLE_QUESTIONS ? ' · poucas questões' : ''}` }));
-    }),
+    }, { className:'res-weeks', latest:true, label:'semanas com questões', more:'Ver semanas anteriores' }),
     h('p', { class:'hint', style:'margin-top:8px', text:'Cada barra é o percentual de acerto da semana: acertos ÷ questões registradas. Mostra o que você registrou — não mede o quanto aprendeu, e mais tempo não é apontado como causa.' }));
 }
 /** Acerto por disciplina ou por tópico (soma ÷ soma). "Sem … específico" aparece como linha própria, nunca redistribuída. */
+function resultsBreakdownKind(a){
+  const kind = a.scope.type === 'topic' || (a.scope.type === 'discipline' && !a.scope.multi) ? 'topic' : 'discipline';
+  const rows = kind === 'topic' ? a.results.byTopic : a.results.byDiscipline;
+  return rows.length > 1 ? kind : null;
+}
 function resultsByViz(a, kind){
   const rows = (kind === 'topic' ? a.results.byTopic : a.results.byDiscipline);
   if(!rows.length) return h('p', { class:'hint', text:'Nenhuma questão registrada neste período.' });
   return h('div', { class:'res-bars' },
-    rows.slice(0, 12).map(x => hbarRow(x.label, x.pct, `${x.correct}/${x.total} · ${fmtAccuracy(x.pct)}${x.total < SMALL_SAMPLE_QUESTIONS ? ' · poucas' : ''}`,
-      x.key === '__none__' ? 'var(--text-tertiary)' : null, null)),
+    resultPages(rows, 12, x => hbarRow(x.label, x.pct, `${x.correct}/${x.total} · ${fmtAccuracy(x.pct)}${x.total < SMALL_SAMPLE_QUESTIONS ? ' · poucas' : ''}`,
+      x.key === '__none__' ? 'var(--text-tertiary)' : null,
+      (kind === 'topic' ? getTopic(x.key) : getDiscipline(x.key)) ? () => analyzeOnly(kind === 'topic' ? 'topic' : 'discipline', x.key) : null),
+      { label:kind === 'topic' ? 'tópicos' : 'disciplinas' }),
+    h('p', { class:'hint', text:'Clique em uma disciplina ou tópico para explorar seus resultados no mesmo período.' }),
     rows.some(x => x.key === '__none__') ? h('p', { class:'hint', style:'margin-top:6px', text: kind === 'topic'
       ? '"Sem tópico específico": questões registradas sem um assunto do estudo indicado. Elas contam no total, mas não são dadas a nenhum tópico.'
       : '"Sem disciplina específica": questões de estudos com mais de uma disciplina, registradas para o estudo todo. Contam no total, sem ser dadas a uma disciplina.' }) : null);
@@ -17580,28 +17770,28 @@ function conceptsViz(a){
   const st = a.results.conceptStatus;
   return h('div', null,
     h('p', { class:'res-concept-sum', text:`${plural(list.length, 'conceito', 'conceitos')}: ${st.yes} ${st.yes === 1 ? 'explicado' : 'explicados'} sem consulta · ${st.partial} em parte · ${st.no} com dificuldade.` }),
-    h('ul', { class:'line-list res-concepts' }, list.slice(0, 30).map(x => h('li', { class:'line' },
+    resultPages(list, 30, x => h('li', { class:'line' },
       h('button', { class:'line-main', type:'button', onclick:() => openEditSessionModal(x.session.id), 'aria-label':`${x.r.label}: ${EvidenceModel.conceptLabel(x.r.status)}. Ver o estudo` },
         h('span', { class:'line-t', text:x.r.label }),
         h('span', { class:'line-s', text:[fmtDateBR(x.date), x.disciplineId ? disciplineName(x.disciplineId) : null].filter(Boolean).join(' · ') })),
-      h('span', { class:'res-status is-' + x.r.status, text: EvidenceModel.conceptLabel(x.r.status) })))),
+      h('span', { class:'res-status is-' + x.r.status, text: EvidenceModel.conceptLabel(x.r.status) })),
+      { tag:'ul', className:'line-list res-concepts', label:'conceitos' }),
     h('p', { class:'hint', text:'São relatos seus sobre explicar sem consultar — não uma prova de domínio.' }));
 }
 /** Marcos de aprendizagem, do mais recente ao mais antigo. */
 function milestonesViz(a, limit){
   const list = a.results.milestones;
   if(!list.length) return h('p', { class:'hint', text:'Nenhum marco registrado neste período.' });
-  const shown = list.slice(0, limit || 40);
   return h('div', null,
-    h('ol', { class:'ms-list' }, shown.map(x => h('li', { class:'ms-item' },
+    resultPages(list, limit || 40, x => h('li', { class:'ms-item' },
       h('span', { class:'ms-date num', text: fmtDateBR(x.date) }),
       h('div', { class:'ms-main' },
         h('p', { class:'ms-now' }, h('span', { class:'ms-k', text:'Agora consigo ' }), x.r.text),
         x.r.before ? h('p', { class:'ms-before', text:'Antes: ' + x.r.before }) : null,
         h('p', { class:'ms-where' },
           [x.disciplineId ? disciplineName(x.disciplineId) : null, x.topicId && getTopic(x.topicId) ? getTopic(x.topicId).name : null].filter(Boolean).join(' · ') || 'Estudo de ' + SessionModel.title(x.session),
-          ' · ', h('button', { class:'linkbtn', type:'button', text:'ver o estudo', onclick:() => openEditSessionModal(x.session.id) })))))),
-    list.length > shown.length ? h('p', { class:'hint', text:`E mais ${list.length - shown.length} no período.` }) : null,
+          ' · ', h('button', { class:'linkbtn', type:'button', text:'ver o estudo', onclick:() => openEditSessionModal(x.session.id) })))),
+      { tag:'ol', className:'ms-list', label:'marcos' }),
     h('p', { class:'hint', text:'Marcos registrados por você. O Ciclo guarda o seu relato; ele não avalia nem comprova habilidades.' }));
 }
 
@@ -17644,7 +17834,7 @@ function weekCompareViz(wc, onMode){
   const est = discRows.some(r => r.c.estimated > 0 || r.p.estimated > 0);
   return h('div', { class:'wk-cmp-box' },
     h('div', { class:'wk-cmp-modes' }, modes),
-    h('div', { class:'wk-cmp-scroll' }, table),
+    h('div', { class:'wk-cmp-scroll', tabindex:'0', role:'region', 'aria-label':'Comparação de semanas. Use as setas para rolar a tabela.' }, table),
     h('p', { class:'hint', text: wc.partial
       ? 'As duas colunas têm os mesmos dias da semana: uma semana pela metade nunca é comparada com uma semana inteira.'
       : 'Duas semanas inteiras que já terminaram.' }),
@@ -18375,7 +18565,9 @@ function analyticsExploreItems(a, focus){
     compare:   ['distribution','time','rhythm']
   }[focus] || [];
   if(focus === 'overview' && a.results.any) order.splice(1, 0, 'resWeeks', 'milestones');
-  return order.filter(id => lib[id] && lib[id].show).map(id => ({ id, ...lib[id] }));
+  const mainResult = focus === 'results' ? resultsBreakdownKind(a) : null;
+  return order.filter(id => lib[id] && lib[id].show && !(mainResult && id === (mainResult === 'topic' ? 'resTopic' : 'resDisc')))
+    .map(id => ({ id, ...lib[id] }));
 }
 function analyticsExploreBlock(a, focus){
   const items = analyticsExploreItems(a, focus);
@@ -19021,6 +19213,11 @@ function timeChart(a){
       h('span', { class:'tl' + (((series.length - 1 - i) % step === 0) ? '' : ' is-skip'), text:s.label }));
     Tooltip.attach(col, () => bucketTip(s, granularity, a.scope));
     chart.appendChild(col);
+  });
+  // Barras mantêm área de toque confortável. Quando há rolagem, a abertura
+  // mostra o trecho mais recente; Tab continua alcançando cada data.
+  requestAnimationFrame(() => {
+    if(chart.isConnected && !chart.contains(document.activeElement)) chart.scrollLeft = chart.scrollWidth;
   });
   const top = series.reduce((m, x) => x.minutes > m.minutes ? x : m, series[0]);
   return h('div', null,
@@ -19724,7 +19921,7 @@ const InsightEngine = {
       if(!d || (isTopic && !tp)) return;
       const name = isTopic ? tp.name : d.name;
       push({ id:'hard:' + x.k, subject: x.k, kind:'difficulty',
-        text: `Em ${x.high.length} dos últimos ${plural(x.last.length, 'registro', 'registros')} de ${name}${isTopic ? '' : ' sem assunto específico'}, você informou dificuldade alta.`,
+        text: `Em ${x.high.length} dos últimos ${plural(x.last.length, 'estudo', 'estudos')} que incluíram ${name}${isTopic ? '' : ' sem assunto específico'}, você informou dificuldade alta para o estudo como um todo.`,
         basis: basis(x.last.length), sessionIds: x.last.map(s => s.id),
         actions: [
           isTopic && tp.reviewEnabled !== false ? { label:`Revisitar ${name}`, run:() => startReview(tp.id) }
@@ -19740,7 +19937,9 @@ const InsightEngine = {
       const tp = getTopic(id);
       if(!tp || tp.archived || tp.lastReviewedAt) return;
       const views = topicViewsOf(id);
-      if(views.some(v => v.reviewOutcome)) return;
+      // Marcar Revisão com este tópico já registra uma revisão específica,
+      // mesmo sem autoavaliação. Só a agenda depende de informar um resultado.
+      if(sessionsOfTopic(id).some(s => SessionModel.hasType(s, 'revisao') || !!(SessionModel.entryOf(s, id) || {}).outcome)) return;
       const first = views.reduce((m, v) => (!m || v.date < m ? v.date : m), null);
       if(!first || daysSinceISO(first) < 3) return;
       studiedNoReview.push({ tp, views, first });
@@ -20785,7 +20984,7 @@ function askTimerBeforeRestore(parsed, fileName){
       h('p', { class:'hint', text:'Ele ainda não foi registrado, então não está nos dados atuais nem no backup. Restaurar troca todos os dados — decida antes o que fazer com esse tempo.' })),
     actions:[
       h('button', { class:'btn ghost', type:'button', text:'Cancelar a restauração', onclick:() => close() }),
-      h('button', { class:'btn ghost', type:'button', text:'Descartar o tempo e restaurar', onclick:() => { close(); openRestorePreview(parsed, fileName, true); } }),
+      h('button', { class:'btn ghost', type:'button', text:'Descartar o tempo e restaurar', onclick:() => { close(); openRestorePreview(parsed, fileName, d.runId); } }),
       h('button', { class:'btn primary', type:'button', text:'Finalizar o estudo primeiro', onclick:() => {
         close(); openFinishModal();
         toast('Depois de registrar, escolha o arquivo de backup de novo.', 'info', { title:'Restauração cancelada' });
@@ -20828,8 +21027,15 @@ function openRestorePreview(parsed, fileName, discardTimer){
       restoreBtn.disabled = true; cancelBtn.disabled = true; restoreBtn.setAttribute('aria-busy', 'true'); restoreBtn.textContent = 'Restaurando…';
       errorBox.hidden = true;
       try {
-        await Backup.restoreInto(d);
+        await Backup.restoreInto(d, { discardTimerRunId:discardTimer || null });
       } catch(err){
+        if(err && err.code === 'timer-active'){
+          close();
+          await loadAll(); TimerService.restore();
+          if(TimerService.isActive) askTimerBeforeRestore(parsed, fileName);
+          else openRestorePreview(parsed, fileName, false);
+          return;
+        }
         // A transação é uma só: se algo falhou, NADA foi trocado.
         console.error('Falha ao restaurar o backup:', err);
         saving = false;
@@ -20840,7 +21046,7 @@ function openRestorePreview(parsed, fileName, discardTimer){
         return;
       }
       // Gravado. Daqui em diante é só colocar a tela em dia.
-      if(TimerService.isActive) TimerService.release(TimerService.data.runId);
+      if(discardTimer) TimerService.release(discardTimer);
       DataSync.announce('backup-restored');
       ui.planDraft = null;
       ui.reviewQueue = null;
@@ -21107,7 +21313,9 @@ function bindEvents(){
     crashNotice(ev && (ev.error || ev.message));
   });
 
-  window.addEventListener('beforeunload', () => { TimerService.stopTicking(); });
+  window.addEventListener('pagehide', () => FormDraft.flushAll());
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') FormDraft.flushAll(); });
+  window.addEventListener('beforeunload', () => { FormDraft.flushAll(); TimerService.stopTicking(); });
 }
 
 /* =========================================================================
