@@ -1,0 +1,29 @@
+Fonte: https://github.com/filipeesantana/Ciclo/actions/runs/39149057449/job/117738774277
+Commit: d875ec04fb19b2bd61c39a7725c55b353d9b5ab0
+
+Downloading WebKit 26.5 (playwright webkit v2336) from https://cdn.playwright.dev/dbazure/download/playwright/builds/webkit/2336/webkit-ubuntu-24.04.zip
+ℹ tests 51
+ℹ pass 51
+ℹ fail 0
+
+{
+  "checks": 95,
+  "violations": [],
+  "overflows": [
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "plan"
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "plan"
+    }
+  ],
+  "articles": 91,
+  "articleFailures": [],
+  "errors": [],
+  "outgoing": [],
+  "out": "/home/runner/work/Ciclo/Ciclo/test-results/browser-audit"
+}

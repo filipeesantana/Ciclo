@@ -1,0 +1,94 @@
+Fonte: https://github.com/filipeesantana/Ciclo/actions/runs/39149396389/job/117739752799
+Commit: 77f8b1d83ba97165860a931df8809e32b6744a3b
+
+Downloading WebKit 26.5 (playwright webkit v2336) from https://cdn.playwright.dev/dbazure/download/playwright/builds/webkit/2336/webkit-ubuntu-24.04.zip
+
+##[group]Run npm test
+npm test
+shell: /usr/bin/bash -e {0}
+env:
+  BROWSER: webkit
+##[endgroup]
+
+> test
+> node --test --test-timeout=30000 --test-concurrency=1 tests/*.test.cjs
+
+✔ 120 minutos em duas disciplinas continuam sendo um estudo de 120 minutos (5294.722227ms)
+✔ divisão estimada de 90 minutos e tipos preserva totais e indica estimativa (1201.388617ms)
+✔ percentual ponderado é 51/101; zero não gera percentual (765.823867ms)
+✔ resultados sem disciplina específica não vazam para o recorte de uma disciplina (637.384745ms)
+✔ revisão geral não altera os tópicos; revisão retroativa preserva a agenda atual (635.45466ms)
+✔ excluir o único estudo reconcilia o tópico e os totais (661.884514ms)
+✔ finalização simultânea em duas abas grava uma única sessão (1261.432066ms)
+✔ edições conflitantes recusam a sobrescrita (685.749823ms)
+✔ backup atual preserva resultados, pausas e Pomodoro; migração é idempotente (659.549208ms)
+✔ versão futura, JSON truncado e IDs que colidem são recusados sem alterar o banco (623.389957ms)
+✔ restauração é atômica quando uma gravação falha depois da limpeza (635.079123ms)
+✔ CSV escapa fórmulas e comentários com aspas, vírgulas e quebras; sem texto privado (626.8565ms)
+✔ comentários são texto inerte e não criam HTML (800.385069ms)
+✔ datas civis respeitam bissexto, virada do ano e meia-noite em São Paulo (680.468927ms)
+✔ REGRESSÃO: pausar após suspensão aplica o limite do Pomodoro antes da pausa (725.902004ms)
+✔ REGRESSÃO: um rascunho recupera descansos sem inflar o tempo líquido (687.234256ms)
+✔ REGRESSÃO: schema ilegível e truncamento de resultados são sinalizados (629.295635ms)
+✔ REGRESSÃO: revisão de tópico sem autoavaliação não gera descoberta de revisão ausente (660.164736ms)
+✔ REGRESSÃO: período em andamento não conta registros com data futura (655.972043ms)
+✔ REGRESSÃO: backup V2 normaliza referências numéricas e recusa duplicatas ambíguas (629.239371ms)
+✔ backups dos schemas 6, 7 e 9 mantêm minutos e resultados de revisão (615.146153ms)
+✔ Português: registrar 30 minutos sem tópicos, permanecer no Histórico e recuperar após F5 (1541.348246ms)
+✔ primeiro uso rápido: só o nome, sem plano, tópico ou prazo inventado (1625.015232ms)
+✔ guitarra: marco opcional aparece na evolução sem exigir organização (793.698688ms)
+✔ meta global cumprida com distribuição diferente da sugestão (790.599889ms)
+✔ adiar revisão não muda data, intervalo nem histórico (708.827493ms)
+✔ Voltar, Avançar e F5 preservam o caminho sem criar loop (888.344424ms)
+✔ rascunho completo persiste antes dos 400 ms e recupera descansos, divisão e revisão (1969.765314ms)
+✔ falha de escrita mantém o formulário e o rascunho; retentativa grava uma vez (1992.868919ms)
+✔ Pomodoro: dois blocos são 50 minutos de estudo e 5 de descanso em um retrato (646.797125ms)
+✔ pausa e descanso sobrevivem a F5 com o estudo congelado (843.694443ms)
+✔ finalização com comentário não congela os minutos medidos ao reabrir (1066.101742ms)
+✔ modal prende o foco e Esc devolve ao botão que o abriu (1004.682441ms)
+✔ prazo usa rádios com teclado e conserva só aria-checked (843.595322ms)
+✔ resultados mostram a distribuição, revelam disciplinas além da 12ª e mantêm o período ao aprofundar (977.622778ms)
+✔ evolução oferece acesso aos marcos e conceitos além dos limites iniciais (815.687571ms)
+✔ rascunho recupera o nome de uma disciplina ainda não criada (1444.122521ms)
+✔ REGRESSÃO: cronômetro iniciado em outra aba durante a prévia bloqueia a restauração (1639.939264ms)
+✔ duas abas iniciando ao mesmo tempo compartilham um único cronômetro (1202.829196ms)
+✔ cronômetro descartado pela restauração não pode ser finalizado depois (645.975684ms)
+✔ falha de restauração mantém o cronômetro e não confirma seu descarte (643.899699ms)
+✔ iniciar pela janela aguarda o cronômetro e finaliza o mesmo runId (1541.323406ms)
+✔ começar sem disciplina mantém a janela se o início falhar (970.68481ms)
+✔ reserva sem relógio após liberação interrompida pode ser cancelada ou descartada para continuar (884.406524ms)
+✔ recuperação de reserva não descarta relógio reaparecido nem reserva substituída na confirmação (923.277653ms)
+✔ semanas parciais comparam os mesmos dias e zero não cria acerto (753.275291ms)
+✔ mover bloco preserva sua identidade e recusa revisão obsoleta de outra aba (670.844116ms)
+✔ dias ocultos conservam os prazos reais na tela móvel (876.565992ms)
+✔ arrastar para um dia grava um bloco e Esc cancela outro arraste (1503.974136ms)
+✔ preferências persistem e valores inválidos voltam aos padrões (770.392852ms)
+✔ datas locais atravessam horário de verão, ano bissexto e o início da semana (2586.558599ms)
+ℹ tests 51
+ℹ suites 0
+ℹ pass 51
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 54404.352313
+##[group]Run npm run audit:browser
+npm run audit:browser
+shell: /usr/bin/bash -e {0}
+env:
+  BROWSER: webkit
+##[endgroup]
+
+> audit:browser
+> node tests/browser-audit.cjs
+
+{
+  "checks": 95,
+  "violations": [],
+  "overflows": [],
+  "articles": 91,
+  "articleFailures": [],
+  "errors": [],
+  "outgoing": [],
+  "out": "/home/runner/work/Ciclo/Ciclo/test-results/browser-audit"
+}

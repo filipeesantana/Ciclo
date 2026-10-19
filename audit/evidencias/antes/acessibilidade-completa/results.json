@@ -1,0 +1,2068 @@
+{
+  "engine": "chromium",
+  "version": "154.0.8037.57",
+  "errors": [],
+  "outgoing": [],
+  "results": [
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "plan",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "list",
+          "impact": "serious",
+          "help": "<ul> and <ol> must only directly contain <li>, <script> or <template> elements",
+          "nodes": [
+            {
+              "target": [
+                ".wk-usage-list"
+              ],
+              "summary": "Fix all of the following:\n  List element has direct children that are not allowed: [role=img]",
+              "html": "<ul class=\"wk-usage-list\">"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "disciplines",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "target-size",
+          "impact": "serious",
+          "help": "All touch targets must be 24px large, or leave sufficient space",
+          "nodes": [
+            {
+              "target": [
+                "button[aria-label=\"19/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"19/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">19</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"20/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"20/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">20</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"21/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"21/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">21</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"22/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"22/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">22</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"23/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"23/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">23</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"24/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"24/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">24</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"25/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"25/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">25</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"26/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"26/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">26</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"27/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"27/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">27</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"28/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"28/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">28</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"29/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"29/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">29</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"30/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"30/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">30</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"01/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"01/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">1</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"02/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"02/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">2</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"03/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"03/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">3</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"04/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"04/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">4</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"05/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"05/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">5</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"06/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"06/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">6</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"07/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"07/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">7</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"08/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"08/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">8</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"09/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"09/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">9</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"10/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"10/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">10</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"11/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"11/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">11</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"12/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"12/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">12</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"13/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"13/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">13</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"14/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"14/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">14</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"15/10/2026: 1h10. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol\" type=\"button\" aria-label=\"15/10/2026: 1h10. Ver detalhes\"><span class=\"tb\" style=\"height:100%\"></span><span class=\"tl\">15</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"16/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"16/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">16</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"17/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"17/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">17</span></button>"
+            },
+            {
+              "target": [
+                ".tcol[type=\"button\"]:nth-child(30)"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 152px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol\" type=\"button\" aria-label=\"18/10/2026: 40min. Ver detalhes\"><span class=\"tb\" style=\"height:57.14285714285714%\"></span><span class=\"tl\">18</span></button>"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "history",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "help",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "data",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "settings",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:time",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:consistency",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:distribution",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:topics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:types",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:rest",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:planning",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:content",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:deadlines",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:results",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:learning",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics:compare",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "plan",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "list",
+          "impact": "serious",
+          "help": "<ul> and <ol> must only directly contain <li>, <script> or <template> elements",
+          "nodes": [
+            {
+              "target": [
+                ".wk-usage-list"
+              ],
+              "summary": "Fix all of the following:\n  List element has direct children that are not allowed: [role=img]",
+              "html": "<ul class=\"wk-usage-list\">"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "disciplines",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "help": "Scrollable region must have keyboard access",
+          "nodes": [
+            {
+              "target": [
+                ".wk-cmp-scroll"
+              ],
+              "summary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable",
+              "html": "<div class=\"wk-cmp-scroll\">"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "history",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "help",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "data",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "settings",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:time",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "target-size",
+          "impact": "serious",
+          "help": "All touch targets must be 24px large, or leave sufficient space",
+          "nodes": [
+            {
+              "target": [
+                "button[aria-label=\"19/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"19/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">19</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"20/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"20/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">20</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"21/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"21/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">21</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"22/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"22/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">22</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"23/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"23/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">23</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"24/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"24/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">24</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"25/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"25/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">25</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"26/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"26/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">26</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"27/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"27/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">27</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"28/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"28/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">28</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"29/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"29/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">29</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"30/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"30/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">30</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"01/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"01/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">1</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"02/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"02/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">2</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"03/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"03/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">3</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"04/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"04/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">4</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"05/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"05/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">5</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"06/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"06/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">6</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"07/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"07/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">7</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"08/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"08/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">8</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"09/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"09/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">9</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"10/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"10/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">10</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"11/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"11/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">11</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"12/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"12/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">12</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"13/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"13/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">13</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"14/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"14/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">14</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"15/10/2026: 1h10. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol\" type=\"button\" aria-label=\"15/10/2026: 1h10. Ver detalhes\"><span class=\"tb\" style=\"height:100%\"></span><span class=\"tl is-skip\">15</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"16/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"16/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">16</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"17/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"17/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">17</span></button>"
+            },
+            {
+              "target": [
+                ".tcol[type=\"button\"]:nth-child(30)"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol\" type=\"button\" aria-label=\"18/10/2026: 40min. Ver detalhes\"><span class=\"tb\" style=\"height:57.14285714285714%\"></span><span class=\"tl\">18</span></button>"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:consistency",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:distribution",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:topics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:types",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:rest",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:planning",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:content",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:deadlines",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:results",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:learning",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "view": "analytics:compare",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "help": "Scrollable region must have keyboard access",
+          "nodes": [
+            {
+              "target": [
+                ".wk-cmp-scroll"
+              ],
+              "summary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable",
+              "html": "<div class=\"wk-cmp-scroll\">"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "plan",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "list",
+          "impact": "serious",
+          "help": "<ul> and <ol> must only directly contain <li>, <script> or <template> elements",
+          "nodes": [
+            {
+              "target": [
+                ".wk-usage-list"
+              ],
+              "summary": "Fix all of the following:\n  List element has direct children that are not allowed: [role=img]",
+              "html": "<ul class=\"wk-usage-list\">"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "disciplines",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "history",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "help",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "data",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "settings",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:time",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:consistency",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:distribution",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:topics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:types",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:rest",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:planning",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:content",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:deadlines",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:results",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:learning",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics:compare",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "plan",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "list",
+          "impact": "serious",
+          "help": "<ul> and <ol> must only directly contain <li>, <script> or <template> elements",
+          "nodes": [
+            {
+              "target": [
+                ".wk-usage-list"
+              ],
+              "summary": "Fix all of the following:\n  List element has direct children that are not allowed: [role=img]",
+              "html": "<ul class=\"wk-usage-list\">"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "disciplines",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "help": "Scrollable region must have keyboard access",
+          "nodes": [
+            {
+              "target": [
+                ".wk-cmp-scroll"
+              ],
+              "summary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable",
+              "html": "<div class=\"wk-cmp-scroll\">"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "history",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "help",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "data",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "settings",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:time",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "target-size",
+          "impact": "serious",
+          "help": "All touch targets must be 24px large, or leave sufficient space",
+          "nodes": [
+            {
+              "target": [
+                "button[aria-label=\"19/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"19/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">19</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"20/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"20/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">20</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"21/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"21/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">21</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"22/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"22/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">22</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"23/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"23/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">23</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"24/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"24/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">24</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"25/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"25/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">25</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"26/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"26/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">26</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"27/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"27/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">27</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"28/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"28/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">28</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"29/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"29/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">29</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"30/09/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"30/09/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">30</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"01/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"01/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">1</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"02/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"02/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">2</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"03/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"03/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">3</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"04/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"04/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">4</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"05/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"05/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">5</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"06/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"06/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">6</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"07/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"07/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">7</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"08/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"08/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">8</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"09/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"09/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">9</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"10/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"10/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">10</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"11/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"11/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">11</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"12/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"12/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">12</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"13/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"13/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl\">13</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"14/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"14/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">14</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"15/10/2026: 1h10. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol\" type=\"button\" aria-label=\"15/10/2026: 1h10. Ver detalhes\"><span class=\"tb\" style=\"height:100%\"></span><span class=\"tl is-skip\">15</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"16/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"16/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">16</span></button>"
+            },
+            {
+              "target": [
+                "button[aria-label=\"17/10/2026: 0min. Ver detalhes\"]"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol is-empty\" type=\"button\" aria-label=\"17/10/2026: 0min. Ver detalhes\"><span class=\"tb\" style=\"height:0%\"></span><span class=\"tl is-skip\">17</span></button>"
+            },
+            {
+              "target": [
+                ".tcol[type=\"button\"]:nth-child(30)"
+              ],
+              "summary": "Fix any of the following:\n  Target has insufficient size (14px by 172px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 12px instead of at least 24px.",
+              "html": "<button class=\"tcol\" type=\"button\" aria-label=\"18/10/2026: 40min. Ver detalhes\"><span class=\"tb\" style=\"height:57.14285714285714%\"></span><span class=\"tl\">18</span></button>"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:consistency",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                "button[data-date=\"2026-10-19\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">19</span>"
+            },
+            {
+              "target": [
+                "button[data-date=\"2026-10-20\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">20</span>"
+            },
+            {
+              "target": [
+                "button[data-date=\"2026-10-21\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">21</span>"
+            },
+            {
+              "target": [
+                "button[data-date=\"2026-10-22\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">22</span>"
+            },
+            {
+              "target": [
+                "button[data-date=\"2026-10-23\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">23</span>"
+            },
+            {
+              "target": [
+                "button[data-date=\"2026-10-24\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">24</span>"
+            },
+            {
+              "target": [
+                "button[data-date=\"2026-10-25\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">25</span>"
+            },
+            {
+              "target": [
+                "button[data-date=\"2026-10-26\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">26</span>"
+            },
+            {
+              "target": [
+                "button[data-date=\"2026-10-27\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">27</span>"
+            },
+            {
+              "target": [
+                "button[data-date=\"2026-10-28\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">28</span>"
+            },
+            {
+              "target": [
+                "button[data-date=\"2026-10-29\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">29</span>"
+            },
+            {
+              "target": [
+                "button[data-date=\"2026-10-30\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">30</span>"
+            },
+            {
+              "target": [
+                "button[data-date=\"2026-10-31\"] > .cal-num"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #717677, background color: #f0eeea, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"cal-num\">31</span>"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:distribution",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:topics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:types",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:rest",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:planning",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:reviews",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".insight-k"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.46 (foreground color: #875f18, background color: #e8e3d9, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+              "html": "<span class=\"insight-k\">Atenção</span>"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:content",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:deadlines",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:results",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:learning",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "view": "analytics:compare",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "help": "Scrollable region must have keyboard access",
+          "nodes": [
+            {
+              "target": [
+                ".wk-cmp-scroll"
+              ],
+              "summary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable",
+              "html": "<div class=\"wk-cmp-scroll\">"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "view": "register",
+      "theme": "dark",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "view": "start",
+      "theme": "dark",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "view": "discipline",
+      "theme": "dark",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "view": "topic",
+      "theme": "dark",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "view": "deadline",
+      "theme": "dark",
+      "width": 1440,
+      "violations": [
+        {
+          "id": "aria-allowed-attr",
+          "impact": "critical",
+          "help": "Elements must only use supported ARIA attributes",
+          "nodes": [
+            {
+              "target": [
+                ".chip[role=\"radio\"][type=\"button\"]:nth-child(1)"
+              ],
+              "summary": "Fix all of the following:\n  ARIA attribute is not allowed: aria-pressed=\"true\"",
+              "html": "<button class=\"chip\" type=\"button\" role=\"radio\" aria-checked=\"true\" aria-pressed=\"true\">Prova</button>"
+            },
+            {
+              "target": [
+                ".chip[role=\"radio\"][type=\"button\"]:nth-child(2)"
+              ],
+              "summary": "Fix all of the following:\n  ARIA attribute is not allowed: aria-pressed=\"false\"",
+              "html": "<button class=\"chip\" type=\"button\" role=\"radio\" aria-checked=\"false\" aria-pressed=\"false\">Trabalho</button>"
+            },
+            {
+              "target": [
+                ".chip[role=\"radio\"][type=\"button\"]:nth-child(3)"
+              ],
+              "summary": "Fix all of the following:\n  ARIA attribute is not allowed: aria-pressed=\"false\"",
+              "html": "<button class=\"chip\" type=\"button\" role=\"radio\" aria-checked=\"false\" aria-pressed=\"false\">Projeto</button>"
+            },
+            {
+              "target": [
+                ".chip[role=\"radio\"][type=\"button\"]:nth-child(4)"
+              ],
+              "summary": "Fix all of the following:\n  ARIA attribute is not allowed: aria-pressed=\"false\"",
+              "html": "<button class=\"chip\" type=\"button\" role=\"radio\" aria-checked=\"false\" aria-pressed=\"false\">Tarefa</button>"
+            },
+            {
+              "target": [
+                ".chip[role=\"radio\"][type=\"button\"]:nth-child(5)"
+              ],
+              "summary": "Fix all of the following:\n  ARIA attribute is not allowed: aria-pressed=\"false\"",
+              "html": "<button class=\"chip\" type=\"button\" role=\"radio\" aria-checked=\"false\" aria-pressed=\"false\">Demanda</button>"
+            },
+            {
+              "target": [
+                ".chip[role=\"radio\"][type=\"button\"]:nth-child(6)"
+              ],
+              "summary": "Fix all of the following:\n  ARIA attribute is not allowed: aria-pressed=\"false\"",
+              "html": "<button class=\"chip\" type=\"button\" role=\"radio\" aria-checked=\"false\" aria-pressed=\"false\">Entrega</button>"
+            },
+            {
+              "target": [
+                ".chip[role=\"radio\"][type=\"button\"]:nth-child(7)"
+              ],
+              "summary": "Fix all of the following:\n  ARIA attribute is not allowed: aria-pressed=\"false\"",
+              "html": "<button class=\"chip\" type=\"button\" role=\"radio\" aria-checked=\"false\" aria-pressed=\"false\">Outro</button>"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "view": "first-use",
+      "theme": "dark",
+      "width": 1440,
+      "violations": []
+    },
+    {
+      "view": "ai-report",
+      "theme": "dark",
+      "width": 1440,
+      "violations": []
+    }
+  ],
+  "articles": [
+    {
+      "id": "primeiros-passos",
+      "title": "Como começo a estudar?",
+      "ok": true
+    },
+    {
+      "id": "estrutura-conteudo",
+      "title": "Como organizo minhas matérias?",
+      "ok": true
+    },
+    {
+      "id": "comecar-sessao",
+      "title": "Começar a estudar ou registrar depois?",
+      "ok": true
+    },
+    {
+      "id": "areas-de-estudo",
+      "title": "Preciso criar Áreas de Estudo?",
+      "ok": true
+    },
+    {
+      "id": "disciplinas",
+      "title": "O que é uma disciplina?",
+      "ok": true
+    },
+    {
+      "id": "topicos",
+      "title": "Para que servem os tópicos?",
+      "ok": true
+    },
+    {
+      "id": "prioridades",
+      "title": "Para que serve a prioridade?",
+      "ok": true
+    },
+    {
+      "id": "prioridade-topico",
+      "title": "Prioridade do tópico",
+      "ok": true
+    },
+    {
+      "id": "prazos",
+      "title": "Como cadastro uma prova ou um trabalho?",
+      "ok": true
+    },
+    {
+      "id": "prazos-influencia",
+      "title": "Como um prazo influencia as sugestões",
+      "ok": true
+    },
+    {
+      "id": "sessoes",
+      "title": "O que é um estudo registrado?",
+      "ok": true
+    },
+    {
+      "id": "varios-topicos",
+      "title": "Várias disciplinas e tópicos no mesmo estudo",
+      "ok": true
+    },
+    {
+      "id": "tipos-de-estudo",
+      "title": "Vários tipos no mesmo estudo",
+      "ok": true
+    },
+    {
+      "id": "cronometro",
+      "title": "Cronômetro",
+      "ok": true
+    },
+    {
+      "id": "descansos",
+      "title": "Descansos",
+      "ok": true
+    },
+    {
+      "id": "modo-foco",
+      "title": "Modo foco",
+      "ok": true
+    },
+    {
+      "id": "pausar",
+      "title": "Pausar ou descansar?",
+      "ok": true
+    },
+    {
+      "id": "pomodoro-ciclo",
+      "title": "Como uso o Pomodoro no Ciclo?",
+      "ok": true
+    },
+    {
+      "id": "resultado-estudo",
+      "title": "Como registro o que consegui fazer?",
+      "ok": true
+    },
+    {
+      "id": "marcos",
+      "title": "Marcos: \"Agora consigo…\"",
+      "ok": true
+    },
+    {
+      "id": "registro-manual",
+      "title": "Como registro o que já estudei?",
+      "ok": true
+    },
+    {
+      "id": "dificuldade",
+      "title": "Dificuldade percebida",
+      "ok": true
+    },
+    {
+      "id": "planejamento",
+      "title": "Como faço um planejamento?",
+      "ok": true
+    },
+    {
+      "id": "semana-em-dias",
+      "title": "A semana em dias",
+      "ok": true
+    },
+    {
+      "id": "progresso-do-dia",
+      "title": "Como o progresso de cada dia é calculado",
+      "ok": true
+    },
+    {
+      "id": "dias-de-estudo",
+      "title": "Dias de estudo e prazos na semana",
+      "ok": true
+    },
+    {
+      "id": "distribuicao",
+      "title": "Sugestão de organização",
+      "ok": true
+    },
+    {
+      "id": "plano-base",
+      "title": "Plano semanal e semana atual",
+      "ok": true
+    },
+    {
+      "id": "planejado-realizado",
+      "title": "Meta semanal e sugestão: como é feita a conta",
+      "ok": true
+    },
+    {
+      "id": "o-que-e-revisao",
+      "title": "Como funcionam as revisões?",
+      "ok": true
+    },
+    {
+      "id": "quando-revisar",
+      "title": "Quando revisar?",
+      "ok": true
+    },
+    {
+      "id": "metodos-revisao",
+      "title": "Como revisar",
+      "ok": true
+    },
+    {
+      "id": "fila-revisao",
+      "title": "Como o Ciclo escolhe o que sugerir para revisão?",
+      "ok": true
+    },
+    {
+      "id": "resultados-revisao",
+      "title": "Esqueci, Lembrei com dificuldade, Lembrei bem, Dominei",
+      "ok": true
+    },
+    {
+      "id": "dominio",
+      "title": "O que é consolidação?",
+      "ok": true
+    },
+    {
+      "id": "desativar-revisao",
+      "title": "Posso desativar a revisão de um tópico?",
+      "ok": true
+    },
+    {
+      "id": "analises",
+      "title": "Como vejo meu progresso?",
+      "ok": true
+    },
+    {
+      "id": "analises-como-ler",
+      "title": "Como ler uma análise",
+      "ok": true
+    },
+    {
+      "id": "analises-resultados",
+      "title": "Resultados e evolução nas Análises",
+      "ok": true
+    },
+    {
+      "id": "comparar-semanas",
+      "title": "Como comparo esta semana com a anterior?",
+      "ok": true
+    },
+    {
+      "id": "descobertas",
+      "title": "O que são as descobertas do Histórico?",
+      "ok": true
+    },
+    {
+      "id": "calendario",
+      "title": "Calendário",
+      "ok": true
+    },
+    {
+      "id": "cobertura-dominio",
+      "title": "Conteúdo estudado e consolidação",
+      "ok": true
+    },
+    {
+      "id": "constancia",
+      "title": "Constância",
+      "ok": true
+    },
+    {
+      "id": "analises-observacoes",
+      "title": "Observações e tópicos que merecem atenção",
+      "ok": true
+    },
+    {
+      "id": "como-o-ciclo-sugere",
+      "title": "Como o Ciclo faz sugestões?",
+      "ok": true
+    },
+    {
+      "id": "relatorio",
+      "title": "Copiar resumo e baixar relatório",
+      "ok": true
+    },
+    {
+      "id": "backup",
+      "title": "Como salvo meus dados?",
+      "ok": true
+    },
+    {
+      "id": "importar",
+      "title": "Restaurar um backup",
+      "ok": true
+    },
+    {
+      "id": "mudar-computador",
+      "title": "Como levar meus dados para outro computador",
+      "ok": true
+    },
+    {
+      "id": "privacidade",
+      "title": "Onde meus dados ficam?",
+      "ok": true
+    },
+    {
+      "id": "telas",
+      "title": "Como o Ciclo está organizado?",
+      "ok": true
+    },
+    {
+      "id": "atalhos",
+      "title": "Quais são os atalhos de teclado?",
+      "ok": true
+    },
+    {
+      "id": "o-que-e-estudar",
+      "title": "O que significa aprender?",
+      "ok": true
+    },
+    {
+      "id": "reconhecer-x-lembrar",
+      "title": "Como lembrar sem consultar o material",
+      "ok": true
+    },
+    {
+      "id": "recordacao-ativa",
+      "title": "Recordação ativa",
+      "ok": true
+    },
+    {
+      "id": "como-esquecemos",
+      "title": "Como a memória esquece",
+      "ok": true
+    },
+    {
+      "id": "revisao-nao-e-reler",
+      "title": "Como revisar",
+      "ok": true
+    },
+    {
+      "id": "espacamento",
+      "title": "Prática espaçada",
+      "ok": true
+    },
+    {
+      "id": "flashcards-guia",
+      "title": "Flashcards",
+      "ok": true
+    },
+    {
+      "id": "explicacao-guia",
+      "title": "Autoexplicação",
+      "ok": true
+    },
+    {
+      "id": "resumos-guia",
+      "title": "Como fazer resumos úteis",
+      "ok": true
+    },
+    {
+      "id": "exercicios-guia",
+      "title": "Como estudar por exercícios",
+      "ok": true
+    },
+    {
+      "id": "intercalada-guia",
+      "title": "Intercalação de assuntos",
+      "ok": true
+    },
+    {
+      "id": "corrigir-erros",
+      "title": "Identificação de dificuldades",
+      "ok": true
+    },
+    {
+      "id": "sessoes-longas",
+      "title": "Quanto tempo deve durar um estudo",
+      "ok": true
+    },
+    {
+      "id": "pomodoro-guia",
+      "title": "Pomodoro",
+      "ok": true
+    },
+    {
+      "id": "consistencia-guia",
+      "title": "Consistência",
+      "ok": true
+    },
+    {
+      "id": "descanso-guia",
+      "title": "Descanso e atenção",
+      "ok": true
+    },
+    {
+      "id": "so-tempo",
+      "title": "Posso usar o Ciclo só para acompanhar meu tempo?",
+      "ok": true
+    },
+    {
+      "id": "objetivos-diferentes",
+      "title": "O Ciclo serve para o que eu estudo?",
+      "ok": true
+    },
+    {
+      "id": "guia-primeiro-uso",
+      "title": "Guia do primeiro uso",
+      "ok": true
+    },
+    {
+      "id": "revisao-de-disciplina",
+      "title": "Posso revisar uma matéria inteira?",
+      "ok": true
+    },
+    {
+      "id": "adiar-revisao",
+      "title": "Posso deixar uma revisão para depois?",
+      "ok": true
+    },
+    {
+      "id": "ciclo-ia",
+      "title": "Como posso usar meus relatórios com IA?",
+      "ok": true
+    },
+    {
+      "id": "ciclo-ferramentas",
+      "title": "Ciclo + outras ferramentas",
+      "ok": true
+    },
+    {
+      "id": "personalizar",
+      "title": "Como deixo o Ciclo do meu jeito?",
+      "ok": true
+    },
+    {
+      "id": "cs-comecar",
+      "title": "Como começar a estudar",
+      "ok": true
+    },
+    {
+      "id": "cs-escolher",
+      "title": "Como escolher o que aprender",
+      "ok": true
+    },
+    {
+      "id": "cs-organizar-materia",
+      "title": "Como organizar uma matéria",
+      "ok": true
+    },
+    {
+      "id": "cs-tempo-possivel",
+      "title": "Como definir um tempo possível",
+      "ok": true
+    },
+    {
+      "id": "cs-pouco-tempo",
+      "title": "Como estudar quando se tem pouco tempo",
+      "ok": true
+    },
+    {
+      "id": "cs-leitura",
+      "title": "Como fazer uma boa leitura",
+      "ok": true
+    },
+    {
+      "id": "cs-praticar",
+      "title": "Como praticar algo novo",
+      "ok": true
+    },
+    {
+      "id": "cs-projetos",
+      "title": "Aprendizagem por projetos",
+      "ok": true
+    },
+    {
+      "id": "cs-combinar",
+      "title": "Como combinar métodos",
+      "ok": true
+    },
+    {
+      "id": "cs-evolucao",
+      "title": "Como acompanhar sua evolução",
+      "ok": true
+    },
+    {
+      "id": "cs-complexos",
+      "title": "Como estudar conteúdos complexos",
+      "ok": true
+    },
+    {
+      "id": "cs-avaliacoes",
+      "title": "Como se preparar para avaliações",
+      "ok": true
+    },
+    {
+      "id": "cs-longo-prazo",
+      "title": "Como estruturar projetos de longo prazo",
+      "ok": true
+    },
+    {
+      "id": "cs-adaptar",
+      "title": "Como adaptar estratégias à sua necessidade",
+      "ok": true
+    }
+  ]
+}

@@ -1,0 +1,1511 @@
+{
+  "seed": {
+    "areas": 4,
+    "disciplines": 40,
+    "topics": 400,
+    "sessions": 5000,
+    "deadlines": 100
+  },
+  "pages": [
+    {
+      "view": "today",
+      "heading": "Hoje",
+      "buttons": [
+        {
+          "label": "Português 1",
+          "aria": "Começar a estudar Português 1 agora"
+        },
+        {
+          "label": "Matemática 2",
+          "aria": "Começar a estudar Matemática 2 agora"
+        },
+        {
+          "label": "Inglês 3",
+          "aria": "Começar a estudar Inglês 3 agora"
+        },
+        {
+          "label": "Guitarra 4",
+          "aria": "Começar a estudar Guitarra 4 agora"
+        },
+        {
+          "label": "Português 5",
+          "aria": "Começar a estudar Português 5 agora"
+        },
+        {
+          "label": "Começar a estudar",
+          "aria": null
+        },
+        {
+          "label": "Registrar estudo",
+          "aria": null
+        },
+        {
+          "label": "Estudar",
+          "aria": null
+        },
+        {
+          "label": "Por quê?",
+          "aria": null
+        },
+        {
+          "label": "Outras opções",
+          "aria": null
+        },
+        {
+          "label": "PrazosProva 13Prazo venceu há 7 dias · Matemática 14",
+          "aria": null
+        },
+        {
+          "label": "ver 38",
+          "aria": null
+        },
+        {
+          "label": "Prova 14Prazo venceu há 6 dias · Inglês 15",
+          "aria": null
+        },
+        {
+          "label": "Ver nas Análises",
+          "aria": null
+        },
+        {
+          "label": "21h35 estudadas7 dias com estudoSTQQSSD",
+          "aria": "21h35 estudadas nesta semana, em 7 dias. Abrir nas Análises"
+        },
+        {
+          "label": "175 de 240 questões (72,9%)",
+          "aria": "Resultados desta semana: 175 de 240 questões (72,9%). Ver nas Análises"
+        },
+        {
+          "label": "Definir uma meta para a semana",
+          "aria": null
+        },
+        {
+          "label": "Disciplinas40 matérias · 400 tópicos",
+          "aria": null
+        },
+        {
+          "label": "Revisõesnada sugerido agora",
+          "aria": null
+        },
+        {
+          "label": "Planejamentosem meta — é opcional",
+          "aria": null
+        },
+        {
+          "label": "Análisespanorama dos últimos 30 dias",
+          "aria": null
+        },
+        {
+          "label": "Históricoúltimo estudo hoje",
+          "aria": null
+        },
+        {
+          "label": "Ajuda e Como estudarperguntas, métodos e exemplos",
+          "aria": null
+        },
+        {
+          "label": "Dados5000 estudos registrados desde o último backup",
+          "aria": null
+        }
+      ],
+      "fields": [],
+      "overflow": false
+    },
+    {
+      "view": "plan",
+      "heading": "Planejamento",
+      "buttons": [
+        {
+          "label": "2 h",
+          "aria": null
+        },
+        {
+          "label": "5 h",
+          "aria": null
+        },
+        {
+          "label": "10 h",
+          "aria": null
+        },
+        {
+          "label": "Outro valor",
+          "aria": null
+        },
+        {
+          "label": "Para que serve o planejamento?",
+          "aria": null
+        }
+      ],
+      "fields": [],
+      "overflow": false
+    },
+    {
+      "view": "reviews",
+      "heading": "Revisões",
+      "buttons": [
+        {
+          "label": "Revisar uma matéria",
+          "aria": null
+        },
+        {
+          "label": "Como funcionam as revisões?",
+          "aria": null
+        },
+        {
+          "label": "Adicionar um tópico",
+          "aria": null
+        }
+      ],
+      "fields": [],
+      "overflow": false
+    },
+    {
+      "view": "disciplines",
+      "heading": "Disciplinas",
+      "buttons": [
+        {
+          "label": "Disciplinas",
+          "aria": null
+        },
+        {
+          "label": "Prazos100",
+          "aria": null
+        },
+        {
+          "label": "Adicionar",
+          "aria": "Adicionar disciplina ou área"
+        },
+        {
+          "label": "Nova disciplina",
+          "aria": null
+        },
+        {
+          "label": "Nova área de estudo",
+          "aria": null
+        },
+        {
+          "label": "",
+          "aria": "Limpar busca"
+        },
+        {
+          "label": "Nome A–Z",
+          "aria": "Ordenar áreas: Nome A–Z"
+        },
+        {
+          "label": "Mais estudadasMais tempo registrado primeiro",
+          "aria": null
+        },
+        {
+          "label": "Modificadas recentemente",
+          "aria": null
+        },
+        {
+          "label": "Criadas recentemente",
+          "aria": null
+        },
+        {
+          "label": "Nome A–Z",
+          "aria": null
+        },
+        {
+          "label": "Escola10 disciplinas",
+          "aria": "Escola. 10 disciplinas. Abrir área"
+        },
+        {
+          "label": "Formação10 disciplinas",
+          "aria": "Formação. 10 disciplinas. Abrir área"
+        },
+        {
+          "label": "Idiomas10 disciplinas",
+          "aria": "Idiomas. 10 disciplinas. Abrir área"
+        },
+        {
+          "label": "Música10 disciplinas",
+          "aria": "Música. 10 disciplinas. Abrir área"
+        }
+      ],
+      "fields": [
+        {
+          "id": "cq-areas",
+          "type": "search"
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "view": "analytics",
+      "heading": "Análises",
+      "buttons": [
+        {
+          "label": "Esta semana",
+          "aria": null
+        },
+        {
+          "label": "Últimos 7 dias",
+          "aria": null
+        },
+        {
+          "label": "Últimos 30 dias",
+          "aria": null
+        },
+        {
+          "label": "Últimos 90 dias",
+          "aria": null
+        },
+        {
+          "label": "Todo o histórico",
+          "aria": null
+        },
+        {
+          "label": "Outro…",
+          "aria": null
+        },
+        {
+          "label": "Alterar análise",
+          "aria": null
+        },
+        {
+          "label": "Mais",
+          "aria": "Mais ações desta análise"
+        },
+        {
+          "label": "Salvar esta análise…",
+          "aria": null
+        },
+        {
+          "label": "Análises prontas",
+          "aria": null
+        },
+        {
+          "label": "Copiar resumo",
+          "aria": null
+        },
+        {
+          "label": "Baixar relatório (.txt)",
+          "aria": null
+        },
+        {
+          "label": "Preparar relatório para IA…",
+          "aria": null
+        },
+        {
+          "label": "30de 30 · 100%",
+          "aria": "Dias com estudo: 30 de 30 · 100%. Ver detalhes"
+        },
+        {
+          "label": "5h06em média",
+          "aria": "Por dia de estudo: 5h06 em média. Ver detalhes"
+        },
+        {
+          "label": "38concluídas no período",
+          "aria": "Revisões: 38 concluídas no período. Ver detalhes"
+        },
+        {
+          "label": "74,3%743 de 1000 questões",
+          "aria": "Acerto registrado: 74,3% 743 de 1000 questões. Ver detalhes"
+        },
+        {
+          "label": "19",
+          "aria": "19/09/2026: 5h35. Ver detalhes"
+        },
+        {
+          "label": "20",
+          "aria": "20/09/2026: 5h10. Ver detalhes"
+        },
+        {
+          "label": "21",
+          "aria": "21/09/2026: 4h45. Ver detalhes"
+        },
+        {
+          "label": "22",
+          "aria": "22/09/2026: 4h20. Ver detalhes"
+        },
+        {
+          "label": "23",
+          "aria": "23/09/2026: 3h55. Ver detalhes"
+        },
+        {
+          "label": "24",
+          "aria": "24/09/2026: 3h30. Ver detalhes"
+        },
+        {
+          "label": "25",
+          "aria": "25/09/2026: 3h05. Ver detalhes"
+        },
+        {
+          "label": "26",
+          "aria": "26/09/2026: 2h40. Ver detalhes"
+        },
+        {
+          "label": "27",
+          "aria": "27/09/2026: 2h15. Ver detalhes"
+        },
+        {
+          "label": "28",
+          "aria": "28/09/2026: 1h50. Ver detalhes"
+        },
+        {
+          "label": "29",
+          "aria": "29/09/2026: 9h45. Ver detalhes"
+        },
+        {
+          "label": "30",
+          "aria": "30/09/2026: 9h20. Ver detalhes"
+        },
+        {
+          "label": "1",
+          "aria": "01/10/2026: 8h55. Ver detalhes"
+        },
+        {
+          "label": "2",
+          "aria": "02/10/2026: 8h30. Ver detalhes"
+        },
+        {
+          "label": "3",
+          "aria": "03/10/2026: 8h05. Ver detalhes"
+        },
+        {
+          "label": "4",
+          "aria": "04/10/2026: 7h40. Ver detalhes"
+        },
+        {
+          "label": "5",
+          "aria": "05/10/2026: 7h15. Ver detalhes"
+        },
+        {
+          "label": "6",
+          "aria": "06/10/2026: 6h50. Ver detalhes"
+        },
+        {
+          "label": "7",
+          "aria": "07/10/2026: 6h25. Ver detalhes"
+        },
+        {
+          "label": "8",
+          "aria": "08/10/2026: 6h. Ver detalhes"
+        },
+        {
+          "label": "9",
+          "aria": "09/10/2026: 5h35. Ver detalhes"
+        },
+        {
+          "label": "10",
+          "aria": "10/10/2026: 5h10. Ver detalhes"
+        },
+        {
+          "label": "11",
+          "aria": "11/10/2026: 4h45. Ver detalhes"
+        },
+        {
+          "label": "12",
+          "aria": "12/10/2026: 4h20. Ver detalhes"
+        },
+        {
+          "label": "13",
+          "aria": "13/10/2026: 3h55. Ver detalhes"
+        },
+        {
+          "label": "14",
+          "aria": "14/10/2026: 3h30. Ver detalhes"
+        },
+        {
+          "label": "15",
+          "aria": "15/10/2026: 3h05. Ver detalhes"
+        },
+        {
+          "label": "16",
+          "aria": "16/10/2026: 2h40. Ver detalhes"
+        },
+        {
+          "label": "17",
+          "aria": "17/10/2026: 2h15. Ver detalhes"
+        },
+        {
+          "label": "18",
+          "aria": "18/10/2026: 1h50. Ver detalhes"
+        },
+        {
+          "label": "Guitarra 204h56 · 3%",
+          "aria": "Guitarra 20: 4h56 · 3%"
+        },
+        {
+          "label": "Inglês 194h52 · 3%",
+          "aria": "Inglês 19: 4h52 · 3%"
+        },
+        {
+          "label": "Matemática 184h48 · 3%",
+          "aria": "Matemática 18: 4h48 · 3%"
+        },
+        {
+          "label": "Português 174h44 · 3%",
+          "aria": "Português 17: 4h44 · 3%"
+        },
+        {
+          "label": "Guitarra 164h40 · 3%",
+          "aria": "Guitarra 16: 4h40 · 3%"
+        },
+        {
+          "label": "Inglês 154h36 · 3%",
+          "aria": "Inglês 15: 4h36 · 3%"
+        },
+        {
+          "label": "Ver todas as disciplinas",
+          "aria": null
+        },
+        {
+          "label": "Meu tempo152h55 · 5h06 por dia de estudo",
+          "aria": "Meu tempo: 152h55 · 5h06 por dia de estudo"
+        },
+        {
+          "label": "Minha constância30 de 30 dias com estudo",
+          "aria": "Minha constância: 30 de 30 dias com estudo"
+        },
+        {
+          "label": "Minhas disciplinasGuitarra 20 à frente · 40 disciplinas",
+          "aria": "Minhas disciplinas: Guitarra 20 à frente · 40 disciplinas"
+        },
+        {
+          "label": "Meus tópicos40 tópicos estudados",
+          "aria": "Meus tópicos: 40 tópicos estudados"
+        },
+        {
+          "label": "Minhas revisões38 revisões concluídas",
+          "aria": "Minhas revisões: 38 revisões concluídas"
+        },
+        {
+          "label": "Meu planejamentoVocê ainda não definiu uma meta semanal em Planejamento.",
+          "aria": "Meu planejamento: Você ainda não definiu uma meta semanal em Planejamento."
+        },
+        {
+          "label": "Meus descansosnenhum descanso registrado",
+          "aria": "Meus descansos: nenhum descanso registrado"
+        },
+        {
+          "label": "Como estudoExercícios é o mais frequente",
+          "aria": "Como estudo: Exercícios é o mais frequente"
+        },
+        {
+          "label": "Meus resultados743 de 1000 · 74,3% de acerto",
+          "aria": "Meus resultados: 743 de 1000 · 74,3% de acerto"
+        },
+        {
+          "label": "Minha evoluçãonenhum marco registrado",
+          "aria": "Minha evolução: nenhum marco registrado"
+        },
+        {
+          "label": "Comparar semanasesta semana ao lado da anterior",
+          "aria": "Comparar semanas: esta semana ao lado da anterior"
+        },
+        {
+          "label": "Personalizar análise",
+          "aria": null
+        },
+        {
+          "label": "Distribuição do tempopor área, disciplina ou tópico",
+          "aria": null
+        },
+        {
+          "label": "Acerto por semana",
+          "aria": null
+        },
+        {
+          "label": "Calendáriover um dia ou escolher um intervalo",
+          "aria": null
+        },
+        {
+          "label": "Dias com estudo, semana a semana",
+          "aria": null
+        },
+        {
+          "label": "Revisões",
+          "aria": null
+        },
+        {
+          "label": "Conteúdo",
+          "aria": null
+        },
+        {
+          "label": "Tópicos que merecem atenção",
+          "aria": null
+        },
+        {
+          "label": "Prazos",
+          "aria": null
+        },
+        {
+          "label": "Semana a semana",
+          "aria": null
+        },
+        {
+          "label": "Ritmo das últimas semanas",
+          "aria": null
+        },
+        {
+          "label": "Dificuldade percebida",
+          "aria": null
+        },
+        {
+          "label": "Tipos de estudo",
+          "aria": null
+        }
+      ],
+      "fields": [],
+      "overflow": false
+    },
+    {
+      "view": "history",
+      "heading": "Histórico",
+      "buttons": [
+        {
+          "label": "Revisitar Frações 33",
+          "aria": null
+        },
+        {
+          "label": "Ver registros usados",
+          "aria": null
+        },
+        {
+          "label": "Revisitar Pontuação 44",
+          "aria": null
+        },
+        {
+          "label": "Ver registros usados",
+          "aria": null
+        },
+        {
+          "label": "Revisar Acordes 355",
+          "aria": null
+        },
+        {
+          "label": "Ver registros usados",
+          "aria": null
+        },
+        {
+          "label": "Ver mais descobertas (2)",
+          "aria": null
+        },
+        {
+          "label": "",
+          "aria": "Limpar busca"
+        },
+        {
+          "label": "Filtros",
+          "aria": null
+        },
+        {
+          "label": "Português 1Pontuação 0 · Revisão · Muito fácil · Lembrei bem · 10/20 questões · 50%“Dificuldade para explicar sem consulta.”",
+          "aria": "Português 1, Pontuação 0, 20min. Editar estudo"
+        },
+        {
+          "label": "Matemática 2Acordes 11 · Exercícios · Fácil",
+          "aria": "Matemática 2, Acordes 11, 21min. Editar estudo"
+        },
+        {
+          "label": "Inglês 3Vocabulário 22 · Exercícios · Mediano",
+          "aria": "Inglês 3, Vocabulário 22, 22min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 4Frações 33 · Exercícios · Difícil · 13/20 questões · 65%",
+          "aria": "Guitarra 4, Frações 33, 23min. Editar estudo"
+        },
+        {
+          "label": "Português 5Pontuação 44 · Revisão · Muito difícil · Lembrei bem",
+          "aria": "Português 5, Pontuação 44, 24min. Editar estudo"
+        },
+        {
+          "label": "Matemática 6Acordes 55 · Exercícios · Muito fácil",
+          "aria": "Matemática 6, Acordes 55, 25min. Editar estudo"
+        },
+        {
+          "label": "Inglês 7Vocabulário 66 · Exercícios · Fácil · 16/20 questões · 80%",
+          "aria": "Inglês 7, Vocabulário 66, 26min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 8Frações 77 · Exercícios · Mediano",
+          "aria": "Guitarra 8, Frações 77, 27min. Editar estudo"
+        },
+        {
+          "label": "Português 9Pontuação 88 · Revisão · Difícil · Lembrei bem",
+          "aria": "Português 9, Pontuação 88, 28min. Editar estudo"
+        },
+        {
+          "label": "Matemática 10Acordes 99 · Exercícios · Muito difícil · 19/20 questões · 95%“Dificuldade para explicar sem consulta.”",
+          "aria": "Matemática 10, Acordes 99, 29min. Editar estudo"
+        },
+        {
+          "label": "Inglês 11Pontuação 100 · Exercícios · Muito fácil",
+          "aria": "Inglês 11, Pontuação 100, 30min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 12Acordes 111 · Exercícios · Fácil",
+          "aria": "Guitarra 12, Acordes 111, 31min. Editar estudo"
+        },
+        {
+          "label": "Português 13Vocabulário 122 · Revisão · Mediano · Lembrei bem · 11/20 questões · 55%",
+          "aria": "Português 13, Vocabulário 122, 32min. Editar estudo"
+        },
+        {
+          "label": "Matemática 14Frações 133 · Exercícios · Difícil",
+          "aria": "Matemática 14, Frações 133, 33min. Editar estudo"
+        },
+        {
+          "label": "Inglês 15Pontuação 144 · Exercícios · Muito difícil",
+          "aria": "Inglês 15, Pontuação 144, 34min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 16Acordes 155 · Exercícios · Muito fácil · 14/20 questões · 70%",
+          "aria": "Guitarra 16, Acordes 155, 35min. Editar estudo"
+        },
+        {
+          "label": "Português 17Vocabulário 166 · Revisão · Fácil · Lembrei bem",
+          "aria": "Português 17, Vocabulário 166, 36min. Editar estudo"
+        },
+        {
+          "label": "Matemática 18Frações 177 · Exercícios · Mediano",
+          "aria": "Matemática 18, Frações 177, 37min. Editar estudo"
+        },
+        {
+          "label": "Inglês 19Pontuação 188 · Exercícios · Difícil · 17/20 questões · 85%“Dificuldade para explicar sem consulta.”",
+          "aria": "Inglês 19, Pontuação 188, 38min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 20Acordes 199 · Exercícios · Muito difícil",
+          "aria": "Guitarra 20, Acordes 199, 39min. Editar estudo"
+        },
+        {
+          "label": "Português 21Pontuação 200 · Revisão · Muito fácil · Lembrei bem",
+          "aria": "Português 21, Pontuação 200, 40min. Editar estudo"
+        },
+        {
+          "label": "Matemática 22Acordes 211 · Exercícios · Fácil · 20/20 questões · 100%",
+          "aria": "Matemática 22, Acordes 211, 41min. Editar estudo"
+        },
+        {
+          "label": "Inglês 23Vocabulário 222 · Exercícios · Mediano",
+          "aria": "Inglês 23, Vocabulário 222, 42min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 24Frações 233 · Exercícios · Difícil",
+          "aria": "Guitarra 24, Frações 233, 43min. Editar estudo"
+        },
+        {
+          "label": "Português 25Pontuação 244 · Revisão · Muito difícil · Lembrei bem · 12/20 questões · 60%",
+          "aria": "Português 25, Pontuação 244, 44min. Editar estudo"
+        },
+        {
+          "label": "Matemática 26Acordes 255 · Exercícios · Muito fácil",
+          "aria": "Matemática 26, Acordes 255, 45min. Editar estudo"
+        },
+        {
+          "label": "Inglês 27Vocabulário 266 · Exercícios · Fácil",
+          "aria": "Inglês 27, Vocabulário 266, 46min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 28Frações 277 · Exercícios · Mediano · 15/20 questões · 75%“Dificuldade para explicar sem consulta.”",
+          "aria": "Guitarra 28, Frações 277, 47min. Editar estudo"
+        },
+        {
+          "label": "Português 29Pontuação 288 · Revisão · Difícil · Lembrei bem",
+          "aria": "Português 29, Pontuação 288, 48min. Editar estudo"
+        },
+        {
+          "label": "Matemática 30Acordes 299 · Exercícios · Muito difícil",
+          "aria": "Matemática 30, Acordes 299, 49min. Editar estudo"
+        },
+        {
+          "label": "Inglês 31Pontuação 300 · Exercícios · Muito fácil · 18/20 questões · 90%",
+          "aria": "Inglês 31, Pontuação 300, 50min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 32Acordes 311 · Exercícios · Fácil",
+          "aria": "Guitarra 32, Acordes 311, 51min. Editar estudo"
+        },
+        {
+          "label": "Português 33Vocabulário 322 · Revisão · Mediano · Lembrei bem",
+          "aria": "Português 33, Vocabulário 322, 52min. Editar estudo"
+        },
+        {
+          "label": "Matemática 34Frações 333 · Exercícios · Difícil · 10/20 questões · 50%",
+          "aria": "Matemática 34, Frações 333, 53min. Editar estudo"
+        },
+        {
+          "label": "Inglês 35Pontuação 344 · Exercícios · Muito difícil",
+          "aria": "Inglês 35, Pontuação 344, 54min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 36Acordes 355 · Exercícios · Muito fácil",
+          "aria": "Guitarra 36, Acordes 355, 55min. Editar estudo"
+        },
+        {
+          "label": "Português 37Vocabulário 366 · Revisão · Fácil · Lembrei bem · 13/20 questões · 65%“Dificuldade para explicar sem consulta.”",
+          "aria": "Português 37, Vocabulário 366, 56min. Editar estudo"
+        },
+        {
+          "label": "Matemática 38Frações 377 · Exercícios · Mediano",
+          "aria": "Matemática 38, Frações 377, 57min. Editar estudo"
+        },
+        {
+          "label": "Inglês 39Pontuação 388 · Exercícios · Difícil",
+          "aria": "Inglês 39, Pontuação 388, 58min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 40Acordes 399 · Exercícios · Muito difícil · 16/20 questões · 80%",
+          "aria": "Guitarra 40, Acordes 399, 59min. Editar estudo"
+        },
+        {
+          "label": "Português 1Pontuação 0 · Revisão · Muito fácil · Lembrei bem",
+          "aria": "Português 1, Pontuação 0, 1h. Editar estudo"
+        },
+        {
+          "label": "Matemática 2Acordes 11 · Exercícios · Fácil",
+          "aria": "Matemática 2, Acordes 11, 1h01. Editar estudo"
+        },
+        {
+          "label": "Inglês 3Vocabulário 22 · Exercícios · Mediano · 19/20 questões · 95%",
+          "aria": "Inglês 3, Vocabulário 22, 1h02. Editar estudo"
+        },
+        {
+          "label": "Guitarra 4Frações 33 · Exercícios · Difícil",
+          "aria": "Guitarra 4, Frações 33, 1h03. Editar estudo"
+        },
+        {
+          "label": "Português 5Pontuação 44 · Revisão · Muito difícil · Lembrei bem",
+          "aria": "Português 5, Pontuação 44, 1h04. Editar estudo"
+        },
+        {
+          "label": "Matemática 6Acordes 55 · Exercícios · Muito fácil · 11/20 questões · 55%“Dificuldade para explicar sem consulta.”",
+          "aria": "Matemática 6, Acordes 55, 1h05. Editar estudo"
+        },
+        {
+          "label": "Inglês 7Vocabulário 66 · Exercícios · Fácil",
+          "aria": "Inglês 7, Vocabulário 66, 1h06. Editar estudo"
+        },
+        {
+          "label": "Guitarra 8Frações 77 · Exercícios · Mediano",
+          "aria": "Guitarra 8, Frações 77, 1h07. Editar estudo"
+        },
+        {
+          "label": "Português 9Pontuação 88 · Revisão · Difícil · Lembrei bem · 14/20 questões · 70%",
+          "aria": "Português 9, Pontuação 88, 1h08. Editar estudo"
+        },
+        {
+          "label": "Matemática 10Acordes 99 · Exercícios · Muito difícil",
+          "aria": "Matemática 10, Acordes 99, 1h09. Editar estudo"
+        },
+        {
+          "label": "Inglês 11Pontuação 100 · Exercícios · Muito fácil",
+          "aria": "Inglês 11, Pontuação 100, 1h10. Editar estudo"
+        },
+        {
+          "label": "Guitarra 12Acordes 111 · Exercícios · Fácil · 17/20 questões · 85%",
+          "aria": "Guitarra 12, Acordes 111, 1h11. Editar estudo"
+        },
+        {
+          "label": "Português 13Vocabulário 122 · Revisão · Mediano · Lembrei bem",
+          "aria": "Português 13, Vocabulário 122, 1h12. Editar estudo"
+        },
+        {
+          "label": "Matemática 14Frações 133 · Exercícios · Difícil",
+          "aria": "Matemática 14, Frações 133, 1h13. Editar estudo"
+        },
+        {
+          "label": "Inglês 15Pontuação 144 · Exercícios · Muito difícil · 20/20 questões · 100%“Dificuldade para explicar sem consulta.”",
+          "aria": "Inglês 15, Pontuação 144, 1h14. Editar estudo"
+        },
+        {
+          "label": "Guitarra 16Acordes 155 · Exercícios · Muito fácil",
+          "aria": "Guitarra 16, Acordes 155, 1h15. Editar estudo"
+        },
+        {
+          "label": "Português 17Vocabulário 166 · Revisão · Fácil · Lembrei bem",
+          "aria": "Português 17, Vocabulário 166, 1h16. Editar estudo"
+        },
+        {
+          "label": "Matemática 18Frações 177 · Exercícios · Mediano · 12/20 questões · 60%",
+          "aria": "Matemática 18, Frações 177, 1h17. Editar estudo"
+        },
+        {
+          "label": "Inglês 19Pontuação 188 · Exercícios · Difícil",
+          "aria": "Inglês 19, Pontuação 188, 1h18. Editar estudo"
+        },
+        {
+          "label": "Guitarra 20Acordes 199 · Exercícios · Muito difícil",
+          "aria": "Guitarra 20, Acordes 199, 1h19. Editar estudo"
+        },
+        {
+          "label": "Português 21Pontuação 200 · Revisão · Muito fácil · Lembrei bem · 15/20 questões · 75%",
+          "aria": "Português 21, Pontuação 200, 1h20. Editar estudo"
+        },
+        {
+          "label": "Matemática 22Acordes 211 · Exercícios · Fácil",
+          "aria": "Matemática 22, Acordes 211, 1h21. Editar estudo"
+        },
+        {
+          "label": "Inglês 23Vocabulário 222 · Exercícios · Mediano",
+          "aria": "Inglês 23, Vocabulário 222, 1h22. Editar estudo"
+        },
+        {
+          "label": "Guitarra 24Frações 233 · Exercícios · Difícil · 18/20 questões · 90%“Dificuldade para explicar sem consulta.”",
+          "aria": "Guitarra 24, Frações 233, 1h23. Editar estudo"
+        },
+        {
+          "label": "Português 25Pontuação 244 · Revisão · Muito difícil · Lembrei bem",
+          "aria": "Português 25, Pontuação 244, 1h24. Editar estudo"
+        },
+        {
+          "label": "Matemática 26Acordes 255 · Exercícios · Muito fácil",
+          "aria": "Matemática 26, Acordes 255, 1h25. Editar estudo"
+        },
+        {
+          "label": "Inglês 27Vocabulário 266 · Exercícios · Fácil · 10/20 questões · 50%",
+          "aria": "Inglês 27, Vocabulário 266, 1h26. Editar estudo"
+        },
+        {
+          "label": "Guitarra 28Frações 277 · Exercícios · Mediano",
+          "aria": "Guitarra 28, Frações 277, 1h27. Editar estudo"
+        },
+        {
+          "label": "Português 29Pontuação 288 · Revisão · Difícil · Lembrei bem",
+          "aria": "Português 29, Pontuação 288, 1h28. Editar estudo"
+        },
+        {
+          "label": "Matemática 30Acordes 299 · Exercícios · Muito difícil · 13/20 questões · 65%",
+          "aria": "Matemática 30, Acordes 299, 1h29. Editar estudo"
+        },
+        {
+          "label": "Inglês 31Pontuação 300 · Exercícios · Muito fácil",
+          "aria": "Inglês 31, Pontuação 300, 1h30. Editar estudo"
+        },
+        {
+          "label": "Guitarra 32Acordes 311 · Exercícios · Fácil",
+          "aria": "Guitarra 32, Acordes 311, 1h31. Editar estudo"
+        },
+        {
+          "label": "Português 33Vocabulário 322 · Revisão · Mediano · Lembrei bem · 16/20 questões · 80%“Dificuldade para explicar sem consulta.”",
+          "aria": "Português 33, Vocabulário 322, 1h32. Editar estudo"
+        },
+        {
+          "label": "Matemática 34Frações 333 · Exercícios · Difícil",
+          "aria": "Matemática 34, Frações 333, 1h33. Editar estudo"
+        },
+        {
+          "label": "Inglês 35Pontuação 344 · Exercícios · Muito difícil",
+          "aria": "Inglês 35, Pontuação 344, 1h34. Editar estudo"
+        },
+        {
+          "label": "Guitarra 36Acordes 355 · Exercícios · Muito fácil · 19/20 questões · 95%",
+          "aria": "Guitarra 36, Acordes 355, 1h35. Editar estudo"
+        },
+        {
+          "label": "Português 37Vocabulário 366 · Revisão · Fácil · Lembrei bem",
+          "aria": "Português 37, Vocabulário 366, 1h36. Editar estudo"
+        },
+        {
+          "label": "Matemática 38Frações 377 · Exercícios · Mediano",
+          "aria": "Matemática 38, Frações 377, 1h37. Editar estudo"
+        },
+        {
+          "label": "Inglês 39Pontuação 388 · Exercícios · Difícil · 11/20 questões · 55%",
+          "aria": "Inglês 39, Pontuação 388, 1h38. Editar estudo"
+        },
+        {
+          "label": "Guitarra 40Acordes 399 · Exercícios · Muito difícil",
+          "aria": "Guitarra 40, Acordes 399, 1h39. Editar estudo"
+        },
+        {
+          "label": "Português 1Pontuação 0 · Revisão · Muito fácil · Lembrei bem",
+          "aria": "Português 1, Pontuação 0, 1h40. Editar estudo"
+        },
+        {
+          "label": "Matemática 2Acordes 11 · Exercícios · Fácil · 14/20 questões · 70%“Dificuldade para explicar sem consulta.”",
+          "aria": "Matemática 2, Acordes 11, 1h41. Editar estudo"
+        },
+        {
+          "label": "Inglês 3Vocabulário 22 · Exercícios · Mediano",
+          "aria": "Inglês 3, Vocabulário 22, 1h42. Editar estudo"
+        },
+        {
+          "label": "Guitarra 4Frações 33 · Exercícios · Difícil",
+          "aria": "Guitarra 4, Frações 33, 1h43. Editar estudo"
+        },
+        {
+          "label": "Português 5Pontuação 44 · Revisão · Muito difícil · Lembrei bem · 17/20 questões · 85%",
+          "aria": "Português 5, Pontuação 44, 1h44. Editar estudo"
+        },
+        {
+          "label": "Matemática 6Acordes 55 · Exercícios · Muito fácil",
+          "aria": "Matemática 6, Acordes 55, 1h45. Editar estudo"
+        },
+        {
+          "label": "Inglês 7Vocabulário 66 · Exercícios · Fácil",
+          "aria": "Inglês 7, Vocabulário 66, 1h46. Editar estudo"
+        },
+        {
+          "label": "Guitarra 8Frações 77 · Exercícios · Mediano · 20/20 questões · 100%",
+          "aria": "Guitarra 8, Frações 77, 1h47. Editar estudo"
+        },
+        {
+          "label": "Português 9Pontuação 88 · Revisão · Difícil · Lembrei bem",
+          "aria": "Português 9, Pontuação 88, 1h48. Editar estudo"
+        },
+        {
+          "label": "Matemática 10Acordes 99 · Exercícios · Muito difícil",
+          "aria": "Matemática 10, Acordes 99, 1h49. Editar estudo"
+        },
+        {
+          "label": "Inglês 11Pontuação 100 · Exercícios · Muito fácil · 12/20 questões · 60%“Dificuldade para explicar sem consulta.”",
+          "aria": "Inglês 11, Pontuação 100, 1h50. Editar estudo"
+        },
+        {
+          "label": "Guitarra 12Acordes 111 · Exercícios · Fácil",
+          "aria": "Guitarra 12, Acordes 111, 1h51. Editar estudo"
+        },
+        {
+          "label": "Português 13Vocabulário 122 · Revisão · Mediano · Lembrei bem",
+          "aria": "Português 13, Vocabulário 122, 1h52. Editar estudo"
+        },
+        {
+          "label": "Matemática 14Frações 133 · Exercícios · Difícil · 15/20 questões · 75%",
+          "aria": "Matemática 14, Frações 133, 1h53. Editar estudo"
+        },
+        {
+          "label": "Inglês 15Pontuação 144 · Exercícios · Muito difícil",
+          "aria": "Inglês 15, Pontuação 144, 1h54. Editar estudo"
+        },
+        {
+          "label": "Guitarra 16Acordes 155 · Exercícios · Muito fácil",
+          "aria": "Guitarra 16, Acordes 155, 1h55. Editar estudo"
+        },
+        {
+          "label": "Português 17Vocabulário 166 · Revisão · Fácil · Lembrei bem · 18/20 questões · 90%",
+          "aria": "Português 17, Vocabulário 166, 1h56. Editar estudo"
+        },
+        {
+          "label": "Matemática 18Frações 177 · Exercícios · Mediano",
+          "aria": "Matemática 18, Frações 177, 1h57. Editar estudo"
+        },
+        {
+          "label": "Inglês 19Pontuação 188 · Exercícios · Difícil",
+          "aria": "Inglês 19, Pontuação 188, 1h58. Editar estudo"
+        },
+        {
+          "label": "Guitarra 20Acordes 199 · Exercícios · Muito difícil · 10/20 questões · 50%“Dificuldade para explicar sem consulta.”",
+          "aria": "Guitarra 20, Acordes 199, 1h59. Editar estudo"
+        },
+        {
+          "label": "Português 21Pontuação 200 · Revisão · Muito fácil · Lembrei bem",
+          "aria": "Português 21, Pontuação 200, 20min. Editar estudo"
+        },
+        {
+          "label": "Matemática 22Acordes 211 · Exercícios · Fácil",
+          "aria": "Matemática 22, Acordes 211, 21min. Editar estudo"
+        },
+        {
+          "label": "Inglês 23Vocabulário 222 · Exercícios · Mediano · 13/20 questões · 65%",
+          "aria": "Inglês 23, Vocabulário 222, 22min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 24Frações 233 · Exercícios · Difícil",
+          "aria": "Guitarra 24, Frações 233, 23min. Editar estudo"
+        },
+        {
+          "label": "Português 25Pontuação 244 · Revisão · Muito difícil · Lembrei bem",
+          "aria": "Português 25, Pontuação 244, 24min. Editar estudo"
+        },
+        {
+          "label": "Matemática 26Acordes 255 · Exercícios · Muito fácil · 16/20 questões · 80%",
+          "aria": "Matemática 26, Acordes 255, 25min. Editar estudo"
+        },
+        {
+          "label": "Inglês 27Vocabulário 266 · Exercícios · Fácil",
+          "aria": "Inglês 27, Vocabulário 266, 26min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 28Frações 277 · Exercícios · Mediano",
+          "aria": "Guitarra 28, Frações 277, 27min. Editar estudo"
+        },
+        {
+          "label": "Português 29Pontuação 288 · Revisão · Difícil · Lembrei bem · 19/20 questões · 95%“Dificuldade para explicar sem consulta.”",
+          "aria": "Português 29, Pontuação 288, 28min. Editar estudo"
+        },
+        {
+          "label": "Matemática 30Acordes 299 · Exercícios · Muito difícil",
+          "aria": "Matemática 30, Acordes 299, 29min. Editar estudo"
+        },
+        {
+          "label": "Inglês 31Pontuação 300 · Exercícios · Muito fácil",
+          "aria": "Inglês 31, Pontuação 300, 30min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 32Acordes 311 · Exercícios · Fácil · 11/20 questões · 55%",
+          "aria": "Guitarra 32, Acordes 311, 31min. Editar estudo"
+        },
+        {
+          "label": "Português 33Vocabulário 322 · Revisão · Mediano · Lembrei bem",
+          "aria": "Português 33, Vocabulário 322, 32min. Editar estudo"
+        },
+        {
+          "label": "Matemática 34Frações 333 · Exercícios · Difícil",
+          "aria": "Matemática 34, Frações 333, 33min. Editar estudo"
+        },
+        {
+          "label": "Inglês 35Pontuação 344 · Exercícios · Muito difícil · 14/20 questões · 70%",
+          "aria": "Inglês 35, Pontuação 344, 34min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 36Acordes 355 · Exercícios · Muito fácil",
+          "aria": "Guitarra 36, Acordes 355, 35min. Editar estudo"
+        },
+        {
+          "label": "Português 37Vocabulário 366 · Revisão · Fácil · Lembrei bem",
+          "aria": "Português 37, Vocabulário 366, 36min. Editar estudo"
+        },
+        {
+          "label": "Matemática 38Frações 377 · Exercícios · Mediano · 17/20 questões · 85%“Dificuldade para explicar sem consulta.”",
+          "aria": "Matemática 38, Frações 377, 37min. Editar estudo"
+        },
+        {
+          "label": "Inglês 39Pontuação 388 · Exercícios · Difícil",
+          "aria": "Inglês 39, Pontuação 388, 38min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 40Acordes 399 · Exercícios · Muito difícil",
+          "aria": "Guitarra 40, Acordes 399, 39min. Editar estudo"
+        },
+        {
+          "label": "Português 1Pontuação 0 · Revisão · Muito fácil · Lembrei bem · 20/20 questões · 100%",
+          "aria": "Português 1, Pontuação 0, 40min. Editar estudo"
+        },
+        {
+          "label": "Matemática 2Acordes 11 · Exercícios · Fácil",
+          "aria": "Matemática 2, Acordes 11, 41min. Editar estudo"
+        },
+        {
+          "label": "Inglês 3Vocabulário 22 · Exercícios · Mediano",
+          "aria": "Inglês 3, Vocabulário 22, 42min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 4Frações 33 · Exercícios · Difícil · 12/20 questões · 60%",
+          "aria": "Guitarra 4, Frações 33, 43min. Editar estudo"
+        },
+        {
+          "label": "Português 5Pontuação 44 · Revisão · Muito difícil · Lembrei bem",
+          "aria": "Português 5, Pontuação 44, 44min. Editar estudo"
+        },
+        {
+          "label": "Matemática 6Acordes 55 · Exercícios · Muito fácil",
+          "aria": "Matemática 6, Acordes 55, 45min. Editar estudo"
+        },
+        {
+          "label": "Inglês 7Vocabulário 66 · Exercícios · Fácil · 15/20 questões · 75%“Dificuldade para explicar sem consulta.”",
+          "aria": "Inglês 7, Vocabulário 66, 46min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 8Frações 77 · Exercícios · Mediano",
+          "aria": "Guitarra 8, Frações 77, 47min. Editar estudo"
+        },
+        {
+          "label": "Português 9Pontuação 88 · Revisão · Difícil · Lembrei bem",
+          "aria": "Português 9, Pontuação 88, 48min. Editar estudo"
+        },
+        {
+          "label": "Matemática 10Acordes 99 · Exercícios · Muito difícil · 18/20 questões · 90%",
+          "aria": "Matemática 10, Acordes 99, 49min. Editar estudo"
+        },
+        {
+          "label": "Inglês 11Pontuação 100 · Exercícios · Muito fácil",
+          "aria": "Inglês 11, Pontuação 100, 50min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 12Acordes 111 · Exercícios · Fácil",
+          "aria": "Guitarra 12, Acordes 111, 51min. Editar estudo"
+        },
+        {
+          "label": "Português 13Vocabulário 122 · Revisão · Mediano · Lembrei bem · 10/20 questões · 50%",
+          "aria": "Português 13, Vocabulário 122, 52min. Editar estudo"
+        },
+        {
+          "label": "Matemática 14Frações 133 · Exercícios · Difícil",
+          "aria": "Matemática 14, Frações 133, 53min. Editar estudo"
+        },
+        {
+          "label": "Inglês 15Pontuação 144 · Exercícios · Muito difícil",
+          "aria": "Inglês 15, Pontuação 144, 54min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 16Acordes 155 · Exercícios · Muito fácil · 13/20 questões · 65%“Dificuldade para explicar sem consulta.”",
+          "aria": "Guitarra 16, Acordes 155, 55min. Editar estudo"
+        },
+        {
+          "label": "Português 17Vocabulário 166 · Revisão · Fácil · Lembrei bem",
+          "aria": "Português 17, Vocabulário 166, 56min. Editar estudo"
+        },
+        {
+          "label": "Matemática 18Frações 177 · Exercícios · Mediano",
+          "aria": "Matemática 18, Frações 177, 57min. Editar estudo"
+        },
+        {
+          "label": "Inglês 19Pontuação 188 · Exercícios · Difícil · 16/20 questões · 80%",
+          "aria": "Inglês 19, Pontuação 188, 58min. Editar estudo"
+        },
+        {
+          "label": "Guitarra 20Acordes 199 · Exercícios · Muito difícil",
+          "aria": "Guitarra 20, Acordes 199, 59min. Editar estudo"
+        },
+        {
+          "label": "Português 21Pontuação 200 · Revisão · Muito fácil · Lembrei bem",
+          "aria": "Português 21, Pontuação 200, 1h. Editar estudo"
+        },
+        {
+          "label": "Matemática 22Acordes 211 · Exercícios · Fácil · 19/20 questões · 95%",
+          "aria": "Matemática 22, Acordes 211, 1h01. Editar estudo"
+        },
+        {
+          "label": "Inglês 23Vocabulário 222 · Exercícios · Mediano",
+          "aria": "Inglês 23, Vocabulário 222, 1h02. Editar estudo"
+        },
+        {
+          "label": "Guitarra 24Frações 233 · Exercícios · Difícil",
+          "aria": "Guitarra 24, Frações 233, 1h03. Editar estudo"
+        },
+        {
+          "label": "Português 25Pontuação 244 · Revisão · Muito difícil · Lembrei bem · 11/20 questões · 55%“Dificuldade para explicar sem consulta.”",
+          "aria": "Português 25, Pontuação 244, 1h04. Editar estudo"
+        },
+        {
+          "label": "Matemática 26Acordes 255 · Exercícios · Muito fácil",
+          "aria": "Matemática 26, Acordes 255, 1h05. Editar estudo"
+        },
+        {
+          "label": "Inglês 27Vocabulário 266 · Exercícios · Fácil",
+          "aria": "Inglês 27, Vocabulário 266, 1h06. Editar estudo"
+        },
+        {
+          "label": "Guitarra 28Frações 277 · Exercícios · Mediano · 14/20 questões · 70%",
+          "aria": "Guitarra 28, Frações 277, 1h07. Editar estudo"
+        },
+        {
+          "label": "Português 29Pontuação 288 · Revisão · Difícil · Lembrei bem",
+          "aria": "Português 29, Pontuação 288, 1h08. Editar estudo"
+        },
+        {
+          "label": "Matemática 30Acordes 299 · Exercícios · Muito difícil",
+          "aria": "Matemática 30, Acordes 299, 1h09. Editar estudo"
+        },
+        {
+          "label": "Mostrar mais (4850 restantes)",
+          "aria": null
+        }
+      ],
+      "fields": [
+        {
+          "id": "hf-search",
+          "type": "search"
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "view": "help",
+      "heading": "Ajuda",
+      "buttons": [
+        {
+          "label": "",
+          "aria": "Limpar busca"
+        },
+        {
+          "label": "“matéria”",
+          "aria": null
+        },
+        {
+          "label": "“prova”",
+          "aria": null
+        },
+        {
+          "label": "“salvar”",
+          "aria": null
+        },
+        {
+          "label": "“IA”",
+          "aria": null
+        },
+        {
+          "label": "Como começo a estudar?Diga o que você está estudando — por exemplo, Português — e clique em Começar a estudar. O Ciclo conta o tempo e guarda o estudo no seu histórico. Nada mais é obrigatório.",
+          "aria": null
+        },
+        {
+          "label": "Como organizo minhas matérias?Cada coisa que você estuda é uma disciplina — Português, Matemática, Inglês. Se quiser, divida cada uma em assuntos (tópicos), como Pontuação e Uso da crase. Reunir disciplinas em áreas é opcional.",
+          "aria": null
+        },
+        {
+          "label": "Preciso criar tópicos?Um tópico é um assunto dentro daquilo que você estuda. Se você estuda Português, pode criar os tópicos Pontuação e Uso da crase. Você não precisa criar tópicos para começar a estudar.",
+          "aria": null
+        },
+        {
+          "label": "Como registro o que já estudei?Clique em Registrar estudo, escolha \"Já estudei\" e diga o dia, a hora em que começou e a hora em que terminou — ou só quantos minutos. Exemplo: Português, 30 minutos.",
+          "aria": null
+        },
+        {
+          "label": "Como funcionam as revisões?Depois que você estuda um assunto, o Ciclo sugere quando voltar a ele. Revisar é tentar lembrar antes de consultar o material. É opcional: você pode revisar uma matéria inteira, escolher os assuntos ou deixar para depois.",
+          "aria": null
+        },
+        {
+          "label": "Como faço um planejamento?Em Planejamento, diga quantas horas quer estudar por semana — por exemplo, 5 horas. Qualquer estudo conta para essa meta, de qualquer matéria e em qualquer dia. Organizar os dias é opcional.",
+          "aria": null
+        },
+        {
+          "label": "Como vejo meu progresso?Abra Análises: ela já começa com um panorama dos últimos 30 dias — tempo estudado, dias com estudo, como o tempo evoluiu e onde ele foi. Depois, escolha uma pergunta para explorar.",
+          "aria": null
+        },
+        {
+          "label": "Como salvo meus dados?Tudo fica salvo automaticamente neste navegador. Para não perder nada se o navegador for limpo, faça um backup em Dados → Fazer backup (.json) e guarde o arquivo fora deste aparelho.",
+          "aria": null
+        },
+        {
+          "label": "Como posso usar meus relatórios com IA?Abra Dados → Preparar relatório para IA. O Ciclo baixa um arquivo CSV com seus estudos e copia um prompt pronto. Depois, na IA que você preferir, anexe o arquivo e cole o prompt. O Ciclo não envia seus dados automaticamente.",
+          "aria": null
+        },
+        {
+          "label": "Usar o CicloPerguntas reais sobre o Ciclo: começar, organizar, registrar, revisar, planejar, acompanhar o progresso e guardar seus dados.61 respostas",
+          "aria": null
+        },
+        {
+          "label": "Como estudarMétodos de aprendizagem explicados com exemplos simples, do básico ao avançado — e como aplicá-los no Ciclo, se você quiser.ComeçandoMétodos fundamentaisMétodos intermediáriosAprendizagem avançada30 guias",
+          "aria": null
+        },
+        {
+          "label": "Rever a apresentação",
+          "aria": null
+        },
+        {
+          "label": "Mostrar as dicas de novo",
+          "aria": null
+        },
+        {
+          "label": "Ver o guia",
+          "aria": null
+        },
+        {
+          "label": "Ver todas",
+          "aria": null
+        },
+        {
+          "label": "Preciso seguir a recomendação da tela Hoje?",
+          "aria": null
+        },
+        {
+          "label": "Ver explicação completa: Como o Ciclo faz sugestões?",
+          "aria": null
+        },
+        {
+          "label": "Posso revisar uma matéria inteira, sem escolher tópicos?",
+          "aria": null
+        },
+        {
+          "label": "Ver explicação completa: Posso revisar uma matéria inteira?",
+          "aria": null
+        },
+        {
+          "label": "Posso deixar uma revisão para depois?",
+          "aria": null
+        },
+        {
+          "label": "Ver explicação completa: Posso deixar uma revisão para depois?",
+          "aria": null
+        },
+        {
+          "label": "Posso usar o Ciclo só para acompanhar meu tempo?",
+          "aria": null
+        },
+        {
+          "label": "Ver explicação completa: Posso usar o Ciclo só para acompanhar meu tempo?",
+          "aria": null
+        },
+        {
+          "label": "O Ciclo envia meus dados para alguma IA?",
+          "aria": null
+        },
+        {
+          "label": "Ver explicação completa: Como posso usar meus relatórios com IA?",
+          "aria": null
+        },
+        {
+          "label": "Ciclo + outras ferramentasPlanilhas, IA, documentos e organização pessoal — usos opcionais.",
+          "aria": null
+        },
+        {
+          "label": "GlossárioConsolidação, meta semanal, prática espaçada… cada termo em uma linha.",
+          "aria": null
+        },
+        {
+          "label": "Entrar em contatocontatosantanafilipe@gmail.com",
+          "aria": null
+        },
+        {
+          "label": "Relatar um problemaMonte um relato técnico, sem seus dados de estudo.",
+          "aria": null
+        }
+      ],
+      "fields": [
+        {
+          "id": "help-q",
+          "type": "search"
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "view": "data",
+      "heading": "Dados",
+      "buttons": [
+        {
+          "label": "Fazer backup (.json)",
+          "aria": null
+        },
+        {
+          "label": "Onde meus dados ficam?",
+          "aria": null
+        },
+        {
+          "label": "Pedir ao navegador",
+          "aria": null
+        },
+        {
+          "label": "Preparar",
+          "aria": null
+        },
+        {
+          "label": "Exportar",
+          "aria": null
+        },
+        {
+          "label": "Como usar meus dados com IA ou planilhas?",
+          "aria": null
+        },
+        {
+          "label": "Verificar",
+          "aria": null
+        },
+        {
+          "label": "Apagar todos os dados",
+          "aria": null
+        }
+      ],
+      "fields": [
+        {
+          "id": "import-file",
+          "type": "file"
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "view": "settings",
+      "heading": "Configurações",
+      "buttons": [
+        {
+          "label": "Aparência",
+          "aria": null
+        },
+        {
+          "label": "Minha experiência",
+          "aria": null
+        },
+        {
+          "label": "Estudos e planejamento",
+          "aria": null
+        },
+        {
+          "label": "Revisões e sugestões",
+          "aria": null
+        },
+        {
+          "label": "Análises",
+          "aria": null
+        },
+        {
+          "label": "Dados e segurança",
+          "aria": null
+        },
+        {
+          "label": "Sobre",
+          "aria": null
+        },
+        {
+          "label": "Escuro",
+          "aria": null
+        },
+        {
+          "label": "Claro",
+          "aria": null
+        },
+        {
+          "label": "Sistema",
+          "aria": null
+        },
+        {
+          "label": "Confortável",
+          "aria": null
+        },
+        {
+          "label": "Compacta",
+          "aria": null
+        },
+        {
+          "label": "",
+          "aria": "Reduzir animações"
+        }
+      ],
+      "fields": [],
+      "overflow": false
+    }
+  ],
+  "perf": {
+    "today": [
+      8.199999999982538,
+      11.200000000011642,
+      8.200000000011642
+    ],
+    "plan": [
+      3.6999999999825377,
+      0.5,
+      0.3000000000174623
+    ],
+    "reviews": [
+      2.2999999999883585,
+      0.39999999999417923,
+      0.29999999998835847
+    ],
+    "disciplines": [
+      12.200000000011642,
+      1.3999999999941792,
+      1.5
+    ],
+    "analytics": [
+      23.79999999998836,
+      24.199999999982538,
+      20.20000000001164
+    ],
+    "history": [
+      20.300000000017462,
+      10.799999999988358,
+      5.899999999994179
+    ],
+    "help": [
+      5.900000000023283,
+      14.10000000000582,
+      5.699999999982538
+    ],
+    "data": [
+      6.199999999982538,
+      2.1999999999825377,
+      2.8999999999941792
+    ],
+    "settings": [
+      5.2999999999883585,
+      2.3999999999941792,
+      1.1999999999825377
+    ]
+  },
+  "errors": []
+}

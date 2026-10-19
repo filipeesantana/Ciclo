@@ -1,0 +1,174 @@
+✖ REGRESSÃO: pausar após suspensão aplica o limite do Pomodoro antes da pausa (703.409659ms)
+✖ REGRESSÃO: um rascunho recupera descansos sem inflar o tempo líquido (508.896113ms)
+✖ REGRESSÃO: schema ilegível e truncamento de resultados são sinalizados (534.314232ms)
+✖ REGRESSÃO: revisão de tópico sem autoavaliação não gera descoberta de revisão ausente (476.999862ms)
+✖ REGRESSÃO: período em andamento não conta registros com data futura (476.536212ms)
+✖ REGRESSÃO: backup V2 normaliza referências numéricas e recusa duplicatas ambíguas (401.005474ms)
+✖ REGRESSÃO: cronômetro iniciado em outra aba durante a prévia bloqueia a restauração (1151.23546ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 0
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4833.543469
+
+✖ failing tests:
+
+test at tests/integrity.test.cjs:98:1
+✖ REGRESSÃO: pausar após suspensão aplica o limite do Pomodoro antes da pausa (703.409659ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+  +   blocks: 0,
+  +   paused: 0,
+  +   study: 30
+  -   blocks: 1,
+  -   paused: 5,
+  -   study: 25
+    }
+
+      at TestContext.<anonymous> (/workspace/Ciclo/tests/integrity.test.cjs:103:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { study: 30, paused: 0, blocks: 0 },
+    expected: { study: 25, paused: 5, blocks: 1 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/integrity.test.cjs:105:1
+✖ REGRESSÃO: um rascunho recupera descansos sem inflar o tempo líquido (508.896113ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  60 !== 45
+
+      at TestContext.<anonymous> (/workspace/Ciclo/tests/integrity.test.cjs:109:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 60,
+    expected: 45,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/integrity.test.cjs:111:1
+✖ REGRESSÃO: schema ilegível e truncamento de resultados são sinalizados (534.314232ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  false !== true
+
+      at TestContext.<anonymous> (/workspace/Ciclo/tests/integrity.test.cjs:115:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/integrity.test.cjs:118:1
+✖ REGRESSÃO: revisão de tópico sem autoavaliação não gera descoberta de revisão ausente (476.999862ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + [
+  +   {
+  +     actions: [
+  +       {
+  +         label: 'Revisar Pontuação',
+  +         run: undefined
+  +       }
+  +     ],
+  +     basis: 'Baseado em 2 registros dos últimos 30 dias.',
+  +     id: 'norev:pontuacao',
+  +     kind: 'review',
+  +     sessionIds: [
+  +       '3d318c74-597b-4d35-8d99-1b1f95f41a17',
+  +       '7609b6a9-9bfa-45d7-9aae-aad9de78d190'
+  +     ],
+  +     subject: 't:pontuacao',
+  +     text: 'Você registrou 2 estudos de Pontuação, mas ainda não há uma revisão específica registrada para esse assunto.'
+  +   }
+  + ]
+  - []
+
+      at TestContext.<anonymous> (/workspace/Ciclo/tests/integrity.test.cjs:123:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ { id: 'norev:pontuacao', subject: 't:pontuacao', kind: 'review', text: 'Você registrou 2 estudos de Pontuação, mas ainda não há uma revisão específica registrada para esse assunto.', basis: 'Baseado em 2 registros dos últimos 30 dias.', sessionIds: [Array], actions: [Array] } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/integrity.test.cjs:126:1
+✖ REGRESSÃO: período em andamento não conta registros com data futura (476.536212ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  160 !== 40
+
+      at TestContext.<anonymous> (/workspace/Ciclo/tests/integrity.test.cjs:131:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 160,
+    expected: 40,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/integrity.test.cjs:134:1
+✖ REGRESSÃO: backup V2 normaliza referências numéricas e recusa duplicatas ambíguas (401.005474ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+  +   count: 0,
+  +   minutes: 0,
+  +   refused: false
+  -   count: 1,
+  -   minutes: 40,
+  -   refused: true
+    }
+
+      at TestContext.<anonymous> (/workspace/Ciclo/tests/integrity.test.cjs:140:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { minutes: 0, count: 0, refused: false },
+    expected: { minutes: 40, count: 1, refused: true },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/journeys.test.cjs:145:1
+✖ REGRESSÃO: cronômetro iniciado em outra aba durante a prévia bloqueia a restauração (1151.23546ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'Nome do backup'
+  - 'Português'
+
+      at TestContext.<anonymous> (/workspace/Ciclo/tests/journeys.test.cjs:150:9)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Nome do backup',
+    expected: 'Português',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

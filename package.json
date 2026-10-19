@@ -1,0 +1,16 @@
+{
+  "name": "ciclo-quality-checks",
+  "private": true,
+  "scripts": {
+    "test": "node --test --test-timeout=30000 --test-concurrency=1 tests/*.test.cjs",
+    "check": "node --check app.js && node --check content.js",
+    "audit:browser": "node tests/browser-audit.cjs",
+    "audit:inventory": "node tests/inventory.cjs",
+    "audit:benchmark": "node tests/benchmark.cjs"
+  },
+  "devDependencies": {
+    "acorn": "8.15.0",
+    "axe-core": "4.11.0",
+    "playwright": "1.62.1"
+  }
+}

@@ -287,7 +287,7 @@ html[data-theme="light"]{
   --select-line:      rgba(29,108,97,.58);
   --focus:            #1D6C61;
 
-  --accent:           #875F18;
+  --accent:           #805815;
   --accent-hover:     #7A5514;
   --accent-soft:      rgba(135,95,24,.10);
   --accent-tint:      rgba(135,95,24,.05);
@@ -707,7 +707,7 @@ details > summary:hover{ color:var(--text) }
 }
 .chip:hover{ border-color:var(--border-strong); color:var(--text); background:var(--surface-hover) }
 .chip:active{ transform:scale(.96) }
-.chip[aria-pressed="true"],.chip.active{
+.chip[aria-pressed="true"],.chip[aria-checked="true"],.chip.active{
   background:var(--primary-soft); border-color:var(--primary); color:var(--text); font-weight:600;
 }
 .chip[style*="--chip-color"]::before{
@@ -1287,7 +1287,7 @@ html.focus-active body > .app{ visibility:hidden; pointer-events:none; user-sele
 /* calendário v5.2 */
 .an-cal .cal{ max-width:460px }
 .cal-day{ cursor:pointer; color:var(--text) }
-.cal-day.future:not(.inrange){ opacity:.6 }
+.cal-day.future:not(.inrange) .lv{ opacity:.6 }
 .cal-day .cal-due{ position:absolute; top:4px; right:4px }
 .cal-due{ display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent) }
 .cal-day.edge .cal-due{ background:var(--on-primary) }
@@ -1739,7 +1739,7 @@ html[data-theme="light"] .cal-day.edge .lv{ background:rgba(255,255,255,.75)!imp
 .cal-legend .sw{ width:12px; height:12px; border-radius:3px; display:inline-block }
 
 .tchart{ display:flex; align-items:flex-end; gap:4px; height:160px; overflow-x:auto; padding:8px 2px 0 }
-.tcol{ display:flex; flex-direction:column; align-items:center; justify-content:flex-end; flex:1; min-width:14px; height:100%; cursor:default; border-radius:var(--radius-xs) }
+.tcol{ display:flex; flex-direction:column; align-items:center; justify-content:flex-end; flex:1; min-width:24px; height:100%; cursor:default; border-radius:var(--radius-xs) }
 .tcol .tb{
   width:100%; max-width:26px; min-height:2px; border-radius:4px 4px 1px 1px;
   background:linear-gradient(180deg, var(--primary-hover), var(--primary));
@@ -4408,7 +4408,8 @@ html.reduce-motion .choice:active,html.reduce-motion .an-pick:active{ transform:
 .wk-tray.is-drop-over .tray-drop{ border-color:var(--danger-line); color:var(--danger); box-shadow:inset 0 0 0 999px var(--danger-soft) }
 
 /* a semana: colunas que nunca ficam microscópicas (o JS decide 7, ou 4 + 3, ou uma por linha) */
-.wk-grid{ display:grid; grid-template-columns:repeat(var(--wk-cols, 7), minmax(0, 1fr)); gap:10px; align-items:stretch }
+/* Antes da primeira medição do ResizeObserver, uma coluna já cabe no móvel. */
+.wk-grid{ display:grid; grid-template-columns:repeat(var(--wk-cols, 1), minmax(0, 1fr)); gap:10px; align-items:stretch }
 .day-col{
   position:relative; display:flex; flex-direction:column; min-width:0; min-height:190px; padding:10px 10px 8px;
   border:1px solid var(--border-soft); border-radius:var(--radius-lg); background:var(--surface);
@@ -5385,6 +5386,9 @@ button.tc-sug:hover{ border-color:var(--border-hover); background:var(--surface-
 .an-hero-facts.is-four{ grid-template-columns:repeat(2, minmax(0,1fr)) }
 .an-hero-cmp{ margin:4px 0 0; font-size:12.5px; color:var(--text-tertiary) }
 .res-weeks{ display:flex; flex-direction:column; gap:6px }
+.an-pan-grid.an-results-grid{ grid-template-columns:minmax(0,1fr); align-items:start }
+@media (min-width:1280px){ .an-pan-grid.an-results-grid{ grid-template-columns:repeat(2,minmax(0,1fr)) } }
+.result-pages-foot{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:10px 0 }
 .res-week{ display:flex; flex-direction:column; gap:1px }
 .res-week-s{ font-size:12px; color:var(--text-tertiary); padding-left:2px }
 .res-concept-sum{ font-size:14px; color:var(--text); margin:0 0 8px }

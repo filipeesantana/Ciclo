@@ -1,0 +1,30 @@
+✔ Português: registrar 30 minutos sem tópicos, permanecer no Histórico e recuperar após F5 (921.349359ms)
+✔ primeiro uso rápido: só o nome, sem plano, tópico ou prazo inventado (1038.436226ms)
+✔ guitarra: marco opcional aparece na evolução sem exigir organização (488.028015ms)
+✔ meta global cumprida com distribuição diferente da sugestão (440.262572ms)
+✔ adiar revisão não muda data, intervalo nem histórico (411.11456ms)
+✔ Voltar, Avançar e F5 preservam o caminho sem criar loop (636.160803ms)
+✔ rascunho completo persiste antes dos 400 ms e recupera descansos, divisão e revisão (820.477551ms)
+✔ falha de escrita mantém o formulário e o rascunho; retentativa grava uma vez (1960.239928ms)
+✔ Pomodoro: dois blocos são 50 minutos de estudo e 5 de descanso em um retrato (397.019827ms)
+✔ pausa e descanso sobrevivem a F5 com o estudo congelado (646.58341ms)
+✔ finalização com comentário não congela os minutos medidos ao reabrir (549.61745ms)
+✔ modal prende o foco e Esc devolve ao botão que o abriu (573.086636ms)
+✔ prazo usa rádios com teclado e conserva só aria-checked (479.447405ms)
+✔ resultados mostram a distribuição, revelam disciplinas além da 12ª e mantêm o período ao aprofundar (605.375939ms)
+✔ evolução oferece acesso aos marcos e conceitos além dos limites iniciais (533.948298ms)
+✔ rascunho recupera o nome de uma disciplina ainda não criada (658.884534ms)
+✔ REGRESSÃO: cronômetro iniciado em outra aba durante a prévia bloqueia a restauração (951.706589ms)
+✔ duas abas iniciando ao mesmo tempo compartilham um único cronômetro (620.382063ms)
+✔ cronômetro descartado pela restauração não pode ser finalizado depois (385.62212ms)
+✔ falha de restauração mantém o cronômetro e não confirma seu descarte (400.498443ms)
+✔ iniciar pela janela aguarda o cronômetro e finaliza o mesmo runId (687.528241ms)
+✔ começar sem disciplina mantém a janela se o início falhar (540.915935ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15038.126537
