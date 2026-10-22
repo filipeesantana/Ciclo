@@ -3,6 +3,7 @@
   "browser": "154.0.8037.57",
   "fixtureSha256": "d44ec99061c28acdac05d0f10af3ce857d715ad12262cca65b6764686bc1bf4b",
   "errors": [],
+  "errorContexts": [],
   "outgoing": [],
   "layouts": [
     {

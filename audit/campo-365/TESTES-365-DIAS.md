@@ -27,4 +27,6 @@ Exportação e restauração em segundo contexto, seguidas de F5, preservam as c
 
 O backup representa estudos concluídos. Timer, Foco, pausa, descanso, Pomodoro ativo, fullscreen e concorrência são verificados por ações de navegador em testes separados. Não se infere estado ativo a partir dos resumos históricos.
 
+Verificação suplementar do serviço Pomodoro em Chromium, com relógio controlado: presets clássico, prolongado e personalizado completam os ciclos, escolhem o descanso longo correto e avançam automaticamente sem somar descansos ao estudo. Uma suspensão simulada de três horas conserva somente 25 min de estudo, zero descanso e um bloco, aguardando decisão. [Valores e método](evidencias/depois/pomodoro-adicional.json). Esses quatro casos de serviço não são contados como jornadas de interface nem como teste de suspensão física.
+
 Jornadas complementares: primeiro uso só com o nome; estudo sem tópicos e sem meta; marco de Guitarra; revisão geral sem alterar tópicos; revisão específica; edição/exclusão; prazo; filtros; Voltar/Avançar/F5; rascunho; falha de gravação e duas abas. São jornadas automatizadas, **não pesquisa com usuários reais**.

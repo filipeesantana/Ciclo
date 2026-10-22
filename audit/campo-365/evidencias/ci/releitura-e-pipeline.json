@@ -1,0 +1,14 @@
+{
+  "method": "Navegador Chromium isolado; releitura artificialmente atrasada em 400 ms para reproduzir a janela da asserção observada no WebKit. O banco já confirmou a edição quando o modal fecha.",
+  "beforeRefresh": {
+    "memory": "19:00",
+    "persisted": null
+  },
+  "afterRefresh": null,
+  "pipelineProbe": {
+    "shell": "bash -o pipefail",
+    "producerExit": 7,
+    "pipelineExit": 7
+  },
+  "passed": true
+}

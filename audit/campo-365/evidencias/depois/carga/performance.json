@@ -1,14 +1,14 @@
 {
   "browser": "154.0.8037.57",
-  "sourceSha256": "9a69e9d68a492b6c4cbdf8d29330ff6b2439cdd9a7d53464337f40a1c8df895a",
+  "sourceSha256": "fa041850192367a759c5dc8c08b32bf444334739a920cddcc94361589554431c",
   "method": "5 renderizações síncronas por tela, cache invalidado. UI de importação, reload até state.ready. Não mede pintura nem desempenho de aparelho real.",
   "results": [
     {
       "count": 911,
       "weeklyPlans": 53,
       "bytes": 1910433,
-      "importMs": 809.1632190000003,
-      "reloadMs": 271.80954199999996,
+      "importMs": 723.493684,
+      "reloadMs": 236.3251600000001,
       "checks": {
         "count": 911,
         "minutes": 77379,
@@ -35,84 +35,84 @@
       "render": {
         "today": [
           20,
-          24,
+          27,
           13,
-          13,
-          12
+          12,
+          13
         ],
         "plan": [
           17,
-          30,
-          15,
-          15,
-          16
+          32,
+          16,
+          17,
+          17
         ],
         "history": [
-          26,
-          42,
-          42,
-          40,
-          44
+          27,
+          45,
+          34,
+          36,
+          33
         ],
         "analytics": [
-          31,
-          54,
-          25,
-          26,
-          27
+          30,
+          47,
+          22,
+          23,
+          24
         ],
         "reviews": [
-          20,
-          51,
-          58,
-          49,
-          53
+          18,
+          36,
+          35,
+          33,
+          32
         ],
         "data": [
-          11,
-          7,
+          8,
           6,
-          5,
-          6
+          6,
+          7,
+          5
         ],
         "help": [
           7,
-          20,
-          10,
+          16,
+          8,
           9,
-          9
+          8
         ],
         "settings": [
           11,
-          11,
+          12,
           7,
-          7,
+          8,
           7
         ],
         "disciplines": [
-          17,
-          11,
-          7,
-          7,
-          7
+          12,
+          9,
+          6,
+          6,
+          6
         ]
       },
-      "exportMs": 41,
-      "csvMs": 40,
-      "parseMs": 62,
-      "restoreMs": 198,
-      "searchMs": 26,
-      "filterMs": 4,
-      "queryColdMs": 17,
-      "recoverMs": 1,
+      "exportMs": 28,
+      "csvMs": 21,
+      "parseMs": 36,
+      "restoreMs": 221,
+      "searchMs": 19,
+      "filterMs": 3,
+      "queryColdMs": 14,
+      "recoverMs": 2,
       "memoryBytes": null
     },
     {
       "count": 1822,
       "weeklyPlans": 105,
       "bytes": 2436161,
-      "importMs": 987.4637119999998,
-      "reloadMs": 310.4744719999999,
+      "importMs": 851.7340709999999,
+      "reloadMs": 304.5889079999997,
       "checks": {
         "count": 1822,
         "minutes": 154758,
@@ -138,76 +138,76 @@
       },
       "render": {
         "today": [
-          22,
           20,
+          23,
           15,
-          14,
-          11
-        ],
-        "plan": [
-          14,
-          28,
-          14,
           14,
           13
         ],
+        "plan": [
+          16,
+          26,
+          15,
+          15,
+          16
+        ],
         "history": [
-          30,
+          27,
           39,
-          35,
           36,
+          34,
           33
         ],
         "analytics": [
-          39,
-          62,
-          35,
-          45,
-          30
+          28,
+          46,
+          21,
+          32,
+          21
         ],
         "reviews": [
-          20,
-          54,
-          57,
-          50,
-          49
+          13,
+          31,
+          28,
+          29,
+          30
         ],
         "data": [
-          9,
           6,
-          7,
-          6,
+          5,
+          5,
+          5,
           6
         ],
         "help": [
+          4,
+          12,
           6,
-          15,
-          10,
-          9,
-          10
+          7,
+          6
         ],
         "settings": [
-          10,
-          10,
+          8,
+          11,
           6,
           6,
-          7
+          6
         ],
         "disciplines": [
-          15,
           12,
           7,
-          7,
-          7
+          4,
+          4,
+          3
         ]
       },
-      "exportMs": 88,
-      "csvMs": 71,
-      "parseMs": 82,
-      "restoreMs": 387,
-      "searchMs": 25,
-      "filterMs": 6,
-      "queryColdMs": 22,
+      "exportMs": 46,
+      "csvMs": 36,
+      "parseMs": 56,
+      "restoreMs": 328,
+      "searchMs": 27,
+      "filterMs": 5,
+      "queryColdMs": 15,
       "recoverMs": 1,
       "memoryBytes": null
     },
@@ -215,8 +215,8 @@
       "count": 2733,
       "weeklyPlans": 157,
       "bytes": 3571917,
-      "importMs": 1221.1523629999992,
-      "reloadMs": 432.79032799999914,
+      "importMs": 1073.5831559999997,
+      "reloadMs": 390.12235299999884,
       "checks": {
         "count": 2733,
         "minutes": 232137,
@@ -242,85 +242,85 @@
       },
       "render": {
         "today": [
-          20,
-          26,
-          17,
+          24,
+          27,
+          15,
           13,
           13
         ],
         "plan": [
-          17,
-          24,
-          16,
-          14,
-          14
-        ],
-        "history": [
-          33,
-          39,
-          36,
-          37,
-          32
-        ],
-        "analytics": [
-          72,
-          54,
-          23,
-          24,
-          24
-        ],
-        "reviews": [
-          20,
-          42,
-          44,
-          39,
-          49
-        ],
-        "data": [
+          18,
+          30,
           13,
-          9,
-          9,
-          8,
-          8
-        ],
-        "help": [
-          8,
-          19,
-          12,
-          11,
+          13,
           12
         ],
-        "settings": [
+        "history": [
+          31,
+          39,
+          33,
+          32,
+          30
+        ],
+        "analytics": [
+          41,
+          47,
+          22,
+          22,
+          20
+        ],
+        "reviews": [
+          14,
+          32,
+          36,
+          31,
+          32
+        ],
+        "data": [
+          9,
+          5,
+          5,
+          4,
+          4
+        ],
+        "help": [
+          5,
           11,
-          15,
+          6,
+          6,
+          6
+        ],
+        "settings": [
           8,
-          8,
-          10
+          9,
+          6,
+          6,
+          5
         ],
         "disciplines": [
-          21,
-          13,
-          9,
+          15,
           8,
-          9
+          5,
+          4,
+          5
         ]
       },
-      "exportMs": 116,
-      "csvMs": 54,
-      "parseMs": 77,
-      "restoreMs": 447,
-      "searchMs": 41,
-      "filterMs": 10,
-      "queryColdMs": 26,
-      "recoverMs": 1,
+      "exportMs": 64,
+      "csvMs": 58,
+      "parseMs": 80,
+      "restoreMs": 493,
+      "searchMs": 33,
+      "filterMs": 11,
+      "queryColdMs": 25,
+      "recoverMs": 2,
       "memoryBytes": null
     },
     {
       "count": 5000,
       "weeklyPlans": 313,
       "bytes": 6468210,
-      "importMs": 2100.462824,
-      "reloadMs": 570.9373419999993,
+      "importMs": 1768.6937509999989,
+      "reloadMs": 538.6691410000003,
       "checks": {
         "count": 5000,
         "minutes": 424179,
@@ -346,76 +346,76 @@
       },
       "render": {
         "today": [
-          26,
-          24,
-          16,
-          12,
+          25,
+          20,
+          14,
+          11,
           17
         ],
         "plan": [
-          17,
-          28,
-          19,
+          15,
+          23,
+          13,
+          12,
+          12
+        ],
+        "history": [
+          48,
+          38,
+          30,
+          31,
+          30
+        ],
+        "analytics": [
+          27,
+          42,
+          20,
           20,
           22
         ],
-        "history": [
-          61,
-          57,
-          45,
-          51,
-          46
-        ],
-        "analytics": [
-          37,
-          57,
-          32,
-          32,
-          32
-        ],
         "reviews": [
-          22,
-          54,
-          57,
-          45,
-          50
+          16,
+          36,
+          35,
+          35,
+          34
         ],
         "data": [
-          10,
-          6,
-          6,
           7,
+          6,
+          6,
+          6,
           6
         ],
         "help": [
-          6,
-          17,
-          9,
+          5,
+          14,
           8,
-          9
+          10,
+          8
         ],
         "settings": [
-          9,
-          12,
+          14,
+          11,
           7,
-          6,
-          6
+          7,
+          7
         ],
         "disciplines": [
-          26,
-          10,
-          7,
-          7,
-          6
+          23,
+          9,
+          5,
+          6,
+          7
         ]
       },
-      "exportMs": 191,
-      "csvMs": 99,
-      "parseMs": 149,
-      "restoreMs": 804,
-      "searchMs": 53,
-      "filterMs": 13,
-      "queryColdMs": 37,
+      "exportMs": 154,
+      "csvMs": 82,
+      "parseMs": 131,
+      "restoreMs": 701,
+      "searchMs": 49,
+      "filterMs": 11,
+      "queryColdMs": 31,
       "recoverMs": 1,
       "memoryBytes": null
     },
@@ -423,8 +423,8 @@
       "count": 10000,
       "weeklyPlans": 573,
       "bytes": 12636342,
-      "importMs": 3624.2797530000025,
-      "reloadMs": 935.8218479999996,
+      "importMs": 3611.180616999998,
+      "reloadMs": 891.154862000003,
       "checks": {
         "count": 10000,
         "minutes": 849307,
@@ -450,76 +450,76 @@
       },
       "render": {
         "today": [
-          27,
-          30,
-          24,
+          25,
+          28,
+          22,
           18,
-          19
+          20
         ],
         "plan": [
-          18,
-          30,
+          19,
+          28,
           17,
           17,
-          17
+          15
         ],
         "history": [
-          56,
-          48,
-          38,
-          40,
-          38
+          53,
+          45,
+          37,
+          37,
+          36
         ],
         "analytics": [
-          34,
-          56,
-          24,
+          31,
+          50,
+          27,
           26,
-          24
+          26
         ],
         "reviews": [
-          17,
-          38,
-          44,
-          33,
-          33
+          19,
+          42,
+          39,
+          36,
+          37
         ],
         "data": [
-          8,
+          10,
+          7,
           6,
           6,
-          6,
-          5
+          6
         ],
         "help": [
           6,
-          16,
-          10,
-          11,
-          13
+          13,
+          8,
+          9,
+          10
         ],
         "settings": [
-          12,
-          11,
-          12,
-          14,
-          32
+          16,
+          13,
+          7,
+          7,
+          9
         ],
         "disciplines": [
-          71,
-          27,
-          5,
+          43,
+          11,
           6,
-          5
+          6,
+          6
         ]
       },
-      "exportMs": 254,
-      "csvMs": 186,
-      "parseMs": 371,
-      "restoreMs": 1588,
-      "searchMs": 113,
+      "exportMs": 236,
+      "csvMs": 228,
+      "parseMs": 259,
+      "restoreMs": 1203,
+      "searchMs": 108,
       "filterMs": 12,
-      "queryColdMs": 65,
+      "queryColdMs": 64,
       "recoverMs": 1,
       "memoryBytes": null
     }

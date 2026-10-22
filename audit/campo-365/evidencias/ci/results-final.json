@@ -1,0 +1,57 @@
+{
+  "applicationSha256": "fa041850192367a759c5dc8c08b32bf444334739a920cddcc94361589554431c",
+  "note": "Mesmo app.js nos commits 9eda483 e f8cc40b; f8cc40b altera somente sincronização do teste e pipefail da CI. As contagens foram verificadas nos logs, independentemente do status verde do job.",
+  "results": [
+    {
+      "engine": "chromium",
+      "jobId": 120105297199,
+      "runId": 39859228316,
+      "commit": "9eda4837fefd4c19f163a99ac9f0024274354bd0",
+      "counts": {
+        "tests": 80,
+        "pass": 80,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "checks": 95,
+      "layouts": 24,
+      "browserDownload": "Downloading Chrome for Testing 151.0.7922.34 (playwright chromium v1234) from https://cdn.playwright.dev/builds/cft/151.0.7922.34/linux64/chrome-linux64.zip",
+      "fullscreenNotes": []
+    },
+    {
+      "engine": "firefox",
+      "jobId": 120108562232,
+      "runId": 39860179167,
+      "commit": "f8cc40b12749ae02112b4b8022586ee78c429971",
+      "counts": {
+        "tests": 80,
+        "pass": 80,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "checks": 95,
+      "layouts": 24,
+      "browserDownload": "Downloading Firefox 153.0 (playwright firefox v1538) from https://cdn.playwright.dev/dbazure/download/playwright/builds/firefox/1538/firefox-ubuntu-24.04.zip",
+      "fullscreenNotes": []
+    },
+    {
+      "engine": "webkit",
+      "jobId": 120108561777,
+      "runId": 39860179167,
+      "commit": "f8cc40b12749ae02112b4b8022586ee78c429971",
+      "counts": {
+        "tests": 80,
+        "pass": 80,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "checks": 95,
+      "layouts": 24,
+      "browserDownload": "Downloading WebKit 26.5 (playwright webkit v2336) from https://cdn.playwright.dev/dbazure/download/playwright/builds/webkit/2336/webkit-ubuntu-24.04.zip",
+      "fullscreenNotes": []
+    }
+  ]
+}

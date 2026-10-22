@@ -9,6 +9,7 @@
 - Comentários com HTML, aspas, acentos, quebras e valor semelhante a fórmula são texto inerte na interface. Não é criado um `<img>` nem executado seu evento.
 - CSV protege prefixos `=`, `+`, `-`, `@` e tab; conserva aspas/vírgulas/quebras. Exportação sem textos privados os exclui. Comentário de 500.000 caracteres é processado pelo validador sem descarte silencioso; sua renderização integral não foi uma jornada de interface.
 - 95 configurações de interface e 91 artigos percorridos no Chromium: nenhuma requisição HTTP externa nem exceção não tratada observada. O monitor foi ligado após a carga inicial; os recursos iniciais são locais conforme inspeção abaixo.
+- `npm audit` executado nas dependências instaladas em 22/10/2026: zero vulnerabilidades reportadas, incluindo desenvolvimento. [Resultado](evidencias/depois/dependencias.json).
 
 ## VALIDADO POR INSPEÇÃO
 

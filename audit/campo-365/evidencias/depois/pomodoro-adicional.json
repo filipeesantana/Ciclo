@@ -1,0 +1,112 @@
+{
+  "engine": "chromium",
+  "browser": "154.0.8037.57",
+  "sourceSha256": "9a69e9d68a492b6c4cbdf8d29330ff6b2439cdd9a7d53464337f40a1c8df895a",
+  "method": "Execução suplementar de TimerService em navegador isolado. Date.now controlado; avanço por duração configurada; settlePomodoro em cada limite. Não é jornada de UI nem teste de suspensão física; não compõe os 79 testes.",
+  "results": [
+    {
+      "preset": "classic",
+      "config": {
+        "focus": 25,
+        "short": 5,
+        "long": 15,
+        "every": 4,
+        "autoNext": true
+      },
+      "events": [
+        "auto-break",
+        "auto-focus",
+        "auto-break",
+        "auto-focus",
+        "auto-break",
+        "auto-focus",
+        "auto-break",
+        "auto-focus"
+      ],
+      "before": {
+        "study": 100,
+        "rest": 15,
+        "blocks": 4,
+        "phase": "long",
+        "remaining": 15
+      },
+      "after": {
+        "study": 100,
+        "rest": 30,
+        "phase": "focus"
+      }
+    },
+    {
+      "preset": "long",
+      "config": {
+        "focus": 50,
+        "short": 10,
+        "long": 20,
+        "every": 3,
+        "autoNext": true
+      },
+      "events": [
+        "auto-break",
+        "auto-focus",
+        "auto-break",
+        "auto-focus",
+        "auto-break",
+        "auto-focus"
+      ],
+      "before": {
+        "study": 150,
+        "rest": 20,
+        "blocks": 3,
+        "phase": "long",
+        "remaining": 20
+      },
+      "after": {
+        "study": 150,
+        "rest": 40,
+        "phase": "focus"
+      }
+    },
+    {
+      "preset": "custom",
+      "config": {
+        "focus": 10,
+        "short": 3,
+        "long": 7,
+        "every": 2,
+        "autoNext": true
+      },
+      "events": [
+        "auto-break",
+        "auto-focus",
+        "auto-break",
+        "auto-focus"
+      ],
+      "before": {
+        "study": 20,
+        "rest": 3,
+        "blocks": 2,
+        "phase": "long",
+        "remaining": 7
+      },
+      "after": {
+        "study": 20,
+        "rest": 10,
+        "phase": "focus"
+      }
+    },
+    {
+      "preset": "classic-suspensao-3h",
+      "event": {
+        "changed": true,
+        "event": "focus-end",
+        "at": 1792727532139,
+        "late": true
+      },
+      "study": 25,
+      "rest": 0,
+      "blocks": 1,
+      "awaiting": "focus"
+    }
+  ],
+  "passed": true
+}

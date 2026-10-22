@@ -4,19 +4,19 @@
 
 | Estudos | Semanas persistidas | Importação UI (ms) | Reload (ms) | Hoje | Planejamento | Histórico | Análises |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 911 | 53 | 809 | 272 | 13 | 16 | 42 | 27 |
-| 1822 | 105 | 987 | 310 | 15 | 14 | 35 | 39 |
-| 2733 | 157 | 1221 | 433 | 17 | 16 | 36 | 24 |
-| 5000 | 313 | 2100 | 571 | 17 | 20 | 51 | 32 |
-| 10000 | 573 | 3624 | 936 | 24 | 17 | 40 | 26 |
+| 911 | 53 | 723 | 236 | 13 | 17 | 34 | 24 |
+| 1822 | 105 | 852 | 305 | 15 | 16 | 34 | 28 |
+| 2733 | 157 | 1074 | 390 | 15 | 13 | 32 | 22 |
+| 5000 | 313 | 1769 | 539 | 17 | 13 | 31 | 22 |
+| 10000 | 573 | 3611 | 891 | 22 | 17 | 37 | 27 |
 
 | Estudos | CSV (ms) | Validar JSON (ms) | Restaurar no banco (ms) | Busca (ms) | Filtro (ms) | Recuperar timer (ms) |
 |---:|---:|---:|---:|---:|---:|---:|
-| 911 | 40 | 62 | 198 | 26 | 4 | 1 |
-| 1822 | 71 | 82 | 387 | 25 | 6 | 1 |
-| 2733 | 54 | 77 | 447 | 41 | 10 | 1 |
-| 5000 | 99 | 149 | 804 | 53 | 13 | 1 |
-| 10000 | 186 | 371 | 1588 | 113 | 12 | 1 |
+| 911 | 21 | 36 | 221 | 19 | 3 | 2 |
+| 1822 | 36 | 56 | 328 | 27 | 5 | 1 |
+| 2733 | 58 | 80 | 493 | 33 | 11 | 2 |
+| 5000 | 82 | 131 | 701 | 49 | 11 | 1 |
+| 10000 | 228 | 259 | 1203 | 108 | 12 | 1 |
 
 As cópias de carga partem do arquivo de 911 estudos. Os dois e três ciclos contêm 1.822/2.733 registros, com deslocamento de 364 dias para conservar dias da semana. A base de 10.000 estudos cobre 05/11/2015–22/10/2026. São clones com IDs próprios, não anos independentes de aprendizagem. Nenhuma cópia de carga foi adicionada ao repositório.
 

@@ -12,6 +12,7 @@ O problema central foi reproduzido em Chromium: tanto estudo livre quanto Foco �
 | Séries cortadas em 520 semanas | Regressão: 520 semanas retornadas num intervalo de 617. Carga de 10.000 estudos: 520 de 573. | Percorrer todo o intervalo validado em constância, resultados e planejamento. |
 | Foco com hierarquia fraca e contexto extenso | Relógio sem rótulo visível, assunto antes do tempo, finalização como ação principal, tópicos/tipos sem síntese. | Relógio em primeiro plano, rótulo, contexto compacto, totais separados e controles reorganizados. |
 | Planejamento exigia menus/arraste para organizar vários dias | Disciplinas em cartões altos, ações de modelo sempre expostas, sete colunas estreitas. | Seletor de disciplina e vários dias, inclusão atômica, opções progressivas e colunas com mínimo de 180 px. |
+| Aviso de ResizeObserver no WebKit | Detectado na auditoria adicional da CI após a bateria funcional. | Aplicar colunas no próximo quadro, escrever somente mudanças e cancelar medições de grades substituídas. |
 
 Modelo preservado: HTML/CSS/JS sem framework; IndexedDB para entidades e reserva; localStorage para snapshot do timer; runId como identidade idempotente do estudo; BroadcastChannel/storage para sincronização. Não há dependências de produção novas, backend, telemetria, migração de schema, merge ou publicação.
 
