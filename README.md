@@ -1,5 +1,7 @@
 # Ciclo
 
+Auditoria de campo de 22/10/2026: [correções do cronômetro, Foco, Planejamento e testes com 365 dias](audit/campo-365/RELATORIO-FINAL.md). Candidato para revisão; a publicação é uma etapa separada.
+
 **Seu sistema de estudos.** Organize o que você estuda, registre seus estudos, receba sugestões de revisão no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta e sem servidor. Depois de aberto, o Ciclo não usa a internet para nada.
 
 O nome vem do próprio método: **planejar → estudar → revisar → analisar → reajustar**, e começar de novo.

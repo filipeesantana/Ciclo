@@ -1,0 +1,9 @@
+{
+  "engine": "chromium",
+  "layouts": 20,
+  "violations": [],
+  "overflows": [],
+  "errors": [],
+  "outgoing": [],
+  "todayAfterFinish": "Você está estudando agora"
+}

@@ -1,0 +1,9 @@
+{
+  "engine": "chromium",
+  "layouts": 24,
+  "violations": [],
+  "overflows": [],
+  "errors": [],
+  "outgoing": [],
+  "todayAfterFinish": "O que você gostaria de estudar?"
+}

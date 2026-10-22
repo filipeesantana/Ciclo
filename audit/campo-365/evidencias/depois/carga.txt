@@ -1,0 +1,5 @@
+{"count":911,"importMs":809.1632190000003,"reloadMs":271.80954199999996,"rhythmWeeks":53,"resultWeeks":53,"first":"2025-10-23","last":"2026-10-22"}
+{"count":1822,"importMs":987.4637119999998,"reloadMs":310.4744719999999,"rhythmWeeks":105,"resultWeeks":105,"first":"2024-10-24","last":"2026-10-22"}
+{"count":2733,"importMs":1221.1523629999992,"reloadMs":432.79032799999914,"rhythmWeeks":157,"resultWeeks":157,"first":"2023-10-26","last":"2026-10-22"}
+{"count":5000,"importMs":2100.462824,"reloadMs":570.9373419999993,"rhythmWeeks":313,"resultWeeks":313,"first":"2020-10-29","last":"2026-10-22"}
+{"count":10000,"importMs":3624.2797530000025,"reloadMs":935.8218479999996,"rhythmWeeks":573,"resultWeeks":573,"first":"2015-11-05","last":"2026-10-22"}

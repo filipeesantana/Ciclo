@@ -1,0 +1,10 @@
+{
+  "checks": 95,
+  "violations": [],
+  "overflows": [],
+  "articles": 91,
+  "articleFailures": [],
+  "errors": [],
+  "outgoing": [],
+  "out": "audit/campo-365/evidencias/depois/acessibilidade"
+}

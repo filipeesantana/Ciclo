@@ -1,634 +1,641 @@
 # Inventário dos controles e camadas
 
-Gerado por `npm run audit:inventory`. Fonte: app.js. 561 construções de controles, 59 construções de camadas e 716 funções declaradas. Uma construção pode gerar vários controles conforme os dados. Este índice não afirma que todos os estados foram exercitados. Os controles fixos de navegação estão em index.html; as opções dinâmicas e a cobertura estão na [matriz](MATRIZ-FUNCIONALIDADES.md).
+Gerado por `npm run audit:inventory`. Fonte: app.js. 567 construções de controles, 60 construções de camadas e 719 funções declaradas. Uma construção pode gerar vários controles conforme os dados. Este índice não afirma que todos os estados foram exercitados. Os controles fixos de navegação estão em index.html; as opções dinâmicas e a cobertura estão na [matriz](MATRIZ-FUNCIONALIDADES.md).
 
 | Contexto | Controle | ID / nome | Rótulo ou expressão | Linha |
 |---|---|---|---|---|
-| askConflict | button button |  | Voltar à edição | [6054](../app.js#L6054) |
-| askConflict | button button |  | Descartar a minha edição | [6055](../app.js#L6055) |
-| askConflict | button button |  | Manter a minha edição | [6056](../app.js#L6056) |
-| DataSync | button button |  | Atualizar | [6346](../app.js#L6346) |
-| DataSync | button button |  | Continuar editando | [6348](../app.js#L6348) |
-| confirmModal | button button |  | dinâmico: o.cancelLabel \|\| 'Cancelar' | [6821](../app.js#L6821) |
-| confirmModal | button button |  | dinâmico: o.confirmLabel \|\| 'Confirmar' | [6822](../app.js#L6822) |
-| selectField | select  | dinâmico: id |  | [7273](../app.js#L7273) |
-| pillGroup | button button |  | dinâmico: it.label | [7286](../app.js#L7286) |
-| renderTimerBar | button button |  | dinâmico: a.label | [7616](../app.js#L7616) |
-| renderTimerBar | button button |  | Foco | [7618](../app.js#L7618) |
-| renderTimerBar | button button |  | descartar | [7619](../app.js#L7619) |
-| entityPicker | button button | dinâmico: o.id | dinâmico: main | [7808](../app.js#L7808) |
-| entityPicker | input search | dinâmico: o.id + '-q' | dinâmico: o.searchPlaceholder \|\| 'Buscar' | [7810](../app.js#L7810) |
-| topicMultiPicker | button button | dinâmico: o.id | dinâmico: icon('i-plus', 'btn-icon') | [8003](../app.js#L8003) |
-| topicMultiPicker | input search | dinâmico: o.id + '-q' | Buscar tópico | [8006](../app.js#L8006) |
-| topicMultiPicker | button button |  | Pronto | [8012](../app.js#L8012) |
-| drawChips | button button |  | dinâmico: ′Remover ${name}′ | [8027](../app.js#L8027) |
-| makeBlock | button button |  | Remover esta disciplina do estudo | [8317](../app.js#L8317) |
-| studyTargetFields | button button |  | + Adicionar outra disciplina | [8335](../app.js#L8335) |
-| studyTargetFields | input text | dinâmico: prefix + '-newdisc' | Ex.: História | [8372](../app.js#L8372) |
-| studyTargetFields | button button |  | Escolher uma disciplina que já existe | [8373](../app.js#L8373) |
-| studyTypePicker | button button |  | dinâmico: h('span', { class:'type-ic', 'aria-hidden':'true' }, icon(t.icon, 'nav-icon')) | [8526](../app.js#L8526) |
-| topicSplitField | button button |  |  | [8590](../app.js#L8590) |
-| topicSplitField | button button |  | Não dividir | [8594](../app.js#L8594) |
-| input | input number | dinâmico: ′${p}-${kind === 'd' ? 'dsplit' : 'split'}-${id}′ | dinâmico: ′Minutos de ${label}′ | [8613](../app.js#L8613) |
-| draw | button button |  | dinâmico: ′${x.label} para todos os tópicos′ | [8801](../app.js#L8801) |
-| commentField | textarea  | dinâmico: o.id |  | [8851](../app.js#L8851) |
-| commentField | button button |  | + Adicionar comentário | [8854](../app.js#L8854) |
-| commentField | button button |  | Remover o comentário | [8855](../app.js#L8855) |
-| resultsField | button button |  | dinâmico: icon(k.v === 'milestone' ? 'i-milestone' : k.v === 'concept' ? 'i-help' : 'i-t-exercise', 'btn-icon' | [8938](../app.js#L8938) |
-| resultsField | button button |  | Recolher | [8943](../app.js#L8943) |
-| resultsField | button button |  | + Adicionar resultado | [8946](../app.js#L8946) |
-| addCard | button button |  | dinâmico: 'Remover este resultado: ' + k.label | [8973](../app.js#L8973) |
-| addCard | select  | dinâmico: ′${p}-${id}-t′ |  | [8975](../app.js#L8975) |
-| addCard | input number | dinâmico: ′${p}-${id}-q′ |  | [8989](../app.js#L8989) |
-| addCard | input number | dinâmico: ′${p}-${id}-c′ |  | [8990](../app.js#L8990) |
-| addCard | input text | dinâmico: ′${p}-${id}-a′ | Ex.: Frações | [8991](../app.js#L8991) |
-| addCard | input text | dinâmico: ′${p}-${id}-a′ | Ex.: Uso da crase | [9030](../app.js#L9030) |
-| addCard | textarea  | dinâmico: ′${p}-${id}-n′ | dinâmico: milestoneExample() | [9044](../app.js#L9044) |
-| addCard | input text | dinâmico: ′${p}-${id}-b′ | Ex.: precisava parar entre um acorde e outro | [9046](../app.js#L9046) |
-| timeField | input text | dinâmico: o.id | dinâmico: o.ariaLabel \|\| null | [9149](../app.js#L9149) |
-| breaksEditor | button button |  | dinâmico: addLabel | [9287](../app.js#L9287) |
-| draw | button button |  | dinâmico: ′Remover o descanso ${n}′ | [9309](../app.js#L9309) |
-| draw | input number | dinâmico: ′${p}-bm-${r.key}′ | dinâmico: ′Descanso ${n}, em minutos′ | [9322](../app.js#L9322) |
-| FormDraft | button button |  | Começar do zero | [9501](../app.js#L9501) |
-| studyWhenFields | input date | dinâmico: p + '-date' |  | [9523](../app.js#L9523) |
-| studyWhenFields | input number | dinâmico: p + '-min' |  | [9528](../app.js#L9528) |
-| studyWhenFields | button button |  |  | [9534](../app.js#L9534) |
-| studyWhenFields | button button |  |  | [9536](../app.js#L9536) |
-| studyWhenFields | button button |  | dinâmico: v + ' min' | [9540](../app.js#L9540) |
-| openRegisterModal | button button |  | dinâmico: h('span', { class:'mode-ic', 'aria-hidden':'true' }, icon(ic, 'nav-icon')) | [9779](../app.js#L9779) |
-| openRegisterModal | button button |  | dinâmico: v === null ? 'Livre' : v + ' min' | [9803](../app.js#L9803) |
-| openRegisterModal | button button |  | dinâmico: pr.v === 'custom' ? pr.label : ′${pr.label} · ${pr.focusMin}/${pr.shortMin}′ | [9815](../app.js#L9815) |
-| openRegisterModal | input number | dinâmico: 'rm-pomo-' + key |  | [9822](../app.js#L9822) |
-| openRegisterModal | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:title }) | [9836](../app.js#L9836) |
-| openRegisterModal | button button |  | Começar sem escolher a disciplina — você escolhe ao finalizar | [9848](../app.js#L9848) |
-| confirmLong | button button |  | Corrigir | [9922](../app.js#L9922) |
-| confirmLong | button button |  | Sim, registrar | [9937](../app.js#L9937) |
-| openRegisterModal | button button |  | dinâmico: primaryLabel() | [9944](../app.js#L9944) |
-| openRegisterModal | button button |  | Cancelar | [10039](../app.js#L10039) |
-| openFinishModal | input number | fin-min |  | [10102](../app.js#L10102) |
-| openFinishModal | details  |  | dinâmico: fixToggle | [10147](../app.js#L10147) |
-| renderOutcome | select  | fin-method |  | [10181](../app.js#L10181) |
-| openFinishModal | button button |  | Registrar estudo | [10223](../app.js#L10223) |
-| openFinishModal | button button |  | dinâmico: snap.paused ? 'Voltar ao cronômetro' : snap.onBreak ? 'Voltar ao descanso' : 'Continuar estudando' | [10300](../app.js#L10300) |
-| offerStaleSession | button button |  | Continuar | [10327](../app.js#L10327) |
-| offerStaleSession | button button |  | Descartar | [10328](../app.js#L10328) |
-| offerStaleSession | button button |  | Finalizar | [10329](../app.js#L10329) |
-| renderToday | button button |  | dinâmico: icon('i-plus') | [11163](../app.js#L11163) |
-| renderToday | button button |  | Quero ajuda para organizar | [11164](../app.js#L11164) |
-| todayAction | button button |  | dinâmico: ′Começar a estudar ${d.name} agora′ | [11195](../app.js#L11195) |
-| todayAction | button button |  | dinâmico: icon('i-check') | [11209](../app.js#L11209) |
-| todayAction | button button |  | dinâmico: icon('i-play') | [11210](../app.js#L11210) |
-| todayAction | button button |  | dinâmico: icon('i-plus') | [11211](../app.js#L11211) |
-| todayAction | button button |  | dinâmico: icon('i-play') | [11228](../app.js#L11228) |
-| todayAction | button button |  | Por quê? | [11230](../app.js#L11230) |
-| todayAction | button button |  | Outras opções | [11231](../app.js#L11231) |
-| todayWeekPanel | button button |  | Ver nas Análises | [11283](../app.js#L11283) |
-| todayWeekPanel | button button |  | dinâmico: ′${fmtDuration(weekMin)} estudadas nesta semana, em ${plural(active.size, 'dia', 'dias')}. Abrir nas | [11284](../app.js#L11284) |
-| todayWeekPanel | button button |  | dinâmico: ′Resultados desta semana: ${resultsLine}. Ver nas Análises′ | [11291](../app.js#L11291) |
-| todayWeekPanel | button button |  | Definir uma meta para a semana | [11294](../app.js#L11294) |
-| todayNextSteps | button button |  | Revisar | [11311](../app.js#L11311) |
-| todayNextSteps | button button |  | dinâmico: ′Ver ${plural(nTopics, 'assunto', 'assuntos')}′ | [11312](../app.js#L11312) |
-| todayNextSteps | button button |  | dinâmico: ′ver ${dls.length}′ | [11339](../app.js#L11339) |
-| todayShortcuts | button button |  | dinâmico: icon(NAV_ICONS[v] \|\| 'i-arrow', 'nav-icon sc-ic') | [11370](../app.js#L11370) |
-| nextRow | button button |  | dinâmico: main | [11407](../app.js#L11407) |
-| openAlternatives | button button |  | dinâmico: 'Estudar ' + a.discipline.name | [11419](../app.js#L11419) |
-| explainAction | button button |  | Fechar | [11433](../app.js#L11433) |
-| renderReviews | button button |  | dinâmico: icon('i-review') | [11468](../app.js#L11468) |
-| renderReviews | button button |  | Como funcionam as revisões? | [11469](../app.js#L11469) |
-| renderReviews | button button |  | Adicionar um tópico | [11470](../app.js#L11470) |
-| renderReviews | button button |  | dinâmico: icon('i-play') | [11483](../app.js#L11483) |
-| renderReviews | button button |  | dinâmico: icon('i-review') | [11484](../app.js#L11484) |
-| renderReviews | button button |  | Como funciona? | [11485](../app.js#L11485) |
-| renderReviews | button button |  | Religar sugestões | [11486](../app.js#L11486) |
-| reviewSituation | details  |  | dinâmico: h('summary', null, 'Situação detalhada') | [11521](../app.js#L11521) |
-| drawReviewGroups | button button |  | Limpar busca | [11558](../app.js#L11558) |
-| drawReviewGroups | button button |  | dinâmico: ui.reviewsShowAll ? 'Mostrar menos' : ′Mostrar todos (${all.length})′ | [11569](../app.js#L11569) |
-| drawReviewGroups | button button |  | dinâmico: h('span', { class:'line-t' }, q ? highlightMatch(t.name, q) : t.name) | [11585](../app.js#L11585) |
-| drawReviewGroups | button button |  | dinâmico: 'Revisar agora ' + t.name | [11588](../app.js#L11588) |
-| drawReviewGroups | details  |  | dinâmico: h('summary', null, h('span', { text:'Próximas sugestões' }), h('span', { class:'disclosure-count', t | [11590](../app.js#L11590) |
-| drawReviewGroups | details  |  | dinâmico: h('summary', null, h('span', { text:'Deixados para depois' }), h('span', { class:'disclosure-count', | [11595](../app.js#L11595) |
-| drawReviewGroups | button button |  | dinâmico: h('span', { class:'line-t', text:t.name }) | [11600](../app.js#L11600) |
-| drawReviewGroups | button button |  | dinâmico: 'Mostrar de novo ' + t.name | [11603](../app.js#L11603) |
-| drawReviewGroups | button button |  | Mostrar todos de novo | [11604](../app.js#L11604) |
-| reviewGroupCard | button button |  | dinâmico: ′${t.name}: ver assunto′ | [11621](../app.js#L11621) |
-| reviewGroupCard | button button |  | dinâmico: 'Revisar agora ' + t.name | [11625](../app.js#L11625) |
-| reviewGroupCard | button button |  | dinâmico: open ? 'Mostrar menos' : ′Ver os ${all.length} assuntos′ | [11640](../app.js#L11640) |
-| reviewGroupCard | button button |  | dinâmico: icon('i-review') | [11643](../app.js#L11643) |
-| reviewGroupCard | button button |  | Escolher assuntos | [11644](../app.js#L11644) |
-| reviewRow | button button |  | dinâmico: ′${t.name}: ver assunto′ | [11668](../app.js#L11668) |
-| reviewRow | button button |  | dinâmico: 'Revisar agora ' + t.name | [11672](../app.js#L11672) |
-| openDisciplineReview | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:t }) | [11739](../app.js#L11739) |
-| openDisciplineReview | button button |  | dinâmico: h('span', { class:'an-pick-box', 'aria-hidden':'true' }, icon('i-check', 'btn-icon')) | [11751](../app.js#L11751) |
-| openDisciplineReview | button button |  | Cancelar | [11773](../app.js#L11773) |
-| openDisciplineReview | button button |  | Já revisei | [11774](../app.js#L11774) |
-| openDisciplineReview | button button |  | dinâmico: icon('i-play') | [11780](../app.js#L11780) |
-| startReview | button button |  | dinâmico: methodLabel(mv) | [11819](../app.js#L11819) |
-| startReview | button button |  | Cancelar | [11829](../app.js#L11829) |
-| startReview | button button |  | Registrar sem cronômetro | [11830](../app.js#L11830) |
-| startReview | button button |  | Começar revisão | [11832](../app.js#L11832) |
-| openReviewOutcomeModal | input number | ro-min |  | [11845](../app.js#L11845) |
-| openReviewOutcomeModal | textarea  | ro-comment |  | [11853](../app.js#L11853) |
-| openReviewOutcomeModal | button button |  | Cancelar | [11855](../app.js#L11855) |
-| openReviewOutcomeModal | button button |  | Registrar revisão | [11856](../app.js#L11856) |
-| openSessionBuilder | button button |  | dinâmico: v + ' min' | [11904](../app.js#L11904) |
-| openSessionBuilder | input number | sb-custom | Outro valor | [11908](../app.js#L11908) |
-| openSessionBuilder | button button |  | Cancelar | [11922](../app.js#L11922) |
-| openSessionBuilder | button button |  | Começar | [11923](../app.js#L11923) |
-| openReviewPrimer | button button |  | O que é revisão? | [11982](../app.js#L11982) |
-| openReviewPrimer | button button |  | Por que não basta reler? | [11983](../app.js#L11983) |
-| renderPlan | button button |  | Ir para Disciplinas | [12469](../app.js#L12469) |
-| renderPlan | button button |  | dinâmico: hrs + ' h' | [12482](../app.js#L12482) |
-| renderPlan | button button |  | Outro valor | [12483](../app.js#L12483) |
-| renderPlan | button button |  | Para que serve o planejamento? | [12487](../app.js#L12487) |
-| renderPlan | input number | plan-avail-h |  | [12497](../app.js#L12497) |
-| renderPlan | input text | plan-name |  | [12505](../app.js#L12505) |
-| renderPlan | button button |  | dinâmico: plan ? 'Cancelar' : 'Voltar' | [12511](../app.js#L12511) |
-| renderPlan | button button |  | Sugerir automaticamente | [12519](../app.js#L12519) |
-| renderPlan | select  |  | dinâmico: 'Prioridade de ' + disc.name | [12561](../app.js#L12561) |
-| renderPlan | input number |  | dinâmico: 'Mínimo semanal sugerido de ' + disc.name | [12565](../app.js#L12565) |
-| renderPlan | input number |  | dinâmico: 'Minutos sugeridos de ' + disc.name | [12568](../app.js#L12568) |
-| renderPlan | button button |  | Salvar e usar nesta semana | [12584](../app.js#L12584) |
-| renderPlan | button button |  | Salvar só a partir da próxima semana | [12585](../app.js#L12585) |
-| openPlansDrawer | button button |  | Ativar | [12607](../app.js#L12607) |
-| openPlansDrawer | button button |  | excluir | [12608](../app.js#L12608) |
-| openPlansDrawer | button button |  | dinâmico: icon('i-plus') | [12610](../app.js#L12610) |
-| createSimplePlan | button button |  | Personalizar distribuição | [12643](../app.js#L12643) |
-| createSimplePlan | button button |  | Usar esta sugestão | [12648](../app.js#L12648) |
-| openNewPlanModal | input text | np-name | Ex.: Preparação para a prova de Inglês | [12730](../app.js#L12730) |
-| openNewPlanModal | input number | np-hours |  | [12731](../app.js#L12731) |
-| openNewPlanModal | button button |  | Cancelar | [12740](../app.js#L12740) |
-| openNewPlanModal | button button |  | Criar | [12741](../app.js#L12741) |
-| planWeekHead | button button |  | Alterar meta | [12893](../app.js#L12893) |
-| planWeekHead | button button |  | Personalizar distribuição | [12894](../app.js#L12894) |
-| planWeekHead | button button |  | dinâmico: state.plans.length > 1 ? ′Seus planos (${state.plans.length})′ : 'Criar outro plano' | [12895](../app.js#L12895) |
-| planUsage | button button |  | dinâmico: compare ? 'Esconder a sugestão' : 'Comparar com a sugestão' | [12920](../app.js#L12920) |
-| planUsage | button button |  | dinâmico: ui.planUsageAll ? 'Mostrar menos' : ′Mostrar todas (${rows.length})′ | [12939](../app.js#L12939) |
-| openWeekGoalModal | input number | wg-h | Outro valor, em horas | [12953](../app.js#L12953) |
-| openWeekGoalModal | button button |  | dinâmico: fmtDuration(v) | [12957](../app.js#L12957) |
-| openWeekGoalModal | input checkbox | wg-redist |  | [12960](../app.js#L12960) |
-| openWeekGoalModal | button button |  | Cancelar | [12979](../app.js#L12979) |
-| openWeekGoalModal | button button |  | Salvar meta | [12980](../app.js#L12980) |
-| planWeekNav | button button |  | Semana anterior | [13016](../app.js#L13016) |
-| planWeekNav | button button |  | Próxima semana | [13018](../app.js#L13018) |
-| planWeekNav | button button |  | Ir para esta semana | [13021](../app.js#L13021) |
-| planWeekNav | button button |  | dinâmico: icon('i-plan') | [13022](../app.js#L13022) |
-| planWeekNav | button button |  | dinâmico: view.hasTemplate ? 'Usar esta organização nas próximas semanas' : 'Repetir nas próximas semanas' | [13035](../app.js#L13035) |
-| planWeekNav | button button |  | Voltar ao modelo | [13039](../app.js#L13039) |
-| planWeekNav | button button |  | Limpar os dias | [13042](../app.js#L13042) |
-| planWeekNotices | button button |  | Ajustar os blocos | [13071](../app.js#L13071) |
-| planWeekNotices | button button |  | dinâmico: x.goal > 0 ? ′Sugerir ${fmtDuration(x.scheduled)}′ : ′Incluir com ${fmtDuration(x.scheduled)}′ | [13072](../app.js#L13072) |
-| planWeekNotices | button button |  | Manter assim | [13074](../app.js#L13074) |
-| planTray | button button |  | dinâmico: icon('i-plus') | [13113](../app.js#L13113) |
-| planTray | button button |  | dinâmico: ui.planTrayAll ? 'Mostrar menos' : ′Mostrar todas (${discs.length})′ | [13115](../app.js#L13115) |
-| trayCard | button button |  | dinâmico: ′Sugestão para ${d.name}: ${sug > 0 ? fmtDuration(sug) : 'nenhuma'}. Ajustar′ | [13133](../app.js#L13133) |
-| openSuggestionEditor | input number | sg-min | Outro valor, em minutos | [13160](../app.js#L13160) |
-| openSuggestionEditor | button button |  | dinâmico: fmtDuration(v) | [13164](../app.js#L13164) |
-| openSuggestionEditor | button button |  | Tirar da sugestão | [13186](../app.js#L13186) |
-| openSuggestionEditor | button button |  | Só nesta semana | [13187](../app.js#L13187) |
-| openSuggestionEditor | button button |  | Nesta e nas próximas | [13188](../app.js#L13188) |
-| openSuggestionPicker | input search | sp-q | Buscar disciplina | [13203](../app.js#L13203) |
-| openSuggestionPicker | button button |  | dinâmico: h('span', { class:'sp-name' }, terms.length ? highlightMatch(d.name, input.value) : d.name) | [13209](../app.js#L13209) |
-| openSuggestionPicker | button button |  | Cancelar | [13229](../app.js#L13229) |
-| deadlineChip | button button |  | dinâmico: ′${info.dueWord}: ${dl.title}${where ? ', ' + where : ''}${done ? ', concluído' : ''}. Abrir prazo′ | [13305](../app.js#L13305) |
-| blockItem | button button |  | dinâmico: label + (view.editable ? ' Editar' : '') | [13336](../app.js#L13336) |
-| planOffDays | button button |  | Personalizar dias | [13376](../app.js#L13376) |
-| weekConflictDialog | button button |  | Ver a versão atual | [13390](../app.js#L13390) |
-| weekConflictDialog | button button |  | Aplicar a minha mudança | [13391](../app.js#L13391) |
-| openBlockEditor | select  | be-day | dinâmico: view.dates.map(iso => h('option', { value:iso, selected: iso === b.date }, WeekPlan.dayLong(iso) + ( | [13508](../app.js#L13508) |
-| openBlockEditor | input number | be-min | Outra duração, em minutos | [13511](../app.js#L13511) |
-| openBlockEditor | button button |  | dinâmico: v === null ? 'Só o dia' : fmtDurationWords(v) | [13515](../app.js#L13515) |
-| openBlockEditor | button button |  | dinâmico: timeOn ? 'Tirar o horário' : '+ Definir um horário (opcional)' | [13525](../app.js#L13525) |
-| openBlockEditor | button button |  | Salvar | [13547](../app.js#L13547) |
-| openBlockEditor | button button |  | Tirar deste dia | [13570](../app.js#L13570) |
-| openBlockEditor | button button |  | Cancelar | [13571](../app.js#L13571) |
-| openMoveDialog | button button |  | dinâmico: h('span', { class:'md-name', text: WeekPlan.dayLong(iso) }) | [13586](../app.js#L13586) |
-| openMoveDialog | button button |  | Cancelar | [13595](../app.js#L13595) |
-| openStudyDaysModal | input checkbox | dinâmico: 'sd-' + dow |  | [13606](../app.js#L13606) |
-| openStudyDaysModal | button button |  | Cancelar | [13620](../app.js#L13620) |
-| openStudyDaysModal | button button |  | Salvar | [13621](../app.js#L13621) |
-| openAdjustBlocks | input number | dinâmico: 'ab-' + b.id | dinâmico: ′Minutos em ${WeekPlan.dayFull(b.date)}′ | [13652](../app.js#L13652) |
-| openAdjustBlocks | button button |  | Cancelar | [13667](../app.js#L13667) |
-| openAdjustBlocks | button button |  | Salvar | [13668](../app.js#L13668) |
-| openGoalUpdate | button button |  | Cancelar | [13701](../app.js#L13701) |
-| openGoalUpdate | button button |  | Só nesta semana | [13702](../app.js#L13702) |
-| openGoalUpdate | button button |  | Nesta e nas próximas | [13703](../app.js#L13703) |
-| priorityPicker | button button |  | dinâmico: ′${level.v} · ${level.label}′ | [13962](../app.js#L13962) |
-| priorityInline | button button |  | dinâmico: ′Prioridade ${level.v} · ${level.label}′ | [14023](../app.js#L14023) |
-| contextSearch | input search | dinâmico: o.id | dinâmico: o.label | [14332](../app.js#L14332) |
-| contextSearch | button button |  | Limpar busca | [14334](../app.js#L14334) |
-| choiceMenu | button button |  | dinâmico: o.ariaLabel | [14362](../app.js#L14362) |
-| choiceMenu | button button |  | dinâmico: icon('i-check', 'cm-check') | [14372](../app.js#L14372) |
-| collectionView | button button |  | Limpar busca | [14463](../app.js#L14463) |
-| collectionView | button button |  | Mostrar todos | [14464](../app.js#L14464) |
-| renderDisciplines | button button | dinâmico: 'dtab-' + v | dinâmico: label | [14936](../app.js#L14936) |
-| indexRow | button button |  | dinâmico: o.ariaLabel \|\| null | [14979](../app.js#L14979) |
-| levelHead | button button |  | dinâmico: c.label | [15000](../app.js#L15000) |
-| levelHead | button button |  | dinâmico: 'Voltar para ' + parent.label | [15001](../app.js#L15001) |
-| discRootLevel | button button |  | Adicionar uma disciplina | [15072](../app.js#L15072) |
-| discRootLevel | button button |  | Como organizar meus estudos? | [15073](../app.js#L15073) |
-| discRootLevel | button button |  | dinâmico: ui.showArchivedDisciplines ? 'Ocultar arquivadas' : ′Disciplinas arquivadas (${archivedDiscs.length} | [15079](../app.js#L15079) |
-| discRootLevel | button button |  | dinâmico: ui.showArchivedAreas ? 'Ocultar áreas arquivadas' : ′Áreas arquivadas (${hiddenAreas.length})′ | [15084](../app.js#L15084) |
-| discAreaLevel | button button |  | dinâmico: icon('i-plus') | [15160](../app.js#L15160) |
-| discAreaLevel | button button |  | Organizar em uma área | [15171](../app.js#L15171) |
-| discAreaLevel | button button |  | Reativar | [15179](../app.js#L15179) |
-| discAreaLevel | button button |  | Adicionar disciplina | [15198](../app.js#L15198) |
-| discAreaLevel | button button |  | Agora não | [15199](../app.js#L15199) |
-| discAreaLevel | button button |  | dinâmico: ui.showArchivedDisciplines ? 'Ocultar arquivadas' : ′Arquivadas (${archived.length})′ | [15209](../app.js#L15209) |
-| discDisciplineLevel | button button |  | Reativar | [15238](../app.js#L15238) |
-| discDisciplineLevel | button button |  | dinâmico: icon('i-play') | [15239](../app.js#L15239) |
-| discDisciplineLevel | button button |  | dinâmico: icon('i-review') | [15240](../app.js#L15240) |
-| discDisciplineLevel | button button |  | Editar | [15241](../app.js#L15241) |
-| discDisciplineLevel | input text | dd-new-topic | Nome do novo tópico | [15250](../app.js#L15250) |
-| discDisciplineLevel | button button |  | dinâmico: icon('i-plus') | [15286](../app.js#L15286) |
-| discDisciplineLevel | button button |  | Adicionar vários de uma vez | [15288](../app.js#L15288) |
-| discDisciplineLevel | details  |  | dinâmico: h('summary', null, h('span', { text:'Tópicos arquivados' }), h('span', { class:'disclosure-count', t | [15292](../app.js#L15292) |
-| topicRow | button button |  | dinâmico: ′Subir ${t.name}′ | [15323](../app.js#L15323) |
-| topicRow | button button |  | dinâmico: ′Descer ${t.name}′ | [15325](../app.js#L15325) |
-| topicDetailContent | button button |  | Reativar tópico | [15373](../app.js#L15373) |
-| topicDetailContent | button button |  | dinâmico: icon('i-play') | [15376](../app.js#L15376) |
-| topicDetailContent | button button |  | Revisar agora | [15377](../app.js#L15377) |
-| topicDetailContent | button button |  | Editar | [15378](../app.js#L15378) |
-| topicDetailContent | button button |  | abrir em Disciplinas | [15379](../app.js#L15379) |
-| topicDetailContent | button button |  | dinâmico: ′Editar o estudo de ${fmtDateBR(s.date)}′ | [15393](../app.js#L15393) |
-| topicDetailContent | details  |  | dinâmico: h('summary', null, h('span', { text:'Mais detalhes' })) | [15406](../app.js#L15406) |
-| areaNudgeCard | button button |  | Organizar | [15475](../app.js#L15475) |
-| areaNudgeCard | button button |  | Agora não | [15476](../app.js#L15476) |
-| openAreaModal | input text | ar-name | Ex.: Escola, Faculdade ou Concurso | [15509](../app.js#L15509) |
-| openAreaModal | input checkbox |  |  | [15517](../app.js#L15517) |
-| openAreaModal | button button |  | dinâmico: area ? 'Salvar' : 'Criar área' | [15532](../app.js#L15532) |
-| openAreaModal | button button |  | Cancelar | [15580](../app.js#L15580) |
-| openDisciplineModal | input text | dm-name | Ex.: Português, Matemática ou Inglês | [15670](../app.js#L15670) |
-| openDisciplineModal | select  | dm-area |  | [15675](../app.js#L15675) |
-| openDisciplineModal | input text | dm-new-area | Nome da nova área | [15680](../app.js#L15680) |
-| openDisciplineModal | select  | dm-nature |  | [15702](../app.js#L15702) |
-| openDisciplineModal | select  | dm-strategy |  | [15706](../app.js#L15706) |
-| openDisciplineModal | select  | dm-method |  | [15712](../app.js#L15712) |
-| openDisciplineModal | details  |  | dinâmico: h('summary', null, 'Mais opções') | [15718](../app.js#L15718) |
-| openDisciplineModal | button button |  | dinâmico: disc ? 'Salvar' : 'Criar disciplina' | [15740](../app.js#L15740) |
-| openDisciplineModal | button button |  | Cancelar | [15797](../app.js#L15797) |
-| openDisciplineModal | button button |  | dinâmico: disc.archived ? 'Reativar' : 'Arquivar' | [15799](../app.js#L15799) |
-| openDisciplineModal | button button |  | excluir definitivamente | [15801](../app.js#L15801) |
-| topicReviewOptions | select  | tm-strategy |  | [15919](../app.js#L15919) |
-| topicReviewOptions | select  | tm-method |  | [15924](../app.js#L15924) |
-| topicReviewOptions | details  |  | dinâmico: h('summary', null, 'Opções de revisão') | [15929](../app.js#L15929) |
-| reviewToggle | input checkbox | tm-review |  | [15940](../app.js#L15940) |
-| topicEditor | input text | tm-name | dinâmico: 'Ex.: ' + exTopic | [15985](../app.js#L15985) |
-| topicEditor | button button |  | Prefere adicionar vários tópicos de uma vez? | [16029](../app.js#L16029) |
-| showTwin | button button |  | Usar este tópico | [16046](../app.js#L16046) |
-| showTwin | button button |  | dinâmico: o.onUseExisting ? 'Reativar e usar' : 'Reativar' | [16051](../app.js#L16051) |
-| showTwin | button button |  | dinâmico: topic ? 'Salvar mesmo assim' : 'Criar outro com o mesmo nome' | [16052](../app.js#L16052) |
-| topicEditor | button button |  | dinâmico: saveLabel | [16133](../app.js#L16133) |
-| topicEditor | button button |  | dinâmico: o.inRegistration ? 'Voltar ao registro' : 'Cancelar' | [16135](../app.js#L16135) |
-| topicEditor | button button |  | Arquivar | [16139](../app.js#L16139) |
-| openBulkTopicModal | textarea  | tm-multi | Pontuação Uso da crase Concordância verbal | [16172](../app.js#L16172) |
-| openBulkTopicModal | button button |  | Cancelar | [16185](../app.js#L16185) |
-| openBulkTopicModal | button button |  | Adicionar tópicos | [16186](../app.js#L16186) |
-| deadlinesPanel | button button |  | dinâmico: icon('i-plus') | [16226](../app.js#L16226) |
-| deadlinesPanel | button button |  | dinâmico: icon('i-plus') | [16231](../app.js#L16231) |
-| deadlinesPanel | button button |  | Como funcionam os prazos? | [16232](../app.js#L16232) |
-| deadlinesPanel | button button |  | dinâmico: ′Concluir ${dl.title}′ | [16235](../app.js#L16235) |
-| deadlinesPanel | button button |  | dinâmico: ′Reabrir ${dl.title}′ | [16237](../app.js#L16237) |
-| deadlinesPanel | details  |  | dinâmico: h('summary', null, h('span', { text:'Concluídos' }), h('span', { class:'disclosure-count', text:Stri | [16273](../app.js#L16273) |
-| openDeadlineDrawer | button button |  | Reabrir | [16369](../app.js#L16369) |
-| openDeadlineDrawer | button button |  | dinâmico: icon('i-check') | [16370](../app.js#L16370) |
-| openDeadlineDrawer | button button |  | Editar | [16371](../app.js#L16371) |
-| openDeadlineDrawer | button button |  | Ver tópico | [16372](../app.js#L16372) |
-| openDeadlineDrawer | button button |  | excluir | [16373](../app.js#L16373) |
-| openDeadlineModal | input text | dl-title | Ex.: Prova de Inglês | [16388](../app.js#L16388) |
-| openDeadlineModal | input date | dl-date |  | [16389](../app.js#L16389) |
-| openDeadlineModal | input date | dl-start |  | [16391](../app.js#L16391) |
-| openDeadlineModal | button button |  | dinâmico: t.label | [16397](../app.js#L16397) |
-| openDeadlineModal | select  | dl-disc |  | [16409](../app.js#L16409) |
-| openDeadlineModal | select  | dl-topic |  | [16417](../app.js#L16417) |
-| openDeadlineModal | textarea  | dl-instr | Ex.: Entregar relatório com topologia, endereçamento e testes. | [16435](../app.js#L16435) |
-| openDeadlineModal | textarea  | dl-notes | Ex.: O professor também pediu capturas do simulador. | [16437](../app.js#L16437) |
-| openDeadlineModal | details  |  | dinâmico: h('summary', null, 'Orientações e anotações') | [16455](../app.js#L16455) |
-| openDeadlineModal | button button |  | Cancelar | [16467](../app.js#L16467) |
-| openDeadlineModal | button button |  | dinâmico: dl ? 'Salvar' : 'Adicionar prazo' | [16468](../app.js#L16468) |
-| openDeadlineModal | button button |  | excluir | [16506](../app.js#L16506) |
-| renderAnalyticsSelector | button button |  | dinâmico: p.label | [16940](../app.js#L16940) |
-| renderAnalyticsSelector | button button |  | dinâmico: h('span', { class:'an-ready-ic', 'aria-hidden':'true' }, icon(it.icon, 'nav-icon')) | [16949](../app.js#L16949) |
-| renderAnalyticsSelector | button button |  | dinâmico: h('span', { class:'an-custom-t', text:'Personalizar análise' }) | [16965](../app.js#L16965) |
-| analyticsShelf | button button |  | dinâmico: it.saved ? icon('i-bookmark', 'btn-icon an-shelf-ic') : icon('i-history', 'btn-icon an-shelf-ic') | [16999](../app.js#L16999) |
-| analyticsCustomBuilder | button button |  | dinâmico: h('span', { class:'an-option-t', text:k.label }) | [17019](../app.js#L17019) |
-| analyticsCustomBuilder | button button |  | dinâmico: p.label | [17048](../app.js#L17048) |
-| analyticsCustomBuilder | button button |  | dinâmico: h('span', { class:'an-option-t', text:f.label }) | [17076](../app.js#L17076) |
-| analyticsCustomBuilder | button button |  | Cancelar | [17093](../app.js#L17093) |
-| analyticsCustomBuilder | button button |  | Gerar análise | [17094](../app.js#L17094) |
-| analyticsTypeFilter | button button |  | Todos os tipos | [17102](../app.js#L17102) |
-| analyticsTypeFilter | button button |  | dinâmico: t.label | [17106](../app.js#L17106) |
-| scopePicker | button button |  | dinâmico: h('span', { class:'an-pick-box', 'aria-hidden':'true' }, icon('i-check', 'btn-icon')) | [17191](../app.js#L17191) |
-| scopePicker | button button |  | dinâmico: ′Tirar ${byId.get(id).name}′ | [17199](../app.js#L17199) |
-| scopePicker | button button |  | limpar | [17201](../app.js#L17201) |
-| scopePicker | input search |  | dinâmico: labels[kind] | [17234](../app.js#L17234) |
-| saveCurrentAnalysis | input text | sa-name |  | [17258](../app.js#L17258) |
-| saveCurrentAnalysis | button button |  | Cancelar | [17273](../app.js#L17273) |
-| saveCurrentAnalysis | button button |  | Salvar | [17274](../app.js#L17274) |
-| renameSavedAnalysis | input text | sa-rename |  | [17283](../app.js#L17283) |
-| renameSavedAnalysis | button button |  | Cancelar | [17293](../app.js#L17293) |
-| renameSavedAnalysis | button button |  | Salvar | [17293](../app.js#L17293) |
-| rangePicker | button button |  | Mês anterior | [17330](../app.js#L17330) |
-| rangePicker | button button |  | Próximo mês | [17332](../app.js#L17332) |
-| rangePicker | button button |  | dinâmico: fmtDateLong(iso) + (iso === tISO ? ', hoje' : '') | [17350](../app.js#L17350) |
-| rangePicker | input date | an-rs |  | [17373](../app.js#L17373) |
-| rangePicker | input date | an-re |  | [17374](../app.js#L17374) |
-| rangePicker | button button |  | limpar datas | [17392](../app.js#L17392) |
-| analyticsPanorama | button button |  | dinâmico: distMode === 'topic' ? 'Ver todos os tópicos' : 'Ver todas as disciplinas' | [17513](../app.js#L17513) |
-| analyticsPanorama | button button |  | dinâmico: ′${pth.title}: ${f.disabled ? f.reason : (teaser[pth.focus] ? teaser[pth.focus]() : '')}′ | [17556](../app.js#L17556) |
-| analyticsPanorama | button button |  | Personalizar análise | [17565](../app.js#L17565) |
-| heroFact | button button |  | dinâmico: ′${label}: ${value} ${sub \|\| ''}. Ver detalhes′ | [17572](../app.js#L17572) |
-| analyticsNextQuestions | button button |  | dinâmico: h('span', { class:'an-next-t', text: focusInfo(f).question }) | [17597](../app.js#L17597) |
-| analyticsResultHeader | button button |  | dinâmico: ′Tirar o filtro ${sc.label}: analisar todos os estudos′ | [17610](../app.js#L17610) |
-| analyticsResultHeader | button button |  | dinâmico: ′Tirar o filtro de tipos ${sc.typesLabel}′ | [17612](../app.js#L17612) |
-| analyticsResultHeader | button button |  | dinâmico: p.label | [17617](../app.js#L17617) |
-| analyticsResultHeader | button button |  | dinâmico: q.periodPreset === 'custom' ? fmtRangeLabel(a.range) : 'Outro…' | [17620](../app.js#L17620) |
-| analyticsResultHeader | button button |  | limpar | [17631](../app.js#L17631) |
-| analyticsResultHeader | button button |  | dinâmico: icon('i-back') | [17634](../app.js#L17634) |
-| analyticsResultHeader | button button |  | Alterar análise | [17635](../app.js#L17635) |
-| analyticsEmptyFor | button button |  | Registrar estudo | [17654](../app.js#L17654) |
-| analyticsEmptyFor | button button |  | Abrir Planejamento | [17671](../app.js#L17671) |
-| analyticsEmptyFor | button button |  | Registrar estudo | [17684](../app.js#L17684) |
-| analyticsEmptyFor | button button |  | Abrir o Histórico | [17688](../app.js#L17688) |
-| analyticsEmptyFor | button button |  | Escolher outro período | [17703](../app.js#L17703) |
-| analyticsEmptyFor | button button |  | dinâmico: label | [17704](../app.js#L17704) |
-| resultPages | button button |  | dinâmico: o.more \|\| 'Mostrar mais' | [17748](../app.js#L17748) |
-| conceptsViz | button button |  | dinâmico: ′${x.r.label}: ${EvidenceModel.conceptLabel(x.r.status)}. Ver o estudo′ | [17804](../app.js#L17804) |
-| milestonesViz | button button |  | ver o estudo | [17823](../app.js#L17823) |
-| metricCard | button button |  | dinâmico: ′${o.label}${whenText ? ' (' + whenText.toLowerCase() + ')' : ''}: ${val}${o.sub ? '. ' + o.sub : '' | [18120](../app.js#L18120) |
-| planVsActualViz | button button |  | dinâmico: ′${r.label}: ${value}. Ver detalhes′ | [18328](../app.js#L18328) |
-| dueReviewsViz | button button |  | dinâmico: h('span', { class:'line-t', text:tp.name }) | [18394](../app.js#L18394) |
-| dueReviewsViz | button button |  | Revisar | [18398](../app.js#L18398) |
-| deadlineLine | button button |  | dinâmico: ′${dl.title}, ${done ? 'concluído' : DeadlineEngine.dueText(dl)}, ${fmtDateLong(dl.date)}′ | [18454](../app.js#L18454) |
-| analyticsInsightsBlock | button button |  | dinâmico: ui.analyticsShowAllInsights ? 'Mostrar menos' : ′Ver todos os insights (${items.length})′ | [18524](../app.js#L18524) |
-| analyticsExploreBlock | button button | dinâmico: bodyId + '-b' | dinâmico: h('span', { class:'an-explore-l', text:it.label }) | [18611](../app.js#L18611) |
-| restDetail | button button |  | dinâmico: ′Abrir o estudo de ${fmtDateBR(s.date)}′ | [18661](../app.js#L18661) |
-| menuButton | button button |  | dinâmico: o.ariaLabel \|\| label | [18680](../app.js#L18680) |
-| menuButton | button button |  | dinâmico: it.label | [18690](../app.js#L18690) |
-| analyticsAttentionCard | button button |  | dinâmico: h('span', { class:'line-t', text:x.topic.name }) | [18716](../app.js#L18716) |
-| analyticsAttentionCard | button button |  | Abrir revisões | [18722](../app.js#L18722) |
-| analyticsDeadlinesCard | button button |  | + Adicionar prazo | [18731](../app.js#L18731) |
-| hbarRow | button button |  | dinâmico: ′${label}: ${valueText}′ | [18754](../app.js#L18754) |
-| openAnalyticsDrawer | button button |  | dinâmico: ′Editar o estudo de ${fmtDateBR(s.date)}′ | [18845](../app.js#L18845) |
-| openAnalyticsDrawer | button button |  | Ver todas no Histórico | [18854](../app.js#L18854) |
-| openAnalyticsDrawer | button button |  | Analisar todos os estudos | [18879](../app.js#L18879) |
-| openAnalyticsDrawer | button button |  | Abrir Planejamento | [18882](../app.js#L18882) |
-| openAnalyticsDrawer | button button |  | Abrir revisões | [18931](../app.js#L18931) |
-| openAnalyticsDrawer | button button |  | Abrir tópico | [18952](../app.js#L18952) |
-| openAnalyticsDrawer | button button |  | dinâmico: h('span', { class:'line-t', text:tp.name }) | [18975](../app.js#L18975) |
-| analyticsCalendarCard | button button |  | Cancelar seleção | [19001](../app.js#L19001) |
-| analyticsCalendarCard | button button |  | Selecionar intervalo | [19002](../app.js#L19002) |
-| analyticsCalendarCard | button button |  | Analisar este período | [19014](../app.js#L19014) |
-| analyticsCalendarCard | button button |  | Cancelar | [19018](../app.js#L19018) |
-| calendarHeatmap | button button |  | Mês anterior | [19034](../app.js#L19034) |
-| calendarHeatmap | button button |  | Próximo mês | [19036](../app.js#L19036) |
-| calendarHeatmap | button button |  | mês atual | [19037](../app.js#L19037) |
-| calendarHeatmap | button button |  | dinâmico: parts.join(', ') | [19082](../app.js#L19082) |
-| openDayDrawer | button button |  | Editar este estudo | [19179](../app.js#L19179) |
-| openDayDrawer | button button |  | Analisar este dia | [19191](../app.js#L19191) |
-| openDayDrawer | button button |  | Registrar estudo neste dia | [19196](../app.js#L19196) |
-| timeChart | button button |  | dinâmico: ′${granularity === 'day' ? fmtDateBR(s.key) : (granularity === 'week' ? 'Semana de ' + s.label : s.l | [19239](../app.js#L19239) |
-| openBucketDrawer | button button |  | Analisar este período | [19289](../app.js#L19289) |
-| analyticsDistributionCard | button button |  | dinâmico: l | [19311](../app.js#L19311) |
-| openDistributionDrawer | button button |  | dinâmico: goLabel | [19376](../app.js#L19376) |
-| openDistributionDrawer | button button |  | dinâmico: mode === 'discipline' ? 'Ver disciplina' : 'Ver tópico' | [19377](../app.js#L19377) |
-| donutLegend | button button |  | dinâmico: ′${r.label}: ${fmtDuration(r.minutes)}, ${safePct(r.pct)} do tempo. Ver detalhes′ | [19412](../app.js#L19412) |
-| analyticsPriorityCard | button button |  | dinâmico: ′${d.name} · ${PriorityEngine.clamp(d.priority)}′ | [19459](../app.js#L19459) |
-| analyticsPriorityCard | button button |  | dinâmico: ′${tp.name} · ${PriorityEngine.clamp(tp.priority)}′ | [19464](../app.js#L19464) |
-| analyticsReviewsCard | button button |  | Ver detalhes das revisões | [19516](../app.js#L19516) |
-| weeklyReportCard | button button |  | Semana anterior | [19582](../app.js#L19582) |
-| weeklyReportCard | button button |  | Próxima semana | [19584](../app.js#L19584) |
-| copySummary | textarea  |  | Resumo do período | [19891](../app.js#L19891) |
-| copySummary | button button |  | Fechar | [19892](../app.js#L19892) |
-| historyDiscoveries | button button |  | dinâmico: a.label | [20066](../app.js#L20066) |
-| historyDiscoveries | button button |  | Ver registros usados | [20067](../app.js#L20067) |
-| historyDiscoveries | button button |  | dinâmico: open ? 'Mostrar menos' : ′Ver mais descobertas (${list.length - LIMIT})′ | [20070](../app.js#L20070) |
-| renderHistory | button button |  | dinâmico: icon('i-play') | [20086](../app.js#L20086) |
-| renderHistory | button button |  | Registrar estudo | [20087](../app.js#L20087) |
-| renderHistory | button button |  | Filtros | [20098](../app.js#L20098) |
-| renderHistory | button button |  | dinâmico: ′Remover filtro ${x.label}′ | [20105](../app.js#L20105) |
-| renderHistory | button button |  | limpar tudo | [20107](../app.js#L20107) |
-| openHistoryFilters | button button |  | Aplicar filtros | [20166](../app.js#L20166) |
-| openHistoryFilters | button button |  | Limpar | [20169](../app.js#L20169) |
-| renderHistoryTable | button button |  | Limpar busca | [20236](../app.js#L20236) |
-| renderHistoryTable | button button |  | dinâmico: label | [20264](../app.js#L20264) |
-| renderHistoryTable | button button |  | dinâmico: ′Mostrar mais (${list.length - shown.length} restantes)′ | [20276](../app.js#L20276) |
-| openEditSessionModal | button button |  | remover estudo | [20444](../app.js#L20444) |
-| openEditSessionModal | button button |  | Cancelar | [20450](../app.js#L20450) |
-| openEditSessionModal | button button |  | Salvar | [20451](../app.js#L20451) |
-| confirmLongEdit | button button |  | Voltar e corrigir | [20519](../app.js#L20519) |
-| confirmLongEdit | button button |  | Está certo, salvar | [20520](../app.js#L20520) |
-| openAIReportModal | textarea  |  | Texto do prompt | [20665](../app.js#L20665) |
-| openAIReportModal | details  |  | dinâmico: h('summary', null, h('span', { text:'Ver o prompt' })) | [20666](../app.js#L20666) |
-| openAIReportModal | button button |  | dinâmico: x.label | [20691](../app.js#L20691) |
-| openAIReportModal | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:p.label }) | [20705](../app.js#L20705) |
-| openAIReportModal | input checkbox | air-comments |  | [20713](../app.js#L20713) |
-| openAIReportModal | button button |  | dinâmico: retry.label | [20768](../app.js#L20768) |
-| openAIReportModal | button button |  | dinâmico: icon('i-download', 'btn-icon') | [20776](../app.js#L20776) |
-| openAIReportModal | button button |  | Só baixar o CSV | [20782](../app.js#L20782) |
-| openAIReportModal | button button |  | Só copiar o prompt | [20783](../app.js#L20783) |
-| openAIReportModal | button button |  | Fechar | [20793](../app.js#L20793) |
-| runIntegrityCheck | button button |  | Fechar | [20825](../app.js#L20825) |
-| renderData | input file | import-file |  | [20837](../app.js#L20837) |
-| renderData | button button |  | dinâmico: icon('i-data') | [20850](../app.js#L20850) |
-| renderData | button button |  | Onde meus dados ficam? | [20854](../app.js#L20854) |
-| renderData | button button |  | Preparar | [20869](../app.js#L20869) |
-| renderData | button button |  | Exportar | [20874](../app.js#L20874) |
-| renderData | button button |  | Como usar meus dados com IA ou planilhas? | [20875](../app.js#L20875) |
-| renderData | button button |  | Verificar | [20892](../app.js#L20892) |
-| renderData | button button |  | Pedir ao navegador | [20897](../app.js#L20897) |
-| renderData | button button |  | apagar cópia antiga da V2 | [20942](../app.js#L20942) |
-| renderData | details  |  | dinâmico: h('summary', null, h('span', { text:'Apagar todos os dados' })) | [20949](../app.js#L20949) |
-| renderData | button button |  | Apagar todos os dados | [20953](../app.js#L20953) |
-| restoreRefused | button button |  | Entendi | [20990](../app.js#L20990) |
-| askTimerBeforeRestore | button button |  | Cancelar a restauração | [21016](../app.js#L21016) |
-| askTimerBeforeRestore | button button |  | Descartar o tempo e restaurar | [21017](../app.js#L21017) |
-| askTimerBeforeRestore | button button |  | Finalizar o estudo primeiro | [21018](../app.js#L21018) |
-| openRestorePreview | button button |  | dinâmico: hasData ? 'Substituir e restaurar' : 'Restaurar' | [21054](../app.js#L21054) |
-| openRestorePreview | button button |  | Cancelar | [21091](../app.js#L21091) |
-| openRestorePreview | details  |  | dinâmico: h('summary', null, ′Ajustes que serão feitos (${sum(r.repaired, x => x.count)})′) | [21102](../app.js#L21102) |
-| openRestorePreview | details  |  | dinâmico: h('summary', null, ′O que fica de fora (${sum(r.ignored, x => x.count)})′) | [21105](../app.js#L21105) |
-| openRestorePreview | button button |  | Fazer backup dos dados atuais | [21110](../app.js#L21110) |
-| bindEvents | button button |  | dinâmico: icon(NAV_ICONS[v], 'nav-icon') | [21183](../app.js#L21183) |
-| bindEvents | button button |  | Fechar | [21185](../app.js#L21185) |
-| helpDot | button button |  | dinâmico: 'O que é ' + info.title + '?' | [21818](../app.js#L21818) |
-| GlossaryPopover | button button |  | dinâmico: glossaryCallLabel(key) | [21877](../app.js#L21877) |
-| GlossaryPopover | button button |  | Fechar explicação | [21880](../app.js#L21880) |
-| glossaryTerm | button button |  | dinâmico: (label \|\| g.term) + ' — ver explicação' | [21935](../app.js#L21935) |
-| Palette | button button | dinâmico: 'pal-opt-' + i | dinâmico: icon(item.icon, 'nav-icon') | [22156](../app.js#L22156) |
-| FocusMode | button button |  | dinâmico: a.label | [22313](../app.js#L22313) |
-| pickDisciplineThen | button button |  | dinâmico: h('span', { text:d.name }) | [22498](../app.js#L22498) |
-| pickDisciplineThen | button button |  | Cancelar | [22500](../app.js#L22500) |
-| renderReturnPill | button button |  | dinâmico: 'Voltar à Ajuda: ' + r.label | [22579](../app.js#L22579) |
-| renderReturnPill | button button |  | Fechar este atalho | [22581](../app.js#L22581) |
-| pickDisciplineForPriority | button button |  | dinâmico: h('span', { text:d.name }) | [22603](../app.js#L22603) |
-| pickDisciplineForPriority | button button |  | Cancelar | [22606](../app.js#L22606) |
-| detailsBlock | button button |  | dinâmico: h('span', { text: d.title \|\| 'Entenda em mais detalhes' }) | [22642](../app.js#L22642) |
-| helpBreadcrumb | button button |  | dinâmico: label | [22685](../app.js#L22685) |
-| articleBody | button button |  | dinâmico: x.label | [22738](../app.js#L22738) |
-| articleBody | button button |  | dinâmico: h('span', { text:'Entenda melhor' }) | [22751](../app.js#L22751) |
-| articleBody | button button |  | dinâmico: h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:r.title }), h('div', { class:'hi-su | [22765](../app.js#L22765) |
-| articleBody | button button |  | Ver este artigo na Central de Ajuda | [22775](../app.js#L22775) |
-| helpItemButton | button button |  | dinâmico: h('span', { class:'hi-main' }, o.showPath ? h('div', { class:'hi-cat', text: articlePath(a) }) : nul | [22787](../app.js#L22787) |
-| faqNode | button button |  | dinâmico: 'Ver explicação completa: ' + getArticle(f.article).title | [22802](../app.js#L22802) |
-| faqNode | button button |  | dinâmico: h('span', { text:f.q }) | [22805](../app.js#L22805) |
-| helpSearchCard | input search | help-q | Pesquisar na Ajuda | [22824](../app.js#L22824) |
-| helpSearchCard | button button |  | Limpar busca | [22859](../app.js#L22859) |
-| helpSearchCard | button button |  | dinâmico: '“' + x + '”' | [22869](../app.js#L22869) |
-| helpResultsPanel | button button |  | Voltar para toda a Ajuda | [22954](../app.js#L22954) |
-| helpResultsPanel | button button | dinâmico: id | dinâmico: h('span', { class:'hr-main' }, h('span', { class:'hr-path', text: e.path }), h('span', { class:'hr-t | [22968](../app.js#L22968) |
-| helpResultsPanel | button button |  | dinâmico: 'Ver todos os ' + all.length + ' resultados' | [22985](../app.js#L22985) |
-| helpSuggestionList | button button |  | dinâmico: icon('i-search', 'nav-icon') | [22997](../app.js#L22997) |
-| helpHomePanel | button button |  | dinâmico: h('span', { class:'hmq-q', text:mq.q }) | [23043](../app.js#L23043) |
-| helpHomePanel | button button |  | dinâmico: h('span', { class:'hp-icon' }, icon(sec.icon, 'nav-icon')) | [23053](../app.js#L23053) |
-| helpHomePanel | button button |  | Rever a apresentação | [23069](../app.js#L23069) |
-| helpHomePanel | button button |  | Mostrar as dicas de novo | [23070](../app.js#L23070) |
-| helpHomePanel | button button |  | Ver o guia | [23071](../app.js#L23071) |
-| helpHomePanel | button button |  | Ver todas | [23078](../app.js#L23078) |
-| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Ciclo + outras ferramentas' }) | [23085](../app.js#L23085) |
-| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Glossário' }) | [23087](../app.js#L23087) |
-| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Entrar em contato' }) | [23089](../app.js#L23089) |
-| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Relatar um problema' }) | [23091](../app.js#L23091) |
-| helpSectionPanel | button button |  | dinâmico: x.label | [23105](../app.js#L23105) |
-| helpSectionPanel | button button |  | dinâmico: 'Ver todo o caminho “' + s.label + '”' | [23128](../app.js#L23128) |
-| helpBackBar | button button |  | dinâmico: icon('i-chev', 'back-chev') | [23165](../app.js#L23165) |
-| helpGlossaryPanel | input search | gloss-q | Filtrar termos do glossário | [23206](../app.js#L23206) |
-| drawGlossary | button button |  | dinâmico: glossaryCallLabel(k) | [23248](../app.js#L23248) |
-| openContactDrawer | input text | contact-mail-field | Endereço de e-mail do Ciclo | [23345](../app.js#L23345) |
-| openContactDrawer | button button |  | dinâmico: icon('i-copy') | [23372](../app.js#L23372) |
-| openContactDrawer | button button |  | dinâmico: icon('i-mail') | [23375](../app.js#L23375) |
-| openContactDrawer | button button |  | Encontrou um problema? Relatar | [23379](../app.js#L23379) |
-| openReportProblemDrawer | textarea  | report-desc | Ex.: O botão X não responde quando eu clico depois de registrar um estudo. | [23413](../app.js#L23413) |
-| openReportProblemDrawer | details  |  | dinâmico: h('summary', { text:'Ver o texto completo' }) | [23453](../app.js#L23453) |
-| openReportProblemDrawer | button button |  | dinâmico: icon('i-copy') | [23468](../app.js#L23468) |
-| openReportProblemDrawer | button button |  | dinâmico: icon('i-mail') | [23469](../app.js#L23469) |
-| openScreenHelp | button button |  | dinâmico: s.cta.label | [23492](../app.js#L23492) |
-| openScreenHelp | button button |  | dinâmico: h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:a.title }), h('div', { class:'hi-su | [23496](../app.js#L23496) |
-| openScreenHelp | button button |  | Abrir a Central de Ajuda | [23503](../app.js#L23503) |
-| renderTips | button button |  | Entendi | [23535](../app.js#L23535) |
-| toastRich | button button |  | dinâmico: a.label | [23559](../app.js#L23559) |
-| startHereChecklistCard | button button |  | dinâmico: st.action.text | [23726](../app.js#L23726) |
-| maybeShowWhatsNew | button button |  | Ver todas as novidades | [23757](../app.js#L23757) |
-| maybeShowWhatsNew | button button |  | Continuar | [23760](../app.js#L23760) |
-| stepIntro | button button |  | dinâmico: h('span', { class:'ob-choice-t', text:title }) | [23813](../app.js#L23813) |
-| stepQuick | input text | ob-name | Ex.: Português | [23828](../app.js#L23828) |
-| stepQuick | button button |  | dinâmico: ex | [23832](../app.js#L23832) |
-| stepWhat | input text | ob-add | Escreva e tecle Enter — ex.: Matemática | [23843](../app.js#L23843) |
-| stepWhat | button button |  | dinâmico: p.label | [23847](../app.js#L23847) |
-| stepWhat | button button |  | dinâmico: 'Tirar ' + n | [23853](../app.js#L23853) |
-| stepWhat | button button |  | dinâmico: icon('i-plus') | [23859](../app.js#L23859) |
-| stepGoal | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:t }) | [23868](../app.js#L23868) |
-| stepGoal | input text | ob-goal-t | Ex.: Prova de Inglês | [23876](../app.js#L23876) |
-| stepGoal | input date | ob-goal-d |  | [23878](../app.js#L23878) |
-| stepGoal | select  | ob-goal-disc |  | [23880](../app.js#L23880) |
-| stepTime | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:t }) | [23895](../app.js#L23895) |
-| stepTime | input number | ob-hours | Outro | [23904](../app.js#L23904) |
-| stepTime | button button |  | dinâmico: fmtDuration(v) | [23907](../app.js#L23907) |
-| buildActions | button button |  | Voltar | [23963](../app.js#L23963) |
-| buildActions | button button |  | dinâmico: o.revisit ? 'Fechar' : 'Prefiro explorar sozinho' | [23966](../app.js#L23966) |
-| buildActions | button button |  | Criar e continuar | [23970](../app.js#L23970) |
-| buildActions | button button |  | Continuar | [23972](../app.js#L23972) |
-| buildActions | button button |  | Continuar | [23978](../app.js#L23978) |
-| buildActions | button button |  | Continuar | [23986](../app.js#L23986) |
-| buildActions | button button |  | Criar e começar | [23991](../app.js#L23991) |
-| guideNote | button button |  | dinâmico: a.label | [24151](../app.js#L24151) |
-| guideNote | button button |  | Agora não | [24153](../app.js#L24153) |
-| startGuideCard | button button |  | ocultar | [24187](../app.js#L24187) |
-| startGuideCard | button button |  | dinâmico: s2.actionLabel | [24203](../app.js#L24203) |
-| reviewDemoNode | button button |  | dinâmico: o.label | [24232](../app.js#L24232) |
-| structureDemoNode | button button |  | dinâmico: ex.label | [24261](../app.js#L24261) |
-| openFirstReviewIntro | button button |  | Agora não | [24319](../app.js#L24319) |
-| openFirstReviewIntro | button button |  | Começar | [24322](../app.js#L24322) |
-| pomodoroSettingsRows | input number |  | dinâmico: label | [24367](../app.js#L24367) |
-| segmented | button button |  | dinâmico: o.label | [24412](../app.js#L24412) |
-| switchControl | button button |  | dinâmico: ariaLabel \|\| '' | [24425](../app.js#L24425) |
-| numberControl | input number |  | dinâmico: ariaLabel \|\| '' | [24436](../app.js#L24436) |
-| selectControl | select  |  | dinâmico: ariaLabel \|\| '' | [24442](../app.js#L24442) |
-| renderSettings | input checkbox | dinâmico: 'tb-' + b.id |  | [24475](../app.js#L24475) |
-| renderSettings | button button |  | Rever a apresentação | [24508](../app.js#L24508) |
-| renderSettings | button button |  | Mostrar novamente | [24510](../app.js#L24510) |
-| renderSettings | button button |  | dinâmico: plan ? 'Abrir Planejamento' : 'Definir uma meta' | [24524](../app.js#L24524) |
-| renderSettings | button button |  | Mostrar todas de novo | [24564](../app.js#L24564) |
-| renderSettings | button button |  | Como funcionam as revisões? | [24569](../app.js#L24569) |
-| renderSettings | button button |  | Ver | [24589](../app.js#L24589) |
-| renderSettings | button button |  | Fazer backup agora | [24601](../app.js#L24601) |
-| renderSettings | button button |  | Abrir tela Dados | [24603](../app.js#L24603) |
-| renderSettings | button button |  | Onde meus dados ficam? | [24604](../app.js#L24604) |
-| renderSettings | button button |  | Preparar | [24606](../app.js#L24606) |
-| renderSettings | button button |  | dinâmico: icon('i-mail') | [24622](../app.js#L24622) |
-| renderSettings | button button |  | dinâmico: icon('i-flag') | [24623](../app.js#L24623) |
-| renderSettings | button button |  | Central de Ajuda | [24624](../app.js#L24624) |
-| renderSettings | button button |  | Novidades desta versão | [24625](../app.js#L24625) |
-| renderSettings | button button | dinâmico: 'stab-' + g.id | dinâmico: g.label | [24643](../app.js#L24643) |
-| openChangelog | details  |  | dinâmico: h('summary', null, sec.title) | [24674](../app.js#L24674) |
-| openChangelog | details  |  | dinâmico: h('summary', null, h('span', { class:'num', text:'v' + c.v }), c.title ? h('span', { class:'cl-old-t | [24682](../app.js#L24682) |
-| renderDeadlineSuggestions | button button |  | Usar revisão intensiva | [24748](../app.js#L24748) |
-| renderDeadlineSuggestions | button button |  | Manter atual | [24756](../app.js#L24756) |
-| renderDeadlineSuggestions | button button |  | Voltar ao padrão | [24779](../app.js#L24779) |
-| renderDeadlineSuggestions | button button |  | Continuar intensiva | [24784](../app.js#L24784) |
+| askConflict | button button |  | Voltar à edição | [6062](../app.js#L6062) |
+| askConflict | button button |  | Descartar a minha edição | [6063](../app.js#L6063) |
+| askConflict | button button |  | Manter a minha edição | [6064](../app.js#L6064) |
+| DataSync | button button |  | Atualizar | [6354](../app.js#L6354) |
+| DataSync | button button |  | Continuar editando | [6356](../app.js#L6356) |
+| confirmModal | button button |  | dinâmico: o.cancelLabel \|\| 'Cancelar' | [6833](../app.js#L6833) |
+| confirmModal | button button |  | dinâmico: o.confirmLabel \|\| 'Confirmar' | [6834](../app.js#L6834) |
+| selectField | select  | dinâmico: id |  | [7285](../app.js#L7285) |
+| pillGroup | button button |  | dinâmico: it.label | [7298](../app.js#L7298) |
+| renderTimerBar | button button |  | dinâmico: a.label | [7631](../app.js#L7631) |
+| renderTimerBar | button button |  | Foco | [7633](../app.js#L7633) |
+| renderTimerBar | button button |  | descartar | [7634](../app.js#L7634) |
+| entityPicker | button button | dinâmico: o.id | dinâmico: main | [7823](../app.js#L7823) |
+| entityPicker | input search | dinâmico: o.id + '-q' | dinâmico: o.searchPlaceholder \|\| 'Buscar' | [7825](../app.js#L7825) |
+| topicMultiPicker | button button | dinâmico: o.id | dinâmico: icon('i-plus', 'btn-icon') | [8018](../app.js#L8018) |
+| topicMultiPicker | input search | dinâmico: o.id + '-q' | Buscar tópico | [8021](../app.js#L8021) |
+| topicMultiPicker | button button |  | Pronto | [8027](../app.js#L8027) |
+| drawChips | button button |  | dinâmico: ′Remover ${name}′ | [8042](../app.js#L8042) |
+| makeBlock | button button |  | Remover esta disciplina do estudo | [8332](../app.js#L8332) |
+| studyTargetFields | button button |  | + Adicionar outra disciplina | [8350](../app.js#L8350) |
+| studyTargetFields | input text | dinâmico: prefix + '-newdisc' | Ex.: História | [8387](../app.js#L8387) |
+| studyTargetFields | button button |  | Escolher uma disciplina que já existe | [8388](../app.js#L8388) |
+| studyTypePicker | button button |  | dinâmico: h('span', { class:'type-ic', 'aria-hidden':'true' }, icon(t.icon, 'nav-icon')) | [8541](../app.js#L8541) |
+| topicSplitField | button button |  |  | [8605](../app.js#L8605) |
+| topicSplitField | button button |  | Não dividir | [8609](../app.js#L8609) |
+| input | input number | dinâmico: ′${p}-${kind === 'd' ? 'dsplit' : 'split'}-${id}′ | dinâmico: ′Minutos de ${label}′ | [8628](../app.js#L8628) |
+| draw | button button |  | dinâmico: ′${x.label} para todos os tópicos′ | [8816](../app.js#L8816) |
+| commentField | textarea  | dinâmico: o.id |  | [8866](../app.js#L8866) |
+| commentField | button button |  | + Adicionar comentário | [8869](../app.js#L8869) |
+| commentField | button button |  | Remover o comentário | [8870](../app.js#L8870) |
+| resultsField | button button |  | dinâmico: icon(k.v === 'milestone' ? 'i-milestone' : k.v === 'concept' ? 'i-help' : 'i-t-exercise', 'btn-icon' | [8953](../app.js#L8953) |
+| resultsField | button button |  | Recolher | [8958](../app.js#L8958) |
+| resultsField | button button |  | + Adicionar resultado | [8961](../app.js#L8961) |
+| addCard | button button |  | dinâmico: 'Remover este resultado: ' + k.label | [8988](../app.js#L8988) |
+| addCard | select  | dinâmico: ′${p}-${id}-t′ |  | [8990](../app.js#L8990) |
+| addCard | input number | dinâmico: ′${p}-${id}-q′ |  | [9004](../app.js#L9004) |
+| addCard | input number | dinâmico: ′${p}-${id}-c′ |  | [9005](../app.js#L9005) |
+| addCard | input text | dinâmico: ′${p}-${id}-a′ | Ex.: Frações | [9006](../app.js#L9006) |
+| addCard | input text | dinâmico: ′${p}-${id}-a′ | Ex.: Uso da crase | [9045](../app.js#L9045) |
+| addCard | textarea  | dinâmico: ′${p}-${id}-n′ | dinâmico: milestoneExample() | [9059](../app.js#L9059) |
+| addCard | input text | dinâmico: ′${p}-${id}-b′ | Ex.: precisava parar entre um acorde e outro | [9061](../app.js#L9061) |
+| timeField | input text | dinâmico: o.id | dinâmico: o.ariaLabel \|\| null | [9164](../app.js#L9164) |
+| breaksEditor | button button |  | dinâmico: addLabel | [9302](../app.js#L9302) |
+| draw | button button |  | dinâmico: ′Remover o descanso ${n}′ | [9324](../app.js#L9324) |
+| draw | input number | dinâmico: ′${p}-bm-${r.key}′ | dinâmico: ′Descanso ${n}, em minutos′ | [9337](../app.js#L9337) |
+| FormDraft | button button |  | Começar do zero | [9516](../app.js#L9516) |
+| studyWhenFields | input date | dinâmico: p + '-date' |  | [9538](../app.js#L9538) |
+| studyWhenFields | input number | dinâmico: p + '-min' |  | [9543](../app.js#L9543) |
+| studyWhenFields | button button |  |  | [9549](../app.js#L9549) |
+| studyWhenFields | button button |  |  | [9551](../app.js#L9551) |
+| studyWhenFields | button button |  | dinâmico: v + ' min' | [9555](../app.js#L9555) |
+| openRegisterModal | button button |  | dinâmico: h('span', { class:'mode-ic', 'aria-hidden':'true' }, icon(ic, 'nav-icon')) | [9794](../app.js#L9794) |
+| openRegisterModal | button button |  | dinâmico: v === null ? 'Livre' : v + ' min' | [9818](../app.js#L9818) |
+| openRegisterModal | button button |  | dinâmico: pr.v === 'custom' ? pr.label : ′${pr.label} · ${pr.focusMin}/${pr.shortMin}′ | [9830](../app.js#L9830) |
+| openRegisterModal | input number | dinâmico: 'rm-pomo-' + key |  | [9837](../app.js#L9837) |
+| openRegisterModal | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:title }) | [9851](../app.js#L9851) |
+| openRegisterModal | button button |  | Começar sem escolher a disciplina — você escolhe ao finalizar | [9863](../app.js#L9863) |
+| confirmLong | button button |  | Corrigir | [9937](../app.js#L9937) |
+| confirmLong | button button |  | Sim, registrar | [9952](../app.js#L9952) |
+| openRegisterModal | button button |  | dinâmico: primaryLabel() | [9959](../app.js#L9959) |
+| openRegisterModal | button button |  | Cancelar | [10054](../app.js#L10054) |
+| openFinishModal | input number | fin-min |  | [10117](../app.js#L10117) |
+| openFinishModal | details  |  | dinâmico: fixToggle | [10162](../app.js#L10162) |
+| renderOutcome | select  | fin-method |  | [10196](../app.js#L10196) |
+| openFinishModal | button button |  | Registrar estudo | [10238](../app.js#L10238) |
+| openFinishModal | button button |  | dinâmico: snap.paused ? 'Voltar ao cronômetro' : snap.onBreak ? 'Voltar ao descanso' : 'Continuar estudando' | [10314](../app.js#L10314) |
+| offerStaleSession | button button |  | Continuar | [10341](../app.js#L10341) |
+| offerStaleSession | button button |  | Descartar | [10342](../app.js#L10342) |
+| offerStaleSession | button button |  | Finalizar | [10343](../app.js#L10343) |
+| renderToday | button button |  | dinâmico: icon('i-plus') | [11185](../app.js#L11185) |
+| renderToday | button button |  | Quero ajuda para organizar | [11186](../app.js#L11186) |
+| todayAction | button button |  | dinâmico: ′Começar a estudar ${d.name} agora′ | [11231](../app.js#L11231) |
+| todayAction | button button |  | dinâmico: icon('i-check') | [11249](../app.js#L11249) |
+| todayAction | button button |  | dinâmico: icon('i-play') | [11250](../app.js#L11250) |
+| todayAction | button button |  | dinâmico: icon('i-plus') | [11251](../app.js#L11251) |
+| todayAction | button button |  | dinâmico: icon('i-play') | [11268](../app.js#L11268) |
+| todayAction | button button |  | Por quê? | [11270](../app.js#L11270) |
+| todayAction | button button |  | Outras opções | [11271](../app.js#L11271) |
+| todayWeekPanel | button button |  | Ver nas Análises | [11323](../app.js#L11323) |
+| todayWeekPanel | button button |  | dinâmico: ′${fmtDuration(weekMin)} estudadas nesta semana, em ${plural(active.size, 'dia', 'dias')}. Abrir nas | [11324](../app.js#L11324) |
+| todayWeekPanel | button button |  | dinâmico: ′Resultados desta semana: ${resultsLine}. Ver nas Análises′ | [11331](../app.js#L11331) |
+| todayWeekPanel | button button |  | Definir uma meta para a semana | [11334](../app.js#L11334) |
+| todayNextSteps | button button |  | Revisar | [11351](../app.js#L11351) |
+| todayNextSteps | button button |  | dinâmico: ′Ver ${plural(nTopics, 'assunto', 'assuntos')}′ | [11352](../app.js#L11352) |
+| todayNextSteps | button button |  | dinâmico: ′ver ${dls.length}′ | [11379](../app.js#L11379) |
+| todayShortcuts | button button |  | dinâmico: icon(NAV_ICONS[v] \|\| 'i-arrow', 'nav-icon sc-ic') | [11410](../app.js#L11410) |
+| nextRow | button button |  | dinâmico: main | [11447](../app.js#L11447) |
+| openAlternatives | button button |  | dinâmico: 'Estudar ' + a.discipline.name | [11459](../app.js#L11459) |
+| explainAction | button button |  | Fechar | [11473](../app.js#L11473) |
+| renderReviews | button button |  | dinâmico: icon('i-review') | [11508](../app.js#L11508) |
+| renderReviews | button button |  | Como funcionam as revisões? | [11509](../app.js#L11509) |
+| renderReviews | button button |  | Adicionar um tópico | [11510](../app.js#L11510) |
+| renderReviews | button button |  | dinâmico: icon('i-play') | [11523](../app.js#L11523) |
+| renderReviews | button button |  | dinâmico: icon('i-review') | [11524](../app.js#L11524) |
+| renderReviews | button button |  | Como funciona? | [11525](../app.js#L11525) |
+| renderReviews | button button |  | Religar sugestões | [11526](../app.js#L11526) |
+| reviewSituation | details  |  | dinâmico: h('summary', null, 'Situação detalhada') | [11561](../app.js#L11561) |
+| drawReviewGroups | button button |  | Limpar busca | [11598](../app.js#L11598) |
+| drawReviewGroups | button button |  | dinâmico: ui.reviewsShowAll ? 'Mostrar menos' : ′Mostrar todos (${all.length})′ | [11609](../app.js#L11609) |
+| drawReviewGroups | button button |  | dinâmico: h('span', { class:'line-t' }, q ? highlightMatch(t.name, q) : t.name) | [11625](../app.js#L11625) |
+| drawReviewGroups | button button |  | dinâmico: 'Revisar agora ' + t.name | [11628](../app.js#L11628) |
+| drawReviewGroups | details  |  | dinâmico: h('summary', null, h('span', { text:'Próximas sugestões' }), h('span', { class:'disclosure-count', t | [11630](../app.js#L11630) |
+| drawReviewGroups | details  |  | dinâmico: h('summary', null, h('span', { text:'Deixados para depois' }), h('span', { class:'disclosure-count', | [11635](../app.js#L11635) |
+| drawReviewGroups | button button |  | dinâmico: h('span', { class:'line-t', text:t.name }) | [11640](../app.js#L11640) |
+| drawReviewGroups | button button |  | dinâmico: 'Mostrar de novo ' + t.name | [11643](../app.js#L11643) |
+| drawReviewGroups | button button |  | Mostrar todos de novo | [11644](../app.js#L11644) |
+| reviewGroupCard | button button |  | dinâmico: ′${t.name}: ver assunto′ | [11661](../app.js#L11661) |
+| reviewGroupCard | button button |  | dinâmico: 'Revisar agora ' + t.name | [11665](../app.js#L11665) |
+| reviewGroupCard | button button |  | dinâmico: open ? 'Mostrar menos' : ′Ver os ${all.length} assuntos′ | [11680](../app.js#L11680) |
+| reviewGroupCard | button button |  | dinâmico: icon('i-review') | [11683](../app.js#L11683) |
+| reviewGroupCard | button button |  | Escolher assuntos | [11684](../app.js#L11684) |
+| reviewRow | button button |  | dinâmico: ′${t.name}: ver assunto′ | [11708](../app.js#L11708) |
+| reviewRow | button button |  | dinâmico: 'Revisar agora ' + t.name | [11712](../app.js#L11712) |
+| openDisciplineReview | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:t }) | [11779](../app.js#L11779) |
+| openDisciplineReview | button button |  | dinâmico: h('span', { class:'an-pick-box', 'aria-hidden':'true' }, icon('i-check', 'btn-icon')) | [11791](../app.js#L11791) |
+| openDisciplineReview | button button |  | Cancelar | [11813](../app.js#L11813) |
+| openDisciplineReview | button button |  | Já revisei | [11814](../app.js#L11814) |
+| openDisciplineReview | button button |  | dinâmico: icon('i-play') | [11820](../app.js#L11820) |
+| startReview | button button |  | dinâmico: methodLabel(mv) | [11859](../app.js#L11859) |
+| startReview | button button |  | Cancelar | [11869](../app.js#L11869) |
+| startReview | button button |  | Registrar sem cronômetro | [11870](../app.js#L11870) |
+| startReview | button button |  | Começar revisão | [11872](../app.js#L11872) |
+| openReviewOutcomeModal | input number | ro-min |  | [11885](../app.js#L11885) |
+| openReviewOutcomeModal | textarea  | ro-comment |  | [11893](../app.js#L11893) |
+| openReviewOutcomeModal | button button |  | Cancelar | [11895](../app.js#L11895) |
+| openReviewOutcomeModal | button button |  | Registrar revisão | [11896](../app.js#L11896) |
+| openSessionBuilder | button button |  | dinâmico: v + ' min' | [11944](../app.js#L11944) |
+| openSessionBuilder | input number | sb-custom | Outro valor | [11948](../app.js#L11948) |
+| openSessionBuilder | button button |  | Cancelar | [11962](../app.js#L11962) |
+| openSessionBuilder | button button |  | Começar | [11963](../app.js#L11963) |
+| openReviewPrimer | button button |  | O que é revisão? | [12022](../app.js#L12022) |
+| openReviewPrimer | button button |  | Por que não basta reler? | [12023](../app.js#L12023) |
+| renderPlan | button button |  | Ir para Disciplinas | [12527](../app.js#L12527) |
+| renderPlan | button button |  | dinâmico: hrs + ' h' | [12540](../app.js#L12540) |
+| renderPlan | button button |  | Outro valor | [12541](../app.js#L12541) |
+| renderPlan | button button |  | Para que serve o planejamento? | [12545](../app.js#L12545) |
+| renderPlan | input number | plan-avail-h |  | [12555](../app.js#L12555) |
+| renderPlan | input text | plan-name |  | [12563](../app.js#L12563) |
+| renderPlan | button button |  | dinâmico: plan ? 'Cancelar' : 'Voltar' | [12569](../app.js#L12569) |
+| renderPlan | button button |  | Sugerir automaticamente | [12577](../app.js#L12577) |
+| renderPlan | select  |  | dinâmico: 'Prioridade de ' + disc.name | [12619](../app.js#L12619) |
+| renderPlan | input number |  | dinâmico: 'Mínimo semanal sugerido de ' + disc.name | [12623](../app.js#L12623) |
+| renderPlan | input number |  | dinâmico: 'Minutos sugeridos de ' + disc.name | [12626](../app.js#L12626) |
+| renderPlan | button button |  | Salvar e usar nesta semana | [12642](../app.js#L12642) |
+| renderPlan | button button |  | Salvar só a partir da próxima semana | [12643](../app.js#L12643) |
+| openPlansDrawer | button button |  | Ativar | [12665](../app.js#L12665) |
+| openPlansDrawer | button button |  | excluir | [12666](../app.js#L12666) |
+| openPlansDrawer | button button |  | dinâmico: icon('i-plus') | [12668](../app.js#L12668) |
+| createSimplePlan | button button |  | Personalizar distribuição | [12701](../app.js#L12701) |
+| createSimplePlan | button button |  | Usar esta sugestão | [12706](../app.js#L12706) |
+| openNewPlanModal | input text | np-name | Ex.: Preparação para a prova de Inglês | [12788](../app.js#L12788) |
+| openNewPlanModal | input number | np-hours |  | [12789](../app.js#L12789) |
+| openNewPlanModal | button button |  | Cancelar | [12798](../app.js#L12798) |
+| openNewPlanModal | button button |  | Criar | [12799](../app.js#L12799) |
+| planBoard | button button |  | dinâmico: icon('i-plus') | [12895](../app.js#L12895) |
+| planBoard | details  |  | dinâmico: h('summary', null, h('span', { text:'Disciplinas e sugestões' }), h('span', { class:'hint', text:'Di | [12902](../app.js#L12902) |
+| planWeekHead | button button |  | Alterar meta | [12961](../app.js#L12961) |
+| planWeekHead | button button |  | Personalizar distribuição | [12962](../app.js#L12962) |
+| planWeekHead | button button |  | dinâmico: state.plans.length > 1 ? ′Seus planos (${state.plans.length})′ : 'Criar outro plano' | [12963](../app.js#L12963) |
+| planUsage | button button |  | dinâmico: compare ? 'Esconder a sugestão' : 'Comparar com a sugestão' | [12988](../app.js#L12988) |
+| planUsage | button button |  | dinâmico: ui.planUsageAll ? 'Mostrar menos' : ′Mostrar todas (${rows.length})′ | [13007](../app.js#L13007) |
+| openWeekGoalModal | input number | wg-h | Outro valor, em horas | [13021](../app.js#L13021) |
+| openWeekGoalModal | button button |  | dinâmico: fmtDuration(v) | [13025](../app.js#L13025) |
+| openWeekGoalModal | input checkbox | wg-redist |  | [13028](../app.js#L13028) |
+| openWeekGoalModal | button button |  | Cancelar | [13047](../app.js#L13047) |
+| openWeekGoalModal | button button |  | Salvar meta | [13048](../app.js#L13048) |
+| planWeekNav | button button |  | Semana anterior | [13084](../app.js#L13084) |
+| planWeekNav | button button |  | Próxima semana | [13086](../app.js#L13086) |
+| planWeekNav | button button |  | Ir para esta semana | [13089](../app.js#L13089) |
+| planWeekNav | button button |  | dinâmico: icon('i-plan') | [13090](../app.js#L13090) |
+| planWeekNotices | button button |  | Ajustar os blocos | [13134](../app.js#L13134) |
+| planWeekNotices | button button |  | dinâmico: x.goal > 0 ? ′Sugerir ${fmtDuration(x.scheduled)}′ : ′Incluir com ${fmtDuration(x.scheduled)}′ | [13135](../app.js#L13135) |
+| planWeekNotices | button button |  | Manter assim | [13137](../app.js#L13137) |
+| planTray | button button |  | dinâmico: icon('i-plus') | [13176](../app.js#L13176) |
+| planTray | button button |  | dinâmico: ui.planTrayAll ? 'Mostrar menos' : ′Mostrar todas (${discs.length})′ | [13178](../app.js#L13178) |
+| trayCard | button button |  | dinâmico: ′Sugestão para ${d.name}: ${sug > 0 ? fmtDuration(sug) : 'nenhuma'}. Ajustar′ | [13196](../app.js#L13196) |
+| openSuggestionEditor | input number | sg-min | Outro valor, em minutos | [13223](../app.js#L13223) |
+| openSuggestionEditor | button button |  | dinâmico: fmtDuration(v) | [13227](../app.js#L13227) |
+| openSuggestionEditor | button button |  | Tirar da sugestão | [13249](../app.js#L13249) |
+| openSuggestionEditor | button button |  | Só nesta semana | [13250](../app.js#L13250) |
+| openSuggestionEditor | button button |  | Nesta e nas próximas | [13251](../app.js#L13251) |
+| openSuggestionPicker | input search | sp-q | Buscar disciplina | [13266](../app.js#L13266) |
+| openSuggestionPicker | button button |  | dinâmico: h('span', { class:'sp-name' }, terms.length ? highlightMatch(d.name, input.value) : d.name) | [13272](../app.js#L13272) |
+| openSuggestionPicker | button button |  | Cancelar | [13292](../app.js#L13292) |
+| openWeekBlockPicker | input search | wb-search | Buscar disciplina | [13305](../app.js#L13305) |
+| openWeekBlockPicker | input radio |  |  | [13316](../app.js#L13316) |
+| openWeekBlockPicker | input checkbox |  | dinâmico: WeekPlan.dayFull(iso) | [13328](../app.js#L13328) |
+| openWeekBlockPicker | input number | wb-minutes | Só o dia | [13334](../app.js#L13334) |
+| openWeekBlockPicker | details  |  | dinâmico: h('summary', { text:'Duração e horário (opcionais)' }) | [13343](../app.js#L13343) |
+| openWeekBlockPicker | button button |  | Cancelar | [13348](../app.js#L13348) |
+| openWeekBlockPicker | button button |  | Adicionar aos dias | [13349](../app.js#L13349) |
+| deadlineChip | button button |  | dinâmico: ′${info.dueWord}: ${dl.title}${where ? ', ' + where : ''}${done ? ', concluído' : ''}. Abrir prazo′ | [13438](../app.js#L13438) |
+| blockItem | button button |  | dinâmico: label + (view.editable ? ' Editar' : '') | [13469](../app.js#L13469) |
+| planOffDays | button button |  | Personalizar dias | [13509](../app.js#L13509) |
+| weekConflictDialog | button button |  | Ver a versão atual | [13523](../app.js#L13523) |
+| weekConflictDialog | button button |  | Aplicar a minha mudança | [13524](../app.js#L13524) |
+| openBlockEditor | select  | be-day | dinâmico: view.dates.map(iso => h('option', { value:iso, selected: iso === b.date }, WeekPlan.dayLong(iso) + ( | [13641](../app.js#L13641) |
+| openBlockEditor | input number | be-min | Outra duração, em minutos | [13644](../app.js#L13644) |
+| openBlockEditor | button button |  | dinâmico: v === null ? 'Só o dia' : fmtDurationWords(v) | [13648](../app.js#L13648) |
+| openBlockEditor | button button |  | dinâmico: timeOn ? 'Tirar o horário' : '+ Definir um horário (opcional)' | [13658](../app.js#L13658) |
+| openBlockEditor | button button |  | Salvar | [13680](../app.js#L13680) |
+| openBlockEditor | button button |  | Tirar deste dia | [13703](../app.js#L13703) |
+| openBlockEditor | button button |  | Cancelar | [13704](../app.js#L13704) |
+| openMoveDialog | button button |  | dinâmico: h('span', { class:'md-name', text: WeekPlan.dayLong(iso) }) | [13719](../app.js#L13719) |
+| openMoveDialog | button button |  | Cancelar | [13728](../app.js#L13728) |
+| openStudyDaysModal | input checkbox | dinâmico: 'sd-' + dow |  | [13739](../app.js#L13739) |
+| openStudyDaysModal | button button |  | Cancelar | [13753](../app.js#L13753) |
+| openStudyDaysModal | button button |  | Salvar | [13754](../app.js#L13754) |
+| openAdjustBlocks | input number | dinâmico: 'ab-' + b.id | dinâmico: ′Minutos em ${WeekPlan.dayFull(b.date)}′ | [13785](../app.js#L13785) |
+| openAdjustBlocks | button button |  | Cancelar | [13800](../app.js#L13800) |
+| openAdjustBlocks | button button |  | Salvar | [13801](../app.js#L13801) |
+| openGoalUpdate | button button |  | Cancelar | [13834](../app.js#L13834) |
+| openGoalUpdate | button button |  | Só nesta semana | [13835](../app.js#L13835) |
+| openGoalUpdate | button button |  | Nesta e nas próximas | [13836](../app.js#L13836) |
+| priorityPicker | button button |  | dinâmico: ′${level.v} · ${level.label}′ | [14095](../app.js#L14095) |
+| priorityInline | button button |  | dinâmico: ′Prioridade ${level.v} · ${level.label}′ | [14156](../app.js#L14156) |
+| contextSearch | input search | dinâmico: o.id | dinâmico: o.label | [14465](../app.js#L14465) |
+| contextSearch | button button |  | Limpar busca | [14467](../app.js#L14467) |
+| choiceMenu | button button |  | dinâmico: o.ariaLabel | [14495](../app.js#L14495) |
+| choiceMenu | button button |  | dinâmico: icon('i-check', 'cm-check') | [14505](../app.js#L14505) |
+| collectionView | button button |  | Limpar busca | [14596](../app.js#L14596) |
+| collectionView | button button |  | Mostrar todos | [14597](../app.js#L14597) |
+| renderDisciplines | button button | dinâmico: 'dtab-' + v | dinâmico: label | [15069](../app.js#L15069) |
+| indexRow | button button |  | dinâmico: o.ariaLabel \|\| null | [15112](../app.js#L15112) |
+| levelHead | button button |  | dinâmico: c.label | [15133](../app.js#L15133) |
+| levelHead | button button |  | dinâmico: 'Voltar para ' + parent.label | [15134](../app.js#L15134) |
+| discRootLevel | button button |  | Adicionar uma disciplina | [15205](../app.js#L15205) |
+| discRootLevel | button button |  | Como organizar meus estudos? | [15206](../app.js#L15206) |
+| discRootLevel | button button |  | dinâmico: ui.showArchivedDisciplines ? 'Ocultar arquivadas' : ′Disciplinas arquivadas (${archivedDiscs.length} | [15212](../app.js#L15212) |
+| discRootLevel | button button |  | dinâmico: ui.showArchivedAreas ? 'Ocultar áreas arquivadas' : ′Áreas arquivadas (${hiddenAreas.length})′ | [15217](../app.js#L15217) |
+| discAreaLevel | button button |  | dinâmico: icon('i-plus') | [15293](../app.js#L15293) |
+| discAreaLevel | button button |  | Organizar em uma área | [15304](../app.js#L15304) |
+| discAreaLevel | button button |  | Reativar | [15312](../app.js#L15312) |
+| discAreaLevel | button button |  | Adicionar disciplina | [15331](../app.js#L15331) |
+| discAreaLevel | button button |  | Agora não | [15332](../app.js#L15332) |
+| discAreaLevel | button button |  | dinâmico: ui.showArchivedDisciplines ? 'Ocultar arquivadas' : ′Arquivadas (${archived.length})′ | [15342](../app.js#L15342) |
+| discDisciplineLevel | button button |  | Reativar | [15371](../app.js#L15371) |
+| discDisciplineLevel | button button |  | dinâmico: icon('i-play') | [15372](../app.js#L15372) |
+| discDisciplineLevel | button button |  | dinâmico: icon('i-review') | [15373](../app.js#L15373) |
+| discDisciplineLevel | button button |  | Editar | [15374](../app.js#L15374) |
+| discDisciplineLevel | input text | dd-new-topic | Nome do novo tópico | [15383](../app.js#L15383) |
+| discDisciplineLevel | button button |  | dinâmico: icon('i-plus') | [15419](../app.js#L15419) |
+| discDisciplineLevel | button button |  | Adicionar vários de uma vez | [15421](../app.js#L15421) |
+| discDisciplineLevel | details  |  | dinâmico: h('summary', null, h('span', { text:'Tópicos arquivados' }), h('span', { class:'disclosure-count', t | [15425](../app.js#L15425) |
+| topicRow | button button |  | dinâmico: ′Subir ${t.name}′ | [15456](../app.js#L15456) |
+| topicRow | button button |  | dinâmico: ′Descer ${t.name}′ | [15458](../app.js#L15458) |
+| topicDetailContent | button button |  | Reativar tópico | [15506](../app.js#L15506) |
+| topicDetailContent | button button |  | dinâmico: icon('i-play') | [15509](../app.js#L15509) |
+| topicDetailContent | button button |  | Revisar agora | [15510](../app.js#L15510) |
+| topicDetailContent | button button |  | Editar | [15511](../app.js#L15511) |
+| topicDetailContent | button button |  | abrir em Disciplinas | [15512](../app.js#L15512) |
+| topicDetailContent | button button |  | dinâmico: ′Editar o estudo de ${fmtDateBR(s.date)}′ | [15526](../app.js#L15526) |
+| topicDetailContent | details  |  | dinâmico: h('summary', null, h('span', { text:'Mais detalhes' })) | [15539](../app.js#L15539) |
+| areaNudgeCard | button button |  | Organizar | [15608](../app.js#L15608) |
+| areaNudgeCard | button button |  | Agora não | [15609](../app.js#L15609) |
+| openAreaModal | input text | ar-name | Ex.: Escola, Faculdade ou Concurso | [15642](../app.js#L15642) |
+| openAreaModal | input checkbox |  |  | [15650](../app.js#L15650) |
+| openAreaModal | button button |  | dinâmico: area ? 'Salvar' : 'Criar área' | [15665](../app.js#L15665) |
+| openAreaModal | button button |  | Cancelar | [15713](../app.js#L15713) |
+| openDisciplineModal | input text | dm-name | Ex.: Português, Matemática ou Inglês | [15803](../app.js#L15803) |
+| openDisciplineModal | select  | dm-area |  | [15808](../app.js#L15808) |
+| openDisciplineModal | input text | dm-new-area | Nome da nova área | [15813](../app.js#L15813) |
+| openDisciplineModal | select  | dm-nature |  | [15835](../app.js#L15835) |
+| openDisciplineModal | select  | dm-strategy |  | [15839](../app.js#L15839) |
+| openDisciplineModal | select  | dm-method |  | [15845](../app.js#L15845) |
+| openDisciplineModal | details  |  | dinâmico: h('summary', null, 'Mais opções') | [15851](../app.js#L15851) |
+| openDisciplineModal | button button |  | dinâmico: disc ? 'Salvar' : 'Criar disciplina' | [15873](../app.js#L15873) |
+| openDisciplineModal | button button |  | Cancelar | [15930](../app.js#L15930) |
+| openDisciplineModal | button button |  | dinâmico: disc.archived ? 'Reativar' : 'Arquivar' | [15932](../app.js#L15932) |
+| openDisciplineModal | button button |  | excluir definitivamente | [15934](../app.js#L15934) |
+| topicReviewOptions | select  | tm-strategy |  | [16052](../app.js#L16052) |
+| topicReviewOptions | select  | tm-method |  | [16057](../app.js#L16057) |
+| topicReviewOptions | details  |  | dinâmico: h('summary', null, 'Opções de revisão') | [16062](../app.js#L16062) |
+| reviewToggle | input checkbox | tm-review |  | [16073](../app.js#L16073) |
+| topicEditor | input text | tm-name | dinâmico: 'Ex.: ' + exTopic | [16118](../app.js#L16118) |
+| topicEditor | button button |  | Prefere adicionar vários tópicos de uma vez? | [16162](../app.js#L16162) |
+| showTwin | button button |  | Usar este tópico | [16179](../app.js#L16179) |
+| showTwin | button button |  | dinâmico: o.onUseExisting ? 'Reativar e usar' : 'Reativar' | [16184](../app.js#L16184) |
+| showTwin | button button |  | dinâmico: topic ? 'Salvar mesmo assim' : 'Criar outro com o mesmo nome' | [16185](../app.js#L16185) |
+| topicEditor | button button |  | dinâmico: saveLabel | [16266](../app.js#L16266) |
+| topicEditor | button button |  | dinâmico: o.inRegistration ? 'Voltar ao registro' : 'Cancelar' | [16268](../app.js#L16268) |
+| topicEditor | button button |  | Arquivar | [16272](../app.js#L16272) |
+| openBulkTopicModal | textarea  | tm-multi | Pontuação Uso da crase Concordância verbal | [16305](../app.js#L16305) |
+| openBulkTopicModal | button button |  | Cancelar | [16318](../app.js#L16318) |
+| openBulkTopicModal | button button |  | Adicionar tópicos | [16319](../app.js#L16319) |
+| deadlinesPanel | button button |  | dinâmico: icon('i-plus') | [16359](../app.js#L16359) |
+| deadlinesPanel | button button |  | dinâmico: icon('i-plus') | [16364](../app.js#L16364) |
+| deadlinesPanel | button button |  | Como funcionam os prazos? | [16365](../app.js#L16365) |
+| deadlinesPanel | button button |  | dinâmico: ′Concluir ${dl.title}′ | [16368](../app.js#L16368) |
+| deadlinesPanel | button button |  | dinâmico: ′Reabrir ${dl.title}′ | [16370](../app.js#L16370) |
+| deadlinesPanel | details  |  | dinâmico: h('summary', null, h('span', { text:'Concluídos' }), h('span', { class:'disclosure-count', text:Stri | [16406](../app.js#L16406) |
+| openDeadlineDrawer | button button |  | Reabrir | [16502](../app.js#L16502) |
+| openDeadlineDrawer | button button |  | dinâmico: icon('i-check') | [16503](../app.js#L16503) |
+| openDeadlineDrawer | button button |  | Editar | [16504](../app.js#L16504) |
+| openDeadlineDrawer | button button |  | Ver tópico | [16505](../app.js#L16505) |
+| openDeadlineDrawer | button button |  | excluir | [16506](../app.js#L16506) |
+| openDeadlineModal | input text | dl-title | Ex.: Prova de Inglês | [16521](../app.js#L16521) |
+| openDeadlineModal | input date | dl-date |  | [16522](../app.js#L16522) |
+| openDeadlineModal | input date | dl-start |  | [16524](../app.js#L16524) |
+| openDeadlineModal | button button |  | dinâmico: t.label | [16530](../app.js#L16530) |
+| openDeadlineModal | select  | dl-disc |  | [16542](../app.js#L16542) |
+| openDeadlineModal | select  | dl-topic |  | [16550](../app.js#L16550) |
+| openDeadlineModal | textarea  | dl-instr | Ex.: Entregar relatório com topologia, endereçamento e testes. | [16568](../app.js#L16568) |
+| openDeadlineModal | textarea  | dl-notes | Ex.: O professor também pediu capturas do simulador. | [16570](../app.js#L16570) |
+| openDeadlineModal | details  |  | dinâmico: h('summary', null, 'Orientações e anotações') | [16588](../app.js#L16588) |
+| openDeadlineModal | button button |  | Cancelar | [16600](../app.js#L16600) |
+| openDeadlineModal | button button |  | dinâmico: dl ? 'Salvar' : 'Adicionar prazo' | [16601](../app.js#L16601) |
+| openDeadlineModal | button button |  | excluir | [16639](../app.js#L16639) |
+| renderAnalyticsSelector | button button |  | dinâmico: p.label | [17073](../app.js#L17073) |
+| renderAnalyticsSelector | button button |  | dinâmico: h('span', { class:'an-ready-ic', 'aria-hidden':'true' }, icon(it.icon, 'nav-icon')) | [17082](../app.js#L17082) |
+| renderAnalyticsSelector | button button |  | dinâmico: h('span', { class:'an-custom-t', text:'Personalizar análise' }) | [17098](../app.js#L17098) |
+| analyticsShelf | button button |  | dinâmico: it.saved ? icon('i-bookmark', 'btn-icon an-shelf-ic') : icon('i-history', 'btn-icon an-shelf-ic') | [17132](../app.js#L17132) |
+| analyticsCustomBuilder | button button |  | dinâmico: h('span', { class:'an-option-t', text:k.label }) | [17152](../app.js#L17152) |
+| analyticsCustomBuilder | button button |  | dinâmico: p.label | [17181](../app.js#L17181) |
+| analyticsCustomBuilder | button button |  | dinâmico: h('span', { class:'an-option-t', text:f.label }) | [17209](../app.js#L17209) |
+| analyticsCustomBuilder | button button |  | Cancelar | [17226](../app.js#L17226) |
+| analyticsCustomBuilder | button button |  | Gerar análise | [17227](../app.js#L17227) |
+| analyticsTypeFilter | button button |  | Todos os tipos | [17235](../app.js#L17235) |
+| analyticsTypeFilter | button button |  | dinâmico: t.label | [17239](../app.js#L17239) |
+| scopePicker | button button |  | dinâmico: h('span', { class:'an-pick-box', 'aria-hidden':'true' }, icon('i-check', 'btn-icon')) | [17324](../app.js#L17324) |
+| scopePicker | button button |  | dinâmico: ′Tirar ${byId.get(id).name}′ | [17332](../app.js#L17332) |
+| scopePicker | button button |  | limpar | [17334](../app.js#L17334) |
+| scopePicker | input search |  | dinâmico: labels[kind] | [17367](../app.js#L17367) |
+| saveCurrentAnalysis | input text | sa-name |  | [17391](../app.js#L17391) |
+| saveCurrentAnalysis | button button |  | Cancelar | [17406](../app.js#L17406) |
+| saveCurrentAnalysis | button button |  | Salvar | [17407](../app.js#L17407) |
+| renameSavedAnalysis | input text | sa-rename |  | [17416](../app.js#L17416) |
+| renameSavedAnalysis | button button |  | Cancelar | [17426](../app.js#L17426) |
+| renameSavedAnalysis | button button |  | Salvar | [17426](../app.js#L17426) |
+| rangePicker | button button |  | Mês anterior | [17463](../app.js#L17463) |
+| rangePicker | button button |  | Próximo mês | [17465](../app.js#L17465) |
+| rangePicker | button button |  | dinâmico: fmtDateLong(iso) + (iso === tISO ? ', hoje' : '') | [17483](../app.js#L17483) |
+| rangePicker | input date | an-rs |  | [17506](../app.js#L17506) |
+| rangePicker | input date | an-re |  | [17507](../app.js#L17507) |
+| rangePicker | button button |  | limpar datas | [17525](../app.js#L17525) |
+| analyticsPanorama | button button |  | dinâmico: distMode === 'topic' ? 'Ver todos os tópicos' : 'Ver todas as disciplinas' | [17646](../app.js#L17646) |
+| analyticsPanorama | button button |  | dinâmico: ′${pth.title}: ${f.disabled ? f.reason : (teaser[pth.focus] ? teaser[pth.focus]() : '')}′ | [17689](../app.js#L17689) |
+| analyticsPanorama | button button |  | Personalizar análise | [17698](../app.js#L17698) |
+| heroFact | button button |  | dinâmico: ′${label}: ${value} ${sub \|\| ''}. Ver detalhes′ | [17705](../app.js#L17705) |
+| analyticsNextQuestions | button button |  | dinâmico: h('span', { class:'an-next-t', text: focusInfo(f).question }) | [17730](../app.js#L17730) |
+| analyticsResultHeader | button button |  | dinâmico: ′Tirar o filtro ${sc.label}: analisar todos os estudos′ | [17743](../app.js#L17743) |
+| analyticsResultHeader | button button |  | dinâmico: ′Tirar o filtro de tipos ${sc.typesLabel}′ | [17745](../app.js#L17745) |
+| analyticsResultHeader | button button |  | dinâmico: p.label | [17750](../app.js#L17750) |
+| analyticsResultHeader | button button |  | dinâmico: q.periodPreset === 'custom' ? fmtRangeLabel(a.range) : 'Outro…' | [17753](../app.js#L17753) |
+| analyticsResultHeader | button button |  | limpar | [17764](../app.js#L17764) |
+| analyticsResultHeader | button button |  | dinâmico: icon('i-back') | [17767](../app.js#L17767) |
+| analyticsResultHeader | button button |  | Alterar análise | [17768](../app.js#L17768) |
+| analyticsEmptyFor | button button |  | Registrar estudo | [17787](../app.js#L17787) |
+| analyticsEmptyFor | button button |  | Abrir Planejamento | [17804](../app.js#L17804) |
+| analyticsEmptyFor | button button |  | Registrar estudo | [17817](../app.js#L17817) |
+| analyticsEmptyFor | button button |  | Abrir o Histórico | [17821](../app.js#L17821) |
+| analyticsEmptyFor | button button |  | Escolher outro período | [17836](../app.js#L17836) |
+| analyticsEmptyFor | button button |  | dinâmico: label | [17837](../app.js#L17837) |
+| resultPages | button button |  | dinâmico: o.more \|\| 'Mostrar mais' | [17881](../app.js#L17881) |
+| conceptsViz | button button |  | dinâmico: ′${x.r.label}: ${EvidenceModel.conceptLabel(x.r.status)}. Ver o estudo′ | [17937](../app.js#L17937) |
+| milestonesViz | button button |  | ver o estudo | [17956](../app.js#L17956) |
+| metricCard | button button |  | dinâmico: ′${o.label}${whenText ? ' (' + whenText.toLowerCase() + ')' : ''}: ${val}${o.sub ? '. ' + o.sub : '' | [18253](../app.js#L18253) |
+| planVsActualViz | button button |  | dinâmico: ′${r.label}: ${value}. Ver detalhes′ | [18461](../app.js#L18461) |
+| dueReviewsViz | button button |  | dinâmico: h('span', { class:'line-t', text:tp.name }) | [18527](../app.js#L18527) |
+| dueReviewsViz | button button |  | Revisar | [18531](../app.js#L18531) |
+| deadlineLine | button button |  | dinâmico: ′${dl.title}, ${done ? 'concluído' : DeadlineEngine.dueText(dl)}, ${fmtDateLong(dl.date)}′ | [18587](../app.js#L18587) |
+| analyticsInsightsBlock | button button |  | dinâmico: ui.analyticsShowAllInsights ? 'Mostrar menos' : ′Ver todos os insights (${items.length})′ | [18657](../app.js#L18657) |
+| analyticsExploreBlock | button button | dinâmico: bodyId + '-b' | dinâmico: h('span', { class:'an-explore-l', text:it.label }) | [18744](../app.js#L18744) |
+| restDetail | button button |  | dinâmico: ′Abrir o estudo de ${fmtDateBR(s.date)}′ | [18794](../app.js#L18794) |
+| menuButton | button button |  | dinâmico: o.ariaLabel \|\| label | [18813](../app.js#L18813) |
+| menuButton | button button |  | dinâmico: it.label | [18823](../app.js#L18823) |
+| analyticsAttentionCard | button button |  | dinâmico: h('span', { class:'line-t', text:x.topic.name }) | [18849](../app.js#L18849) |
+| analyticsAttentionCard | button button |  | Abrir revisões | [18855](../app.js#L18855) |
+| analyticsDeadlinesCard | button button |  | + Adicionar prazo | [18864](../app.js#L18864) |
+| hbarRow | button button |  | dinâmico: ′${label}: ${valueText}′ | [18887](../app.js#L18887) |
+| openAnalyticsDrawer | button button |  | dinâmico: ′Editar o estudo de ${fmtDateBR(s.date)}′ | [18978](../app.js#L18978) |
+| openAnalyticsDrawer | button button |  | Ver todas no Histórico | [18987](../app.js#L18987) |
+| openAnalyticsDrawer | button button |  | Analisar todos os estudos | [19012](../app.js#L19012) |
+| openAnalyticsDrawer | button button |  | Abrir Planejamento | [19015](../app.js#L19015) |
+| openAnalyticsDrawer | button button |  | Abrir revisões | [19064](../app.js#L19064) |
+| openAnalyticsDrawer | button button |  | Abrir tópico | [19085](../app.js#L19085) |
+| openAnalyticsDrawer | button button |  | dinâmico: h('span', { class:'line-t', text:tp.name }) | [19108](../app.js#L19108) |
+| analyticsCalendarCard | button button |  | Cancelar seleção | [19134](../app.js#L19134) |
+| analyticsCalendarCard | button button |  | Selecionar intervalo | [19135](../app.js#L19135) |
+| analyticsCalendarCard | button button |  | Analisar este período | [19147](../app.js#L19147) |
+| analyticsCalendarCard | button button |  | Cancelar | [19151](../app.js#L19151) |
+| calendarHeatmap | button button |  | Mês anterior | [19167](../app.js#L19167) |
+| calendarHeatmap | button button |  | Próximo mês | [19169](../app.js#L19169) |
+| calendarHeatmap | button button |  | mês atual | [19170](../app.js#L19170) |
+| calendarHeatmap | button button |  | dinâmico: parts.join(', ') | [19215](../app.js#L19215) |
+| openDayDrawer | button button |  | Editar este estudo | [19312](../app.js#L19312) |
+| openDayDrawer | button button |  | Analisar este dia | [19324](../app.js#L19324) |
+| openDayDrawer | button button |  | Registrar estudo neste dia | [19329](../app.js#L19329) |
+| timeChart | button button |  | dinâmico: ′${granularity === 'day' ? fmtDateBR(s.key) : (granularity === 'week' ? 'Semana de ' + s.label : s.l | [19372](../app.js#L19372) |
+| openBucketDrawer | button button |  | Analisar este período | [19422](../app.js#L19422) |
+| analyticsDistributionCard | button button |  | dinâmico: l | [19444](../app.js#L19444) |
+| openDistributionDrawer | button button |  | dinâmico: goLabel | [19509](../app.js#L19509) |
+| openDistributionDrawer | button button |  | dinâmico: mode === 'discipline' ? 'Ver disciplina' : 'Ver tópico' | [19510](../app.js#L19510) |
+| donutLegend | button button |  | dinâmico: ′${r.label}: ${fmtDuration(r.minutes)}, ${safePct(r.pct)} do tempo. Ver detalhes′ | [19545](../app.js#L19545) |
+| analyticsPriorityCard | button button |  | dinâmico: ′${d.name} · ${PriorityEngine.clamp(d.priority)}′ | [19592](../app.js#L19592) |
+| analyticsPriorityCard | button button |  | dinâmico: ′${tp.name} · ${PriorityEngine.clamp(tp.priority)}′ | [19597](../app.js#L19597) |
+| analyticsReviewsCard | button button |  | Ver detalhes das revisões | [19649](../app.js#L19649) |
+| weeklyReportCard | button button |  | Semana anterior | [19715](../app.js#L19715) |
+| weeklyReportCard | button button |  | Próxima semana | [19717](../app.js#L19717) |
+| copySummary | textarea  |  | Resumo do período | [20024](../app.js#L20024) |
+| copySummary | button button |  | Fechar | [20025](../app.js#L20025) |
+| historyDiscoveries | button button |  | dinâmico: a.label | [20199](../app.js#L20199) |
+| historyDiscoveries | button button |  | Ver registros usados | [20200](../app.js#L20200) |
+| historyDiscoveries | button button |  | dinâmico: open ? 'Mostrar menos' : ′Ver mais descobertas (${list.length - LIMIT})′ | [20203](../app.js#L20203) |
+| renderHistory | button button |  | dinâmico: icon('i-play') | [20219](../app.js#L20219) |
+| renderHistory | button button |  | Registrar estudo | [20220](../app.js#L20220) |
+| renderHistory | button button |  | Filtros | [20231](../app.js#L20231) |
+| renderHistory | button button |  | dinâmico: ′Remover filtro ${x.label}′ | [20238](../app.js#L20238) |
+| renderHistory | button button |  | limpar tudo | [20240](../app.js#L20240) |
+| openHistoryFilters | button button |  | Aplicar filtros | [20299](../app.js#L20299) |
+| openHistoryFilters | button button |  | Limpar | [20302](../app.js#L20302) |
+| renderHistoryTable | button button |  | Limpar busca | [20369](../app.js#L20369) |
+| renderHistoryTable | button button |  | dinâmico: label | [20397](../app.js#L20397) |
+| renderHistoryTable | button button |  | dinâmico: ′Mostrar mais (${list.length - shown.length} restantes)′ | [20409](../app.js#L20409) |
+| openEditSessionModal | button button |  | remover estudo | [20577](../app.js#L20577) |
+| openEditSessionModal | button button |  | Cancelar | [20583](../app.js#L20583) |
+| openEditSessionModal | button button |  | Salvar | [20584](../app.js#L20584) |
+| confirmLongEdit | button button |  | Voltar e corrigir | [20652](../app.js#L20652) |
+| confirmLongEdit | button button |  | Está certo, salvar | [20653](../app.js#L20653) |
+| openAIReportModal | textarea  |  | Texto do prompt | [20798](../app.js#L20798) |
+| openAIReportModal | details  |  | dinâmico: h('summary', null, h('span', { text:'Ver o prompt' })) | [20799](../app.js#L20799) |
+| openAIReportModal | button button |  | dinâmico: x.label | [20824](../app.js#L20824) |
+| openAIReportModal | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:p.label }) | [20838](../app.js#L20838) |
+| openAIReportModal | input checkbox | air-comments |  | [20846](../app.js#L20846) |
+| openAIReportModal | button button |  | dinâmico: retry.label | [20901](../app.js#L20901) |
+| openAIReportModal | button button |  | dinâmico: icon('i-download', 'btn-icon') | [20909](../app.js#L20909) |
+| openAIReportModal | button button |  | Só baixar o CSV | [20915](../app.js#L20915) |
+| openAIReportModal | button button |  | Só copiar o prompt | [20916](../app.js#L20916) |
+| openAIReportModal | button button |  | Fechar | [20926](../app.js#L20926) |
+| runIntegrityCheck | button button |  | Fechar | [20958](../app.js#L20958) |
+| renderData | input file | import-file |  | [20970](../app.js#L20970) |
+| renderData | button button |  | dinâmico: icon('i-data') | [20983](../app.js#L20983) |
+| renderData | button button |  | Onde meus dados ficam? | [20987](../app.js#L20987) |
+| renderData | button button |  | Preparar | [21002](../app.js#L21002) |
+| renderData | button button |  | Exportar | [21007](../app.js#L21007) |
+| renderData | button button |  | Como usar meus dados com IA ou planilhas? | [21008](../app.js#L21008) |
+| renderData | button button |  | Verificar | [21025](../app.js#L21025) |
+| renderData | button button |  | Pedir ao navegador | [21030](../app.js#L21030) |
+| renderData | button button |  | apagar cópia antiga da V2 | [21075](../app.js#L21075) |
+| renderData | details  |  | dinâmico: h('summary', null, h('span', { text:'Apagar todos os dados' })) | [21082](../app.js#L21082) |
+| renderData | button button |  | Apagar todos os dados | [21086](../app.js#L21086) |
+| restoreRefused | button button |  | Entendi | [21123](../app.js#L21123) |
+| askTimerBeforeRestore | button button |  | Cancelar a restauração | [21149](../app.js#L21149) |
+| askTimerBeforeRestore | button button |  | Descartar o tempo e restaurar | [21150](../app.js#L21150) |
+| askTimerBeforeRestore | button button |  | Finalizar o estudo primeiro | [21151](../app.js#L21151) |
+| openRestorePreview | button button |  | dinâmico: hasData ? 'Substituir e restaurar' : 'Restaurar' | [21187](../app.js#L21187) |
+| openRestorePreview | button button |  | Cancelar | [21224](../app.js#L21224) |
+| openRestorePreview | details  |  | dinâmico: h('summary', null, ′Ajustes que serão feitos (${sum(r.repaired, x => x.count)})′) | [21235](../app.js#L21235) |
+| openRestorePreview | details  |  | dinâmico: h('summary', null, ′O que fica de fora (${sum(r.ignored, x => x.count)})′) | [21238](../app.js#L21238) |
+| openRestorePreview | button button |  | Fazer backup dos dados atuais | [21243](../app.js#L21243) |
+| bindEvents | button button |  | dinâmico: icon(NAV_ICONS[v], 'nav-icon') | [21316](../app.js#L21316) |
+| bindEvents | button button |  | Fechar | [21318](../app.js#L21318) |
+| helpDot | button button |  | dinâmico: 'O que é ' + info.title + '?' | [21951](../app.js#L21951) |
+| GlossaryPopover | button button |  | dinâmico: glossaryCallLabel(key) | [22010](../app.js#L22010) |
+| GlossaryPopover | button button |  | Fechar explicação | [22013](../app.js#L22013) |
+| glossaryTerm | button button |  | dinâmico: (label \|\| g.term) + ' — ver explicação' | [22068](../app.js#L22068) |
+| Palette | button button | dinâmico: 'pal-opt-' + i | dinâmico: icon(item.icon, 'nav-icon') | [22289](../app.js#L22289) |
+| FocusMode | button button |  | dinâmico: a.label | [22453](../app.js#L22453) |
+| pickDisciplineThen | button button |  | dinâmico: h('span', { text:d.name }) | [22654](../app.js#L22654) |
+| pickDisciplineThen | button button |  | Cancelar | [22656](../app.js#L22656) |
+| renderReturnPill | button button |  | dinâmico: 'Voltar à Ajuda: ' + r.label | [22735](../app.js#L22735) |
+| renderReturnPill | button button |  | Fechar este atalho | [22737](../app.js#L22737) |
+| pickDisciplineForPriority | button button |  | dinâmico: h('span', { text:d.name }) | [22759](../app.js#L22759) |
+| pickDisciplineForPriority | button button |  | Cancelar | [22762](../app.js#L22762) |
+| detailsBlock | button button |  | dinâmico: h('span', { text: d.title \|\| 'Entenda em mais detalhes' }) | [22798](../app.js#L22798) |
+| helpBreadcrumb | button button |  | dinâmico: label | [22841](../app.js#L22841) |
+| articleBody | button button |  | dinâmico: x.label | [22894](../app.js#L22894) |
+| articleBody | button button |  | dinâmico: h('span', { text:'Entenda melhor' }) | [22907](../app.js#L22907) |
+| articleBody | button button |  | dinâmico: h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:r.title }), h('div', { class:'hi-su | [22921](../app.js#L22921) |
+| articleBody | button button |  | Ver este artigo na Central de Ajuda | [22931](../app.js#L22931) |
+| helpItemButton | button button |  | dinâmico: h('span', { class:'hi-main' }, o.showPath ? h('div', { class:'hi-cat', text: articlePath(a) }) : nul | [22943](../app.js#L22943) |
+| faqNode | button button |  | dinâmico: 'Ver explicação completa: ' + getArticle(f.article).title | [22958](../app.js#L22958) |
+| faqNode | button button |  | dinâmico: h('span', { text:f.q }) | [22961](../app.js#L22961) |
+| helpSearchCard | input search | help-q | Pesquisar na Ajuda | [22980](../app.js#L22980) |
+| helpSearchCard | button button |  | Limpar busca | [23015](../app.js#L23015) |
+| helpSearchCard | button button |  | dinâmico: '“' + x + '”' | [23025](../app.js#L23025) |
+| helpResultsPanel | button button |  | Voltar para toda a Ajuda | [23110](../app.js#L23110) |
+| helpResultsPanel | button button | dinâmico: id | dinâmico: h('span', { class:'hr-main' }, h('span', { class:'hr-path', text: e.path }), h('span', { class:'hr-t | [23124](../app.js#L23124) |
+| helpResultsPanel | button button |  | dinâmico: 'Ver todos os ' + all.length + ' resultados' | [23141](../app.js#L23141) |
+| helpSuggestionList | button button |  | dinâmico: icon('i-search', 'nav-icon') | [23153](../app.js#L23153) |
+| helpHomePanel | button button |  | dinâmico: h('span', { class:'hmq-q', text:mq.q }) | [23199](../app.js#L23199) |
+| helpHomePanel | button button |  | dinâmico: h('span', { class:'hp-icon' }, icon(sec.icon, 'nav-icon')) | [23209](../app.js#L23209) |
+| helpHomePanel | button button |  | Rever a apresentação | [23225](../app.js#L23225) |
+| helpHomePanel | button button |  | Mostrar as dicas de novo | [23226](../app.js#L23226) |
+| helpHomePanel | button button |  | Ver o guia | [23227](../app.js#L23227) |
+| helpHomePanel | button button |  | Ver todas | [23234](../app.js#L23234) |
+| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Ciclo + outras ferramentas' }) | [23241](../app.js#L23241) |
+| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Glossário' }) | [23243](../app.js#L23243) |
+| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Entrar em contato' }) | [23245](../app.js#L23245) |
+| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Relatar um problema' }) | [23247](../app.js#L23247) |
+| helpSectionPanel | button button |  | dinâmico: x.label | [23261](../app.js#L23261) |
+| helpSectionPanel | button button |  | dinâmico: 'Ver todo o caminho “' + s.label + '”' | [23284](../app.js#L23284) |
+| helpBackBar | button button |  | dinâmico: icon('i-chev', 'back-chev') | [23321](../app.js#L23321) |
+| helpGlossaryPanel | input search | gloss-q | Filtrar termos do glossário | [23362](../app.js#L23362) |
+| drawGlossary | button button |  | dinâmico: glossaryCallLabel(k) | [23404](../app.js#L23404) |
+| openContactDrawer | input text | contact-mail-field | Endereço de e-mail do Ciclo | [23501](../app.js#L23501) |
+| openContactDrawer | button button |  | dinâmico: icon('i-copy') | [23528](../app.js#L23528) |
+| openContactDrawer | button button |  | dinâmico: icon('i-mail') | [23531](../app.js#L23531) |
+| openContactDrawer | button button |  | Encontrou um problema? Relatar | [23535](../app.js#L23535) |
+| openReportProblemDrawer | textarea  | report-desc | Ex.: O botão X não responde quando eu clico depois de registrar um estudo. | [23569](../app.js#L23569) |
+| openReportProblemDrawer | details  |  | dinâmico: h('summary', { text:'Ver o texto completo' }) | [23609](../app.js#L23609) |
+| openReportProblemDrawer | button button |  | dinâmico: icon('i-copy') | [23624](../app.js#L23624) |
+| openReportProblemDrawer | button button |  | dinâmico: icon('i-mail') | [23625](../app.js#L23625) |
+| openScreenHelp | button button |  | dinâmico: s.cta.label | [23648](../app.js#L23648) |
+| openScreenHelp | button button |  | dinâmico: h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:a.title }), h('div', { class:'hi-su | [23652](../app.js#L23652) |
+| openScreenHelp | button button |  | Abrir a Central de Ajuda | [23659](../app.js#L23659) |
+| renderTips | button button |  | Entendi | [23691](../app.js#L23691) |
+| toastRich | button button |  | dinâmico: a.label | [23715](../app.js#L23715) |
+| startHereChecklistCard | button button |  | dinâmico: st.action.text | [23882](../app.js#L23882) |
+| maybeShowWhatsNew | button button |  | Ver todas as novidades | [23913](../app.js#L23913) |
+| maybeShowWhatsNew | button button |  | Continuar | [23916](../app.js#L23916) |
+| stepIntro | button button |  | dinâmico: h('span', { class:'ob-choice-t', text:title }) | [23969](../app.js#L23969) |
+| stepQuick | input text | ob-name | Ex.: Português | [23984](../app.js#L23984) |
+| stepQuick | button button |  | dinâmico: ex | [23988](../app.js#L23988) |
+| stepWhat | input text | ob-add | Escreva e tecle Enter — ex.: Matemática | [23999](../app.js#L23999) |
+| stepWhat | button button |  | dinâmico: p.label | [24003](../app.js#L24003) |
+| stepWhat | button button |  | dinâmico: 'Tirar ' + n | [24009](../app.js#L24009) |
+| stepWhat | button button |  | dinâmico: icon('i-plus') | [24015](../app.js#L24015) |
+| stepGoal | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:t }) | [24024](../app.js#L24024) |
+| stepGoal | input text | ob-goal-t | Ex.: Prova de Inglês | [24032](../app.js#L24032) |
+| stepGoal | input date | ob-goal-d |  | [24034](../app.js#L24034) |
+| stepGoal | select  | ob-goal-disc |  | [24036](../app.js#L24036) |
+| stepTime | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:t }) | [24051](../app.js#L24051) |
+| stepTime | input number | ob-hours | Outro | [24060](../app.js#L24060) |
+| stepTime | button button |  | dinâmico: fmtDuration(v) | [24063](../app.js#L24063) |
+| buildActions | button button |  | Voltar | [24119](../app.js#L24119) |
+| buildActions | button button |  | dinâmico: o.revisit ? 'Fechar' : 'Prefiro explorar sozinho' | [24122](../app.js#L24122) |
+| buildActions | button button |  | Criar e continuar | [24126](../app.js#L24126) |
+| buildActions | button button |  | Continuar | [24128](../app.js#L24128) |
+| buildActions | button button |  | Continuar | [24134](../app.js#L24134) |
+| buildActions | button button |  | Continuar | [24142](../app.js#L24142) |
+| buildActions | button button |  | Criar e começar | [24147](../app.js#L24147) |
+| guideNote | button button |  | dinâmico: a.label | [24307](../app.js#L24307) |
+| guideNote | button button |  | Agora não | [24309](../app.js#L24309) |
+| startGuideCard | button button |  | ocultar | [24343](../app.js#L24343) |
+| startGuideCard | button button |  | dinâmico: s2.actionLabel | [24359](../app.js#L24359) |
+| reviewDemoNode | button button |  | dinâmico: o.label | [24388](../app.js#L24388) |
+| structureDemoNode | button button |  | dinâmico: ex.label | [24417](../app.js#L24417) |
+| openFirstReviewIntro | button button |  | Agora não | [24475](../app.js#L24475) |
+| openFirstReviewIntro | button button |  | Começar | [24478](../app.js#L24478) |
+| pomodoroSettingsRows | input number |  | dinâmico: label | [24523](../app.js#L24523) |
+| segmented | button button |  | dinâmico: o.label | [24568](../app.js#L24568) |
+| switchControl | button button |  | dinâmico: ariaLabel \|\| '' | [24581](../app.js#L24581) |
+| numberControl | input number |  | dinâmico: ariaLabel \|\| '' | [24592](../app.js#L24592) |
+| selectControl | select  |  | dinâmico: ariaLabel \|\| '' | [24598](../app.js#L24598) |
+| renderSettings | input checkbox | dinâmico: 'tb-' + b.id |  | [24631](../app.js#L24631) |
+| renderSettings | button button |  | Rever a apresentação | [24664](../app.js#L24664) |
+| renderSettings | button button |  | Mostrar novamente | [24666](../app.js#L24666) |
+| renderSettings | button button |  | dinâmico: plan ? 'Abrir Planejamento' : 'Definir uma meta' | [24680](../app.js#L24680) |
+| renderSettings | button button |  | Mostrar todas de novo | [24720](../app.js#L24720) |
+| renderSettings | button button |  | Como funcionam as revisões? | [24725](../app.js#L24725) |
+| renderSettings | button button |  | Ver | [24745](../app.js#L24745) |
+| renderSettings | button button |  | Fazer backup agora | [24757](../app.js#L24757) |
+| renderSettings | button button |  | Abrir tela Dados | [24759](../app.js#L24759) |
+| renderSettings | button button |  | Onde meus dados ficam? | [24760](../app.js#L24760) |
+| renderSettings | button button |  | Preparar | [24762](../app.js#L24762) |
+| renderSettings | button button |  | dinâmico: icon('i-mail') | [24778](../app.js#L24778) |
+| renderSettings | button button |  | dinâmico: icon('i-flag') | [24779](../app.js#L24779) |
+| renderSettings | button button |  | Central de Ajuda | [24780](../app.js#L24780) |
+| renderSettings | button button |  | Novidades desta versão | [24781](../app.js#L24781) |
+| renderSettings | button button | dinâmico: 'stab-' + g.id | dinâmico: g.label | [24799](../app.js#L24799) |
+| openChangelog | details  |  | dinâmico: h('summary', null, sec.title) | [24830](../app.js#L24830) |
+| openChangelog | details  |  | dinâmico: h('summary', null, h('span', { class:'num', text:'v' + c.v }), c.title ? h('span', { class:'cl-old-t | [24838](../app.js#L24838) |
+| renderDeadlineSuggestions | button button |  | Usar revisão intensiva | [24904](../app.js#L24904) |
+| renderDeadlineSuggestions | button button |  | Manter atual | [24912](../app.js#L24912) |
+| renderDeadlineSuggestions | button button |  | Voltar ao padrão | [24935](../app.js#L24935) |
+| renderDeadlineSuggestions | button button |  | Continuar intensiva | [24940](../app.js#L24940) |
 
 ## Camadas
 
 | Contexto | Abertura | Linha |
 |---|---|---|
-| askConflict | close.push | [6048](../app.js#L6048) |
-| confirmModal | openModal | [6817](../app.js#L6817) |
-| openRegisterModal | openModal | [9774](../app.js#L9774) |
-| confirmLong | close.push | [9930](../app.js#L9930) |
-| openFinishModal | openModal | [10100](../app.js#L10100) |
-| offerStaleSession | openModal | [10320](../app.js#L10320) |
-| openAlternatives | Drawer.open | [11421](../app.js#L11421) |
-| explainAction | openModal | [11425](../app.js#L11425) |
-| openDisciplineReview | openModal | [11735](../app.js#L11735) |
-| startReview | openModal | [11800](../app.js#L11800) |
-| openReviewOutcomeModal | openModal | [11844](../app.js#L11844) |
-| openSessionBuilder | openModal | [11880](../app.js#L11880) |
-| openReviewPrimer | Drawer.open | [11985](../app.js#L11985) |
-| openPlansDrawer | Drawer.open | [12611](../app.js#L12611) |
-| createSimplePlan | openModal | [12629](../app.js#L12629) |
-| openNewPlanModal | openModal | [12729](../app.js#L12729) |
-| openWeekGoalModal | openModal | [12951](../app.js#L12951) |
-| openSuggestionEditor | openModal | [13158](../app.js#L13158) |
-| openSuggestionPicker | openModal | [13202](../app.js#L13202) |
-| weekConflictDialog | close.push | [13394](../app.js#L13394) |
-| weekConflictDialog | openModal | [13395](../app.js#L13395) |
-| openBlockEditor | openModal | [13507](../app.js#L13507) |
-| openMoveDialog | openModal | [13583](../app.js#L13583) |
-| openStudyDaysModal | openModal | [13604](../app.js#L13604) |
-| openAdjustBlocks | openModal | [13641](../app.js#L13641) |
-| openGoalUpdate | openModal | [13689](../app.js#L13689) |
-| openTopicDrawer | Drawer.open | [15440](../app.js#L15440) |
-| openAreaModal | openModal | [15508](../app.js#L15508) |
-| openDisciplineModal | openModal | [15669](../app.js#L15669) |
-| openTopicModal | openModal | [16160](../app.js#L16160) |
-| openBulkTopicModal | openModal | [16171](../app.js#L16171) |
-| openDeadlineDrawer | Drawer.open | [16374](../app.js#L16374) |
-| openDeadlineModal | openModal | [16381](../app.js#L16381) |
-| saveCurrentAnalysis | openModal | [17257](../app.js#L17257) |
-| renameSavedAnalysis | openModal | [17282](../app.js#L17282) |
-| openAnalyticsDrawer | Drawer.open | [18992](../app.js#L18992) |
-| openDayDrawer | Drawer.open | [19197](../app.js#L19197) |
-| openBucketDrawer | Drawer.open | [19292](../app.js#L19292) |
-| openDistributionDrawer | Drawer.open | [19378](../app.js#L19378) |
-| copySummary | openModal | [19887](../app.js#L19887) |
-| openHistoryFilters | Drawer.open | [20170](../app.js#L20170) |
-| openEditSessionModal | openModal | [20331](../app.js#L20331) |
-| confirmLongEdit | close.push | [20515](../app.js#L20515) |
-| openAIReportModal | openModal | [20662](../app.js#L20662) |
-| runIntegrityCheck | openModal | [20813](../app.js#L20813) |
-| restoreRefused | openModal | [20985](../app.js#L20985) |
-| askTimerBeforeRestore | openModal | [21010](../app.js#L21010) |
-| openRestorePreview | openModal | [21052](../app.js#L21052) |
-| bindEvents | openModal | [21179](../app.js#L21179) |
-| openHelpArticle | Drawer.open | [22425](../app.js#L22425) |
-| pickDisciplineThen | openModal | [22495](../app.js#L22495) |
-| pickDisciplineForPriority | openModal | [22599](../app.js#L22599) |
-| openContactDrawer | Drawer.open | [23380](../app.js#L23380) |
-| openReportProblemDrawer | Drawer.open | [23472](../app.js#L23472) |
-| openScreenHelp | Drawer.open | [23506](../app.js#L23506) |
-| maybeShowWhatsNew | openModal | [23749](../app.js#L23749) |
-| openWelcome | openModal | [23806](../app.js#L23806) |
-| openFirstReviewIntro | openModal | [24310](../app.js#L24310) |
-| openChangelog | Drawer.open | [24686](../app.js#L24686) |
+| askConflict | close.push | [6056](../app.js#L6056) |
+| confirmModal | openModal | [6829](../app.js#L6829) |
+| openRegisterModal | openModal | [9789](../app.js#L9789) |
+| confirmLong | close.push | [9945](../app.js#L9945) |
+| openFinishModal | openModal | [10115](../app.js#L10115) |
+| offerStaleSession | openModal | [10334](../app.js#L10334) |
+| openAlternatives | Drawer.open | [11461](../app.js#L11461) |
+| explainAction | openModal | [11465](../app.js#L11465) |
+| openDisciplineReview | openModal | [11775](../app.js#L11775) |
+| startReview | openModal | [11840](../app.js#L11840) |
+| openReviewOutcomeModal | openModal | [11884](../app.js#L11884) |
+| openSessionBuilder | openModal | [11920](../app.js#L11920) |
+| openReviewPrimer | Drawer.open | [12025](../app.js#L12025) |
+| openPlansDrawer | Drawer.open | [12669](../app.js#L12669) |
+| createSimplePlan | openModal | [12687](../app.js#L12687) |
+| openNewPlanModal | openModal | [12787](../app.js#L12787) |
+| openWeekGoalModal | openModal | [13019](../app.js#L13019) |
+| openSuggestionEditor | openModal | [13221](../app.js#L13221) |
+| openSuggestionPicker | openModal | [13265](../app.js#L13265) |
+| openWeekBlockPicker | openModal | [13304](../app.js#L13304) |
+| weekConflictDialog | close.push | [13527](../app.js#L13527) |
+| weekConflictDialog | openModal | [13528](../app.js#L13528) |
+| openBlockEditor | openModal | [13640](../app.js#L13640) |
+| openMoveDialog | openModal | [13716](../app.js#L13716) |
+| openStudyDaysModal | openModal | [13737](../app.js#L13737) |
+| openAdjustBlocks | openModal | [13774](../app.js#L13774) |
+| openGoalUpdate | openModal | [13822](../app.js#L13822) |
+| openTopicDrawer | Drawer.open | [15573](../app.js#L15573) |
+| openAreaModal | openModal | [15641](../app.js#L15641) |
+| openDisciplineModal | openModal | [15802](../app.js#L15802) |
+| openTopicModal | openModal | [16293](../app.js#L16293) |
+| openBulkTopicModal | openModal | [16304](../app.js#L16304) |
+| openDeadlineDrawer | Drawer.open | [16507](../app.js#L16507) |
+| openDeadlineModal | openModal | [16514](../app.js#L16514) |
+| saveCurrentAnalysis | openModal | [17390](../app.js#L17390) |
+| renameSavedAnalysis | openModal | [17415](../app.js#L17415) |
+| openAnalyticsDrawer | Drawer.open | [19125](../app.js#L19125) |
+| openDayDrawer | Drawer.open | [19330](../app.js#L19330) |
+| openBucketDrawer | Drawer.open | [19425](../app.js#L19425) |
+| openDistributionDrawer | Drawer.open | [19511](../app.js#L19511) |
+| copySummary | openModal | [20020](../app.js#L20020) |
+| openHistoryFilters | Drawer.open | [20303](../app.js#L20303) |
+| openEditSessionModal | openModal | [20464](../app.js#L20464) |
+| confirmLongEdit | close.push | [20648](../app.js#L20648) |
+| openAIReportModal | openModal | [20795](../app.js#L20795) |
+| runIntegrityCheck | openModal | [20946](../app.js#L20946) |
+| restoreRefused | openModal | [21118](../app.js#L21118) |
+| askTimerBeforeRestore | openModal | [21143](../app.js#L21143) |
+| openRestorePreview | openModal | [21185](../app.js#L21185) |
+| bindEvents | openModal | [21312](../app.js#L21312) |
+| openHelpArticle | Drawer.open | [22581](../app.js#L22581) |
+| pickDisciplineThen | openModal | [22651](../app.js#L22651) |
+| pickDisciplineForPriority | openModal | [22755](../app.js#L22755) |
+| openContactDrawer | Drawer.open | [23536](../app.js#L23536) |
+| openReportProblemDrawer | Drawer.open | [23628](../app.js#L23628) |
+| openScreenHelp | Drawer.open | [23662](../app.js#L23662) |
+| maybeShowWhatsNew | openModal | [23905](../app.js#L23905) |
+| openWelcome | openModal | [23962](../app.js#L23962) |
+| openFirstReviewIntro | openModal | [24466](../app.js#L24466) |
+| openChangelog | Drawer.open | [24842](../app.js#L24842) |
 
 ## Controles fixos em index.html
 

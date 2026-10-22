@@ -1,0 +1,28 @@
+✖ snapshot regravado por aba atrasada não ressuscita um runId salvo (1655.658704ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2500.661825
+
+✖ failing tests:
+
+test at tests/field-timer.test.cjs:121:1
+✖ snapshot regravado por aba atrasada não ressuscita um runId salvo (1655.658704ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (/workspace/Ciclo/tests/field-timer.test.cjs:124:9)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

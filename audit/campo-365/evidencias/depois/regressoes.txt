@@ -1,0 +1,26 @@
+✔ 365 dias: importar pela interface preserva todos os registros sem reparos (3082.484339ms)
+✔ 365 dias: Análises confere tempo, descansos, dias, questões e todas as disciplinas (1804.415626ms)
+✔ 365 dias: 53 semanas preservam metas históricas, datas e totais reais (5035.151669ms)
+✔ 365 dias: comparação parcial e completa usa os intervalos que declara (2058.610064ms)
+✔ 365 dias: exportar, restaurar em outro contexto e F5 conservam o histórico (4678.169511ms)
+✔ 365 dias: editar e excluir um estudo conserva totais sem multiplicar vínculos (2040.191327ms)
+✔ entradas adversariais e restauração inválida preservam o banco existente (2426.41875ms)
+✔ A: estudo livre salvo encerra Hoje imediatamente, sem F5 (2071.934451ms)
+✔ B: Foco → Encerrar → Registrar atualiza Hoje antes de navegar (1372.913094ms)
+✔ C: Pomodoro pausa, retoma, descansa e registra apenas estudo líquido (1242.171941ms)
+✔ D: F5 depois de finalizar não restaura um estudo concluído (1265.517398ms)
+✔ E: Histórico e Voltar mantêm Hoje encerrado (1126.660478ms)
+✔ F: aba observadora deixa de mostrar estudo ativo ao finalizar na outra aba (1463.673769ms)
+✔ G: dois cliques rápidos em Registrar criam uma sessão (1166.103826ms)
+✔ H: falha de IndexedDB conserva o estudo e permite tentar novamente (2090.209764ms)
+✔ I: novo estudo depois de finalizar tem identidade própria (1367.864585ms)
+✔ J: sair de tela cheia mantém as ações do Foco e permite finalizar (1189.066216ms)
+✔ Hoje acompanha início, pausa, descanso e descarte sem navegação (1119.039915ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 37751.72196
