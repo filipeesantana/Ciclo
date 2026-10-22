@@ -94,7 +94,7 @@ O **Pomodoro** é opcional e fica em *Começar a estudar → Como contar o tempo
 - **No fim de cada bloco, o Ciclo para e espera.** Você escolhe: descansar, fazer mais um bloco ou encerrar. Se voltar meia hora depois, esse tempo não vira estudo nem descanso. Avançar sozinho, um som curto e o aviso do navegador são opcionais, em *Configurações → Estudos e planejamento* — o aviso só é pedido quando você liga a opção.
 - **Um estudo só.** Dois blocos de 25/5 viram **50 min estudados e 5 min de descanso**, com o número de blocos completos. Encerrar no meio de um bloco registra o tempo realmente estudado.
 
-O **modo foco** deixa só o essencial na tela: a disciplina, o estado, o relógio, o progresso do bloco e as ações principais, com tela cheia quando o navegador permite. *Esc* sai do foco sem encerrar o estudo.
+O **modo foco** destaca o relógio com um rótulo que explica a contagem, o estado e as ações principais. Disciplina, tópicos e tipos ficam compactos; estudo líquido e descanso aparecem separados. No Pomodoro, o progresso e o tempo restante do bloco não se confundem com o acumulado da sessão. A tela cheia depende do navegador. *Esc* sai do foco sem encerrar o estudo.
 
 ### Resultado do estudo (opcional)
 
@@ -158,7 +158,7 @@ A meta é **o tempo total que você quer estudar na semana**. Estudou 5h de uma 
 
 - **Qualquer estudo conta**, de qualquer disciplina, em qualquer dia. O tempo além da meta aparece como *além da meta*, sem cobrança.
 - **Sugestão de organização.** Cada disciplina aparece num cartão com a parte sugerida e o que já foi estudado. É uma referência.
-- **A semana em dias**, opcional: arraste uma disciplina até um dia (ou use os botões, no celular e pelo teclado), com duração e horário opcionais. Cada bloco se completa sozinho com os estudos registrados naquele dia.
+- **A semana em dias**, opcional: use **Adicionar aos dias**, escolha a disciplina e marque um ou vários dias, com duração e horário opcionais. **Disciplinas e sugestões** conserva o arraste e os ajustes de distribuição. Cada bloco se completa com os estudos registrados naquele dia; a meta continua sendo o total semanal.
 
 ## Revisões
 
