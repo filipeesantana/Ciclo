@@ -8,6 +8,15 @@ beforeEach(async()=>{
  await page.evaluate(async()=>{await DB.put('plans',{...newPlan('Minha semana',300),id:'plan',allocations:[{disciplineId:'portugues',targetMinutes:180},{disciplineId:'matematica',targetMinutes:120}]});await refresh();setView('plan');});
 });
 afterEach(async()=>context.close());
+test('redimensionar a semana não gera ciclos do ResizeObserver nem transbordamento',async()=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ for(const width of [320,1440,430,768,1920,375,1366,390]){
+  await page.setViewportSize({width,height:900});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+ }
+ assert.deepEqual(errors,[]);
+});
 async function picker(){await page.getByRole('button',{name:'Adicionar aos dias',exact:true}).click();}
 async function choose(touch=false){
  const radio=page.locator('.wb-subject').filter({hasText:'Matemática'}).getByRole('radio');

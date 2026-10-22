@@ -12864,7 +12864,8 @@ const PlanBoard = {
   landed: null,          // bloco que acabou de mudar de lugar: entra com um assentamento curto
   focusAfter: null,      // data-fk que recebe o foco depois do próximo desenho
   doneSeen: new Map(),   // bloco → estado no desenho anterior (transição discreta para "concluído")
-  ro: null
+  ro: null,
+  fitFrame: null
 };
 const PLAN_COL_MIN = 180;    // nomes legíveis; a semana quebra em linhas antes de apertar os dias
 
@@ -13378,21 +13379,30 @@ function planDays(view, prog){
 /** Quantas colunas cabem sem espremer os dias: 7 lado a lado só com espaço; senão duas linhas equilibradas (4 + 3). */
 function planFitColumns(grid, n){
   const apply = () => {
+    if(!grid.isConnected) return;
     const w = grid.clientWidth;
     if(!w) return;
     // tela estreita (celular): um dia embaixo do outro — duas colunas apertadas leem pior que uma lista
     const fit = w < PLAN_COL_MIN * 3 ? 1 : Math.max(1, Math.floor((w + 10) / (PLAN_COL_MIN + 10)));
     let cols = n;
     if(n > fit) cols = fit <= 1 ? 1 : Math.ceil(n / Math.ceil(n / fit));
-    grid.style.setProperty('--wk-cols', String(Math.max(1, cols)));
+    const value = String(Math.max(1, cols));
+    if(grid.style.getPropertyValue('--wk-cols') !== value) grid.style.setProperty('--wk-cols', value);
     grid.classList.toggle('is-stacked', cols === 1);
+  };
+  // Alterar colunas muda a altura observada. Fazer isso dentro do callback de
+  // ResizeObserver cria uma entrega pendente no WebKit. Mede/aplica no quadro
+  // seguinte e cancela o trabalho da grade que acabou de ser substituída.
+  const schedule = () => {
+    if(PlanBoard.fitFrame !== null) cancelAnimationFrame(PlanBoard.fitFrame);
+    PlanBoard.fitFrame = requestAnimationFrame(() => { PlanBoard.fitFrame = null; apply(); });
   };
   if(PlanBoard.ro) PlanBoard.ro.disconnect();
   if(typeof ResizeObserver !== 'undefined'){
-    PlanBoard.ro = new ResizeObserver(() => apply());
+    PlanBoard.ro = new ResizeObserver(schedule);
     PlanBoard.ro.observe(grid);
   }
-  requestAnimationFrame(apply);
+  schedule();
 }
 
 function dayColumn(view, prog, iso){
