@@ -7511,9 +7511,9 @@ function timerActions(where){
   if(st === 'rest') return [{ key:'study', label: p ? 'Começar o próximo bloco' : 'Voltar a estudar', kind:'primary', run:() => timerAct('study') },
                             { key:'pause', label:'Pausar', kind:'ghost', run:() => timerAct('pause') },
                             Object.assign({ kind:'ghost' }, fin)];
-  return [{ key:'pause', label:'Pausar', kind:'ghost', run:() => timerAct('pause') },
+  return [{ key:'pause', label:'Pausar', kind:where === 'focus' ? 'primary' : 'ghost', run:() => timerAct('pause') },
           { key:'break', label:'Descansar', kind:'ghost', run:() => timerAct('break') },
-          Object.assign({ kind:'primary' }, fin)];
+          Object.assign({ kind:where === 'focus' ? 'ghost' : 'primary' }, fin)];
 }
 
 /**
@@ -22333,12 +22333,19 @@ const FocusMode = {
     const root = document.getElementById('focus-root');
     root.setAttribute('data-state', v.state === 'done' ? 'done' : v.status);
     root.classList.toggle('is-pomodoro', v.pomo);
-    document.getElementById('focus-disc').textContent = TimerService.discText();
-    // v6.7: todos os tópicos e tipos escolhidos (o modo foco tem espaço para a lista inteira)
-    document.getElementById('focus-topic').textContent = [topicNames.join(' · ') || null, (d.presetTypes || []).map(sessionTypeLabel).join(' · ') || null].filter(Boolean).join(' — ');
+    const compact = (names, limit) => names.slice(0, limit).join(' · ') + (names.length > limit ? ` · +${names.length - limit}` : '');
+    const contextLine = (id, names, limit) => {
+      const el = document.getElementById(id);
+      el.textContent = compact(names, limit); el.hidden = !names.length;
+      el.title = names.join(' · '); el.setAttribute('aria-label', names.join(' · '));
+    };
+    document.getElementById('focus-disc').textContent = TimerService.discIds().length ? TimerService.discText() : 'Estudo livre';
+    contextLine('focus-topic', topicNames, 2);
+    contextLine('focus-types', (d.presetTypes || []).map(sessionTypeLabel), 2);
+    const areas = [...new Set(TimerService.discIds().map(id => getDiscipline(id)?.areaId).filter(Boolean))];
+    contextLine('focus-area', areas.length === 1 && getArea(areas[0]) ? [getArea(areas[0]).name] : [], 1);
     document.getElementById('focus-state').textContent = v.label;
     document.getElementById('focus-line').textContent = v.line || '';
-    document.getElementById('focus-sub').textContent = v.sub || '';
     // v6.5: o aviso de que o cronômetro não pôde ser guardado aparece também aqui (a barra fica escondida no modo foco)
     const warn = document.getElementById('focus-warn');
     if(warn){
@@ -22351,7 +22358,7 @@ const FocusMode = {
     const actions = document.getElementById('focus-actions');
     const hadFocus = actions.contains(document.activeElement);
     mount(actions, timerActions('focus').map((a, i) => h('button', { class:'btn ' + (a.kind === 'primary' ? 'primary' : 'ghost'), type:'button',
-      'data-fk': i === 0 ? 'focus-toggle' : 'focus-' + a.key, text:a.label, onclick:a.run })));
+      'data-fk': i === 0 ? 'focus-toggle' : 'focus-' + a.key, 'data-action':a.key, text:a.label, onclick:a.run })));
     if(hadFocus){ const b = actions.querySelector('[data-fk="focus-toggle"]'); if(b) b.focus(); }
     if(o.switched){ swapIn(document.getElementById('focus-state')); swapIn(document.getElementById('focus-clock')); }
   },
@@ -22364,8 +22371,24 @@ const FocusMode = {
     const el = document.getElementById('focus-clock');
     if(el.textContent !== v.clock) el.textContent = v.clock;
     el.title = v.clockTitle || '';
+    document.getElementById('focus-clock-label').textContent = v.clockTitle || '';
+    const now = Date.now(), T = TimerService, p = T.data.pomo;
+    const study = T.getElapsed(now), rest = T.getBreakTotal(now);
+    document.getElementById('focus-totals').hidden = !p && T.status === 'study' && rest === 0;
+    document.getElementById('focus-rest-stat').hidden = rest === 0;
+    document.getElementById('focus-study-total').textContent = fmtTimer(study);
+    document.getElementById('focus-rest-total').textContent = fmtTimer(rest);
+    // Fatos do estado atual. O texto muda nas transições ou a cada cinco
+    // minutos, sem mensagens motivacionais e sem anúncio a cada segundo.
+    const minutes = Math.floor(study / 300000) * 5;
+    const insight = p && p.awaiting ? v.sub
+      : T.isPaused ? 'Nada está contando. Retome quando quiser.'
+      : T.isOnBreak ? (p ? 'Ao terminar o descanso, escolha quando começar o próximo bloco.' : 'O descanso é contado à parte. Retome quando quiser.')
+      : p ? `Depois deste bloco, ${nextBreakAfterFocus(p)} min de descanso.`
+      : minutes >= 5 ? `Você chegou a ${fmtDurationWords(minutes)} de estudo nesta sessão.`
+      : 'O tempo de estudo está contando. Pause ou descanse quando quiser.';
     const sub = document.getElementById('focus-sub');
-    if(sub.textContent !== (v.sub || '')) sub.textContent = v.sub || '';
+    if(sub.textContent !== insight) sub.textContent = insight;
     const bar = document.getElementById('focus-progress');
     if(bar){
       bar.hidden = v.progress === null;

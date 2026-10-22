@@ -255,13 +255,22 @@
       </span>
     </header>
     <div class="focus-center">
-      <p class="focus-disc" id="focus-disc"></p>
-      <p class="focus-topic" id="focus-topic"></p>
       <p class="focus-state" id="focus-state"></p>
+      <p class="focus-clock-label" id="focus-clock-label"></p>
       <p class="focus-clock num" id="focus-clock" aria-live="off">00:00</p>
       <div class="focus-progress" id="focus-progress" aria-hidden="true" hidden><span class="focus-progress-fill"></span></div>
       <p class="focus-line" id="focus-line"></p>
-      <p class="focus-sub num" id="focus-sub"></p>
+      <div class="focus-context">
+        <p class="focus-area" id="focus-area" hidden></p>
+        <p class="focus-disc" id="focus-disc"></p>
+        <p class="focus-topic" id="focus-topic" hidden></p>
+        <p class="focus-types" id="focus-types" hidden></p>
+      </div>
+      <dl class="focus-totals" id="focus-totals" aria-live="off" hidden>
+        <div><dt>Estudo líquido</dt><dd class="num" id="focus-study-total"></dd></div>
+        <div id="focus-rest-stat"><dt>Descansos</dt><dd class="num" id="focus-rest-total"></dd></div>
+      </dl>
+      <p class="focus-sub" id="focus-sub" aria-live="off"></p>
       <p class="focus-warn" id="focus-warn" role="status" hidden></p>
       <div class="focus-actions" id="focus-actions"></div>
     </div>
