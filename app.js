@@ -4471,6 +4471,9 @@ const TimerService = {
         pomo: this.cleanPomo(d.pomo)
       };
       this.persisted = true;
+      // Uma aba atrasada pode regravar um snapshot depois do commit da outra.
+      // O histórico carregado é a confirmação de que esse runId já terminou.
+      if(this.reconcileSaved()) return this.data;
       // cronômetro vindo da v6.3 em pausa (grava o início do descanso) ou sem identidade (grava o runId): uma única vez
       if((!running && !paused && !isNum(d.breakStartedAt)) || this.data.runId !== d.runId) this._persist();
       // v7.1: um fim de bloco pode ter acontecido enquanto a página estava fechada
@@ -4529,6 +4532,11 @@ const TimerService = {
   },
   /** Nova tentativa de gravar um cronômetro que não coube/entrou no armazenamento. */
   retryPersist(){ return (this.data && !this.persisted) ? this._persist() : this.persisted; },
+  reconcileSaved(){
+    if(!this.data || !state.sessions.some(s => s.id === this.data.runId)) return false;
+    this.release(this.data.runId);
+    return true;
+  },
   /**
    * O que o armazenamento diz sobre o cronômetro AGORA (outra aba pode ter
    * finalizado, descartado ou começado outro): o runId gravado, null se não há
@@ -6375,6 +6383,10 @@ const DataSync = {
 let healRunning = false;
 async function refresh(){
   await loadAll();
+  if(TimerService.reconcileSaved()){
+    renderTimerBar();
+    if(FocusMode.isOpen) FocusMode.render();
+  }
   /* v6.7 — um estudo chegou no formato antigo (aba com a versão anterior ainda
      aberta): a memória já o lê no formato novo; o banco é convertido agora,
      numa transação própria, e só uma vez por vez. */
@@ -7571,6 +7583,9 @@ const PomodoroAlerts = {
 
 function renderTimerBar(opts){
   const o = (opts && !(opts instanceof Event)) ? opts : {};
+  // Hoje também depende do timer. Atualiza só a ação principal nas transições,
+  // sem reler o banco nem recalcular os estudos a cada segundo.
+  syncTodayTimerAction();
   const slot = $('#timerbar-slot');
   // v6.3 — o botão global diz o que vai acontecer: com cronômetro ligado, ele finaliza.
   const fab = $('#fab'), fabVerb = $('#fab .fab-verb');
@@ -10285,7 +10300,6 @@ function openFinishModal(){
       if(!res.ok){ unlock(); saveDraft(); return; }
       saving = false;
       FormDraft.clear('finish');
-      TimerService.release(runId);
       close();
       renderTimerBar();
       announce('Estudo finalizado.');
@@ -11004,6 +11018,14 @@ async function registerStudy(input, opts){
     if(res.reason !== 'duplicate') sessionFailureToast(res.reason, 'create');
     return res;
   }
+  // A transação já confirmou o registro. Encerra ESTE timer antes de redesenhar
+  // Hoje/Histórico/Análises: eles não podem ler o estado anterior à conclusão.
+  // Falhas de gravação retornam acima e conservam o relógio e seu rascunho.
+  if(o.timerRunId){
+    TimerService.release(o.timerRunId);
+    renderTimerBar();
+    if(FocusMode.isOpen) FocusMode.render();
+  }
   await safeRefresh();
 
   const session = res.session;
@@ -11186,8 +11208,22 @@ function renderToday(){
 }
 
 /** 1 · A ação principal: a pessoa escolhe. A sugestão do Ciclo é um convite, com o motivo. */
+function todayTimerKey(){
+  const d = TimerService.data;
+  return d ? [d.runId, TimerService.status, d.pomo && d.pomo.awaiting, TimerService.discText()].join('|') : '';
+}
+function syncTodayTimerAction(){
+  if(ui.view !== 'today' || !activeDisciplines().length) return;
+  const old = document.querySelector('#today-body .today-act');
+  if(!old || old.dataset.timerKey === todayTimerKey()) return;
+  const hadFocus = old.contains(document.activeElement);
+  const next = todayAction(activeDisciplines(), state.sessions.length > 0);
+  old.replaceWith(next);
+  if(hadFocus) next.querySelector('.tf-actions button')?.focus({ preventScroll:true });
+}
 function todayAction(discs, hasSessions){
   const busy = TimerService.isActive;
+  const status = busy ? timerView() : null;
   const recent = recentDisciplines(5);
   const quick = (recent.length ? recent : discs.slice().sort(sortByName)).slice(0, 5);
   const chips = busy ? null : h('div', { class:'today-quick', role:'group', 'aria-label':'Começar a estudar uma matéria agora' },
@@ -11197,10 +11233,14 @@ function todayAction(discs, hasSessions){
 
   const head = [
     h('p', { class:'tf-eyebrow', text:`${greetingWord()}.` }),
-    h('h3', { class:'tf-title', id:'tf-title', text: busy ? 'Você está estudando agora' : 'O que você gostaria de estudar?' })
+    h('h3', { class:'tf-title', id:'tf-title', text: busy
+      ? status.awaiting ? status.label : status.status === 'paused' ? 'Seu estudo está pausado' : status.status === 'rest' ? 'Você está descansando' : 'Você está estudando agora'
+      : 'O que você gostaria de estudar?' })
   ];
   if(busy){
-    head.push(h('p', { class:'tf-reason', text:`${TimerService.discText()} — o tempo está contando. Quando terminar, finalize para guardar no histórico.` }));
+    const detail = status.awaiting || status.status === 'paused' ? 'Nada está contando agora.'
+      : status.status === 'rest' ? 'O descanso é contado à parte do estudo.' : 'O tempo de estudo está contando.';
+    head.push(h('p', { class:'tf-reason', text:`${TimerService.discText()} — ${detail} Quando terminar, finalize para guardar no histórico.` }));
   } else if(!hasSessions){
     head.push(h('p', { class:'tf-reason', text:'Seu histórico começa com o primeiro estudo. Escolha uma matéria e o Ciclo conta o tempo — ou registre algo que você já estudou.' }));
   }
@@ -11231,7 +11271,7 @@ function todayAction(discs, hasSessions){
           acts.length > 1 ? h('button', { class:'linkbtn muted', type:'button', text:'Outras opções', onclick:() => openAlternatives(acts.slice(1)) }) : null));
     }
   }
-  return h('section', { class:'focus-block today-act', 'aria-labelledby':'tf-title' }, head, chips, actions, sugg);
+  return h('section', { class:'focus-block today-act', 'aria-labelledby':'tf-title', 'data-timer-key':todayTimerKey() }, head, chips, actions, sugg);
 }
 
 /** 2 · A semana em números reais, com um gráfico pequeno. Clicar leva às Análises desta semana. */
