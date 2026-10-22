@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — CONTEÚDO ESTÁTICO (v7.0.0 · Learning for Everyone)
+   CICLO — CONTEÚDO ESTÁTICO (v7.2.0 · Foco e planejamento)
    Textos, guias e frases. Nada aqui vai para o IndexedDB e nada vem da rede.
 
    Blocos: DAILY_QUOTES · REVIEW_METHOD_GUIDES · HELP_SECTIONS ·
@@ -2834,8 +2834,34 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 };
 
 const CHANGELOG = [
-  /* v6.8 — a versão atual tem um resumo curto (janela "O Ciclo foi atualizado.")
+  /* A versão atual tem um resumo curto (janela "O Ciclo foi atualizado.")
      e seções recolhíveis ("Ver todas as novidades"). As anteriores ficam como texto. */
+  { v:'7.2.0', title:'Foco e planejamento',
+    intro:'Estude com o relógio em destaque, organize uma disciplina em vários dias de uma vez e volte para Hoje com o estudo encerrado assim que ele for registrado.',
+    highlights:[
+      'Hoje acompanha o cronômetro e reconhece o estudo salvo sem precisar recarregar a página.',
+      'Foco com relógio maior, contexto compacto e tempo de estudo separado do descanso.',
+      'Planejamento com seleção de disciplina e vários dias, duração e horário opcionais.',
+      'Análises preservam todo o intervalo de históricos longos.'
+    ],
+    sections:[
+      { title:'O que mudou', items:[
+        'Ao encerrar e registrar um estudo, Hoje volta a oferecer começar outro estudo. Pausa, descanso e retomada também aparecem no cartão.',
+        'Foco: o relógio vem primeiro, com rótulo visível, tópicos e tipos resumidos, totais de estudo e descanso separados e controles adequados ao momento.',
+        'Planejamento: escolha uma disciplina, marque os dias e adicione tudo de uma vez. Duração e horário continuam opcionais; arrastar, editar, reordenar e usar modelos continuam disponíveis.',
+        'Análises: os gráficos por semana incluem todo o período escolhido, inclusive em históricos com mais de dez anos.',
+        'Ajustes no quadro semanal evitam ciclos de redimensionamento e respeitam a preferência por reduzir animações.'
+      ]},
+      { title:'Como usar', items:[
+        'Na barra do cronômetro, abra Foco. Pausar interrompe a contagem; Encerrar abre o registro. Depois de salvar, Hoje já mostra o próximo passo.',
+        'Planejamento → Adicionar aos dias → escolha a disciplina e os dias. Abra as opções se quiser informar duração ou horário.'
+      ]},
+      { title:'Sobre seus dados', items:[
+        'Estudos, resultados, revisões, planos e prazos continuam no mesmo banco. Esta versão não exige conversão dos dados.',
+        'Backups anteriores continuam sendo aceitos. O formato permanece em 10 e o banco local em 1, como na v7.1.'
+      ]}
+    ],
+    d:'Hoje reconhece o estudo salvo sem recarregar a página e acompanha as transições do cronômetro. Foco com relógio maior, contexto compacto e estudo/descanso separados. Planejamento com seleção de disciplina e vários dias, duração e horário opcionais. Análises sem corte de semanas em históricos longos. Mesmo formato de dados e banco local da v7.1.' },
   { v:'7.1', title:'Learning Intelligence & Focus',
     intro:'Agora dá para registrar o que você conseguiu fazer — não só o tempo —, estudar com Pomodoro ou pausar o cronômetro, e ver análises e descobertas mais justas sobre o seu histórico.',
     highlights:[

@@ -1,5 +1,7 @@
 # Navegadores e dispositivos
 
+Esta tabela preserva as evidências da auditoria anterior à preparação da v7.2.0. A nova execução completa da versão preparada é registrada nos checks e na descrição do [PR #2](https://github.com/filipeesantana/Ciclo/pull/2). O timeout por motor passou de 15 para 30 minutos: na execução 39861059722 o WebKit foi cancelado durante a instalação, sem executar os testes.
+
 | Ambiente | Situação desta rodada | Limite |
 |---|---|---|
 | Chromium 154.0.8037.57, Linux/Playwright 1.62.1 | TESTADO EM EXECUÇÃO local: suíte de 79 casos; revisão final de Planejamento em 15 casos, além das verificações de interface | Não equivale a uso em aparelho físico |

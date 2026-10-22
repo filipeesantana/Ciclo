@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v7.0.0 · Learning for Everyone
+   CICLO — v7.2.0 · Foco e planejamento
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -36,7 +36,7 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '7.1.0';
+const APP_VERSION = '7.2.0';
 const APP_SCHEMA_VERSION = 10;         // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos

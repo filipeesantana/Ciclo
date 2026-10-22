@@ -1,4 +1,4 @@
-# Ciclo — auditoria de campo e candidato para revisão
+# Ciclo — auditoria de campo e preparação da v7.2.0
 
 O Ciclo passa a encerrar o timer confirmado **antes de redesenhar Hoje**, evitando o estudo fantasma sem F5. O Foco prioriza um relógio rotulado e contexto compacto, com estudo/descanso separados. Planejamento ganha seleção visual de disciplina e vários dias, gravada integralmente numa transação, e opções avançadas progressivas.
 
@@ -22,6 +22,10 @@ A CI adicional encontrou um aviso de ciclo do ResizeObserver no WebKit: o ajuste
 
 Não houve teste com pessoas reais, aparelho Android/iPhone físico, Safari real, leitor de tela real, quota física esgotada ou encerramento forçado do navegador. O teste de zoom usa CSS de 200%. Suspensão e falhas de gravação têm simulação controlada, não equivalência com todos os cenários do sistema operacional. Combinações de filtros e todas as permutações de arquivamento/exclusão continuam com cobertura parcial.
 
-Entrega em branch isolada, para PR de revisão. Nenhum merge, tag ou deploy de GitHub Pages. HTML/CSS/JS local, schemas lógico 10 e físico 1, dependências de produção e identificadores legados foram preservados. Versão real continua 7.1.0; proposta para publicação após revisão: **7.2.0**, por acrescentar um fluxo de planejamento e reformular o Foco. A publicação deve atualizar também os identificadores de cache dos recursos e recarregar todas as abas.
+Entrega na branch do [PR #2](https://github.com/filipeesantana/Ciclo/pull/2), preparada como **v7.2.0**: APP_VERSION, cabeçalhos, novidades da interface, README e identificadores de cache de app.js, content.js e styles.css atualizados. HTML/CSS/JS local, schemas lógico **10** e físico **1**, dependências de produção e identificadores legados preservados, sem necessidade de migração. O fixture sintético continua sendo o original da v7.1.0, com o mesmo checksum e metadados. Nenhum merge, tag ou deploy de GitHub Pages.
+
+Na preparação final, o limite da CI foi ampliado de **15 para 30 minutos por motor**: a execução [39861059722](https://github.com/filipeesantana/Ciclo/actions/runs/39861059722) cancelou o WebKit durante a instalação, antes de qualquer teste. As evidências acima registram a auditoria anterior; o resultado da nova execução completa da v7.2.0 consta nos checks e na descrição do próprio PR #2, com contagens conferidas nos logs. Após a publicação, recarregue todas as abas para usar a mesma versão.
+
+Conferência local da preparação: **80/80 testes funcionais** no Chromium, sem falhas, cancelamentos ou ignorados. Abertura do backup original na v7.2.0, recarga e nova exportação conservaram a referência matemática dos 911 estudos e 77.379 minutos; o arquivo fonte mantém SHA-256 `d44ec99061c28acdac05d0f10af3ce857d715ad12262cca65b6764686bc1bf4b`. As novidades da v7.2.0 aparecem uma vez após atualizar e não reaparecem na recarga seguinte; os três recursos retornaram HTTP 200 com `?v=7.2.0`.
 
 Reprodução: `npm ci`, `npm run check`, `npm test`, `npm run audit:browser`, `npm run audit:field` e `npm run audit:field:performance`. `BROWSER=firefox` ou `BROWSER=webkit` seleciona o motor nas verificações funcionais/visuais; é necessário tê-lo instalado. A carga de performance é local e usa Chromium por padrão. Contextos e dados de teste são descartáveis.
