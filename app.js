@@ -3647,8 +3647,9 @@ const AnalyticsEngine = {
     const out = [];
     let cursor = startOfWeek(range.start);
     const last = startOfWeek(range.end);
-    let guard = 0;
-    while(cursor <= last && guard++ < 520){
+    // O intervalo civil já é validado e avança sete dias por passo. Um teto
+    // fixo cortava silenciosamente as semanas mais recentes após dez anos.
+    while(cursor <= last){
       const clipStart = cursor < range.start ? range.start : cursor;
       const wEnd = addDays(cursor, 6);
       const clipEnd = wEnd > range.end ? range.end : wEnd;
@@ -3702,8 +3703,8 @@ const AnalyticsEngine = {
     // por semana tocada pelo período (para ver a evolução), com o tempo das semanas junto — sem afirmar causa
     const weeks = [];
     if(range){
-      let cursor = startOfWeek(range.start), guard = 0;
-      while(cursor <= range.end && guard++ < 520){
+      let cursor = startOfWeek(range.start);
+      while(cursor <= range.end){
         const a = dateToISO(cursor < range.start ? range.start : cursor), b = dateToISO(addDays(cursor, 6) > range.end ? range.end : addDays(cursor, 6));
         const inW = qs.filter(x => x.date >= a && x.date <= b);
         const t = EvidenceModel.tally(inW.map(x => x.r));
@@ -3894,9 +3895,8 @@ const AnalyticsEngine = {
     const weeks = [];
     let cursor = startOfWeek(range.start);
     const last = startOfWeek(range.end);
-    let guard = 0;
     const scoped = AnalyticsScope.sessions(scope, { start:range.start, end:realizedEnd || range.end });
-    while(cursor <= last && guard++ < 520){
+    while(cursor <= last){
       const ws = dateToISO(cursor);
       const wp = state.weeklyPlans.find(w => w.weekStart === ws);
       const wStart = cursor, wEnd = addDays(cursor, 6);
