@@ -12306,7 +12306,7 @@ const WeekCommands = {
     const o = opts || {};
     if(ws < WeekPlan.currentStart()) return { ok:false, reason:'past' };
     try {
-      return await DB.atomic(['weeklyPlans','plans'], async api => {
+      return await DB.atomic(['weeklyPlans','plans','disciplines'], async api => {
         let wk = await api.get('weeklyPlans', ws);
         if(!wk){
           // semana futura ainda sem registro: nasce do plano ativo e do modelo (os ids da prévia batem)
@@ -12321,7 +12321,7 @@ const WeekCommands = {
           if(stale) return { ok:false, reason:'conflict', current:wk };
         }
         const next = Object.assign({}, wk, { blocks: (Array.isArray(wk.blocks) ? wk.blocks : []).map(b => Object.assign({}, b)) });
-        const res = apply(next) || { ok:true };
+        const res = (await apply(next, api)) || { ok:true };
         if(!res.ok) return res;
         next.blocks = WeekPlan.reorder(next.blocks).slice(0, MAX_BLOCKS_PER_WEEK);
         next.rev = curRev + 1;
@@ -12348,6 +12348,24 @@ const WeekCommands = {
       day.forEach((x, i) => { x.order = i; });
       wk.blocks = wk.blocks.filter(x => x.date !== b.date).concat(day);
       return { ok:true, block };
+    }, opts);
+  },
+  /** Adicionar a vários dias é uma única gravação: todos entram ou nenhum. */
+  addBlocks(ws, baseRev, blocks, opts){
+    return this._mutate(ws, baseRev, async (wk, api) => {
+      const dates = WeekPlan.datesOf(ws), ids = new Set(wk.blocks.map(b => b.id));
+      if(!Array.isArray(blocks) || !blocks.length) return { ok:false, reason:'missing' };
+      if(wk.blocks.length + blocks.length > MAX_BLOCKS_PER_WEEK) return { ok:false, reason:'full' };
+      for(const b of blocks){
+        const disc = await api.get('disciplines', b.disciplineId);
+        if(!dates.includes(b.date) || !disc || disc.archived || !b.id || ids.has(b.id)) return { ok:false, reason:'missing' };
+        ids.add(b.id);
+      }
+      const added = blocks.map(b => ({ id:b.id, disciplineId:b.disciplineId, date:b.date,
+        minutes:WeekPlan.cleanMinutes(b.minutes), start:WeekPlan.cleanStart(b.start),
+        order:wk.blocks.filter(x => x.date === b.date).length }));
+      wk.blocks.push(...added);
+      return { ok:true, blocks:added };
     }, opts);
   },
   /** Muda um bloco de dia e/ou de posição. Mesmo bloco, mesma identidade — nunca uma cópia. */
@@ -12848,7 +12866,7 @@ const PlanBoard = {
   doneSeen: new Map(),   // bloco → estado no desenho anterior (transição discreta para "concluído")
   ro: null
 };
-const PLAN_COL_MIN = 140;    // largura mínima de um dia no quadro (px); abaixo disso a semana quebra em duas linhas
+const PLAN_COL_MIN = 180;    // nomes legíveis; a semana quebra em linhas antes de apertar os dias
 
 function planWeekStart(){
   const off = clamp(Math.round(Number(ui.planWeekOffset) || 0), -104, 26);
@@ -12871,12 +12889,22 @@ function planBoard(plan){
   // v6.8: semana → meta → progresso real → dias → sugestão por disciplina (ao lado dos dias, para arrastar)
   root.append(planWeekNav(view));
   root.append(planWeekHead(plan, view, prog));
+  root.append(h('div', { class:'wk-calendar-head' },
+    h('div', null, h('h3', { class:'block-label', id:'wk-calendar-title', text:'Sua semana em dias' }),
+      h('p', { class:'hint', text:'Dias e horários são opcionais. Mude a organização quando quiser.' })),
+    view.editable ? h('button', { class:'btn primary', type:'button', 'data-fk':'wk-add', onclick:() => openWeekBlockPicker(view) }, icon('i-plus'), 'Adicionar aos dias') : null));
   root.append(planDays(view, prog));
   const off = planOffDays(view, prog);
   if(off) root.append(off);
   const notices = planWeekNotices(view, prog);
   if(notices) root.append(notices);
-  if(view.source !== 'none') root.append(planTray(view, prog));
+  if(view.source !== 'none'){
+    const library = h('details', { class:'wk-library', open:!!ui.planTrayOpen },
+      h('summary', null, h('span', { text:'Disciplinas e sugestões' }), h('span', { class:'hint', text:'Distribuir o tempo · arrastar para os dias' })),
+      planTray(view, prog));
+    library.addEventListener('toggle', () => { ui.planTrayOpen = library.open; });
+    root.append(library);
+  }
   root.append(h('p', { class:'block-note wk-foot', text: view.kind === 'past'
     ? 'Cada semana guarda o próprio registro: mudar o plano ou o modelo não reescreve semanas que já passaram.'
     : 'Organizar a semana é opcional: arrastar ou mover não registra estudo. Estudar em outro dia, ou outra disciplina, conta do mesmo jeito para a meta.' }));
@@ -13071,16 +13099,11 @@ function planWeekNav(view){
     else if(view.hasTemplate) text = 'Esta semana está diferente do seu modelo. As mudanças valem só para ela.';
     else text = view.blocks.length ? 'As mudanças valem só para esta semana.' : '';
     if(text) parts.push(h('span', { text }));
-    if(view.blocks.length && !view.matchesTemplate){
-      parts.push(h('button', { class:'linkbtn', type:'button', 'data-fk':'wk-save-tpl', text: view.hasTemplate ? 'Usar esta organização nas próximas semanas' : 'Repetir nas próximas semanas',
-        onclick: () => planSaveTemplate(view) }));
-    }
-    if(view.hasTemplate && !view.matchesTemplate){
-      parts.push(h('button', { class:'linkbtn muted', type:'button', text:'Voltar ao modelo', onclick: () => planApplyTemplate(view) }));
-    }
-    if(view.blocks.length){
-      parts.push(h('button', { class:'linkbtn muted', type:'button', text:'Limpar os dias', onclick: () => planClearWeek(view) }));
-    }
+    const options = [];
+    if(view.blocks.length && !view.matchesTemplate) options.push({ label:view.hasTemplate ? 'Usar esta organização nas próximas semanas' : 'Repetir nas próximas semanas', run:() => planSaveTemplate(view) });
+    if(view.hasTemplate && !view.matchesTemplate) options.push({ label:'Voltar ao modelo', run:() => planApplyTemplate(view) });
+    if(view.blocks.length) options.push({ label:'Limpar os dias', run:() => planClearWeek(view) });
+    if(options.length) parts.push(menuButton('Organização da semana', options, { className:'linkbtn', fk:'wk-organize' }));
     if(parts.length) scope = h('p', { class:'wk-scope' }, parts);
   }
   return h('div', { class:'wk-bar' },
@@ -13272,10 +13295,80 @@ function openSuggestionPicker(view){
   }, { size:'narrow' });
 }
 
+/** Escolher uma disciplina e seus dias, sem depender de arraste ou menus longos. */
+function openWeekBlockPicker(view, presetDate){
+  if(!view.editable) return;
+  const discs = activeDisciplines().slice().sort(sortByName);
+  let selected = null, saving = false;
+  const chosen = new Set(presetDate ? [presetDate] : []);
+  openModal(close => {
+    const search = h('input', { type:'search', id:'wb-search', placeholder:'Buscar disciplina…', 'aria-label':'Buscar disciplina', autocomplete:'off' });
+    const list = h('div', { class:'wb-subjects', role:'group', 'aria-label':'Escolher disciplina' });
+    const status = h('p', { class:'hint wb-selection', 'aria-live':'polite' });
+    const summary = () => { status.textContent = selected
+      ? `${disciplineName(selected)} · ${chosen.size ? plural(chosen.size, 'dia escolhido', 'dias escolhidos') : 'escolha pelo menos um dia'}`
+      : 'Escolha a disciplina e os dias em que pretende estudá-la.'; };
+    const draw = () => {
+      const terms = normalizeText(search.value).split(' ').filter(Boolean);
+      const matches = discs.filter(d => matchesTerms(normalizeText(d.name + ' ' + areaNameOf(d)), terms));
+      mount(list, matches.map(d => {
+        const suggestion = view.goals.get(d.id) || 0;
+        const input = h('input', { type:'radio', name:'week-discipline', value:d.id, checked:selected === d.id });
+        const row = h('label', { class:'wb-subject' }, input,
+          h('span', null, h('span', { class:'wb-name', text:d.name }),
+            h('span', { class:'wb-meta', text:`Prioridade ${PriorityEngine.clamp(d.priority)} · ${plural(topicsOf(d.id).length, 'tópico', 'tópicos')}` })),
+          h('span', { class:'wb-share num', text:suggestion ? `${fmtDuration(suggestion)} sugeridas` : 'Sem sugestão' }));
+        input.addEventListener('change', () => { selected = d.id; summary(); });
+        return row;
+      }));
+      if(!matches.length) list.append(h('p', { class:'hint', text:'Nenhuma disciplina encontrada.' }));
+    };
+    search.addEventListener('input', draw);
+    const days = h('div', { class:'wb-days', role:'group', 'aria-labelledby':'wb-days-label' }, view.dates.map(iso => {
+      const input = h('input', { type:'checkbox', value:iso, checked:chosen.has(iso), 'aria-label':WeekPlan.dayFull(iso) });
+      input.addEventListener('change', () => { if(input.checked) chosen.add(iso); else chosen.delete(iso); summary(); });
+      return h('label', { class:'wb-day' }, input,
+        h('span', null, h('span', { text:WEEKDAY_SHORT[parseISO(iso).getDay()] }), h('strong', { class:'num', text:String(parseISO(iso).getDate()) })),
+        !WeekPlan.isStudyDay(iso) ? h('span', { class:'sr-only', text:'Fora dos dias habituais; o bloco será preservado.' }) : null);
+    }));
+    const minutes = h('input', { id:'wb-minutes', type:'number', inputmode:'numeric', min:'1', max:String(BLOCK_MAX_MINUTES), placeholder:'Só o dia' });
+    const start = timeField({ id:'wb-start', value:'' });
+    draw();summary();
+    return {
+      title:'Adicionar à semana',
+      content:h('div', { class:'wb-picker' },
+        h('p', { class:'modal-sub', text:'Uma disciplina pode aparecer em vários dias. Isso organiza a semana; os estudos são registrados separadamente.' }),
+        search, list,
+        h('h4', { class:'block-label', id:'wb-days-label', text:'Em quais dias?' }), days,
+        h('details', { class:'advanced' }, h('summary', { text:'Duração e horário (opcionais)' }),
+          h('div', { class:'advanced-body row' },
+            h('div', { class:'field' }, h('label', { for:'wb-minutes', text:'Minutos por dia' }), minutes),
+            h('div', { class:'field' }, timeLabel('wb-start','Começa às'), start.input))),
+        status),
+      actions:[h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
+        h('button', { class:'btn primary', type:'button', text:'Adicionar aos dias', onclick:async e => {
+          if(saving) return;
+          if(!selected || !chosen.size){ status.textContent = !selected ? 'Escolha uma disciplina.' : 'Escolha pelo menos um dia.'; (!selected ? list.querySelector('input') : days.querySelector('input'))?.focus(); return; }
+          const m = minutes.value.trim() ? Number(minutes.value) : null;
+          if(m !== null && (!Number.isInteger(m) || m < 1 || m > BLOCK_MAX_MINUTES)){ minutes.setAttribute('aria-invalid','true');minutes.focus();toast('Informe minutos inteiros entre 1 e 960, ou deixe em branco.','err');return; }
+          if(start.text && start.state !== 'valid'){start.input.setAttribute('aria-invalid','true');start.focus();toast(clockErrorText(start.text)||CLOCK_PARTIAL_ERROR,'err');return;}
+          const blocks = view.dates.filter(iso => chosen.has(iso)).map(date => ({ id:uid(), disciplineId:selected, date, minutes:m, start:start.value || null }));
+          saving = true;const button=e.currentTarget;button.disabled=true;
+          try{
+            await runWeekOp(force => WeekCommands.addBlocks(view.ws, view.rev, blocks, { force }), {
+              close, landed:r => r.blocks[0].id, focus:r => 'blk-' + r.blocks[0].id,
+              announce:() => `${disciplineName(selected)} adicionada em ${plural(blocks.length,'dia','dias')}.` });
+          }finally{saving=false;button.disabled=false;}
+        }})],
+      focus:search
+    };
+  }, { size:'wide' });
+}
+
 /* ---------- 5. os dias ---------- */
 function planDays(view, prog){
   const days = view.dates.filter(iso => WeekPlan.isStudyDay(iso));
-  const grid = h('div', { class:'wk-grid', 'data-days':String(days.length) });
+  const grid = h('div', { class:'wk-grid', 'data-days':String(days.length), 'aria-labelledby':'wk-calendar-title' });
   days.forEach(iso => grid.append(dayColumn(view, prog, iso)));
   if(!days.length) grid.append(h('p', { class:'hint', text:'Nenhum dia escolhido. Use "Personalizar dias".' }));
   planFitColumns(grid, days.length);
