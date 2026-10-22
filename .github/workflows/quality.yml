@@ -24,7 +24,12 @@ jobs:
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npm run check
       - run: npm run audit:inventory
-      - run: mkdir -p test-results && npm test 2>&1 | tee test-results/tests.txt
+      - name: Testes funcionais
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p test-results
+          npm test 2>&1 | tee test-results/tests.txt
       - run: npm run audit:browser
       - run: npm run audit:field
       - uses: actions/upload-artifact@v4

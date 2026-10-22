@@ -37,7 +37,16 @@ test('planejar com duração e horário, mover pelo editor e depois tirar o hor�
  await page.locator('#modal-actions').getByRole('button',{name:'Adicionar aos dias',exact:true}).click();await page.waitForFunction(()=>!Overlay.isOpen&&WeekPlan.view(planWeekStart()).blocks.length===2);
  let blocks=await page.evaluate(()=>WeekPlan.view(planWeekStart()).blocks);assert.ok(blocks.every(b=>b.minutes===45&&b.start==='19:00'));
  await page.locator('.blk-main').first().click();await page.locator('#be-day').selectOption(await page.evaluate(()=>WeekPlan.datesOf(planWeekStart())[4]));
- await page.getByRole('button',{name:'Tirar o horário',exact:true}).click();await page.locator('#modal-actions').getByRole('button',{name:'Salvar',exact:true}).click();await page.waitForFunction(()=>!Overlay.isOpen);
+ const movedId=blocks[0].id,date=await page.evaluate(()=>WeekPlan.datesOf(planWeekStart())[4]);
+ await page.getByRole('button',{name:'Tirar o horário',exact:true}).click();await page.locator('#modal-actions').getByRole('button',{name:'Salvar',exact:true}).click();
+ // Fechar a janela confirma o commit; a releitura que atualiza os blocos é
+ // assíncrona. Espera a mudança visível, em vez de ler um snapshot anterior.
+ await page.waitForFunction(({id,date})=>{
+  const b=WeekPlan.view(planWeekStart()).blocks.find(b=>b.id===id);
+  return !Overlay.isOpen&&b?.date===date&&b.start===null;
+ },{id:movedId,date});
+ const persisted=await page.evaluate(async id=>(await DB.get('weeklyPlans',planWeekStart())).blocks.find(b=>b.id===id),movedId);
+ assert.equal(persisted.start,null);assert.equal(persisted.date,date);
  const after=await page.evaluate(()=>WeekPlan.view(planWeekStart()).blocks);
  assert.equal(after.length,2);assert.equal(after.find(b=>b.id===blocks[0].id).start,null);
  assert.equal(after.find(b=>b.id===blocks[0].id).date,await page.evaluate(()=>WeekPlan.datesOf(planWeekStart())[4]));
