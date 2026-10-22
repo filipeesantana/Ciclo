@@ -4,19 +4,20 @@ const {start,open,seed}=require('./support.cjs');
 let runtime,context,page;
 before(async()=>{runtime=await start(process.env.BROWSER||'chromium');});after(async()=>runtime?.close());
 beforeEach(async()=>{
- ({context,page}=await open(runtime));page.setDefaultTimeout(8000);await seed(page);
+ ({context,page}=await open(runtime,{hasTouch:true}));page.setDefaultTimeout(8000);await seed(page);
  await page.evaluate(async()=>{await DB.put('plans',{...newPlan('Minha semana',300),id:'plan',allocations:[{disciplineId:'portugues',targetMinutes:180},{disciplineId:'matematica',targetMinutes:120}]});await refresh();setView('plan');});
 });
 afterEach(async()=>context.close());
 async function picker(){await page.getByRole('button',{name:'Adicionar aos dias',exact:true}).click();}
-async function choose(){
- await page.locator('.wb-subject').filter({hasText:'Matemática'}).getByRole('radio').check();
- await page.locator('.wb-days input').nth(0).check();await page.locator('.wb-days input').nth(2).check();
+async function choose(touch=false){
+ const radio=page.locator('.wb-subject').filter({hasText:'Matemática'}).getByRole('radio');
+ if(touch){await radio.tap();await page.locator('.wb-days input').nth(0).tap();await page.locator('.wb-days input').nth(2).tap();}
+ else{await radio.check();await page.locator('.wb-days input').nth(0).check();await page.locator('.wb-days input').nth(2).check();}
 }
 test('planejar pelo toque: uma disciplina em dois dias sem horário nem duração',async()=>{
- await page.setViewportSize({width:390,height:844});await picker();await choose();
+ await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Adicionar aos dias',exact:true}).tap();await choose(true);
  const button=page.locator('#modal-actions').getByRole('button',{name:'Adicionar aos dias',exact:true});
- await button.evaluate(b=>{b.click();b.click();});await page.waitForFunction(()=>!Overlay.isOpen);
+ await button.evaluate(b=>{b.click();b.click();});await page.waitForFunction(()=>!Overlay.isOpen&&WeekPlan.view(planWeekStart()).blocks.length===2);
  const result=await page.evaluate(()=>({blocks:WeekPlan.view(planWeekStart()).blocks,sessions:state.sessions.length,goal:planWeekGoal(WeekPlan.view(planWeekStart()))}));
  assert.equal(result.blocks.length,2);assert.equal(new Set(result.blocks.map(b=>b.id)).size,2);assert.ok(result.blocks.every(b=>b.minutes===null&&b.start===null));
  assert.equal(result.sessions,0);assert.equal(result.goal,300);
@@ -24,13 +25,22 @@ test('planejar pelo toque: uma disciplina em dois dias sem horário nem duraçã
 test('planejar com duração e horário, mover pelo editor e depois tirar o horário',async()=>{
  await picker();await choose();await page.getByText('Duração e horário (opcionais)',{exact:true}).click();
  await page.locator('#wb-minutes').fill('45');await page.locator('#wb-start').fill('1900');
- await page.locator('#modal-actions').getByRole('button',{name:'Adicionar aos dias',exact:true}).click();await page.waitForFunction(()=>!Overlay.isOpen);
+ await page.locator('#modal-actions').getByRole('button',{name:'Adicionar aos dias',exact:true}).click();await page.waitForFunction(()=>!Overlay.isOpen&&WeekPlan.view(planWeekStart()).blocks.length===2);
  let blocks=await page.evaluate(()=>WeekPlan.view(planWeekStart()).blocks);assert.ok(blocks.every(b=>b.minutes===45&&b.start==='19:00'));
  await page.locator('.blk-main').first().click();await page.locator('#be-day').selectOption(await page.evaluate(()=>WeekPlan.datesOf(planWeekStart())[4]));
  await page.getByRole('button',{name:'Tirar o horário',exact:true}).click();await page.locator('#modal-actions').getByRole('button',{name:'Salvar',exact:true}).click();await page.waitForFunction(()=>!Overlay.isOpen);
  const after=await page.evaluate(()=>WeekPlan.view(planWeekStart()).blocks);
  assert.equal(after.length,2);assert.equal(after.find(b=>b.id===blocks[0].id).start,null);
  assert.equal(after.find(b=>b.id===blocks[0].id).date,await page.evaluate(()=>WeekPlan.datesOf(planWeekStart())[4]));
+});
+test('Foco em paisagem e zoom CSS de 200% permite alcançar Encerrar',async()=>{
+ for(const zoom of [1,2]){
+  await page.setViewportSize({width:667,height:375});
+  await page.evaluate(async zoom=>{document.documentElement.style.zoom=String(zoom);if(!TimerService.isActive)await startTimer(['portugues','matematica'],['pontuacao','crase','fracoes'],['laboratorio','projeto']);FocusMode.enter();},zoom);
+  await page.locator('#focus-actions').getByRole('button',{name:'Encerrar',exact:true}).click();
+  assert.equal(await page.locator('#modal-title').textContent(),'Finalizar estudo');
+  await page.locator('#modal-actions').getByRole('button',{name:'Continuar estudando',exact:true}).click();
+ }
 });
 test('cancelar seleção ou enviar sem dias preserva a semana',async()=>{
  await picker();await page.locator('.wb-subject input').first().check();

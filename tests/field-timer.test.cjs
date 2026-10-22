@@ -121,6 +121,7 @@ test('Hoje acompanha início, pausa, descanso e descarte sem navegação',async(
 test('snapshot regravado por aba atrasada não ressuscita um runId salvo',async()=>{
  await begin();const raw=await page.evaluate(()=>localStorage.getItem(TIMER_LS_KEY));await finish();
  await page.evaluate(raw=>{localStorage.setItem(TIMER_LS_KEY,raw);TimerService.restore();renderTimerBar();},raw);
+ assert.equal(await page.evaluate(()=>TimerService.isActive),false);
  await ended();assert.equal(await page.evaluate(()=>DB.count('sessions')),1);
  // Também protege a atualização por DataSync quando a memória ainda é antiga.
  await page.evaluate(async raw=>{TimerService.data=JSON.parse(raw);localStorage.setItem(TIMER_LS_KEY,raw);await refresh();},raw);

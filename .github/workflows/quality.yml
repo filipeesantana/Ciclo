@@ -24,8 +24,9 @@ jobs:
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npm run check
       - run: npm run audit:inventory
-      - run: npm test
+      - run: mkdir -p test-results && npm test 2>&1 | tee test-results/tests.txt
       - run: npm run audit:browser
+      - run: npm run audit:field
       - uses: actions/upload-artifact@v4
         if: always()
         with:
