@@ -36,6 +36,9 @@ test('arrastar para um dia grava um bloco e Esc cancela outro arraste',async()=>
  await plan();await page.evaluate(()=>setView('plan'));await page.setViewportSize({width:1440,height:1400});
  await page.locator('.wk-library > summary').click();
  const tray=page.locator('.tray-card[data-disc="portugues"]');await tray.scrollIntoViewIfNeeded();
+ // Espera o ponto de pega ficar exposto após a abertura do details. Um
+ // boundingBox pode existir enquanto o conteúdo ainda está recortado.
+ await tray.hover({position:{x:20,y:20}});
  const target=page.locator('.day-col').first();const a=await tray.boundingBox(),b=await target.boundingBox();
  await page.mouse.move(a.x+20,a.y+20);await page.mouse.down();await page.mouse.move(b.x+b.width/2,b.y+60,{steps:12});await page.mouse.up();
  await page.waitForFunction(()=>state.weeklyPlans.some(w=>w.blocks?.length===1));

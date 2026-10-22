@@ -2903,6 +2903,8 @@ label{ margin-bottom:7px }
     transition:block-size var(--motion-base) var(--ease-standard), content-visibility var(--motion-base) allow-discrete;
   }
   details[open]::details-content{ block-size:auto }
+  html.reduce-motion details::details-content{ transition:none!important }
+  @media (prefers-reduced-motion:reduce){ details::details-content{ transition:none!important } }
 }
 
 /* hover só onde existe ponteiro fino — e sem "saltar" */
