@@ -1,0 +1,528 @@
+{
+  "browser": "154.0.8037.57",
+  "sourceSha256": "fa041850192367a759c5dc8c08b32bf444334739a920cddcc94361589554431c",
+  "method": "5 renderizações síncronas por tela, cache invalidado. UI de importação, reload até state.ready. Não mede pintura nem desempenho de aparelho real.",
+  "results": [
+    {
+      "count": 911,
+      "weeklyPlans": 53,
+      "bytes": 1910433,
+      "importMs": 723.493684,
+      "reloadMs": 236.3251600000001,
+      "checks": {
+        "count": 911,
+        "minutes": 77379,
+        "questions": {
+          "studies": 314,
+          "total": 5962,
+          "correct": 3887,
+          "sets": 314,
+          "pct": 65.19624287151963
+        },
+        "rest": 6754,
+        "rhythmWeeks": 53,
+        "first": "2025-10-23",
+        "last": "2026-10-22",
+        "resultWeeks": 53
+      },
+      "seriesComplete": true,
+      "expected": {
+        "weeks": 53,
+        "minutes": 77379,
+        "questions": 5962,
+        "rest": 6754
+      },
+      "render": {
+        "today": [
+          20,
+          27,
+          13,
+          12,
+          13
+        ],
+        "plan": [
+          17,
+          32,
+          16,
+          17,
+          17
+        ],
+        "history": [
+          27,
+          45,
+          34,
+          36,
+          33
+        ],
+        "analytics": [
+          30,
+          47,
+          22,
+          23,
+          24
+        ],
+        "reviews": [
+          18,
+          36,
+          35,
+          33,
+          32
+        ],
+        "data": [
+          8,
+          6,
+          6,
+          7,
+          5
+        ],
+        "help": [
+          7,
+          16,
+          8,
+          9,
+          8
+        ],
+        "settings": [
+          11,
+          12,
+          7,
+          8,
+          7
+        ],
+        "disciplines": [
+          12,
+          9,
+          6,
+          6,
+          6
+        ]
+      },
+      "exportMs": 28,
+      "csvMs": 21,
+      "parseMs": 36,
+      "restoreMs": 221,
+      "searchMs": 19,
+      "filterMs": 3,
+      "queryColdMs": 14,
+      "recoverMs": 2,
+      "memoryBytes": null
+    },
+    {
+      "count": 1822,
+      "weeklyPlans": 105,
+      "bytes": 2436161,
+      "importMs": 851.7340709999999,
+      "reloadMs": 304.5889079999997,
+      "checks": {
+        "count": 1822,
+        "minutes": 154758,
+        "questions": {
+          "studies": 628,
+          "total": 11924,
+          "correct": 7774,
+          "sets": 628,
+          "pct": 65.19624287151963
+        },
+        "rest": 13508,
+        "rhythmWeeks": 105,
+        "first": "2024-10-24",
+        "last": "2026-10-22",
+        "resultWeeks": 105
+      },
+      "seriesComplete": true,
+      "expected": {
+        "weeks": 105,
+        "minutes": 154758,
+        "questions": 11924,
+        "rest": 13508
+      },
+      "render": {
+        "today": [
+          20,
+          23,
+          15,
+          14,
+          13
+        ],
+        "plan": [
+          16,
+          26,
+          15,
+          15,
+          16
+        ],
+        "history": [
+          27,
+          39,
+          36,
+          34,
+          33
+        ],
+        "analytics": [
+          28,
+          46,
+          21,
+          32,
+          21
+        ],
+        "reviews": [
+          13,
+          31,
+          28,
+          29,
+          30
+        ],
+        "data": [
+          6,
+          5,
+          5,
+          5,
+          6
+        ],
+        "help": [
+          4,
+          12,
+          6,
+          7,
+          6
+        ],
+        "settings": [
+          8,
+          11,
+          6,
+          6,
+          6
+        ],
+        "disciplines": [
+          12,
+          7,
+          4,
+          4,
+          3
+        ]
+      },
+      "exportMs": 46,
+      "csvMs": 36,
+      "parseMs": 56,
+      "restoreMs": 328,
+      "searchMs": 27,
+      "filterMs": 5,
+      "queryColdMs": 15,
+      "recoverMs": 1,
+      "memoryBytes": null
+    },
+    {
+      "count": 2733,
+      "weeklyPlans": 157,
+      "bytes": 3571917,
+      "importMs": 1073.5831559999997,
+      "reloadMs": 390.12235299999884,
+      "checks": {
+        "count": 2733,
+        "minutes": 232137,
+        "questions": {
+          "studies": 942,
+          "total": 17886,
+          "correct": 11661,
+          "sets": 942,
+          "pct": 65.19624287151963
+        },
+        "rest": 20262,
+        "rhythmWeeks": 157,
+        "first": "2023-10-26",
+        "last": "2026-10-22",
+        "resultWeeks": 157
+      },
+      "seriesComplete": true,
+      "expected": {
+        "weeks": 157,
+        "minutes": 232137,
+        "questions": 17886,
+        "rest": 20262
+      },
+      "render": {
+        "today": [
+          24,
+          27,
+          15,
+          13,
+          13
+        ],
+        "plan": [
+          18,
+          30,
+          13,
+          13,
+          12
+        ],
+        "history": [
+          31,
+          39,
+          33,
+          32,
+          30
+        ],
+        "analytics": [
+          41,
+          47,
+          22,
+          22,
+          20
+        ],
+        "reviews": [
+          14,
+          32,
+          36,
+          31,
+          32
+        ],
+        "data": [
+          9,
+          5,
+          5,
+          4,
+          4
+        ],
+        "help": [
+          5,
+          11,
+          6,
+          6,
+          6
+        ],
+        "settings": [
+          8,
+          9,
+          6,
+          6,
+          5
+        ],
+        "disciplines": [
+          15,
+          8,
+          5,
+          4,
+          5
+        ]
+      },
+      "exportMs": 64,
+      "csvMs": 58,
+      "parseMs": 80,
+      "restoreMs": 493,
+      "searchMs": 33,
+      "filterMs": 11,
+      "queryColdMs": 25,
+      "recoverMs": 2,
+      "memoryBytes": null
+    },
+    {
+      "count": 5000,
+      "weeklyPlans": 313,
+      "bytes": 6468210,
+      "importMs": 1768.6937509999989,
+      "reloadMs": 538.6691410000003,
+      "checks": {
+        "count": 5000,
+        "minutes": 424179,
+        "questions": {
+          "studies": 1731,
+          "total": 32873,
+          "correct": 21194,
+          "sets": 1731,
+          "pct": 64.47236333769355
+        },
+        "rest": 37030,
+        "rhythmWeeks": 313,
+        "first": "2020-10-29",
+        "last": "2026-10-22",
+        "resultWeeks": 313
+      },
+      "seriesComplete": true,
+      "expected": {
+        "weeks": 313,
+        "minutes": 424179,
+        "questions": 32873,
+        "rest": 37030
+      },
+      "render": {
+        "today": [
+          25,
+          20,
+          14,
+          11,
+          17
+        ],
+        "plan": [
+          15,
+          23,
+          13,
+          12,
+          12
+        ],
+        "history": [
+          48,
+          38,
+          30,
+          31,
+          30
+        ],
+        "analytics": [
+          27,
+          42,
+          20,
+          20,
+          22
+        ],
+        "reviews": [
+          16,
+          36,
+          35,
+          35,
+          34
+        ],
+        "data": [
+          7,
+          6,
+          6,
+          6,
+          6
+        ],
+        "help": [
+          5,
+          14,
+          8,
+          10,
+          8
+        ],
+        "settings": [
+          14,
+          11,
+          7,
+          7,
+          7
+        ],
+        "disciplines": [
+          23,
+          9,
+          5,
+          6,
+          7
+        ]
+      },
+      "exportMs": 154,
+      "csvMs": 82,
+      "parseMs": 131,
+      "restoreMs": 701,
+      "searchMs": 49,
+      "filterMs": 11,
+      "queryColdMs": 31,
+      "recoverMs": 1,
+      "memoryBytes": null
+    },
+    {
+      "count": 10000,
+      "weeklyPlans": 573,
+      "bytes": 12636342,
+      "importMs": 3611.180616999998,
+      "reloadMs": 891.154862000003,
+      "checks": {
+        "count": 10000,
+        "minutes": 849307,
+        "questions": {
+          "studies": 3447,
+          "total": 65465,
+          "correct": 42662,
+          "sets": 3447,
+          "pct": 65.16764683418621
+        },
+        "rest": 74138,
+        "rhythmWeeks": 573,
+        "first": "2015-11-05",
+        "last": "2026-10-22",
+        "resultWeeks": 573
+      },
+      "seriesComplete": true,
+      "expected": {
+        "weeks": 573,
+        "minutes": 849307,
+        "questions": 65465,
+        "rest": 74138
+      },
+      "render": {
+        "today": [
+          25,
+          28,
+          22,
+          18,
+          20
+        ],
+        "plan": [
+          19,
+          28,
+          17,
+          17,
+          15
+        ],
+        "history": [
+          53,
+          45,
+          37,
+          37,
+          36
+        ],
+        "analytics": [
+          31,
+          50,
+          27,
+          26,
+          26
+        ],
+        "reviews": [
+          19,
+          42,
+          39,
+          36,
+          37
+        ],
+        "data": [
+          10,
+          7,
+          6,
+          6,
+          6
+        ],
+        "help": [
+          6,
+          13,
+          8,
+          9,
+          10
+        ],
+        "settings": [
+          16,
+          13,
+          7,
+          7,
+          9
+        ],
+        "disciplines": [
+          43,
+          11,
+          6,
+          6,
+          6
+        ]
+      },
+      "exportMs": 236,
+      "csvMs": 228,
+      "parseMs": 259,
+      "restoreMs": 1203,
+      "searchMs": 108,
+      "filterMs": 12,
+      "queryColdMs": 64,
+      "recoverMs": 1,
+      "memoryBytes": null
+    }
+  ],
+  "errors": []
+}

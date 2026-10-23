@@ -1,0 +1,28 @@
+✖ mais de 520 semanas: séries de constância, questões e planejamento incluem o período inteiro (2053.454094ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3159.088383
+
+✖ failing tests:
+
+test at tests/field-longevity.test.cjs:6:1
+✖ mais de 520 semanas: séries de constância, questões e planejamento incluem o período inteiro (2053.454094ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  520 !== 617
+  
+      at TestContext.<anonymous> (/workspace/Ciclo/tests/field-longevity.test.cjs:16:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 520,
+    expected: 617,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

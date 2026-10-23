@@ -1,0 +1,23 @@
+✔ redimensionar a semana não gera ciclos do ResizeObserver nem transbordamento (1523.900333ms)
+✔ planejar pelo toque: uma disciplina em dois dias sem horário nem duração (1268.068801ms)
+✔ planejar com duração e horário, mover pelo editor e depois tirar o horário (1396.542821ms)
+✔ Foco em paisagem e zoom CSS de 200% permite alcançar Encerrar (1178.733452ms)
+✔ cancelar seleção ou enviar sem dias preserva a semana (1014.340281ms)
+✔ inclusão em vários dias recusa conflito, disciplina removida e limite sem inclusão parcial (890.681783ms)
+✔ opções avançadas ficam acessíveis e a busca conserva a seleção (1003.857235ms)
+✔ Foco mostra rótulo do relógio, contexto compacto e descanso fora do estudo (911.345222ms)
+✔ Foco em 320 px e com tempo longo mantém relógio e controles alcançáveis (4345.177064ms)
+✔ semanas parciais comparam os mesmos dias e zero não cria acerto (1047.379686ms)
+✔ mover bloco preserva sua identidade e recusa revisão obsoleta de outra aba (838.638097ms)
+✔ dias ocultos conservam os prazos reais na tela móvel (963.428189ms)
+✔ arrastar para um dia grava um bloco e Esc cancela outro arraste (1359.279466ms)
+✔ preferências persistem e valores inválidos voltam aos padrões (1013.69975ms)
+✔ datas locais atravessam horário de verão, ano bissexto e o início da semana (3079.242942ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22783.653538

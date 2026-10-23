@@ -1,0 +1,68 @@
+
+> test
+> node --test --test-timeout=30000 --test-concurrency=1 tests/*.test.cjs
+
+✔ 120 minutos em duas disciplinas continuam sendo um estudo de 120 minutos (1937.973815ms)
+✔ divisão estimada de 90 minutos e tipos preserva totais e indica estimativa (734.398237ms)
+✔ percentual ponderado é 51/101; zero não gera percentual (829.137399ms)
+✔ resultados sem disciplina específica não vazam para o recorte de uma disciplina (755.172716ms)
+✔ revisão geral não altera os tópicos; revisão retroativa preserva a agenda atual (773.892209ms)
+✔ excluir o único estudo reconcilia o tópico e os totais (783.89701ms)
+✔ finalização simultânea em duas abas grava uma única sessão (1087.302601ms)
+✔ edições conflitantes recusam a sobrescrita (818.046229ms)
+✔ backup atual preserva resultados, pausas e Pomodoro; migração é idempotente (752.034834ms)
+✔ versão futura, JSON truncado e IDs que colidem são recusados sem alterar o banco (934.043737ms)
+✔ restauração é atômica quando uma gravação falha depois da limpeza (704.653889ms)
+✔ CSV escapa fórmulas e comentários com aspas, vírgulas e quebras; sem texto privado (711.888495ms)
+✔ comentários são texto inerte e não criam HTML (901.968501ms)
+✔ datas civis respeitam bissexto, virada do ano e meia-noite em São Paulo (897.197613ms)
+✔ REGRESSÃO: pausar após suspensão aplica o limite do Pomodoro antes da pausa (798.317089ms)
+✔ REGRESSÃO: um rascunho recupera descansos sem inflar o tempo líquido (745.430218ms)
+✔ REGRESSÃO: schema ilegível e truncamento de resultados são sinalizados (658.511599ms)
+✔ REGRESSÃO: revisão de tópico sem autoavaliação não gera descoberta de revisão ausente (739.075572ms)
+✔ REGRESSÃO: período em andamento não conta registros com data futura (761.679918ms)
+✔ REGRESSÃO: backup V2 normaliza referências numéricas e recusa duplicatas ambíguas (785.4856ms)
+✔ backups dos schemas 6, 7 e 9 mantêm minutos e resultados de revisão (751.667646ms)
+✔ Português: registrar 30 minutos sem tópicos, permanecer no Histórico e recuperar após F5 (1466.716995ms)
+✔ primeiro uso rápido: só o nome, sem plano, tópico ou prazo inventado (1743.965055ms)
+✔ guitarra: marco opcional aparece na evolução sem exigir organização (822.90153ms)
+✔ meta global cumprida com distribuição diferente da sugestão (798.328756ms)
+✔ adiar revisão não muda data, intervalo nem histórico (862.848199ms)
+✔ Voltar, Avançar e F5 preservam o caminho sem criar loop (1504.886382ms)
+✔ rascunho completo persiste antes dos 400 ms e recupera descansos, divisão e revisão (2304.214656ms)
+✔ falha de escrita mantém o formulário e o rascunho; retentativa grava uma vez (2783.726481ms)
+✔ Pomodoro: dois blocos são 50 minutos de estudo e 5 de descanso em um retrato (941.515667ms)
+✔ pausa e descanso sobrevivem a F5 com o estudo congelado (2041.919589ms)
+✔ finalização com comentário não congela os minutos medidos ao reabrir (999.272309ms)
+✔ modal prende o foco e Esc devolve ao botão que o abriu (1097.961583ms)
+✔ prazo usa rádios com teclado e conserva só aria-checked (942.719488ms)
+✔ resultados mostram a distribuição, revelam disciplinas além da 12ª e mantêm o período ao aprofundar (994.493553ms)
+✔ evolução oferece acesso aos marcos e conceitos além dos limites iniciais (934.864955ms)
+✔ rascunho recupera o nome de uma disciplina ainda não criada (1117.01937ms)
+✔ REGRESSÃO: cronômetro iniciado em outra aba durante a prévia bloqueia a restauração (1435.696119ms)
+✔ duas abas iniciando ao mesmo tempo compartilham um único cronômetro (1127.525657ms)
+✔ cronômetro descartado pela restauração não pode ser finalizado depois (768.293959ms)
+✔ falha de restauração mantém o cronômetro e não confirma seu descarte (811.333953ms)
+✔ iniciar pela janela aguarda o cronômetro e finaliza o mesmo runId (1135.540709ms)
+✔ começar sem disciplina mantém a janela se o início falhar (1166.955021ms)
+✔ reserva sem relógio após liberação interrompida pode ser cancelada ou descartada para continuar (1086.108321ms)
+✔ recuperação de reserva não descarta relógio reaparecido nem reserva substituída na confirmação (910.232275ms)
+✔ semanas parciais comparam os mesmos dias e zero não cria acerto (1336.179653ms)
+✔ mover bloco preserva sua identidade e recusa revisão obsoleta de outra aba (810.359372ms)
+✔ dias ocultos conservam os prazos reais na tela móvel (982.474547ms)
+✔ arrastar para um dia grava um bloco e Esc cancela outro arraste (1321.920336ms)
+✔ preferências persistem e valores inválidos voltam aos padrões (986.957591ms)
+✔ datas locais atravessam horário de verão, ano bissexto e o início da semana (3077.539651ms)
+ℹ tests 51
+ℹ suites 0
+ℹ pass 51
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 57905.571485
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

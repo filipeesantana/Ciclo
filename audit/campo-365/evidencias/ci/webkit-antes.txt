@@ -1,0 +1,28 @@
+2026-10-22T21:37:06.1822440Z ℹ tests 79
+2026-10-22T21:37:06.1823196Z ℹ pass 79
+2026-10-22T21:37:06.1823625Z ℹ fail 0
+2026-10-22T21:37:06.1823984Z ℹ cancelled 0
+2026-10-22T21:37:37.6095560Z   "checks": 95,
+##[group]Run npm run audit:field
+2026-10-22T21:37:37.7747809Z npm run audit:field
+2026-10-22T21:37:37.7783831Z shell: /usr/bin/bash -e {0}
+2026-10-22T21:37:37.7784100Z env:
+2026-10-22T21:37:37.7784298Z   BROWSER: webkit
+2026-10-22T21:37:37.7784506Z ##[endgroup]
+2026-10-22T21:37:37.8717480Z 
+2026-10-22T21:37:37.8719913Z > audit:field
+2026-10-22T21:37:37.8720310Z > node tests/field-review.cjs
+2026-10-22T21:37:37.8720527Z 
+2026-10-22T21:37:53.3565589Z {
+2026-10-22T21:37:53.3566099Z   "engine": "webkit",
+2026-10-22T21:37:53.3566458Z   "layouts": 24,
+2026-10-22T21:37:53.3566720Z   "violations": [],
+2026-10-22T21:37:53.3567017Z   "overflows": [],
+2026-10-22T21:37:53.3567261Z   "errors": [
+2026-10-22T21:37:53.3567688Z     "ResizeObserver loop completed with undelivered notifications."
+2026-10-22T21:37:53.3568348Z   ],
+2026-10-22T21:37:53.3568784Z   "outgoing": [],
+2026-10-22T21:37:53.3569838Z   "todayAfterFinish": "O que você gostaria de estudar?"
+2026-10-22T21:37:53.3570499Z }
+2026-10-22T21:37:53.4085013Z ##[error]Process completed with exit code 1.
+2026-10-22T21:37:53.4163073Z

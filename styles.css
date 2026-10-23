@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO v7.0.0 — folha de estilo única · Learning for Everyone
+   CICLO v7.2.0 — folha de estilo única · Foco e planejamento
    (antes "Diário de Estudos")
 
    Organização:
@@ -2903,6 +2903,8 @@ label{ margin-bottom:7px }
     transition:block-size var(--motion-base) var(--ease-standard), content-visibility var(--motion-base) allow-discrete;
   }
   details[open]::details-content{ block-size:auto }
+  html.reduce-motion details::details-content{ transition:none!important }
+  @media (prefers-reduced-motion:reduce){ details::details-content{ transition:none!important } }
 }
 
 /* hover só onde existe ponteiro fino — e sem "saltar" */
@@ -4351,6 +4353,35 @@ html.reduce-motion .choice:active,html.reduce-motion .an-pick:active{ transform:
 .plan-screen{ max-width:none }
 .plan-screen > * + *{ margin-top:22px }
 .plan-screen > .wk-head + .wk-bar{ margin-top:26px }
+.wk-calendar-head{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px }
+.wk-calendar-head .hint{ margin:5px 0 0 }
+.wk-calendar-head .btn{ min-height:44px }
+.wk-library{ border-block:1px solid var(--border-soft) }
+.wk-library > summary{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 16px; padding:16px 0; cursor:pointer; font-size:14px; font-weight:600 }
+.wk-library > summary::before{ border-color:var(--primary) }
+.wk-library > summary .hint{ margin:0 0 0 auto; font-weight:400 }
+.wk-library .wk-tray{ margin-bottom:16px }
+.wb-picker{ display:flex; flex-direction:column; gap:14px }
+.wb-picker .modal-sub{ margin:0 }
+.wb-subjects{ max-height:260px; overflow-y:auto; overscroll-behavior:contain; border-block:1px solid var(--border-soft); padding:4px 0 }
+.wb-subject{ display:flex; align-items:center; gap:12px; padding:10px; min-height:64px; border-radius:var(--radius-md); cursor:pointer }
+.wb-subject:has(input:checked){ background:var(--primary-tint); box-shadow:inset 0 0 0 1px var(--primary-line) }
+.wb-subject > span:first-of-type{ flex:1; min-width:0 }
+.wb-name{ display:block; color:var(--text); font-size:14px; font-weight:600; overflow-wrap:anywhere }
+.wb-meta{ display:block; color:var(--text-secondary); font-size:12px; margin-top:3px }
+.wb-share{ color:var(--text-secondary); font-size:12px; text-align:right }
+.wb-days{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px }
+.wb-day{ position:relative; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:10px 6px; gap:5px; border:1px solid var(--border-soft); border-radius:var(--radius-md) }
+.wb-day > span:not(.sr-only){ display:flex; flex-direction:column; gap:3px; text-align:center; font-size:12px }
+.wb-day strong{ font-size:16px }
+.wb-day:has(input:checked){ background:var(--primary-tint); border-color:var(--primary) }
+.wb-selection{ min-height:20px; margin:0 }
+@media (max-width:640px){
+  .wb-days{ grid-template-columns:repeat(4,minmax(0,1fr)) }
+  .wb-subject{ flex-wrap:wrap; gap:8px }
+  .wb-share{ flex-basis:100%; padding-left:28px; text-align:left }
+  .wk-library > summary .hint{ flex-basis:100%; margin:0 }
+}
 
 .wk-bar{ display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px 16px }
 .wk-nav{ display:flex; align-items:center; gap:10px; min-width:0 }
@@ -5286,7 +5317,7 @@ button.tc-sug:hover{ border-color:var(--border-hover); background:var(--surface-
 .fin-unset{ color:var(--accent) }
 
 /* ---------- modo foco: um ambiente para estudar ---------- */
-.focus-mode{ align-items:stretch; padding:20px 24px calc(20px + env(safe-area-inset-bottom,0px)) }
+.focus-mode{ align-items:stretch; padding:20px 24px calc(20px + env(safe-area-inset-bottom,0px)); overflow-y:auto; overscroll-behavior:contain }
 .focus-inner{ display:flex; flex-direction:column; width:100%; max-width:none; min-height:100% }
 .focus-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100% }
 .focus-brand{ display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:500; letter-spacing:.01em; color:var(--text-tertiary) }
@@ -5294,8 +5325,25 @@ button.tc-sug:hover{ border-color:var(--border-hover); background:var(--surface-
 .focus-top-actions{ display:inline-flex; gap:6px }
 .focus-top-actions .icon-btn{ color:var(--text-tertiary) }
 .focus-top-actions .icon-btn:hover{ color:var(--text) }
-.focus-center{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; width:100%; max-width:640px; margin:0 auto; padding:24px 0 }
-.focus-line{ min-height:20px; margin-top:16px; font-size:14px; color:var(--text-secondary) }
+.focus-center{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; width:100%; max-width:760px; margin:0 auto; padding:24px 0; min-width:0 }
+.focus-state{ margin:0 0 10px; font-size:14px; font-weight:600 }
+.focus-clock-label{ color:var(--text-secondary); font-size:12px; margin:0 0 8px }
+.focus-clock{ font-size:clamp(64px, 12vw, 132px); font-weight:400; letter-spacing:-.035em; line-height:1.05; white-space:nowrap; max-width:100% }
+.focus-context{ margin-top:28px; max-width:100%; overflow-wrap:anywhere }
+.focus-area{ font-size:12px; color:var(--text-tertiary); margin-bottom:5px }
+.focus-disc{ font-size:clamp(21px, 3vw, 28px); line-height:1.25; margin:0 }
+.focus-topic{ font-size:14px; min-height:0; margin:7px 0 0; color:var(--text-secondary) }
+.focus-types{ font-size:12px; color:var(--text-tertiary); margin-top:7px }
+.focus-totals{ display:flex; flex-wrap:wrap; justify-content:center; gap:16px 32px; margin:22px 0 0 }
+.focus-totals div{ display:flex; flex-direction:column; gap:4px }
+.focus-totals dt{ font-size:12px; color:var(--text-secondary) }
+.focus-totals dd{ font-size:18px; margin:0 }
+.focus-totals[hidden],.focus-totals [hidden],.focus-context [hidden]{ display:none }
+.focus-actions{ margin-top:24px; align-items:center }
+.focus-actions .btn{ min-height:44px; min-width:112px }
+.focus-actions [data-action="finish"]{ color:var(--text-secondary) }
+.focus-line{ font-size:13px; color:var(--text-secondary); margin:12px 0 0 }
+.focus-line:empty{ display:none }
 .focus-progress{ width:min(320px, 70vw); height:4px; margin:22px auto 0; border-radius:2px; background:var(--track); overflow:hidden }
 .focus-progress[hidden]{ display:none }
 .focus-progress-fill{ display:block; height:100%; background:var(--primary); transform-origin:left center; transition:transform 1s linear }
@@ -5305,16 +5353,23 @@ button.tc-sug:hover{ border-color:var(--border-hover); background:var(--surface-
 .focus-mode[data-state="paused"] .focus-progress-fill{ background:var(--text-tertiary) }
 .focus-mode[data-state="done"]{ background:radial-gradient(ellipse 70% 55% at 50% 38%, var(--accent-tint), transparent 70%), var(--bg) }
 .focus-mode[data-state="done"] .focus-state{ color:var(--accent) }
-.focus-sub{ max-width:46ch }
+.focus-sub{ max-width:48ch; min-height:0; margin:22px 0 0; font-size:13px; line-height:1.5 }
 .focus-hint{ text-align:center; margin-top:8px }
 .focus-mode:fullscreen{ padding-top:28px }
 @media (max-width:640px){
   .focus-mode{ padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px)) }
   .focus-center{ padding:12px 0 }
   .focus-actions{ width:100% }
-  .focus-actions .btn{ flex:1 1 140px }
+  .focus-actions .btn{ flex:1 1 100px; min-width:0 }
   .wk-cmp{ min-width:420px; font-size:13px }
   .wk-cmp th,.wk-cmp td{ padding:8px 7px }
+}
+@media (max-height:600px){
+  .focus-center{ padding:14px 0; justify-content:flex-start }
+  .focus-clock{ font-size:clamp(56px, 10vw, 90px) }
+  .focus-context{ margin-top:16px }
+  .focus-totals,.focus-sub,.focus-actions{ margin-top:14px }
+  .focus-hint{ display:none }
 }
 /* toque: alvos maiores no modo foco; a dica do Esc só faz sentido com teclado */
 @media (pointer:coarse){

@@ -6,7 +6,9 @@
     "check": "node --check app.js && node --check content.js",
     "audit:browser": "node tests/browser-audit.cjs",
     "audit:inventory": "node tests/inventory.cjs",
-    "audit:benchmark": "node tests/benchmark.cjs"
+    "audit:benchmark": "node tests/benchmark.cjs",
+    "audit:field": "node tests/field-review.cjs",
+    "audit:field:performance": "node tests/field-performance.cjs"
   },
   "devDependencies": {
     "acorn": "8.15.0",

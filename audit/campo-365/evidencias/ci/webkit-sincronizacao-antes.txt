@@ -1,0 +1,157 @@
+##[group]Run mkdir -p test-results && npm test 2>&1 | tee test-results/tests.txt
+2026-10-22T21:41:58.9022449Z mkdir -p test-results && npm test 2>&1 | tee test-results/tests.txt
+2026-10-22T21:41:58.9104227Z shell: /usr/bin/bash -e {0}
+2026-10-22T21:41:58.9104652Z env:
+2026-10-22T21:41:58.9105190Z   BROWSER: webkit
+2026-10-22T21:41:58.9105536Z ##[endgroup]
+2026-10-22T21:41:59.0250819Z 
+2026-10-22T21:41:59.0251171Z > test
+2026-10-22T21:41:59.0251985Z > node --test --test-timeout=30000 --test-concurrency=1 tests/*.test.cjs
+2026-10-22T21:41:59.0252591Z 
+2026-10-22T21:42:08.7148192Z ✔ 365 dias: importar pela interface preserva todos os registros sem reparos (9248.145842ms)
+2026-10-22T21:42:10.5519581Z ✔ 365 dias: Análises confere tempo, descansos, dias, questões e todas as disciplinas (1837.682185ms)
+2026-10-22T21:42:13.3993519Z ✔ 365 dias: 53 semanas preservam metas históricas, datas e totais reais (2844.624373ms)
+2026-10-22T21:42:14.8705311Z ✔ 365 dias: comparação parcial e completa usa os intervalos que declara (1470.320702ms)
+2026-10-22T21:42:18.5712750Z ✔ 365 dias: exportar, restaurar em outro contexto e F5 conservam o histórico (3704.19028ms)
+2026-10-22T21:42:20.1838613Z ✔ 365 dias: editar e excluir um estudo conserva totais sem multiplicar vínculos (1612.450743ms)
+2026-10-22T21:42:22.6410577Z ✔ entradas adversariais e restauração inválida preservam o banco existente (2456.647553ms)
+2026-10-22T21:42:24.0126500Z ✔ mais de 520 semanas: séries de constância, questões e planejamento incluem o período inteiro (936.007107ms)
+2026-10-22T21:42:27.5802374Z ✔ A: estudo livre salvo encerra Hoje imediatamente, sem F5 (3113.255592ms)
+2026-10-22T21:42:29.4232359Z ✔ B: Foco → Encerrar → Registrar atualiza Hoje antes de navegar (1843.868317ms)
+2026-10-22T21:42:31.3645393Z ✔ C: Pomodoro pausa, retoma, descansa e registra apenas estudo líquido (1940.230536ms)
+2026-10-22T21:42:33.2255487Z ✔ D: F5 depois de finalizar não restaura um estudo concluído (1862.326535ms)
+2026-10-22T21:42:34.9247598Z ✔ E: Histórico e Voltar mantêm Hoje encerrado (1698.651888ms)
+2026-10-22T21:42:37.4611054Z ✔ F: aba observadora deixa de mostrar estudo ativo ao finalizar na outra aba (2532.704448ms)
+2026-10-22T21:42:39.1030998Z ✔ G: dois cliques rápidos em Registrar criam uma sessão (1645.137003ms)
+2026-10-22T21:42:42.0684278Z ✔ H: falha de IndexedDB conserva o estudo e permite tentar novamente (2965.552206ms)
+2026-10-22T21:42:44.2554736Z ✔ I: novo estudo depois de finalizar tem identidade própria (2184.707989ms)
+2026-10-22T21:42:46.0222511Z ✔ J: sair de tela cheia mantém as ações do Foco e permite finalizar (1768.249912ms)
+2026-10-22T21:42:47.7923509Z ✔ Hoje acompanha início, pausa, descanso e descarte sem navegação (1770.472049ms)
+2026-10-22T21:42:49.4944453Z ✔ snapshot regravado por aba atrasada não ressuscita um runId salvo (1700.175593ms)
+2026-10-22T21:42:51.7320044Z ✔ redimensionar a semana não gera ciclos do ResizeObserver nem transbordamento (1836.250938ms)
+2026-10-22T21:42:53.4254530Z ✔ planejar pelo toque: uma disciplina em dois dias sem horário nem duração (1693.703526ms)
+2026-10-22T21:42:55.5169171Z ✖ planejar com duração e horário, mover pelo editor e depois tirar o horário (2086.801831ms)
+2026-10-22T21:42:58.3252306Z ✔ Foco em paisagem e zoom CSS de 200% permite alcançar Encerrar (2813.18126ms)
+2026-10-22T21:42:59.8177101Z ✔ cancelar seleção ou enviar sem dias preserva a semana (1491.540773ms)
+2026-10-22T21:43:00.8137314Z ✔ inclusão em vários dias recusa conflito, disciplina removida e limite sem inclusão parcial (996.461936ms)
+2026-10-22T21:43:02.3134732Z ✔ opções avançadas ficam acessíveis e a busca conserva a seleção (1498.725784ms)
+2026-10-22T21:43:03.7417425Z ✔ Foco mostra rótulo do relógio, contexto compacto e descanso fora do estudo (1426.496092ms)
+2026-10-22T21:43:08.7671029Z ✔ Foco em 320 px e com tempo longo mantém relógio e controles alcançáveis (5027.247532ms)
+2026-10-22T21:43:10.2027353Z ✔ 120 minutos em duas disciplinas continuam sendo um estudo de 120 minutos (907.053323ms)
+2026-10-22T21:43:10.9987819Z ✔ divisão estimada de 90 minutos e tipos preserva totais e indica estimativa (796.145467ms)
+2026-10-22T21:43:11.8076786Z ✔ percentual ponderado é 51/101; zero não gera percentual (810.381354ms)
+2026-10-22T21:43:12.5861958Z ✔ resultados sem disciplina específica não vazam para o recorte de uma disciplina (778.22534ms)
+2026-10-22T21:43:13.4078158Z ✔ revisão geral não altera os tópicos; revisão retroativa preserva a agenda atual (818.105186ms)
+2026-10-22T21:43:14.2200666Z ✔ excluir o único estudo reconcilia o tópico e os totais (814.918943ms)
+2026-10-22T21:43:15.7481088Z ✔ finalização simultânea em duas abas grava uma única sessão (1527.921338ms)
+2026-10-22T21:43:16.5592908Z ✔ edições conflitantes recusam a sobrescrita (810.846669ms)
+2026-10-22T21:43:17.3472811Z ✔ backup atual preserva resultados, pausas e Pomodoro; migração é idempotente (787.526813ms)
+2026-10-22T21:43:18.1411849Z ✔ versão futura, JSON truncado e IDs que colidem são recusados sem alterar o banco (795.083151ms)
+2026-10-22T21:43:18.9596486Z ✔ restauração é atômica quando uma gravação falha depois da limpeza (812.873206ms)
+2026-10-22T21:43:19.7461885Z ✔ CSV escapa fórmulas e comentários com aspas, vírgulas e quebras; sem texto privado (790.316241ms)
+2026-10-22T21:43:20.7944005Z ✔ comentários são texto inerte e não criam HTML (1050.020599ms)
+2026-10-22T21:43:21.6426419Z ✔ datas civis respeitam bissexto, virada do ano e meia-noite em São Paulo (847.926328ms)
+2026-10-22T21:43:22.4469678Z ✔ REGRESSÃO: pausar após suspensão aplica o limite do Pomodoro antes da pausa (801.855525ms)
+2026-10-22T21:43:23.2434619Z ✔ REGRESSÃO: um rascunho recupera descansos sem inflar o tempo líquido (796.67154ms)
+2026-10-22T21:43:24.0162373Z ✔ REGRESSÃO: schema ilegível e truncamento de resultados são sinalizados (774.897132ms)
+2026-10-22T21:43:24.8507558Z ✔ REGRESSÃO: revisão de tópico sem autoavaliação não gera descoberta de revisão ausente (831.4586ms)
+2026-10-22T21:43:25.6906642Z ✔ REGRESSÃO: período em andamento não conta registros com data futura (842.518681ms)
+2026-10-22T21:43:26.4556163Z ✔ REGRESSÃO: backup V2 normaliza referências numéricas e recusa duplicatas ambíguas (764.238253ms)
+2026-10-22T21:43:27.2781468Z ✔ backups dos schemas 6, 7 e 9 mantêm minutos e resultados de revisão (822.047096ms)
+2026-10-22T21:43:29.2567323Z ✔ Português: registrar 30 minutos sem tópicos, permanecer no Histórico e recuperar após F5 (1560.942246ms)
+2026-10-22T21:43:31.2320438Z ✔ primeiro uso rápido: só o nome, sem plano, tópico ou prazo inventado (1973.326193ms)
+2026-10-22T21:43:32.2518685Z ✔ guitarra: marco opcional aparece na evolução sem exigir organização (1020.73462ms)
+2026-10-22T21:43:33.2742251Z ✔ meta global cumprida com distribuição diferente da sugestão (1023.66794ms)
+2026-10-22T21:43:34.1706480Z ✔ adiar revisão não muda data, intervalo nem histórico (896.124958ms)
+2026-10-22T21:43:35.2843213Z ✔ Voltar, Avançar e F5 preservam o caminho sem criar loop (1111.648911ms)
+2026-10-22T21:43:37.9803926Z ✔ rascunho completo persiste antes dos 400 ms e recupera descansos, divisão e revisão (2697.89212ms)
+2026-10-22T21:43:40.2892876Z ✔ falha de escrita mantém o formulário e o rascunho; retentativa grava uma vez (2308.18921ms)
+2026-10-22T21:43:41.0821160Z ✔ Pomodoro: dois blocos são 50 minutos de estudo e 5 de descanso em um retrato (791.710983ms)
+2026-10-22T21:43:42.1677646Z ✔ pausa e descanso sobrevivem a F5 com o estudo congelado (1086.290656ms)
+2026-10-22T21:43:43.4329127Z ✔ finalização com comentário não congela os minutos medidos ao reabrir (1265.230913ms)
+2026-10-22T21:43:44.7150108Z ✔ modal prende o foco e Esc devolve ao botão que o abriu (1281.729191ms)
+2026-10-22T21:43:45.7507111Z ✔ prazo usa rádios com teclado e conserva só aria-checked (1029.881114ms)
+2026-10-22T21:43:46.9075822Z ✔ resultados mostram a distribuição, revelam disciplinas além da 12ª e mantêm o período ao aprofundar (1160.007021ms)
+2026-10-22T21:43:47.9505564Z ✔ evolução oferece acesso aos marcos e conceitos além dos limites iniciais (1045.86049ms)
+2026-10-22T21:43:49.7683161Z ✔ rascunho recupera o nome de uma disciplina ainda não criada (1816.889987ms)
+2026-10-22T21:43:51.7727649Z ✔ REGRESSÃO: cronômetro iniciado em outra aba durante a prévia bloqueia a restauração (2005.546502ms)
+2026-10-22T21:43:53.2879825Z ✔ duas abas iniciando ao mesmo tempo compartilham um único cronômetro (1511.427091ms)
+2026-10-22T21:43:54.1394235Z ✔ cronômetro descartado pela restauração não pode ser finalizado depois (854.474154ms)
+2026-10-22T21:43:54.9350069Z ✔ falha de restauração mantém o cronômetro e não confirma seu descarte (795.683754ms)
+2026-10-22T21:43:56.5571390Z ✔ iniciar pela janela aguarda o cronômetro e finaliza o mesmo runId (1621.396195ms)
+2026-10-22T21:43:57.7679608Z ✔ começar sem disciplina mantém a janela se o início falhar (1209.217673ms)
+2026-10-22T21:43:58.9084421Z ✔ reserva sem relógio após liberação interrompida pode ser cancelada ou descartada para continuar (1142.537563ms)
+2026-10-22T21:44:00.0613989Z ✔ recuperação de reserva não descarta relógio reaparecido nem reserva substituída na confirmação (1152.012596ms)
+2026-10-22T21:44:01.4384292Z ✔ semanas parciais comparam os mesmos dias e zero não cria acerto (928.826057ms)
+2026-10-22T21:44:02.2561592Z ✔ mover bloco preserva sua identidade e recusa revisão obsoleta de outra aba (817.616781ms)
+2026-10-22T21:44:03.4235536Z ✔ dias ocultos conservam os prazos reais na tela móvel (1164.988681ms)
+2026-10-22T21:44:05.5537162Z ✔ arrastar para um dia grava um bloco e Esc cancela outro arraste (2130.546434ms)
+2026-10-22T21:44:06.5720204Z ✔ preferências persistem e valores inválidos voltam aos padrões (1017.93832ms)
+2026-10-22T21:44:09.7293205Z ✔ datas locais atravessam horário de verão, ano bissexto e o início da semana (3156.042509ms)
+2026-10-22T21:44:09.8348565Z ℹ tests 80
+2026-10-22T21:44:09.8349074Z ℹ suites 0
+2026-10-22T21:44:09.8349342Z ℹ pass 79
+2026-10-22T21:44:09.8349587Z ℹ fail 1
+2026-10-22T21:44:09.8349848Z ℹ cancelled 0
+2026-10-22T21:44:09.8355850Z ℹ skipped 0
+2026-10-22T21:44:09.8356348Z ℹ todo 0
+2026-10-22T21:44:09.8356837Z ℹ duration_ms 130773.135256
+2026-10-22T21:44:09.8357194Z 
+2026-10-22T21:44:09.8357436Z ✖ failing tests:
+2026-10-22T21:44:09.8357676Z 
+2026-10-22T21:44:09.8357993Z test at tests/field-ux.test.cjs:34:1
+2026-10-22T21:44:09.8359237Z ✖ planejar com duração e horário, mover pelo editor e depois tirar o horário (2086.801831ms)
+2026-10-22T21:44:09.8360402Z   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+2026-10-22T21:44:09.8361120Z   
+2026-10-22T21:44:09.8361465Z   '19:00' !== null
+2026-10-22T21:44:09.8361836Z   
+2026-10-22T21:44:09.8362657Z       at TestContext.<anonymous> (/home/runner/work/Ciclo/Ciclo/tests/field-ux.test.cjs:42:38)
+2026-10-22T21:44:09.8363770Z       at async Test.run (node:internal/test_runner/test:1409:7)
+2026-10-22T21:44:09.8364801Z       at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+2026-10-22T21:44:09.8366385Z     generatedMessage: true,
+2026-10-22T21:44:09.8366863Z     code: 'ERR_ASSERTION',
+2026-10-22T21:44:09.8367329Z     actual: '19:00',
+2026-10-22T21:44:09.8367760Z     expected: null,
+2026-10-22T21:44:09.8368186Z     operator: 'strictEqual',
+2026-10-22T21:44:09.8368636Z     diff: 'simple'
+2026-10-22T21:44:09.8369005Z   }
+2026-10-22T21:44:09.8522777Z ##[group]Run npm run audit:browser
+2026-10-22T21:44:09.8523100Z npm run audit:browser
+2026-10-22T21:44:09.8586595Z shell: /usr/bin/bash -e {0}
+2026-10-22T21:44:09.8586858Z env:
+2026-10-22T21:44:09.8587048Z   BROWSER: webkit
+2026-10-22T21:44:09.8587260Z ##[endgroup]
+2026-10-22T21:44:09.9599412Z 
+2026-10-22T21:44:09.9599917Z > audit:browser
+2026-10-22T21:44:09.9600539Z > node tests/browser-audit.cjs
+2026-10-22T21:44:09.9600890Z 
+2026-10-22T21:44:41.4524717Z {
+2026-10-22T21:44:41.4525444Z   "checks": 95,
+2026-10-22T21:44:41.4525848Z   "violations": [],
+2026-10-22T21:44:41.4526245Z   "overflows": [],
+2026-10-22T21:44:41.4526608Z   "articles": 91,
+2026-10-22T21:44:41.4526981Z   "articleFailures": [],
+2026-10-22T21:44:41.4527392Z   "errors": [],
+2026-10-22T21:44:41.4528097Z   "outgoing": [],
+2026-10-22T21:44:41.4528879Z   "out": "/home/runner/work/Ciclo/Ciclo/test-results/browser-audit"
+2026-10-22T21:44:41.4529583Z }
+2026-10-22T21:44:41.6450335Z ##[group]Run npm run audit:field
+2026-10-22T21:44:41.6450657Z npm run audit:field
+2026-10-22T21:44:41.6513539Z shell: /usr/bin/bash -e {0}
+2026-10-22T21:44:41.6513804Z env:
+2026-10-22T21:44:41.6514008Z   BROWSER: webkit
+2026-10-22T21:44:41.6514234Z ##[endgroup]
+2026-10-22T21:44:41.7555664Z 
+2026-10-22T21:44:41.7556075Z > audit:field
+2026-10-22T21:44:41.7556610Z > node tests/field-review.cjs
+2026-10-22T21:44:41.7556988Z 
+2026-10-22T21:45:00.0022181Z {
+2026-10-22T21:45:00.0022655Z   "engine": "webkit",
+2026-10-22T21:45:00.0023032Z   "layouts": 24,
+2026-10-22T21:45:00.0023345Z   "violations": [],
+2026-10-22T21:45:00.0023660Z   "overflows": [],
+2026-10-22T21:45:00.0023961Z   "errors": [],
+2026-10-22T21:45:00.0024258Z   "outgoing": [],
+2026-10-22T21:45:00.0025278Z   "todayAfterFinish": "O que você gostaria de estudar?"
+2026-10-22T21:45:00.0025794Z }
+2026-10-22T21:45:00.0433846Z

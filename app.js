@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v7.0.0 · Learning for Everyone
+   CICLO — v7.2.0 · Foco e planejamento
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -36,7 +36,7 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '7.1.0';
+const APP_VERSION = '7.2.0';
 const APP_SCHEMA_VERSION = 10;         // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
@@ -3647,8 +3647,9 @@ const AnalyticsEngine = {
     const out = [];
     let cursor = startOfWeek(range.start);
     const last = startOfWeek(range.end);
-    let guard = 0;
-    while(cursor <= last && guard++ < 520){
+    // O intervalo civil já é validado e avança sete dias por passo. Um teto
+    // fixo cortava silenciosamente as semanas mais recentes após dez anos.
+    while(cursor <= last){
       const clipStart = cursor < range.start ? range.start : cursor;
       const wEnd = addDays(cursor, 6);
       const clipEnd = wEnd > range.end ? range.end : wEnd;
@@ -3702,8 +3703,8 @@ const AnalyticsEngine = {
     // por semana tocada pelo período (para ver a evolução), com o tempo das semanas junto — sem afirmar causa
     const weeks = [];
     if(range){
-      let cursor = startOfWeek(range.start), guard = 0;
-      while(cursor <= range.end && guard++ < 520){
+      let cursor = startOfWeek(range.start);
+      while(cursor <= range.end){
         const a = dateToISO(cursor < range.start ? range.start : cursor), b = dateToISO(addDays(cursor, 6) > range.end ? range.end : addDays(cursor, 6));
         const inW = qs.filter(x => x.date >= a && x.date <= b);
         const t = EvidenceModel.tally(inW.map(x => x.r));
@@ -3894,9 +3895,8 @@ const AnalyticsEngine = {
     const weeks = [];
     let cursor = startOfWeek(range.start);
     const last = startOfWeek(range.end);
-    let guard = 0;
     const scoped = AnalyticsScope.sessions(scope, { start:range.start, end:realizedEnd || range.end });
-    while(cursor <= last && guard++ < 520){
+    while(cursor <= last){
       const ws = dateToISO(cursor);
       const wp = state.weeklyPlans.find(w => w.weekStart === ws);
       const wStart = cursor, wEnd = addDays(cursor, 6);
@@ -4471,6 +4471,9 @@ const TimerService = {
         pomo: this.cleanPomo(d.pomo)
       };
       this.persisted = true;
+      // Uma aba atrasada pode regravar um snapshot depois do commit da outra.
+      // O histórico carregado é a confirmação de que esse runId já terminou.
+      if(this.reconcileSaved()) return this.data;
       // cronômetro vindo da v6.3 em pausa (grava o início do descanso) ou sem identidade (grava o runId): uma única vez
       if((!running && !paused && !isNum(d.breakStartedAt)) || this.data.runId !== d.runId) this._persist();
       // v7.1: um fim de bloco pode ter acontecido enquanto a página estava fechada
@@ -4529,6 +4532,11 @@ const TimerService = {
   },
   /** Nova tentativa de gravar um cronômetro que não coube/entrou no armazenamento. */
   retryPersist(){ return (this.data && !this.persisted) ? this._persist() : this.persisted; },
+  reconcileSaved(){
+    if(!this.data || !state.sessions.some(s => s.id === this.data.runId)) return false;
+    this.release(this.data.runId);
+    return true;
+  },
   /**
    * O que o armazenamento diz sobre o cronômetro AGORA (outra aba pode ter
    * finalizado, descartado ou começado outro): o runId gravado, null se não há
@@ -6375,6 +6383,10 @@ const DataSync = {
 let healRunning = false;
 async function refresh(){
   await loadAll();
+  if(TimerService.reconcileSaved()){
+    renderTimerBar();
+    if(FocusMode.isOpen) FocusMode.render();
+  }
   /* v6.7 — um estudo chegou no formato antigo (aba com a versão anterior ainda
      aberta): a memória já o lê no formato novo; o banco é convertido agora,
      numa transação própria, e só uma vez por vez. */
@@ -7499,9 +7511,9 @@ function timerActions(where){
   if(st === 'rest') return [{ key:'study', label: p ? 'Começar o próximo bloco' : 'Voltar a estudar', kind:'primary', run:() => timerAct('study') },
                             { key:'pause', label:'Pausar', kind:'ghost', run:() => timerAct('pause') },
                             Object.assign({ kind:'ghost' }, fin)];
-  return [{ key:'pause', label:'Pausar', kind:'ghost', run:() => timerAct('pause') },
+  return [{ key:'pause', label:'Pausar', kind:where === 'focus' ? 'primary' : 'ghost', run:() => timerAct('pause') },
           { key:'break', label:'Descansar', kind:'ghost', run:() => timerAct('break') },
-          Object.assign({ kind:'primary' }, fin)];
+          Object.assign({ kind:where === 'focus' ? 'ghost' : 'primary' }, fin)];
 }
 
 /**
@@ -7571,6 +7583,9 @@ const PomodoroAlerts = {
 
 function renderTimerBar(opts){
   const o = (opts && !(opts instanceof Event)) ? opts : {};
+  // Hoje também depende do timer. Atualiza só a ação principal nas transições,
+  // sem reler o banco nem recalcular os estudos a cada segundo.
+  syncTodayTimerAction();
   const slot = $('#timerbar-slot');
   // v6.3 — o botão global diz o que vai acontecer: com cronômetro ligado, ele finaliza.
   const fab = $('#fab'), fabVerb = $('#fab .fab-verb');
@@ -10285,7 +10300,6 @@ function openFinishModal(){
       if(!res.ok){ unlock(); saveDraft(); return; }
       saving = false;
       FormDraft.clear('finish');
-      TimerService.release(runId);
       close();
       renderTimerBar();
       announce('Estudo finalizado.');
@@ -11004,6 +11018,14 @@ async function registerStudy(input, opts){
     if(res.reason !== 'duplicate') sessionFailureToast(res.reason, 'create');
     return res;
   }
+  // A transação já confirmou o registro. Encerra ESTE timer antes de redesenhar
+  // Hoje/Histórico/Análises: eles não podem ler o estado anterior à conclusão.
+  // Falhas de gravação retornam acima e conservam o relógio e seu rascunho.
+  if(o.timerRunId){
+    TimerService.release(o.timerRunId);
+    renderTimerBar();
+    if(FocusMode.isOpen) FocusMode.render();
+  }
   await safeRefresh();
 
   const session = res.session;
@@ -11186,8 +11208,22 @@ function renderToday(){
 }
 
 /** 1 · A ação principal: a pessoa escolhe. A sugestão do Ciclo é um convite, com o motivo. */
+function todayTimerKey(){
+  const d = TimerService.data;
+  return d ? [d.runId, TimerService.status, d.pomo && d.pomo.awaiting, TimerService.discText()].join('|') : '';
+}
+function syncTodayTimerAction(){
+  if(ui.view !== 'today' || !activeDisciplines().length) return;
+  const old = document.querySelector('#today-body .today-act');
+  if(!old || old.dataset.timerKey === todayTimerKey()) return;
+  const hadFocus = old.contains(document.activeElement);
+  const next = todayAction(activeDisciplines(), state.sessions.length > 0);
+  old.replaceWith(next);
+  if(hadFocus) next.querySelector('.tf-actions button')?.focus({ preventScroll:true });
+}
 function todayAction(discs, hasSessions){
   const busy = TimerService.isActive;
+  const status = busy ? timerView() : null;
   const recent = recentDisciplines(5);
   const quick = (recent.length ? recent : discs.slice().sort(sortByName)).slice(0, 5);
   const chips = busy ? null : h('div', { class:'today-quick', role:'group', 'aria-label':'Começar a estudar uma matéria agora' },
@@ -11197,10 +11233,14 @@ function todayAction(discs, hasSessions){
 
   const head = [
     h('p', { class:'tf-eyebrow', text:`${greetingWord()}.` }),
-    h('h3', { class:'tf-title', id:'tf-title', text: busy ? 'Você está estudando agora' : 'O que você gostaria de estudar?' })
+    h('h3', { class:'tf-title', id:'tf-title', text: busy
+      ? status.awaiting ? status.label : status.status === 'paused' ? 'Seu estudo está pausado' : status.status === 'rest' ? 'Você está descansando' : 'Você está estudando agora'
+      : 'O que você gostaria de estudar?' })
   ];
   if(busy){
-    head.push(h('p', { class:'tf-reason', text:`${TimerService.discText()} — o tempo está contando. Quando terminar, finalize para guardar no histórico.` }));
+    const detail = status.awaiting || status.status === 'paused' ? 'Nada está contando agora.'
+      : status.status === 'rest' ? 'O descanso é contado à parte do estudo.' : 'O tempo de estudo está contando.';
+    head.push(h('p', { class:'tf-reason', text:`${TimerService.discText()} — ${detail} Quando terminar, finalize para guardar no histórico.` }));
   } else if(!hasSessions){
     head.push(h('p', { class:'tf-reason', text:'Seu histórico começa com o primeiro estudo. Escolha uma matéria e o Ciclo conta o tempo — ou registre algo que você já estudou.' }));
   }
@@ -11231,7 +11271,7 @@ function todayAction(discs, hasSessions){
           acts.length > 1 ? h('button', { class:'linkbtn muted', type:'button', text:'Outras opções', onclick:() => openAlternatives(acts.slice(1)) }) : null));
     }
   }
-  return h('section', { class:'focus-block today-act', 'aria-labelledby':'tf-title' }, head, chips, actions, sugg);
+  return h('section', { class:'focus-block today-act', 'aria-labelledby':'tf-title', 'data-timer-key':todayTimerKey() }, head, chips, actions, sugg);
 }
 
 /** 2 · A semana em números reais, com um gráfico pequeno. Clicar leva às Análises desta semana. */
@@ -12266,7 +12306,7 @@ const WeekCommands = {
     const o = opts || {};
     if(ws < WeekPlan.currentStart()) return { ok:false, reason:'past' };
     try {
-      return await DB.atomic(['weeklyPlans','plans'], async api => {
+      return await DB.atomic(['weeklyPlans','plans','disciplines'], async api => {
         let wk = await api.get('weeklyPlans', ws);
         if(!wk){
           // semana futura ainda sem registro: nasce do plano ativo e do modelo (os ids da prévia batem)
@@ -12281,7 +12321,7 @@ const WeekCommands = {
           if(stale) return { ok:false, reason:'conflict', current:wk };
         }
         const next = Object.assign({}, wk, { blocks: (Array.isArray(wk.blocks) ? wk.blocks : []).map(b => Object.assign({}, b)) });
-        const res = apply(next) || { ok:true };
+        const res = (await apply(next, api)) || { ok:true };
         if(!res.ok) return res;
         next.blocks = WeekPlan.reorder(next.blocks).slice(0, MAX_BLOCKS_PER_WEEK);
         next.rev = curRev + 1;
@@ -12308,6 +12348,24 @@ const WeekCommands = {
       day.forEach((x, i) => { x.order = i; });
       wk.blocks = wk.blocks.filter(x => x.date !== b.date).concat(day);
       return { ok:true, block };
+    }, opts);
+  },
+  /** Adicionar a vários dias é uma única gravação: todos entram ou nenhum. */
+  addBlocks(ws, baseRev, blocks, opts){
+    return this._mutate(ws, baseRev, async (wk, api) => {
+      const dates = WeekPlan.datesOf(ws), ids = new Set(wk.blocks.map(b => b.id));
+      if(!Array.isArray(blocks) || !blocks.length) return { ok:false, reason:'missing' };
+      if(wk.blocks.length + blocks.length > MAX_BLOCKS_PER_WEEK) return { ok:false, reason:'full' };
+      for(const b of blocks){
+        const disc = await api.get('disciplines', b.disciplineId);
+        if(!dates.includes(b.date) || !disc || disc.archived || !b.id || ids.has(b.id)) return { ok:false, reason:'missing' };
+        ids.add(b.id);
+      }
+      const added = blocks.map(b => ({ id:b.id, disciplineId:b.disciplineId, date:b.date,
+        minutes:WeekPlan.cleanMinutes(b.minutes), start:WeekPlan.cleanStart(b.start),
+        order:wk.blocks.filter(x => x.date === b.date).length }));
+      wk.blocks.push(...added);
+      return { ok:true, blocks:added };
     }, opts);
   },
   /** Muda um bloco de dia e/ou de posição. Mesmo bloco, mesma identidade — nunca uma cópia. */
@@ -12806,9 +12864,10 @@ const PlanBoard = {
   landed: null,          // bloco que acabou de mudar de lugar: entra com um assentamento curto
   focusAfter: null,      // data-fk que recebe o foco depois do próximo desenho
   doneSeen: new Map(),   // bloco → estado no desenho anterior (transição discreta para "concluído")
-  ro: null
+  ro: null,
+  fitFrame: null
 };
-const PLAN_COL_MIN = 140;    // largura mínima de um dia no quadro (px); abaixo disso a semana quebra em duas linhas
+const PLAN_COL_MIN = 180;    // nomes legíveis; a semana quebra em linhas antes de apertar os dias
 
 function planWeekStart(){
   const off = clamp(Math.round(Number(ui.planWeekOffset) || 0), -104, 26);
@@ -12831,12 +12890,22 @@ function planBoard(plan){
   // v6.8: semana → meta → progresso real → dias → sugestão por disciplina (ao lado dos dias, para arrastar)
   root.append(planWeekNav(view));
   root.append(planWeekHead(plan, view, prog));
+  root.append(h('div', { class:'wk-calendar-head' },
+    h('div', null, h('h3', { class:'block-label', id:'wk-calendar-title', text:'Sua semana em dias' }),
+      h('p', { class:'hint', text:'Dias e horários são opcionais. Mude a organização quando quiser.' })),
+    view.editable ? h('button', { class:'btn primary', type:'button', 'data-fk':'wk-add', onclick:() => openWeekBlockPicker(view) }, icon('i-plus'), 'Adicionar aos dias') : null));
   root.append(planDays(view, prog));
   const off = planOffDays(view, prog);
   if(off) root.append(off);
   const notices = planWeekNotices(view, prog);
   if(notices) root.append(notices);
-  if(view.source !== 'none') root.append(planTray(view, prog));
+  if(view.source !== 'none'){
+    const library = h('details', { class:'wk-library', open:!!ui.planTrayOpen },
+      h('summary', null, h('span', { text:'Disciplinas e sugestões' }), h('span', { class:'hint', text:'Distribuir o tempo · arrastar para os dias' })),
+      planTray(view, prog));
+    library.addEventListener('toggle', () => { ui.planTrayOpen = library.open; });
+    root.append(library);
+  }
   root.append(h('p', { class:'block-note wk-foot', text: view.kind === 'past'
     ? 'Cada semana guarda o próprio registro: mudar o plano ou o modelo não reescreve semanas que já passaram.'
     : 'Organizar a semana é opcional: arrastar ou mover não registra estudo. Estudar em outro dia, ou outra disciplina, conta do mesmo jeito para a meta.' }));
@@ -13031,16 +13100,11 @@ function planWeekNav(view){
     else if(view.hasTemplate) text = 'Esta semana está diferente do seu modelo. As mudanças valem só para ela.';
     else text = view.blocks.length ? 'As mudanças valem só para esta semana.' : '';
     if(text) parts.push(h('span', { text }));
-    if(view.blocks.length && !view.matchesTemplate){
-      parts.push(h('button', { class:'linkbtn', type:'button', 'data-fk':'wk-save-tpl', text: view.hasTemplate ? 'Usar esta organização nas próximas semanas' : 'Repetir nas próximas semanas',
-        onclick: () => planSaveTemplate(view) }));
-    }
-    if(view.hasTemplate && !view.matchesTemplate){
-      parts.push(h('button', { class:'linkbtn muted', type:'button', text:'Voltar ao modelo', onclick: () => planApplyTemplate(view) }));
-    }
-    if(view.blocks.length){
-      parts.push(h('button', { class:'linkbtn muted', type:'button', text:'Limpar os dias', onclick: () => planClearWeek(view) }));
-    }
+    const options = [];
+    if(view.blocks.length && !view.matchesTemplate) options.push({ label:view.hasTemplate ? 'Usar esta organização nas próximas semanas' : 'Repetir nas próximas semanas', run:() => planSaveTemplate(view) });
+    if(view.hasTemplate && !view.matchesTemplate) options.push({ label:'Voltar ao modelo', run:() => planApplyTemplate(view) });
+    if(view.blocks.length) options.push({ label:'Limpar os dias', run:() => planClearWeek(view) });
+    if(options.length) parts.push(menuButton('Organização da semana', options, { className:'linkbtn', fk:'wk-organize' }));
     if(parts.length) scope = h('p', { class:'wk-scope' }, parts);
   }
   return h('div', { class:'wk-bar' },
@@ -13232,10 +13296,80 @@ function openSuggestionPicker(view){
   }, { size:'narrow' });
 }
 
+/** Escolher uma disciplina e seus dias, sem depender de arraste ou menus longos. */
+function openWeekBlockPicker(view, presetDate){
+  if(!view.editable) return;
+  const discs = activeDisciplines().slice().sort(sortByName);
+  let selected = null, saving = false;
+  const chosen = new Set(presetDate ? [presetDate] : []);
+  openModal(close => {
+    const search = h('input', { type:'search', id:'wb-search', placeholder:'Buscar disciplina…', 'aria-label':'Buscar disciplina', autocomplete:'off' });
+    const list = h('div', { class:'wb-subjects', role:'group', 'aria-label':'Escolher disciplina' });
+    const status = h('p', { class:'hint wb-selection', 'aria-live':'polite' });
+    const summary = () => { status.textContent = selected
+      ? `${disciplineName(selected)} · ${chosen.size ? plural(chosen.size, 'dia escolhido', 'dias escolhidos') : 'escolha pelo menos um dia'}`
+      : 'Escolha a disciplina e os dias em que pretende estudá-la.'; };
+    const draw = () => {
+      const terms = normalizeText(search.value).split(' ').filter(Boolean);
+      const matches = discs.filter(d => matchesTerms(normalizeText(d.name + ' ' + areaNameOf(d)), terms));
+      mount(list, matches.map(d => {
+        const suggestion = view.goals.get(d.id) || 0;
+        const input = h('input', { type:'radio', name:'week-discipline', value:d.id, checked:selected === d.id });
+        const row = h('label', { class:'wb-subject' }, input,
+          h('span', null, h('span', { class:'wb-name', text:d.name }),
+            h('span', { class:'wb-meta', text:`Prioridade ${PriorityEngine.clamp(d.priority)} · ${plural(topicsOf(d.id).length, 'tópico', 'tópicos')}` })),
+          h('span', { class:'wb-share num', text:suggestion ? `${fmtDuration(suggestion)} sugeridas` : 'Sem sugestão' }));
+        input.addEventListener('change', () => { selected = d.id; summary(); });
+        return row;
+      }));
+      if(!matches.length) list.append(h('p', { class:'hint', text:'Nenhuma disciplina encontrada.' }));
+    };
+    search.addEventListener('input', draw);
+    const days = h('div', { class:'wb-days', role:'group', 'aria-labelledby':'wb-days-label' }, view.dates.map(iso => {
+      const input = h('input', { type:'checkbox', value:iso, checked:chosen.has(iso), 'aria-label':WeekPlan.dayFull(iso) });
+      input.addEventListener('change', () => { if(input.checked) chosen.add(iso); else chosen.delete(iso); summary(); });
+      return h('label', { class:'wb-day' }, input,
+        h('span', null, h('span', { text:WEEKDAY_SHORT[parseISO(iso).getDay()] }), h('strong', { class:'num', text:String(parseISO(iso).getDate()) })),
+        !WeekPlan.isStudyDay(iso) ? h('span', { class:'sr-only', text:'Fora dos dias habituais; o bloco será preservado.' }) : null);
+    }));
+    const minutes = h('input', { id:'wb-minutes', type:'number', inputmode:'numeric', min:'1', max:String(BLOCK_MAX_MINUTES), placeholder:'Só o dia' });
+    const start = timeField({ id:'wb-start', value:'' });
+    draw();summary();
+    return {
+      title:'Adicionar à semana',
+      content:h('div', { class:'wb-picker' },
+        h('p', { class:'modal-sub', text:'Uma disciplina pode aparecer em vários dias. Isso organiza a semana; os estudos são registrados separadamente.' }),
+        search, list,
+        h('h4', { class:'block-label', id:'wb-days-label', text:'Em quais dias?' }), days,
+        h('details', { class:'advanced' }, h('summary', { text:'Duração e horário (opcionais)' }),
+          h('div', { class:'advanced-body row' },
+            h('div', { class:'field' }, h('label', { for:'wb-minutes', text:'Minutos por dia' }), minutes),
+            h('div', { class:'field' }, timeLabel('wb-start','Começa às'), start.input))),
+        status),
+      actions:[h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
+        h('button', { class:'btn primary', type:'button', text:'Adicionar aos dias', onclick:async e => {
+          if(saving) return;
+          if(!selected || !chosen.size){ status.textContent = !selected ? 'Escolha uma disciplina.' : 'Escolha pelo menos um dia.'; (!selected ? list.querySelector('input') : days.querySelector('input'))?.focus(); return; }
+          const m = minutes.value.trim() ? Number(minutes.value) : null;
+          if(m !== null && (!Number.isInteger(m) || m < 1 || m > BLOCK_MAX_MINUTES)){ minutes.setAttribute('aria-invalid','true');minutes.focus();toast('Informe minutos inteiros entre 1 e 960, ou deixe em branco.','err');return; }
+          if(start.text && start.state !== 'valid'){start.input.setAttribute('aria-invalid','true');start.focus();toast(clockErrorText(start.text)||CLOCK_PARTIAL_ERROR,'err');return;}
+          const blocks = view.dates.filter(iso => chosen.has(iso)).map(date => ({ id:uid(), disciplineId:selected, date, minutes:m, start:start.value || null }));
+          saving = true;const button=e.currentTarget;button.disabled=true;
+          try{
+            await runWeekOp(force => WeekCommands.addBlocks(view.ws, view.rev, blocks, { force }), {
+              close, landed:r => r.blocks[0].id, focus:r => 'blk-' + r.blocks[0].id,
+              announce:() => `${disciplineName(selected)} adicionada em ${plural(blocks.length,'dia','dias')}.` });
+          }finally{saving=false;button.disabled=false;}
+        }})],
+      focus:search
+    };
+  }, { size:'wide' });
+}
+
 /* ---------- 5. os dias ---------- */
 function planDays(view, prog){
   const days = view.dates.filter(iso => WeekPlan.isStudyDay(iso));
-  const grid = h('div', { class:'wk-grid', 'data-days':String(days.length) });
+  const grid = h('div', { class:'wk-grid', 'data-days':String(days.length), 'aria-labelledby':'wk-calendar-title' });
   days.forEach(iso => grid.append(dayColumn(view, prog, iso)));
   if(!days.length) grid.append(h('p', { class:'hint', text:'Nenhum dia escolhido. Use "Personalizar dias".' }));
   planFitColumns(grid, days.length);
@@ -13245,21 +13379,30 @@ function planDays(view, prog){
 /** Quantas colunas cabem sem espremer os dias: 7 lado a lado só com espaço; senão duas linhas equilibradas (4 + 3). */
 function planFitColumns(grid, n){
   const apply = () => {
+    if(!grid.isConnected) return;
     const w = grid.clientWidth;
     if(!w) return;
     // tela estreita (celular): um dia embaixo do outro — duas colunas apertadas leem pior que uma lista
     const fit = w < PLAN_COL_MIN * 3 ? 1 : Math.max(1, Math.floor((w + 10) / (PLAN_COL_MIN + 10)));
     let cols = n;
     if(n > fit) cols = fit <= 1 ? 1 : Math.ceil(n / Math.ceil(n / fit));
-    grid.style.setProperty('--wk-cols', String(Math.max(1, cols)));
+    const value = String(Math.max(1, cols));
+    if(grid.style.getPropertyValue('--wk-cols') !== value) grid.style.setProperty('--wk-cols', value);
     grid.classList.toggle('is-stacked', cols === 1);
+  };
+  // Alterar colunas muda a altura observada. Fazer isso dentro do callback de
+  // ResizeObserver cria uma entrega pendente no WebKit. Mede/aplica no quadro
+  // seguinte e cancela o trabalho da grade que acabou de ser substituída.
+  const schedule = () => {
+    if(PlanBoard.fitFrame !== null) cancelAnimationFrame(PlanBoard.fitFrame);
+    PlanBoard.fitFrame = requestAnimationFrame(() => { PlanBoard.fitFrame = null; apply(); });
   };
   if(PlanBoard.ro) PlanBoard.ro.disconnect();
   if(typeof ResizeObserver !== 'undefined'){
-    PlanBoard.ro = new ResizeObserver(() => apply());
+    PlanBoard.ro = new ResizeObserver(schedule);
     PlanBoard.ro.observe(grid);
   }
-  requestAnimationFrame(apply);
+  schedule();
 }
 
 function dayColumn(view, prog, iso){
@@ -22293,12 +22436,19 @@ const FocusMode = {
     const root = document.getElementById('focus-root');
     root.setAttribute('data-state', v.state === 'done' ? 'done' : v.status);
     root.classList.toggle('is-pomodoro', v.pomo);
-    document.getElementById('focus-disc').textContent = TimerService.discText();
-    // v6.7: todos os tópicos e tipos escolhidos (o modo foco tem espaço para a lista inteira)
-    document.getElementById('focus-topic').textContent = [topicNames.join(' · ') || null, (d.presetTypes || []).map(sessionTypeLabel).join(' · ') || null].filter(Boolean).join(' — ');
+    const compact = (names, limit) => names.slice(0, limit).join(' · ') + (names.length > limit ? ` · +${names.length - limit}` : '');
+    const contextLine = (id, names, limit) => {
+      const el = document.getElementById(id);
+      el.textContent = compact(names, limit); el.hidden = !names.length;
+      el.title = names.join(' · '); el.setAttribute('aria-label', names.join(' · '));
+    };
+    document.getElementById('focus-disc').textContent = TimerService.discIds().length ? TimerService.discText() : 'Estudo livre';
+    contextLine('focus-topic', topicNames, 2);
+    contextLine('focus-types', (d.presetTypes || []).map(sessionTypeLabel), 2);
+    const areas = [...new Set(TimerService.discIds().map(id => getDiscipline(id)?.areaId).filter(Boolean))];
+    contextLine('focus-area', areas.length === 1 && getArea(areas[0]) ? [getArea(areas[0]).name] : [], 1);
     document.getElementById('focus-state').textContent = v.label;
     document.getElementById('focus-line').textContent = v.line || '';
-    document.getElementById('focus-sub').textContent = v.sub || '';
     // v6.5: o aviso de que o cronômetro não pôde ser guardado aparece também aqui (a barra fica escondida no modo foco)
     const warn = document.getElementById('focus-warn');
     if(warn){
@@ -22311,7 +22461,7 @@ const FocusMode = {
     const actions = document.getElementById('focus-actions');
     const hadFocus = actions.contains(document.activeElement);
     mount(actions, timerActions('focus').map((a, i) => h('button', { class:'btn ' + (a.kind === 'primary' ? 'primary' : 'ghost'), type:'button',
-      'data-fk': i === 0 ? 'focus-toggle' : 'focus-' + a.key, text:a.label, onclick:a.run })));
+      'data-fk': i === 0 ? 'focus-toggle' : 'focus-' + a.key, 'data-action':a.key, text:a.label, onclick:a.run })));
     if(hadFocus){ const b = actions.querySelector('[data-fk="focus-toggle"]'); if(b) b.focus(); }
     if(o.switched){ swapIn(document.getElementById('focus-state')); swapIn(document.getElementById('focus-clock')); }
   },
@@ -22324,8 +22474,24 @@ const FocusMode = {
     const el = document.getElementById('focus-clock');
     if(el.textContent !== v.clock) el.textContent = v.clock;
     el.title = v.clockTitle || '';
+    document.getElementById('focus-clock-label').textContent = v.clockTitle || '';
+    const now = Date.now(), T = TimerService, p = T.data.pomo;
+    const study = T.getElapsed(now), rest = T.getBreakTotal(now);
+    document.getElementById('focus-totals').hidden = !p && T.status === 'study' && rest === 0;
+    document.getElementById('focus-rest-stat').hidden = rest === 0;
+    document.getElementById('focus-study-total').textContent = fmtTimer(study);
+    document.getElementById('focus-rest-total').textContent = fmtTimer(rest);
+    // Fatos do estado atual. O texto muda nas transições ou a cada cinco
+    // minutos, sem mensagens motivacionais e sem anúncio a cada segundo.
+    const minutes = Math.floor(study / 300000) * 5;
+    const insight = p && p.awaiting ? v.sub
+      : T.isPaused ? 'Nada está contando. Retome quando quiser.'
+      : T.isOnBreak ? (p ? 'Ao terminar o descanso, escolha quando começar o próximo bloco.' : 'O descanso é contado à parte. Retome quando quiser.')
+      : p ? `Depois deste bloco, ${nextBreakAfterFocus(p)} min de descanso.`
+      : minutes >= 5 ? `Você chegou a ${fmtDurationWords(minutes)} de estudo nesta sessão.`
+      : 'O tempo de estudo está contando. Pause ou descanse quando quiser.';
     const sub = document.getElementById('focus-sub');
-    if(sub.textContent !== (v.sub || '')) sub.textContent = v.sub || '';
+    if(sub.textContent !== insight) sub.textContent = insight;
     const bar = document.getElementById('focus-progress');
     if(bar){
       bar.hidden = v.progress === null;

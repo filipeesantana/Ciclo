@@ -1,0 +1,52 @@
+✖ A: estudo livre salvo encerra Hoje imediatamente, sem F5 (1946.083773ms)
+✖ B: Foco → Encerrar → Registrar atualiza Hoje antes de navegar (1486.705324ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4018.646139
+
+✖ failing tests:
+
+test at tests/field-timer.test.cjs:40:1
+✖ A: estudo livre salvo encerra Hoje imediatamente, sem F5 (1946.083773ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'Você está estudando agora'
+  - 'O que você gostaria de estudar?'
+  
+      at ended (/workspace/Ciclo/tests/field-timer.test.cjs:36:9)
+      at async TestContext.<anonymous> (/workspace/Ciclo/tests/field-timer.test.cjs:41:78)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Você está estudando agora',
+    expected: 'O que você gostaria de estudar?',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/field-timer.test.cjs:44:1
+✖ B: Foco → Encerrar → Registrar atualiza Hoje antes de navegar (1486.705324ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'Você está estudando agora'
+  - 'O que você gostaria de estudar?'
+  
+      at ended (/workspace/Ciclo/tests/field-timer.test.cjs:36:9)
+      at async TestContext.<anonymous> (/workspace/Ciclo/tests/field-timer.test.cjs:45:95)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Você está estudando agora',
+    expected: 'O que você gostaria de estudar?',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

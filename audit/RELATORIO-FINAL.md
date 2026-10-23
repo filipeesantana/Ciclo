@@ -1,5 +1,7 @@
 # Ciclo — auditoria e candidato para revisão
 
+Rodada posterior: [auditoria de campo de 22/10/2026](campo-365/RELATORIO-FINAL.md), sobre o merge `e972eb1`, com a reprodução de Hoje, Foco, Planejamento e o backup fictício fornecido. Este documento preserva os resultados da rodada anterior.
+
 Foi entregue uma evolução localizada sobre a v7.1.0, com correções de integridade, cronômetro, importação, estatísticas e acessibilidade, além de exploração mais útil dos resultados. A versão e os schemas continuam 7.1.0 / 10 / 1. Não houve merge, tag ou publicação do GitHub Pages.
 
 ## Resultado de produto

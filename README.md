@@ -1,5 +1,7 @@
 # Ciclo
 
+**v7.2.0 — Foco e planejamento**, preparada para revisão no PR #2. [Auditoria de campo de 22/10/2026 e testes com 365 dias](audit/campo-365/RELATORIO-FINAL.md). A publicação é uma etapa separada.
+
 **Seu sistema de estudos.** Organize o que você estuda, registre seus estudos, receba sugestões de revisão no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta e sem servidor. Depois de aberto, o Ciclo não usa a internet para nada.
 
 O nome vem do próprio método: **planejar → estudar → revisar → analisar → reajustar**, e começar de novo.
@@ -92,7 +94,7 @@ O **Pomodoro** é opcional e fica em *Começar a estudar → Como contar o tempo
 - **No fim de cada bloco, o Ciclo para e espera.** Você escolhe: descansar, fazer mais um bloco ou encerrar. Se voltar meia hora depois, esse tempo não vira estudo nem descanso. Avançar sozinho, um som curto e o aviso do navegador são opcionais, em *Configurações → Estudos e planejamento* — o aviso só é pedido quando você liga a opção.
 - **Um estudo só.** Dois blocos de 25/5 viram **50 min estudados e 5 min de descanso**, com o número de blocos completos. Encerrar no meio de um bloco registra o tempo realmente estudado.
 
-O **modo foco** deixa só o essencial na tela: a disciplina, o estado, o relógio, o progresso do bloco e as ações principais, com tela cheia quando o navegador permite. *Esc* sai do foco sem encerrar o estudo.
+O **modo foco** destaca o relógio com um rótulo que explica a contagem, o estado e as ações principais. Disciplina, tópicos e tipos ficam compactos; estudo líquido e descanso aparecem separados. No Pomodoro, o progresso e o tempo restante do bloco não se confundem com o acumulado da sessão. A tela cheia depende do navegador. *Esc* sai do foco sem encerrar o estudo.
 
 ### Resultado do estudo (opcional)
 
@@ -156,7 +158,7 @@ A meta é **o tempo total que você quer estudar na semana**. Estudou 5h de uma 
 
 - **Qualquer estudo conta**, de qualquer disciplina, em qualquer dia. O tempo além da meta aparece como *além da meta*, sem cobrança.
 - **Sugestão de organização.** Cada disciplina aparece num cartão com a parte sugerida e o que já foi estudado. É uma referência.
-- **A semana em dias**, opcional: arraste uma disciplina até um dia (ou use os botões, no celular e pelo teclado), com duração e horário opcionais. Cada bloco se completa sozinho com os estudos registrados naquele dia.
+- **A semana em dias**, opcional: use **Adicionar aos dias**, escolha a disciplina e marque um ou vários dias, com duração e horário opcionais. **Disciplinas e sugestões** conserva o arraste e os ajustes de distribuição. Cada bloco se completa com os estudos registrados naquele dia; a meta continua sendo o total semanal.
 
 ## Revisões
 
@@ -291,7 +293,7 @@ O Ciclo é uma aplicação local-first feita em HTML, CSS e JavaScript puro, sem
 
 Curto e direto, para quem quer saber exatamente o que esperar.
 
-- **Navegadores.** A v7.1 foi testada de forma automatizada no Chromium (a base do Chrome e do Edge), em telas de 360 px a 1280 px, nos dois temas, com movimento reduzido, com a atualização a partir da v7.0 e com um histórico grande (cerca de 5.000 estudos ao longo de um ano). Firefox, Safari (inclusive no iPhone) e o Edge propriamente dito não foram testados nesta versão: o Ciclo usa apenas recursos padrão da web, mas isso não é uma garantia. Leitores de tela também não foram testados.
+- **Navegadores.** A auditoria desta evolução executou testes automatizados em Chromium, Firefox e WebKit, nos dois temas e em telas de 320 px a 1920 px; a carga com até 10.000 estudos foi medida no Chromium. Consulte a [matriz com resultados e limites](audit/campo-365/MATRIZ-CROSS-BROWSER.md) e os checks do PR #2 para a execução da v7.2.0. Chrome/Edge oficiais, Safari real, aparelhos físicos e leitores de tela não foram testados.
 - **Avisos do Pomodoro.** O som e o aviso do navegador dependem de permissões e do próprio navegador. Com a aba em segundo plano ou o aparelho bloqueado, o aviso pode atrasar ou não aparecer — o tempo registrado continua certo mesmo assim. A tela cheia do modo foco também depende do navegador.
 - **Animações.** São curtas e opcionais: com *Reduzir animações* (em Configurações → Aparência) ou com a preferência do sistema ligada, tudo muda de estado na hora. Nenhuma informação depende de uma animação.
 - **Onde os dados ficam.** No IndexedDB do navegador; o cronômetro em andamento, o tema e os rascunhos de registro ficam no `localStorage`, e o rascunho do guia do primeiro uso, no `sessionStorage` da aba. Nada é enviado para fora.
@@ -299,8 +301,8 @@ Curto e direto, para quem quer saber exatamente o que esperar.
 - **O que as datas significam.** Datas de estudo, de prazo e de revisão são dias do calendário **no fuso do seu aparelho**. Um estudo pertence ao dia em que começou.
 - **Copiar o prompt.** Depende da permissão do navegador para a área de transferência. Quando ela é negada, o Ciclo avisa e mostra o texto para copiar à mão.
 - **Duas abas.** Pode usar. As abas compartilham os dados e se avisam quando algo muda; com um formulário aberto, o Ciclo avisa em vez de mexer no que você está digitando.
-- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v7.1 não converte nada — ela só acrescenta campos opcionais (resultados, minutos pausados e o resumo do Pomodoro em cada estudo, e as preferências do Pomodoro, que começam com valores padrão). O banco do navegador é o mesmo. Se o Ciclo estiver aberto em outras abas durante a atualização, recarregue-as — principalmente se houver um cronômetro pausado ou em Pomodoro, que uma aba antiga não entende.
-- **Voltar para uma versão anterior.** Uma versão anterior recusa backups gerados pela v7.1 (por serem de uma versão mais nova); os dados do navegador continuam intactos.
+- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v7.2.0 mantém o formato lógico 10 e o IndexedDB 1 da v7.1, sem conversão de dados. Os arquivos de interface usam o identificador de cache 7.2.0. Recarregue as outras abas abertas para que todas usem a mesma versão.
+- **Voltar para uma versão anterior.** A v7.1 usa o mesmo formato de backup da v7.2.0. Versões até a v7.0 recusam esses backups por não conhecerem o formato 10; os dados do navegador continuam intactos.
 - **Se algo der errado.** Recarregar a página é seguro: tudo o que foi registrado já está gravado. Se uma gravação falhar, o Ciclo diz isso e mantém a janela aberta com o que você digitou. Se os dados sumirem, restaure o último backup em **Dados → Restaurar backup**.
 
 ## Contato
@@ -310,6 +312,17 @@ Dúvidas, sugestões ou problemas: **contatosantanafilipe@gmail.com**
 O endereço também está no aplicativo, em **Ajuda** e em **Configurações → Sobre**, com opção de copiar o endereço ou o relato de problema mesmo sem um aplicativo de e-mail configurado.
 
 ## Versão atual
+
+**v7.2.0 — Foco e planejamento**
+
+- **Hoje sem estudo fantasma:** o estudo salvo libera o cronômetro antes de atualizar a tela; snapshots atrasados de outra aba são reconciliados.
+- **Foco com relógio em destaque**, contexto compacto, estudo e descanso separados e controles conforme o estado.
+- **Planejamento em vários dias:** escolha a disciplina e os dias, com duração e horário opcionais. Arraste, edição, reordenação e modelos continuam disponíveis.
+- **Históricos longos completos:** Análises deixam de cortar séries após 520 semanas; o quadro semanal evita ciclos de redimensionamento no WebKit.
+
+Mesmo formato lógico **10** e banco físico **1** da v7.1, sem migração. Backups anteriores continuam sendo aceitos. O backup sintético de 365 dias permanece com seus bytes e metadados originais para testar a compatibilidade.
+
+### v7.1.0
 
 **v7.1.0 — Learning Intelligence & Focus**
 
@@ -444,7 +457,7 @@ Desenvolvido por **Filipe Santana**
 
 ## Auditoria e validação de desenvolvimento
 
-A evolução em revisão mantém a versão **7.1.0**, o schema lógico **10** e o IndexedDB físico **1**. Consulte [o relatório da auditoria](audit/RELATORIO-FINAL.md), a [matriz funcional](audit/MATRIZ-FUNCIONALIDADES.md) e os [testes executados](audit/TESTES-EXECUTADOS.md) para separar resultados comprovados de validações pendentes. A próxima versão sugerida é **7.1.1**, após a revisão; não há publicação automática.
+A evolução em revisão está preparada como **7.2.0**, com schema lógico **10** e IndexedDB físico **1**. Consulte [a auditoria de campo](audit/campo-365/RELATORIO-FINAL.md) e [a matriz de navegadores](audit/campo-365/MATRIZ-CROSS-BROWSER.md). Os relatórios na raiz de `audit/` preservam a rodada anterior sobre a v7.1.0. Não há publicação automática.
 
 O aplicativo continua sendo servido diretamente pelos quatro arquivos estáticos, sem dependências de produção. Para desenvolver e testar, use Node.js 24:
 
@@ -460,4 +473,4 @@ npm run audit:benchmark
 
 Os testes abrem um servidor local e contextos de navegador descartáveis, com dados sintéticos. Se houver Chromium instalado no sistema, ele é usado; `CHROMIUM_PATH` permite escolher o executável. `BROWSER=firefox` ou `BROWSER=webkit` executa as jornadas nesses motores depois de instalar o navegador correspondente pelo Playwright. Isso não equivale a testar Safari no iPhone ou Edge real. Relatórios temporários ficam em `test-results/`.
 
-O workflow de qualidade verifica Chromium, Firefox e WebKit em pull requests e por execução manual. Ele não publica o site.
+O workflow de qualidade verifica Chromium, Firefox e WebKit em pull requests e por execução manual, com limite de 30 minutos por motor para acomodar a instalação e a suíte completa. Ele preserva o código de saída dos testes ao salvar os logs e não publica o site.

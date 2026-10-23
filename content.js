@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — CONTEÚDO ESTÁTICO (v7.0.0 · Learning for Everyone)
+   CICLO — CONTEÚDO ESTÁTICO (v7.2.0 · Foco e planejamento)
    Textos, guias e frases. Nada aqui vai para o IndexedDB e nada vem da rede.
 
    Blocos: DAILY_QUOTES · REVIEW_METHOD_GUIDES · HELP_SECTIONS ·
@@ -834,7 +834,7 @@ const HELP_ARTICLES = [
   keywords:'modo foco concentracao tela cheia distracao esc sair fullscreen pomodoro bloco',
   content:[
     { h:'Como funciona' },
-    { p:'O [[modoFoco|modo foco]] esconde o resto da interface e mostra a disciplina, o estado (Estudando, Pausado, Descansando), o relógio, o progresso do bloco quando você usa Pomodoro e as ações principais.' },
+    { p:'O [[modoFoco|modo foco]] esconde o resto da interface e dá destaque ao relógio. O rótulo explica o tempo: estudo líquido, descanso ou o que falta no bloco do Pomodoro. Disciplina, assuntos escolhidos e tipos aparecem logo abaixo, sem campos vazios.' },
     { h:'No Ciclo' },
     { ul:[
       'Você entra pelo botão "Foco" na barra do cronômetro ou pela busca de comandos (Ctrl + K).',
@@ -842,6 +842,7 @@ const HELP_ARTICLES = [
       'Esc (ou o × no canto) sai do foco sem encerrar o estudo. Recarregar a página também não encerra nada.',
       'Pausar, descansar, voltar a estudar e encerrar continuam disponíveis dentro do foco.'
     ]},
+    { p:'Estudo líquido e descansos acumulados aparecem separados quando ajudam a entender a sessão. As pequenas informações mostram somente o que o cronômetro registrou; elas não medem concentração nem aprendizagem.' },
     { note:'O modo foco não bloqueia sites nem aplicativos. Ele só tira o resto do Ciclo da sua frente.' }
   ],
   related:['pomodoro-ciclo','pomodoro-guia','sessoes-longas']
@@ -1037,21 +1038,21 @@ const HELP_ARTICLES = [
   keywords:'semana em dias calendario calendário agenda arrastar soltar mover para outro dia segunda terca quarta horario 19h bloco colocar em um dia modelo proximas semanas repetir',
   content:[
     { h:'Como funciona' },
-    { p:'Em Planejamento, abaixo da meta da semana, ficam as suas disciplinas e os dias. Arraste uma disciplina até um dia — ou use "Colocar em um dia" — e ela passa a aparecer ali como um bloco.' },
+    { p:'Em Planejamento, use "Adicionar aos dias", escolha uma disciplina e marque um ou vários dias. Duração e horário são opcionais. Ao confirmar, cada dia escolhido recebe um bloco daquela disciplina.' },
     { ul:[
       'Matemática na segunda e na sexta, 1h em cada: são dois blocos da mesma disciplina, somando 2h.',
       'Arraste um bloco para outro dia (ou para cima e para baixo no mesmo dia) para reorganizar.',
-      'Arraste um bloco de volta para "Disciplinas" — ou use "Tirar de segunda" — para retirá-lo do dia.'
+      'Abra "Disciplinas e sugestões" para arrastar disciplinas até os dias. Com essa seção aberta, também é possível arrastar um bloco de volta às sugestões para tirá-lo do dia.'
     ]},
     { h:'Sem arrastar' },
-    { p:'Tudo também funciona por botões, no teclado e no celular: "Colocar em um dia" em cada disciplina, "Adicionar" em cada dia e o menu ⋯ de cada bloco, com "Mover para outro dia…", "Subir", "Descer" e "Tirar". Esc cancela um arraste no meio, sem mudar nada.' },
+    { p:'"Adicionar aos dias" permite escolher vários dias de uma vez. Você também pode usar "Colocar em um dia" dentro de "Disciplinas e sugestões", "Adicionar" em cada dia e o menu ⋯ de cada bloco, com "Mover para outro dia…", "Subir", "Descer" e "Tirar". Esc cancela um arraste no meio, sem mudar nada.' },
     { h:'Duração e horário (opcionais)' },
     { p:'Clique num bloco para escolher a duração ("Só o dia", 30 min, 1h…) e, se quiser, um horário de início em 24h — 1900 vira 19:00. Horários que se cruzam geram só um aviso: o Ciclo não impede.' },
     { h:'Dias, sugestão e meta' },
     { p:'Cada disciplina mostra quanto da sugestão dela ainda está "sem dia". Se você colocar nos dias mais do que a sugestão de uma disciplina, o Ciclo só avisa e deixa você escolher: ajustar os blocos, mudar a sugestão (só nesta semana, ou também nas próximas) ou manter assim. Nada muda sozinho.' },
     { p:'Planejou Matemática para segunda e estudou na terça? Conta normalmente para a meta da semana. O histórico continua dizendo que foi na terça — nada é deslocado.' },
     { h:'Esta semana, próximas semanas' },
-    { p:'Mudanças valem só para a semana mostrada. Quando gostar da organização, use "Repetir nas próximas semanas": as semanas seguintes começam com ela. Semanas que já passaram ficam só para consulta.' },
+    { p:'Mudanças valem só para a semana mostrada. Em "Organização da semana", você pode repetir a organização nas próximas semanas, voltar ao modelo ou limpar os dias. Semanas que já passaram ficam só para consulta.' },
     { note:'Organizar a semana é planejamento: arrastar ou mover nunca registra estudo. O progresso vem dos estudos que você registra.' }
   ],
   cta:{ action:'plan', label:'Abrir Planejamento' },
@@ -2342,7 +2343,7 @@ const HELP_FAQ = [
     a:'Não. A meta semanal funciona sozinha. Escolher dias — e, se quiser, horários — é uma camada opcional para quem gosta de ver a semana organizada. Estudar em outro dia conta do mesmo jeito.' },
   { id:'faq-arrastar-celular', g:'planejamento', article:'semana-em-dias',
     q:'Como organizo a semana no celular, sem arrastar?',
-    a:'Use "Colocar em um dia" em cada disciplina, "Adicionar" em cada dia e o menu ⋯ de cada bloco ("Mover para outro dia…", "Tirar"). Tudo o que o arraste faz também existe nesses botões.' },
+    a:'Use "Adicionar aos dias", escolha a disciplina e marque os dias. Para reorganizar, clique no bloco ou use seu menu ⋯ ("Mover para outro dia…", "Tirar"). Duração e horário são opcionais.' },
   { id:'faq-planejei-nao-estudei', g:'planejamento', article:'progresso-do-dia',
     q:'Planejei Matemática na segunda e não estudei. E agora?',
     a:'Nada quebra. O bloco mostra "Sem estudo registrado" e a meta da semana mostra quanto falta. Estudou na terça? Conta normalmente — o histórico continua dizendo terça, e nada é deslocado.' },
@@ -2554,7 +2555,7 @@ const SCREEN_HELP = {
                 articles:['primeiros-passos','pomodoro-ciclo','como-o-ciclo-sugere','so-tempo'] },
   plan:       { title:'Planejamento',
                 intro:'Você diz quanto quer estudar por semana — essa é a meta. Qualquer estudo conta para ela. O Ciclo sugere como dividir o tempo e, se você quiser, em que dias.',
-                points:['No topo, "3h40 de 5h": o tempo estudado diante da meta, quanto falta ou quanto passou. "Alterar meta" muda as horas.','"Como o tempo foi usado" mostra o tempo real de cada disciplina. "Comparar com a sugestão" é só uma referência.','Arraste uma disciplina até um dia, ou use "Colocar em um dia". Clique num bloco para duração e horário (opcionais). Arrastar nunca registra estudo.','Em "Sugestão de organização", clique na sugestão de uma disciplina para mudar; "Adicionar disciplina" inclui outra.','"Personalizar dias" tira do quadro os dias em que você não estuda; prazos e estudos deles continuam à vista.'],
+                points:['No topo, "3h40 de 5h": o tempo estudado diante da meta, quanto falta ou quanto passou. "Alterar meta" muda as horas.','"Como o tempo foi usado" mostra o tempo real de cada disciplina. "Comparar com a sugestão" é só uma referência.','Use "Adicionar aos dias" para escolher uma disciplina e vários dias de uma vez. Clique num bloco para duração e horário (opcionais). Planejar nunca registra estudo.','Abra "Disciplinas e sugestões" para ajustar a distribuição, incluir outras disciplinas ou arrastá-las até os dias. "Organização da semana" reúne as ações de modelo e limpeza.','"Personalizar dias" tira do quadro os dias em que você não estuda; prazos e estudos deles continuam à vista.'],
                 articles:['semana-em-dias','progresso-do-dia','dias-de-estudo','planejamento'] },
   reviews:    { title:'Revisões',
                 intro:'Sugestões de assuntos que podem valer uma revisão, agrupadas por matéria. São convites, não tarefas.',
@@ -2833,8 +2834,34 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 };
 
 const CHANGELOG = [
-  /* v6.8 — a versão atual tem um resumo curto (janela "O Ciclo foi atualizado.")
+  /* A versão atual tem um resumo curto (janela "O Ciclo foi atualizado.")
      e seções recolhíveis ("Ver todas as novidades"). As anteriores ficam como texto. */
+  { v:'7.2.0', title:'Foco e planejamento',
+    intro:'Estude com o relógio em destaque, organize uma disciplina em vários dias de uma vez e volte para Hoje com o estudo encerrado assim que ele for registrado.',
+    highlights:[
+      'Hoje acompanha o cronômetro e reconhece o estudo salvo sem precisar recarregar a página.',
+      'Foco com relógio maior, contexto compacto e tempo de estudo separado do descanso.',
+      'Planejamento com seleção de disciplina e vários dias, duração e horário opcionais.',
+      'Análises preservam todo o intervalo de históricos longos.'
+    ],
+    sections:[
+      { title:'O que mudou', items:[
+        'Ao encerrar e registrar um estudo, Hoje volta a oferecer começar outro estudo. Pausa, descanso e retomada também aparecem no cartão.',
+        'Foco: o relógio vem primeiro, com rótulo visível, tópicos e tipos resumidos, totais de estudo e descanso separados e controles adequados ao momento.',
+        'Planejamento: escolha uma disciplina, marque os dias e adicione tudo de uma vez. Duração e horário continuam opcionais; arrastar, editar, reordenar e usar modelos continuam disponíveis.',
+        'Análises: os gráficos por semana incluem todo o período escolhido, inclusive em históricos com mais de dez anos.',
+        'Ajustes no quadro semanal evitam ciclos de redimensionamento e respeitam a preferência por reduzir animações.'
+      ]},
+      { title:'Como usar', items:[
+        'Na barra do cronômetro, abra Foco. Pausar interrompe a contagem; Encerrar abre o registro. Depois de salvar, Hoje já mostra o próximo passo.',
+        'Planejamento → Adicionar aos dias → escolha a disciplina e os dias. Abra as opções se quiser informar duração ou horário.'
+      ]},
+      { title:'Sobre seus dados', items:[
+        'Estudos, resultados, revisões, planos e prazos continuam no mesmo banco. Esta versão não exige conversão dos dados.',
+        'Backups anteriores continuam sendo aceitos. O formato permanece em 10 e o banco local em 1, como na v7.1.'
+      ]}
+    ],
+    d:'Hoje reconhece o estudo salvo sem recarregar a página e acompanha as transições do cronômetro. Foco com relógio maior, contexto compacto e estudo/descanso separados. Planejamento com seleção de disciplina e vários dias, duração e horário opcionais. Análises sem corte de semanas em históricos longos. Mesmo formato de dados e banco local da v7.1.' },
   { v:'7.1', title:'Learning Intelligence & Focus',
     intro:'Agora dá para registrar o que você conseguiu fazer — não só o tempo —, estudar com Pomodoro ou pausar o cronômetro, e ver análises e descobertas mais justas sobre o seu histórico.',
     highlights:[
