@@ -1,7 +1,7 @@
 /* =========================================================================
-   CICLO — v7.2.0 · Foco e planejamento
+   CICLO — v7.3.0 · Reviews & Flashcards
    (antes chamado "Diário de Estudos")
-   Aplicação local-first. Sem backend, sem rede, sem dependências externas.
+   Aplicação local-first. Sem backend ou dependências carregadas da rede.
 
    v6.5 — integridade, confiabilidade e consistência. As regras que decidem o
    que é gravado ficam em poucos lugares, todos com nome:
@@ -36,8 +36,10 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '7.2.0';
-const APP_SCHEMA_VERSION = 10;         // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
+const APP_VERSION = '7.3.0';
+// v7.3: formato lógico 11 inclui cartões, direções, respostas, modelos e roteiros.
+// O comentário histórico abaixo descreve as versões anteriores.
+const APP_SCHEMA_VERSION = 11;         // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
                                        // ganham tipo, status, data de início, orientações e
@@ -118,7 +120,8 @@ const APP_SCHEMA_VERSION = 10;         // formato LÓGICO dos dados. A v5.2 mudo
    mas estes nomes ficam como estão: renomeá-los faria o navegador procurar um
    banco/chaves que não existem e o usuário "perderia" os dados já gravados. */
 const IDB_NAME = 'diarioEstudosDB';
-const IDB_VERSION = 1;                 // schema FÍSICO do IndexedDB: v4 e v5.2 só alteram
+// v7.3: banco físico 2 acrescenta as stores de aprendizagem sem converter registros existentes.
+const IDB_VERSION = 2;                 // schema FÍSICO do IndexedDB: v4 e v5.2 só alteram
                                        // campos dentro dos objetos, nenhuma store ou
                                        // índice novo — por isso continua 1. O prazo mantém
                                        // `date` como data do prazo (há um índice nesse campo).
@@ -137,7 +140,8 @@ const V2_LS_KEY = 'diarioEstudos:v1';  // chave usada pela V2 (preservada, nunca
 const TIMER_LS_KEY = 'diarioEstudos:v3:timer';
 const THEME_LS_KEY = 'diarioEstudos:v3:theme';
 
-const STORES = ['meta','areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings'];
+// v7.3: formato lógico 11, banco físico 2; novas stores, nenhum estudo antigo convertido.
+const STORES = ['meta','areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings'].concat(FLASHCARD_STORES);
 
 /* v6.4 — `hint` e `icon` são só apresentação; os valores (`v`) não mudaram.
    Descanso NÃO é um tipo de estudo: ele vive em `session.breaks`. */
@@ -359,6 +363,7 @@ const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','a
 const MONTHS_ABBR = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
 const DEFAULT_SETTINGS = {
+  flashcards: {limit:20,newLimit:10,mode:"scheduled",shuffle:false},
   theme: 'dark',                 // 'dark' | 'light' | 'system'
   density: 'comfortable',        // 'comfortable' | 'compact'
   startView: 'today',            // tela inicial
@@ -937,9 +942,25 @@ const DB = (() => {
           s.createIndex('date','date',{unique:false});
           s.createIndex('disciplineId','disciplineId',{unique:false});
         }
+        FLASHCARD_STORES.forEach(name => {
+          if(d.objectStoreNames.contains(name)) return;
+          const store = d.createObjectStore(name, {keyPath:'id'});
+          if(name === 'flashcards') store.createIndex('noteId','noteId',{unique:false});
+          if(name === 'flashcardResponses'){
+            store.createIndex('runId','runId',{unique:false});
+            store.createIndex('cardId','cardId',{unique:false});
+          }
+        });
         void ev;
       };
-      req.onsuccess = () => { db = req.result; resolve(db); };
+      req.onsuccess = () => {
+        db = req.result;
+        db.onversionchange = () => {
+          db.close(); db = null;
+          showFatalError('O Ciclo foi atualizado em outra aba.', 'Recarregue esta aba para continuar usando o novo formato. Os dados gravados continuam no navegador.');
+        };
+        resolve(db);
+      };
       req.onerror = () => reject(req.error || new Error('Falha ao abrir o banco local.'));
       req.onblocked = () => reject(new Error('O banco está bloqueado por outra aba aberta.'));
     });
@@ -975,6 +996,16 @@ const DB = (() => {
   return {
     open,
     get isOpen(){ return !!db; },
+    async snapshot(stores){
+      const transaction = tx(stores,'readonly');
+      const completed = done(transaction);
+      completed.catch(() => {});
+      try{
+        const entries = await Promise.all(stores.map(async store => [store, await wrap(transaction.objectStore(store).getAll())]));
+        await completed;
+        return Object.fromEntries(entries);
+      }catch(error){await completed.catch(() => {});throw error;}
+    },
     get(store, key){ return wrap(tx([store],'readonly').objectStore(store).get(key)); },
     getAll(store){ return wrap(tx([store],'readonly').objectStore(store).getAll()); },
     async put(store, value){ const t = tx([store],'readwrite'); t.objectStore(store).put(value); await done(t); committed([store]); return value; },
@@ -1463,6 +1494,7 @@ const state = {
   settings: Object.assign({}, DEFAULT_SETTINGS),
   meta: {},
   areas: [], disciplines: [], topics: [], sessions: [], plans: [], weeklyPlans: [], deadlines: [],
+  flashcardTemplates: [], flashcardSets: [], flashcardNotes: [], flashcards: [], flashcardResponses: [], flashcardRuns: [], guidedReviews: [],
   // índices derivados (recalculados em rebuildIndexes)
   idx: { areaById:new Map(), discById:new Map(), topicById:new Map(), sessionsByDisc:new Map(), sessionsByTopic:new Map(), topicsByDisc:new Map() }
 };
@@ -4904,11 +4936,11 @@ function timerBreaksToSession(breaks){
    Backups antigos (sem `integrity`) continuam sendo aceitos normalmente.
    ========================================================================= */
 const BackupIntegrity = {
-  PARTS: ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings'],
+  PARTS: ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings'].concat(FLASHCARD_STORES),
   /** Texto canônico do conteúdo: as mesmas partes, na mesma ordem, sem espaços. */
   canonical(src){
     const o = {};
-    this.PARTS.forEach(k => { o[k] = src[k] === undefined ? null : src[k]; });
+    this.PARTS.filter(k => Number(src.schemaVersion) >= 11 || !FLASHCARD_STORES.includes(k)).forEach(k => { o[k] = src[k] === undefined ? null : src[k]; });
     return JSON.stringify(o);
   },
   /** cyrb53 — hash não criptográfico de 53 bits (domínio público). Rápido e estável entre navegadores. */
@@ -4970,6 +5002,9 @@ const Backup = {
       deadlines: state.deadlines,
       settings: state.settings
     };
+    FLASHCARD_STORES.forEach(store => {
+      out[store] = ['flashcardRuns','guidedReviews'].includes(store) ? state[store].map(record=>this._withoutLegacy(record,['owner','leaseUntil'])) : state[store];
+    });
     out.integrity = BackupIntegrity.describe(out);
     return out;
   },
@@ -5160,7 +5195,7 @@ const Backup = {
    */
   async restoreInto(data, opts){
     const allowedRunId = opts && opts.discardTimerRunId || null;
-    const stores = ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings'];
+    const stores = ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings'].concat(FLASHCARD_STORES);
     await DB.atomic(stores.concat('meta'), async api => {
       // Esta leitura adquire a mesma fila transacional usada para iniciar um
       // cronômetro. A decisão da prévia precisa continuar válida AGORA.
@@ -5180,6 +5215,7 @@ const Backup = {
       data.plans.forEach(x => api.add('plans', x));
       data.weeklyPlans.forEach(x => api.add('weeklyPlans', x));
       data.deadlines.forEach(x => api.add('deadlines', x));
+      FLASHCARD_STORES.forEach(store => (data[store] || []).forEach(x => api.add(store,x)));
       api.put('settings', { key:'settings', value:data.settings });
       if(allowedRunId){
         api.put('meta', { key:'lastDiscardedTimer', value:allowedRunId });
@@ -5320,7 +5356,7 @@ const IntegrityValidator = {
     // Coleções presentes precisam ser listas de verdade: um campo corrompido não
     // pode virar silenciosamente uma restauração vazia (que apagaria tudo).
     if(isV3){
-      ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines'].forEach(k => {
+      ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines'].concat(FLASHCARD_STORES).forEach(k => {
         if(k in raw && raw[k] !== null && raw[k] !== undefined && !Array.isArray(raw[k])){
           throw this.fatal(`A parte "${this.STORE_LABELS[k]}" do arquivo está corrompida.`, 'Arquivo corrompido');
         }
@@ -5373,6 +5409,7 @@ const IntegrityValidator = {
       plans: arr(raw.plans), weeklyPlans: arr(raw.weeklyPlans), deadlines: arr(raw.deadlines),
       settings: Object.assign({}, DEFAULT_SETTINGS, (raw.settings && typeof raw.settings === 'object' && !Array.isArray(raw.settings)) ? raw.settings : {})
     };
+    FLASHCARD_STORES.forEach(store => { if(store in raw) source[store] = raw[store]; });
     return this._finish(this.analyze(source), { format:'v3', notes, raw });
   },
 
@@ -5723,6 +5760,7 @@ const IntegrityValidator = {
     });
 
     const data = { areas, disciplines, topics, sessions, plans, weeklyPlans, deadlines, settings: sanitizeSettings(src.settings) };
+    validateFlashcardCollections(src,data,report);
     return { data, report };
   },
 
@@ -5762,6 +5800,7 @@ function sanitizeSettings(s){
   const src = s && typeof s === 'object' ? s : {};
   // Instalações anteriores não têm os campos da v3.1: todos recebem defaults seguros.
   return {
+    flashcards: sanitizeFlashcardPrefs(src.flashcards),
     theme: ['light','dark','system'].includes(src.theme) ? src.theme : 'dark',
     density: (src.density === 'compact') ? 'compact' : 'comfortable',
     startView: ['today','plan','analytics'].includes(src.startView) ? src.startView : 'today',
@@ -5929,11 +5968,10 @@ const ui = {
    PERSISTÊNCIA DE ALTO NÍVEL (o app fala com estas funções, não com o DB)
    ========================================================================= */
 async function loadAll(){
-  const [meta, settingsRec, areas, disciplines, topics, sessions, plans, weeklyPlans, deadlines] = await Promise.all([
-    DB.getAll('meta'), DB.get('settings','settings'),
-    DB.getAll('areas'), DB.getAll('disciplines'), DB.getAll('topics'),
-    DB.getAll('sessions'), DB.getAll('plans'), DB.getAll('weeklyPlans'), DB.getAll('deadlines')
-  ]);
+  const snapshot = await DB.snapshot(STORES);
+  const {meta,areas,disciplines,topics,sessions,plans,weeklyPlans,deadlines} = snapshot;
+  const settingsRec = snapshot.settings.find(x => x.key === 'settings');
+  FLASHCARD_STORES.forEach(store => { state[store] = snapshot[store] || []; });
   state.meta = {};
   (meta || []).forEach(m => { state.meta[m.key] = m.value; });
   // v6.5: a identidade de `state.settings` é preservada também aqui (ver saveSettings) —
@@ -9759,11 +9797,11 @@ function openRegisterModal(preset){
   /* v7.1 — rascunho de um "Registrar estudo" que ficou pela metade. Só volta quando a
      janela abre sem um contexto pronto (o botão global): um preset (revisar uma
      matéria, registrar um dia do calendário…) é um pedido novo e não herda nada. */
-  const plainOpen = !p.disciplineId && !p.topicIds && !p.types && !p.type && !p.date && mode === 'manual';
+  const plainOpen = !p.disciplineId && !p.disciplineIds && !p.topicIds && !p.types && !p.type && !p.date && mode === 'manual';
   let draft = plainOpen ? FormDraft.load('register') : null;
   if(draft && !(Array.isArray(draft.discIds) && draft.discIds.some(id => getDiscipline(id)))) draft.discIds = [];
 
-  const ctx = p.disciplineId ? null : registerContext();
+  const ctx = p.disciplineId || p.disciplineIds ? null : registerContext();
   const wantDisc = p.disciplineId || (ctx && ctx.disciplineId) || null;
   const wantTopic = p.disciplineId ? (p.topicId || null) : (ctx ? ctx.topicId : null);
   const act = activeDisciplines();
@@ -9771,9 +9809,10 @@ function openRegisterModal(preset){
   // Sem contexto claro, nada é escolhido pela pessoa — a não ser que só exista uma disciplina.
   const discId0 = (presetDisc && !presetDisc.archived) ? presetDisc.id : (act.length === 1 ? act[0].id : '');
   // v7: vários tópicos já escolhidos (revisar assuntos de uma matéria); um tópico solto continua valendo
-  const wantTopics = p.disciplineId ? (Array.isArray(p.topicIds) ? p.topicIds : (wantTopic ? [wantTopic] : [])) : (wantTopic ? [wantTopic] : []);
-  const topicIds0 = wantTopics.map(id => getTopic(id)).filter(t => t && !t.archived && t.disciplineId === discId0).map(t => t.id);
-  const discIds0 = draft && draft.discIds.length ? draft.discIds.filter(id => getDiscipline(id)) : (discId0 ? [discId0] : []);
+  const wantTopics = p.disciplineId || p.disciplineIds ? (Array.isArray(p.topicIds) ? p.topicIds : (wantTopic ? [wantTopic] : [])) : (wantTopic ? [wantTopic] : []);
+  const presetDiscIds = Array.isArray(p.disciplineIds) ? Array.from(new Set(p.disciplineIds)).filter(id=>getDiscipline(id) && !getDiscipline(id).archived).slice(0,MAX_DISCIPLINES_PER_STUDY) : (discId0 ? [discId0] : []);
+  const topicIds0 = wantTopics.map(id => getTopic(id)).filter(t => t && !t.archived && presetDiscIds.includes(t.disciplineId)).map(t => t.id);
+  const discIds0 = draft && draft.discIds.length ? draft.discIds.filter(id => getDiscipline(id)) : presetDiscIds;
   const draftTopics = draft && Array.isArray(draft.topicIds) ? draft.topicIds.filter(id => getTopic(id)) : null;
 
   // v6.7: vários tipos (um tipo solto no preset também vale)
@@ -10928,7 +10967,7 @@ const SessionCommands = {
   /** Exclusão. v6.7: TODOS os tópicos do estudo (de todas as disciplinas) são reconciliados, cada um com o próprio histórico. */
   async remove(id){
     try {
-      return await DB.atomic(this.STORES, async api => {
+      return await DB.atomic(this.STORES.concat(['flashcardRuns','guidedReviews']), async api => {
         const raw = await api.get('sessions', id);
         if(!raw) return { ok:true, already:true, effects:[] };
         const cur = SessionModel.normalize(raw);
@@ -10942,6 +10981,8 @@ const SessionCommands = {
           api.put('topics', rec.topic);
           effects.push({ topic:rec.topic, effect:rec.effect, role:'same' });
         }
+        for(const run of await api.getAll('flashcardRuns')) if(run.sessionId===id) await api.put('flashcardRuns',{...run,sessionId:null});
+        for(const run of await api.getAll('guidedReviews')) if(run.sessionId===id) await api.put('guidedReviews',{...run,sessionId:null});
         api.delete('sessions', id);
         return { ok:true, session:cur, effects };
       });
@@ -11090,7 +11131,7 @@ async function registerStudy(input, opts){
     // revisão geral (sem tópicos): diz que a agenda dos assuntos não mudou e oferece continuar
     const general = SessionModel.isReview(session) && !SessionModel.topicIds(session).length;
     if(general) rows.push('Revisão geral registrada: a agenda dos assuntos não mudou.');
-    toastRich(general ? 'Revisão registrada' : 'Estudo registrado', rows, 'ok', general ? nextActions : []);
+    toastRich(general ? 'Revisão registrada' : 'Estudo registrado', rows, 'ok', (general ? nextActions : []).concat([{label:'Criar flashcard sobre este estudo',run:()=>openFlashcardTypePicker({disciplineId:session.disciplineId,topicId:SessionModel.topicIds(session).length===1?SessionModel.topicIds(session)[0]:null})}]));
   }
   if(res.topicDropped){
     const n = res.droppedCount || 1;
@@ -11489,62 +11530,34 @@ function explainAction(action){
    ========================================================================= */
 function renderReviews(){
   const root = $('#reviews-body');
-  const anyScheduled = ReviewEngine.allScheduled().length > 0;
+  if(ui.reviewsTab === 'flashcards'){ renderFlashcardLibrary(root); return; }
   const off = state.settings.reviewSuggestions === false;
   const ranked = off ? [] : ReviewEngine.rankedQueue();
   const groups = off ? [] : ReviewEngine.suggestionGroups();
-  const upcoming = ReviewEngine.getUpcomingReviews(14);
-  const snoozed = ReviewEngine.snoozedNow();
-  const due = ReviewEngine.getDueReviews();
-  const revMin = state.settings.defaultReviewMinutes || 20;
-
-  const freeReview = () => pickDisciplineThen('Qual matéria você quer revisar?', d => openDisciplineReview(d.id));
-  if(!anyScheduled){
-    mount(root, h('div', { class:'narrow-screen' },
-      h('section', { class:'focus-block compact', 'aria-labelledby':'rv-title' },
-        h('h3', { class:'tf-title', id:'rv-title', text:'Nada sugerido para revisar agora' }),
-        h('p', { class:'tf-reason', text:'Quando você estuda um assunto (um tópico), o Ciclo passa a sugerir quando revisitá-lo. Revisar é opcional — e você pode revisar uma matéria inteira quando quiser.' }),
-        h('div', { class:'tf-actions' },
-          activeDisciplines().length ? h('button', { class:'btn primary', type:'button', onclick:freeReview }, icon('i-review'), 'Revisar uma matéria') : null,
-          h('button', { class:'btn ghost', type:'button', text:'Como funcionam as revisões?', onclick:openReviewPrimer }),
-          activeDisciplines().length ? h('button', { class:'linkbtn', type:'button', text:'Adicionar um tópico', onclick:() => HELP_ACTIONS.addTopic() }) : null))));
-    return;
-  }
-
-  const parts = [];
-  const lead = h('section', { class:'focus-block compact', 'aria-labelledby':'rv-title' },
-    h('h3', { class:'tf-title', id:'rv-title', text: off ? 'Sugestões de revisão desligadas'
-      : groups.length ? (groups.length === 1 ? `Você pode revisar ${groups[0].discipline.name}.` : 'Há assuntos que podem valer uma revisão.')
-      : 'Nada sugerido para revisar agora.' }),
-    h('p', { class:'tf-reason', text: off ? 'Você escolheu não ver sugestões. Dá para revisar qualquer matéria quando quiser, e religar as sugestões em Configurações.'
-      : groups.length ? 'São sugestões, não tarefas. Revise a matéria inteira, escolha os assuntos, ou deixe para depois — nada do seu histórico muda por isso.'
-      : (upcoming.length ? `A próxima sugestão é ${upcoming[0].name}, ${fmtRelativeFuture(upcoming[0].reviewDueDate)}.` : 'Os assuntos voltam sozinhos quando chega a hora.') }),
-    h('div', { class:'tf-actions' },
-      groups.length ? h('button', { class:'btn primary', type:'button', onclick:() => startQueuedReviewSession(revMin) }, icon('i-play'), `Revisar por ${revMin} min`) : null,
-      h('button', { class: groups.length ? 'btn ghost' : 'btn primary', type:'button', onclick:freeReview }, icon('i-review'), 'Revisão livre'),
-      h('button', { class:'linkbtn muted', type:'button', text:'Como funciona?', onclick:openReviewPrimer }),
-      off ? h('button', { class:'linkbtn', type:'button', text:'Religar sugestões', onclick: async () => { state.settings.reviewSuggestions = true; await saveSettings(); render(); } }) : null),
-    reviewSituation(due, snoozed, upcoming));
-  parts.push(lead);
-
-  const sugestoes = renderDeadlineSuggestions();
-  if(sugestoes) parts.push(sugestoes);
-
-  const holder = h('div', { class:'coll-results' });
-  const st = ui.reviewsSearch = ui.reviewsSearch || { q:'' };
-  const draw = () => drawReviewGroups(holder, groups, ranked, upcoming, snoozed, st.q);
-  if(ranked.length + upcoming.length >= 8){
-    const search = contextSearch({ id:'rv-q', fk:'rv-q', value:st.q, placeholder:'Buscar assunto ou matéria…', label:'Buscar revisão', holder,
-      onInput:(v) => { st.q = v; draw(); } });
-    parts.push(h('div', { class:'coll-tools' }, search.node));
-  } else st.q = '';
-  parts.push(holder);
-  draw();
-
-  const active = document.activeElement;
-  const keep = active && root.contains(active) && active.id === 'rv-q';
-  mount(root, h('div', { class:'narrow-screen wide reviews-v7' }, parts));
-  if(keep){ const i = $('#rv-q'); if(i){ i.focus(); const n2 = i.value.length; try { i.setSelectionRange(n2, n2); } catch(_){} } }
+  const upcoming = ReviewEngine.getUpcomingReviews(14), snoozed = ReviewEngine.snoozedNow(), due = ReviewEngine.getDueReviews();
+  const cards = FlashcardModel.queue({limit:200,newLimit:200});
+  const parts = [flashcardToolbar(), h('section', {class:'focus-block compact', 'aria-labelledby':'rv-title'},
+    h('h3',{class:'tf-title',id:'rv-title',text:'O que você quer revisitar?'}),
+    h('p',{class:'tf-reason',text:off?'Você pode revisar o que quiser. As sugestões estão desligadas.':groups.length?'Há assuntos que você pode revisitar. Escolha o que faz sentido agora.':'Revise uma disciplina inteira, escolha assuntos ou pratique cartões. Você decide quando voltar.'}),
+    h('div',{class:'tf-actions'},fcButton('Começar revisão',openFreeReview,'primary'),fcButton('Revisão guiada',openGuidedReviewBuilder),fcButton('Flashcards',openFlashcards)),
+    h('p',{class:'hint',text:plural(ranked.length,'assunto sugerido','assuntos sugeridos')+' · '+(cards.length===200?'200 ou mais direções disponíveis para praticar':plural(cards.length,'direção de cartão disponível','direções de cartões disponíveis'))}),
+    h('div',{class:'tf-actions'},h('button',{class:'linkbtn muted',type:'button',text:'Como funcionam as revisões?',onclick:openReviewPrimer}),
+      off?fcButton('Religar sugestões',async()=>{state.settings.reviewSuggestions=true;await saveSettings();render();}):null))];
+  reviewDrafts().slice(0,3).forEach(d=>parts.push(h('div',{class:'fc-resume'},h('span',{text:'Quer continuar seu roteiro? '+plural(d.items.filter(i=>i.status==='done').length,'atividade realizada','atividades realizadas')}),fcButton('Retomar roteiro',()=>openGuidedReviewPlayer(d.id)))));
+  const interruptedCards=state.flashcardRuns.filter(r=>!r.finishedAt&&!r.parentGuidedId).at(-1);
+  if(interruptedCards)parts.push(h('div',{class:'fc-resume'},h('span',{text:'Quer continuar seus cartões? As respostas confirmadas estão guardadas.'}),fcButton('Retomar cartões',()=>openFlashcardPlayer(interruptedCards.id))));
+  const suggestions=renderDeadlineSuggestions();if(suggestions)parts.push(suggestions);
+  const holder=h('div',{class:'coll-results'}),searchState=ui.reviewsSearch=ui.reviewsSearch||{q:''};
+  const draw=()=>drawReviewGroups(holder,groups,ranked,upcoming,snoozed,searchState.q);
+  if(ranked.length+upcoming.length>=8){
+    const search=contextSearch({id:'rv-q',fk:'rv-q',value:searchState.q,placeholder:'Buscar assunto ou matéria…',label:'Buscar revisão',holder,onInput:v=>{searchState.q=v;draw();}});parts.push(h('div',{class:'coll-tools'},search.node));
+  }else searchState.q='';
+  parts.push(holder);draw();
+  parts.push(h('details',{class:'disclosure'},h('summary',{text:'Explorar disciplinas'}),h('div',{class:'disclosure-body'},activeDisciplines().map(d=>h('div',{class:'fc-set-row'},h('span',{text:d.name}),fcButton('Revisar a disciplina',()=>openDisciplineReview(d.id,{mode:'general'})),fcButton('Escolher assuntos',()=>openDisciplineReview(d.id,{mode:'topics'})))))),
+    reviewSituation(due,snoozed,upcoming),reviewsRecentHistory());
+  const active=document.activeElement,keep=active&&root.contains(active)&&active.id==='rv-q';
+  mount(root,h('div',{class:'narrow-screen wide reviews-v7'},parts));
+  if(keep){const i=$('#rv-q');if(i){i.focus();const end=i.value.length;try{i.setSelectionRange(end,end);}catch(_){}}}
 }
 
 /** Os números, para quem quiser: recolhidos por padrão. */
@@ -11867,6 +11880,7 @@ function startReview(topicId, presetMethod){
       content: body,
       actions:[
         h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
+        state.flashcardNotes.some(n=>n.topicId===t.id && !n.deletedAt && !n.archived) ? fcButton('Praticar cartões deste assunto',()=>{close();openFlashcardStudyOptions({disciplineId:t.disciplineId,topicId:t.id,setId:''});}) : null,
         h('button', { class:'btn ghost', type:'button', text:'Registrar sem cronômetro',
           onclick:() => { close(); openReviewOutcomeModal(t.id, method, ReviewEngine.estimateMinutes(t, method)); } }),
         h('button', { class:'btn primary', type:'button', text:'Começar revisão',
@@ -11915,72 +11929,10 @@ function openReviewOutcomeModal(topicId, method, suggestedMinutes){
 /* =========================================================================
    MONTAR SESSÃO DE REVISÃO — "quanto tempo você tem agora?"
    ========================================================================= */
-function openSessionBuilder(){
-  let minutes = 20;
-  openModal(close => {
-    const preview = h('div');
-    const render = () => {
-      const plan = ReviewEngine.buildSession(minutes);
-      clear(preview);
-      if(!plan.items.length){
-        preview.append(h('p', { class:'hint', text:'Nenhuma revisão pendente no momento.' }));
-        return;
-      }
-      preview.append(h('p', { class:'card-title', style:'margin-top:6px',
-        text:`Revisão de ${plan.totalMinutes} min` }));
-      plan.items.forEach(it => preview.append(h('div', { class:'builder-item' },
-        h('div', { class:'bi-main' },
-          h('div', { class:'bi-name', text: it.topic.name }),
-          h('div', { class:'bi-sub', text: disciplineName(it.topic.disciplineId) + ' · ' + it.reasons.slice(0,2).join(' · ') }),
-          h('div', { class:'bi-method', text: methodLabel(it.method) })),
-        h('span', { class:'num bi-min', text: it.minutes + ' min' }))));
-      if(plan.remaining > 0){
-        preview.append(h('p', { class:'hint', style:'margin-top:10px',
-          text:`Outras ${plan.remaining} revisões continuam na fila para depois. Nada é marcado como concluído sem você revisar.` }));
-      }
-    };
-
-    const chips = h('div', { class:'chips', style:'margin-bottom:12px' },
-      [10,20,30,45].map(v => h('button', { class:'chip', type:'button', 'aria-pressed': v === minutes ? 'true':'false', text: v + ' min',
-        onclick:() => { minutes = v; $$('.chip', chips).forEach(c => c.setAttribute('aria-pressed','false'));
-                        $$('.chip', chips).find(c => c.textContent === v + ' min').setAttribute('aria-pressed','true');
-                        customIn.value = ''; render(); } })));
-    const customIn = h('input', { type:'number', id:'sb-custom', min:'5', step:'5', placeholder:'Outro valor', inputmode:'numeric' });
-    customIn.addEventListener('input', () => {
-      const v = Number(customIn.value);
-      if(v >= 5){ minutes = v; $$('.chip', chips).forEach(c => c.setAttribute('aria-pressed','false')); render(); }
-    });
-    render();
-
-    return {
-      title:'Quanto tempo você tem agora?',
-      content: h('div',
-        chips,
-        h('div', { class:'field' }, h('label', { for:'sb-custom', text:'Personalizado (minutos)' }), customIn),
-        preview),
-      actions:[
-        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
-        h('button', { class:'btn primary', type:'button', text:'Começar', onclick:() => {
-          const plan = ReviewEngine.buildSession(minutes);
-          if(!plan.items.length){ toast('Nenhuma revisão pendente.', 'err'); return; }
-          close();
-          ui.reviewQueue = plan.items.map(i => ({ topicId:i.topic.id, method:i.method }));
-          runNextQueuedReview();
-        } })
-      ]
-    };
-  }, { size:'wide' });
-}
+function openSessionBuilder(){ openGuidedReviewBuilder(); }
 
 /** "Revisar por N minutos": monta a sessão direto, sem passar pelo seletor. */
-function startQueuedReviewSession(minutes){
-  const plan = ReviewEngine.buildSession(minutes);
-  if(!plan.items.length){ toast('Nenhuma revisão pendente agora.', 'info'); return; }
-  ui.reviewQueue = plan.items.map(i => ({ topicId:i.topic.id, method:i.method }));
-  toast(`${plan.items.length} ${plan.items.length === 1 ? 'revisão' : 'revisões'} · cerca de ${plan.totalMinutes} min. Comece por ${plan.items[0].topic.name}.`, 'info',
-    { title:`Revisão de ${minutes} minutos pronta` });
-  runNextQueuedReview();
-}
+function startQueuedReviewSession(minutes){ openGuidedReviewBuilder(minutes); }
 
 /** Encadeia as revisões escolhidas na sessão montada. */
 function runNextQueuedReview(){
@@ -15988,7 +15940,8 @@ async function deleteDisciplineForever(id){
        nada sai. v6.8 — os estudos são lidos inteiros (não pelo índice, que só
        conhece a primeira disciplina). Estudo só desta disciplina sai; estudo com
        outras perde a parte desta (tempo, tópicos e resultados dela) e continua. */
-    await DB.atomic(['disciplines','topics','sessions','deadlines'], async api => {
+    await DB.atomic(['disciplines','topics','sessions','deadlines'].concat(FLASHCARD_STORES), async api => {
+      await FlashcardCommands.detachDiscipline(api,id);
       const [tps2, sess2, dls] = [
         await api.getAllByIndex('topics', 'disciplineId', id),
         await api.getAll('sessions'),
@@ -17551,6 +17504,14 @@ function renderAnalyticsResult(root){
   const focus = q.focus;
   const parts = [analyticsResultHeader(a)];
   const empty = analyticsEmptyFor(a, focus);
+  if(focus === 'reviews'){
+    const options={from:dateToISO(a.range.start),to:dateToISO(a.range.end),disciplineIds:a.scope.discIds,topicIds:a.scope.topicIds,types:a.scope.types};
+    parts.push(flashcardStatsPanel(options));
+    if(empty && FlashcardModel.stats(options).total){
+      parts.push(h('p',{class:'hint',text:'Suas respostas de cartões estão disponíveis acima. O tempo aparece nas Análises quando você registra um estudo.'}));
+      mount(root,h('div',{class:'an-result'},parts));return;
+    }
+  }
   if(empty){
     parts.push(empty);
     mount(root, h('div', { class:'an-result' }, parts));
@@ -20399,7 +20360,7 @@ function renderHistoryTable(){
            nomes no rótulo acessível e na edição. O tempo é o do estudo, uma vez. */
         /* v6.8 — várias disciplinas continuam numa linha só: "Matemática · Inglês",
            "4 tópicos · Teoria · Exercícios". A divisão do tempo fica nos detalhes. */
-        const sub = [SessionModel.subline(s, { maxTopics:2 }), EvidenceModel.summaryText(s) || null].filter(Boolean).join(' · ');
+        const sub = [SessionModel.subline(s, { maxTopics:2 }), EvidenceModel.summaryText(s) || null, FlashcardModel.summary(s.id)].filter(Boolean).join(' · ');
         const allTopics = SessionModel.topicNames(s);
         const title = SessionModel.title(s);
         const label = `${SessionModel.disciplineNames(s).join(', ')}${allTopics.length ? ', ' + allTopics.join(', ') : (topicLabelOf(s) ? ', ' + topicLabelOf(s) : '')}, ${fmtDuration(s.minutes)}. Editar estudo`;
@@ -20531,6 +20492,7 @@ function openEditSessionModal(id){
       difficulty: difficultyField('es', difficulty, v => { difficulty = v; }), outcome:outcomeField, comment:comment.node, results: results.node });
     // v6.4.1 — a mesma composição do registro: quando e o quê lado a lado; "Como foi" depois.
     const body = h('div', { class:'rm' },
+      flashcardSessionDetail(s.id),
       h('div', { class:'rm-grid' },
         h('section', { class:'rm-group rm-when', 'aria-labelledby':'es-g-when' },
           h('h4', { class:'rm-group-t', id:'es-g-when', text:'Quando' }),
@@ -20999,7 +20961,8 @@ function renderData(){
   const counts = [
     plural(state.areas.length, 'área', 'áreas'), plural(state.disciplines.length, 'disciplina', 'disciplinas'),
     plural(state.topics.length, 'tópico', 'tópicos'), plural(state.sessions.length, 'estudo registrado', 'estudos registrados'),
-    plural(state.weeklyPlans.length, 'semana registrada', 'semanas registradas'), plural(state.deadlines.length, 'prazo', 'prazos')
+    plural(state.weeklyPlans.length, 'semana registrada', 'semanas registradas'), plural(state.deadlines.length, 'prazo', 'prazos'),
+    plural(state.flashcardNotes.filter(n=>!n.deletedAt).length,'conteúdo de flashcard','conteúdos de flashcards'), plural(state.flashcardResponses.length,'resposta de cartão','respostas de cartões')
   ];
   /* v7 — Ciclo + outras ferramentas: tudo sai por arquivo, por decisão da pessoa */
   const tools = h('section', { class:'list-block', 'aria-labelledby':'dt-tools' },
@@ -21169,7 +21132,8 @@ function askTimerBeforeRestore(parsed, fileName){
 function openRestorePreview(parsed, fileName, discardTimer){
   const d = parsed.data, r = parsed.report;
   const order = [['disciplines','Disciplinas'], ['topics','Tópicos'], ['sessions','Estudos registrados'], ['areas','Áreas'],
-    ['deadlines','Prazos'], ['plans','Planos'], ['weeklyPlans','Semanas registradas']];
+    ['deadlines','Prazos'], ['plans','Planos'], ['weeklyPlans','Semanas registradas'],
+    ['flashcardTemplates','Modelos de flashcards'],['flashcardSets','Conjuntos'],['flashcardNotes','Conteúdos de flashcards'],['flashcards','Direções de revisão'],['flashcardResponses','Respostas de cartões'],['flashcardRuns','Sessões de cartões'],['guidedReviews','Roteiros guiados']];
   const rows = order.map(([k, label]) => {
     const c = r.counts[k] || { found:0, accepted:0, repaired:0, ignored:0 };
     if(!c.found) return null;
@@ -22668,6 +22632,7 @@ function pickDisciplineThen(title, fn){
 }
 
 const HELP_ACTIONS = {
+  openFlashcards: () => openFlashcards(),
   addDiscipline:   () => openDisciplineModal(null),
   addTopic:        () => { if(!activeDisciplines().length){ openDisciplineModal(null); return; } pickDisciplineThen('Em qual disciplina?', d => openTopicModal(d.id, null)); },
   addArea:         () => openAreaModal(null),

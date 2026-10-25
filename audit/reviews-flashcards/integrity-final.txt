@@ -1,0 +1,17 @@
+✔ seis formatos preservam Unicode, campos opcionais e conteúdo sem tópico (3373.420715ms)
+✔ revisão geral, tópicos e cartões mantêm agendas separadas e tempo único (9261.618445ms)
+✔ sessão de cartões com duas disciplinas registra 40 minutos uma vez (5923.644026ms)
+✔ backup completo preserva modelos, conjuntos, direções, respostas e roteiro pendente (1883.684777ms)
+✔ backup sintético legado de 365 dias conserva checksum e todos os estudos (3535.072979ms)
+✔ backup inválido recusa IDs duplicados, referências órfãs e agendamentos malformados (1723.675227ms)
+✔ modelos reutilizáveis e preferências gerais sobrevivem à recarga sem copiar conteúdo (2874.40769ms)
+✔ excluir o registro temporal preserva respostas e remove o vínculo da sessão (1871.371744ms)
+✔ backup exportado pela v7.2 original é importado com checksum e resultados íntegros (1756.747167ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 33379.997311

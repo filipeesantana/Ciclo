@@ -1,0 +1,11 @@
+✔ reabrir e duplicar conteúdo preenche textareas e preserva campos opcionais (4146.972056ms)
+✔ F5 durante a prática libera a reserva e permite retomar imediatamente (3455.543714ms)
+✔ upgrade físico 1 → 2 cria stores e preserva registros existentes (4752.593284ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13885.122912

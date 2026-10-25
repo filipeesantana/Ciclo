@@ -1,6 +1,6 @@
 # Ciclo
 
-**v7.2.0 — Foco e planejamento**, preparada para revisão no PR #2. [Auditoria de campo de 22/10/2026 e testes com 365 dias](audit/campo-365/RELATORIO-FINAL.md). A publicação é uma etapa separada.
+**v7.3.0 — Reviews & Flashcards**, preparada em branch separada para revisão. [Relatório, testes e capturas reais](audit/reviews-flashcards/RELATORIO.md). A publicação é uma etapa separada.
 
 **Seu sistema de estudos.** Organize o que você estuda, registre seus estudos, receba sugestões de revisão no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta e sem servidor. Depois de aberto, o Ciclo não usa a internet para nada.
 
@@ -287,13 +287,13 @@ Depois de muitos estudos registrados desde o último backup, a tela Hoje mostra 
 
 ## Como é feito
 
-O Ciclo é uma aplicação local-first feita em HTML, CSS e JavaScript puro, sem frameworks e sem dependências externas. Os dados ficam no IndexedDB do navegador e nenhuma informação é enviada para um servidor.
+O Ciclo é uma aplicação local-first feita em HTML, CSS e JavaScript puro, sem frameworks ou dependências carregadas da rede. O agendador FSRS é distribuído localmente, com sua licença MIT em `vendor/`. Os dados ficam no IndexedDB do navegador e nenhuma informação é enviada para um servidor.
 
 ## Notas técnicas
 
 Curto e direto, para quem quer saber exatamente o que esperar.
 
-- **Navegadores.** A auditoria desta evolução executou testes automatizados em Chromium, Firefox e WebKit, nos dois temas e em telas de 320 px a 1920 px; a carga com até 10.000 estudos foi medida no Chromium. Consulte a [matriz com resultados e limites](audit/campo-365/MATRIZ-CROSS-BROWSER.md) e os checks do PR #2 para a execução da v7.2.0. Chrome/Edge oficiais, Safari real, aparelhos físicos e leitores de tela não foram testados.
+- **Navegadores.** A v7.3 foi executada em Chromium, nos dois temas e em larguras de 320 a 1920 px. Os downloads de Firefox e WebKit foram bloqueados pela política de rede deste ambiente: estes motores não foram testados nesta rodada. A CI mantém os três motores configurados. Consulte a [matriz e as evidências desta versão](audit/reviews-flashcards/RELATORIO.md). Chrome/Edge oficiais, Safari real, aparelhos físicos e leitores de tela não foram testados.
 - **Avisos do Pomodoro.** O som e o aviso do navegador dependem de permissões e do próprio navegador. Com a aba em segundo plano ou o aparelho bloqueado, o aviso pode atrasar ou não aparecer — o tempo registrado continua certo mesmo assim. A tela cheia do modo foco também depende do navegador.
 - **Animações.** São curtas e opcionais: com *Reduzir animações* (em Configurações → Aparência) ou com a preferência do sistema ligada, tudo muda de estado na hora. Nenhuma informação depende de uma animação.
 - **Onde os dados ficam.** No IndexedDB do navegador; o cronômetro em andamento, o tema e os rascunhos de registro ficam no `localStorage`, e o rascunho do guia do primeiro uso, no `sessionStorage` da aba. Nada é enviado para fora.
@@ -301,8 +301,8 @@ Curto e direto, para quem quer saber exatamente o que esperar.
 - **O que as datas significam.** Datas de estudo, de prazo e de revisão são dias do calendário **no fuso do seu aparelho**. Um estudo pertence ao dia em que começou.
 - **Copiar o prompt.** Depende da permissão do navegador para a área de transferência. Quando ela é negada, o Ciclo avisa e mostra o texto para copiar à mão.
 - **Duas abas.** Pode usar. As abas compartilham os dados e se avisam quando algo muda; com um formulário aberto, o Ciclo avisa em vez de mexer no que você está digitando.
-- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v7.2.0 mantém o formato lógico 10 e o IndexedDB 1 da v7.1, sem conversão de dados. Os arquivos de interface usam o identificador de cache 7.2.0. Recarregue as outras abas abertas para que todas usem a mesma versão.
-- **Voltar para uma versão anterior.** A v7.1 usa o mesmo formato de backup da v7.2.0. Versões até a v7.0 recusam esses backups por não conhecerem o formato 10; os dados do navegador continuam intactos.
+- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v7.3 usa o formato lógico 11 e IndexedDB 2: acrescenta stores de cartões e roteiros sem converter os registros existentes. Os arquivos de interface usam o identificador de cache 7.3.0. Recarregue as outras abas abertas para que todas usem a mesma versão.
+- **Voltar para uma versão anterior.** Versões até a v7.2 recusam backups da v7.3 por não conhecerem o formato 11. O banco físico 2 também exige a aplicação atual. Guarde seu backup anterior antes de atualizar; não abra uma versão antiga sobre o banco atualizado.
 - **Se algo der errado.** Recarregar a página é seguro: tudo o que foi registrado já está gravado. Se uma gravação falhar, o Ciclo diz isso e mantém a janela aberta com o que você digitou. Se os dados sumirem, restaure o último backup em **Dados → Restaurar backup**.
 
 ## Contato
@@ -312,6 +312,19 @@ Dúvidas, sugestões ou problemas: **contatosantanafilipe@gmail.com**
 O endereço também está no aplicativo, em **Ajuda** e em **Configurações → Sobre**, com opção de copiar o endereço ou o relato de problema mesmo sem um aplicativo de e-mail configurado.
 
 ## Versão atual
+
+**v7.3.0 — Reviews & Flashcards**
+
+- **Revisar com liberdade:** panorama, revisão livre de várias disciplinas e tópicos, sugestões adiáveis e histórico recente.
+- **Revisão guiada:** escolha o tempo, adapte assuntos, ordem, métodos e durações; pause, pule ou retome. O roteiro registra um único estudo, com resultados específicos.
+- **Seis tipos de flashcard:** pergunta e resposta, termos, idiomas, lacunas com seleção visual, problemas e sequências. Disciplina é suficiente; tópico e conjunto são opcionais.
+- **Criação em sequência e modelos salvos:** mantenha contexto, campos preferidos e direção, sem copiar o conteúdo. Edições preservam o histórico; mudanças de tipo usam duplicação segura.
+- **Prática e agendas independentes:** FSRS-6 local (ts-fsrs 5.2.3), autoavaliação e histórico por direção. Prática livre antecipa sem alterar a agenda. Nenhuma porcentagem de memória restante.
+- **Tempo correto e dados íntegros:** respostas são eventos; registrar tempo cria um único estudo. Backups incluem modelos, conjuntos, conteúdos, direções, respostas, sessões e roteiros.
+
+O formato lógico passa a **11** e o banco físico a **2**, sem alterar os estudos já existentes. Backups anteriores continuam importáveis. [Decisões técnicas, migração, limites e fontes](audit/reviews-flashcards/ARQUITETURA.md).
+
+### v7.2.0
 
 **v7.2.0 — Foco e planejamento**
 
@@ -457,9 +470,9 @@ Desenvolvido por **Filipe Santana**
 
 ## Auditoria e validação de desenvolvimento
 
-A evolução em revisão está preparada como **7.2.0**, com schema lógico **10** e IndexedDB físico **1**. Consulte [a auditoria de campo](audit/campo-365/RELATORIO-FINAL.md) e [a matriz de navegadores](audit/campo-365/MATRIZ-CROSS-BROWSER.md). Os relatórios na raiz de `audit/` preservam a rodada anterior sobre a v7.1.0. Não há publicação automática.
+A evolução em revisão está preparada como **7.3.0**, com schema lógico **11** e IndexedDB físico **2**. Consulte o [relatório de entrega](audit/reviews-flashcards/RELATORIO.md) e o [contrato de dados e algoritmo](audit/reviews-flashcards/ARQUITETURA.md). Os relatórios anteriores preservam suas versões e resultados originais. Não há publicação automática.
 
-O aplicativo continua sendo servido diretamente pelos quatro arquivos estáticos, sem dependências de produção. Para desenvolver e testar, use Node.js 24:
+O aplicativo é servido diretamente pelos arquivos estáticos, incluindo a cópia local licenciada do FSRS; não há build nem downloads em execução. Para desenvolver e testar, use Node.js 24:
 
 ```sh
 npm ci --ignore-scripts
@@ -467,6 +480,7 @@ npx playwright install chromium
 npm run check
 npm test
 npm run audit:browser
+npm run audit:flashcards
 npm run audit:inventory
 npm run audit:benchmark
 ```

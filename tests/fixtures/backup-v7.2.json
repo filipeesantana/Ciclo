@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 10,
+  "app": "ciclo",
+  "appVersion": "7.2.0",
+  "exportedAt": "2026-10-25T16:12:02.488Z",
+  "areas": [
+    {
+      "id": "escola",
+      "name": "Escola",
+      "archived": false,
+      "createdAt": "2026-10-25T16:12:02.419Z",
+      "updatedAt": "2026-10-25T16:12:02.419Z"
+    }
+  ],
+  "disciplines": [
+    {
+      "id": "matematica",
+      "areaId": null,
+      "name": "Matemática",
+      "priority": 3,
+      "contentNature": "mixed",
+      "reviewStrategy": "inherit",
+      "preferredReviewMethod": "inherit",
+      "archived": false,
+      "createdAt": "2026-10-25T16:12:02.419Z",
+      "updatedAt": "2026-10-25T16:12:02.419Z"
+    },
+    {
+      "id": "portugues",
+      "areaId": "escola",
+      "name": "Português",
+      "priority": 3,
+      "contentNature": "mixed",
+      "reviewStrategy": "inherit",
+      "preferredReviewMethod": "inherit",
+      "archived": false,
+      "createdAt": "2026-10-25T16:12:02.419Z",
+      "updatedAt": "2026-10-25T16:12:02.419Z"
+    }
+  ],
+  "topics": [
+    {
+      "id": "crase",
+      "disciplineId": "portugues",
+      "name": "Uso da crase",
+      "sortOrder": 0,
+      "archived": false,
+      "reviewEnabled": true,
+      "firstStudiedAt": "2026-10-25",
+      "lastStudiedAt": "2026-10-25",
+      "reviewDueDate": "2026-10-27",
+      "reviewIntervalDays": 2,
+      "lastReviewedAt": "2026-10-25",
+      "reviewRepetitions": 1,
+      "masteryLevel": 1,
+      "consecutiveSuccessfulReviews": 0,
+      "priority": 3,
+      "reviewStrategy": "inherit",
+      "preferredReviewMethod": "inherit",
+      "reviewCycleStep": 0,
+      "reviewFailures": 0,
+      "lastReviewOutcome": "hard",
+      "createdAt": "2026-10-25T16:12:02.419Z",
+      "updatedAt": "2026-10-25T16:12:02.472Z",
+      "lastReviewMethod": "exercises"
+    },
+    {
+      "id": "fracoes",
+      "disciplineId": "matematica",
+      "name": "Frações",
+      "sortOrder": 0,
+      "archived": false,
+      "reviewEnabled": true,
+      "firstStudiedAt": "2026-10-25",
+      "lastStudiedAt": "2026-10-25",
+      "reviewDueDate": "2026-10-29",
+      "reviewIntervalDays": 4,
+      "lastReviewedAt": "2026-10-25",
+      "reviewRepetitions": 1,
+      "masteryLevel": 3,
+      "consecutiveSuccessfulReviews": 1,
+      "priority": 3,
+      "reviewStrategy": "inherit",
+      "preferredReviewMethod": "inherit",
+      "reviewCycleStep": 0,
+      "reviewFailures": 0,
+      "lastReviewOutcome": "remembered",
+      "createdAt": "2026-10-25T16:12:02.419Z",
+      "updatedAt": "2026-10-25T16:12:02.472Z",
+      "lastReviewMethod": "exercises"
+    },
+    {
+      "id": "pontuacao",
+      "disciplineId": "portugues",
+      "name": "Pontuação",
+      "sortOrder": 0,
+      "archived": false,
+      "reviewEnabled": true,
+      "firstStudiedAt": "2026-10-17",
+      "lastStudiedAt": "2026-10-17",
+      "reviewDueDate": "2026-10-18",
+      "reviewIntervalDays": 1,
+      "lastReviewedAt": null,
+      "reviewRepetitions": 0,
+      "masteryLevel": 2,
+      "consecutiveSuccessfulReviews": 0,
+      "priority": 3,
+      "reviewStrategy": "inherit",
+      "preferredReviewMethod": "inherit",
+      "reviewCycleStep": 0,
+      "reviewFailures": 0,
+      "lastReviewOutcome": null,
+      "createdAt": "2026-10-25T16:12:02.419Z",
+      "updatedAt": "2026-10-25T16:12:02.452Z"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "30fd7bd9-68c5-4504-9c58-e479f4c91f88",
+      "disciplineId": "portugues",
+      "legacyTopicText": "",
+      "disciplineEntries": [
+        {
+          "disciplineId": "portugues",
+          "minutes": null
+        }
+      ],
+      "date": "2026-10-17",
+      "startedAt": null,
+      "endedAt": null,
+      "minutes": 30,
+      "breaks": [],
+      "difficulty": null,
+      "comment": "Registro sintético de compatibilidade.",
+      "topicEntries": [
+        {
+          "topicId": "pontuacao",
+          "disciplineId": "portugues",
+          "minutes": null,
+          "outcome": null,
+          "strategy": "adaptive"
+        }
+      ],
+      "types": [],
+      "reviewMethod": null,
+      "results": [
+        {
+          "id": "q",
+          "kind": "questions",
+          "disciplineId": null,
+          "topicId": null,
+          "label": "",
+          "total": 10,
+          "correct": 8
+        }
+      ],
+      "createdAt": "2026-10-25T16:12:02.450Z",
+      "updatedAt": "2026-10-25T16:12:02.450Z"
+    },
+    {
+      "id": "f462fbc3-1226-41b8-a3ca-a26949f4969f",
+      "disciplineId": "portugues",
+      "legacyTopicText": "",
+      "disciplineEntries": [
+        {
+          "disciplineId": "portugues",
+          "minutes": 20
+        },
+        {
+          "disciplineId": "matematica",
+          "minutes": 20
+        }
+      ],
+      "date": "2026-10-25",
+      "startedAt": null,
+      "endedAt": null,
+      "minutes": 40,
+      "breaks": [],
+      "difficulty": null,
+      "comment": "",
+      "topicEntries": [
+        {
+          "topicId": "crase",
+          "disciplineId": "portugues",
+          "minutes": null,
+          "outcome": "hard",
+          "strategy": "adaptive"
+        },
+        {
+          "topicId": "fracoes",
+          "disciplineId": "matematica",
+          "minutes": null,
+          "outcome": "remembered",
+          "strategy": "adaptive"
+        }
+      ],
+      "types": [
+        "revisao"
+      ],
+      "reviewMethod": "exercises",
+      "results": [],
+      "createdAt": "2026-10-25T16:12:02.468Z",
+      "updatedAt": "2026-10-25T16:12:02.468Z"
+    }
+  ],
+  "plans": [],
+  "weeklyPlans": [],
+  "deadlines": [],
+  "settings": {
+    "theme": "dark",
+    "density": "comfortable",
+    "startView": "today",
+    "helpMode": "off",
+    "hoverHints": true,
+    "showUpcomingReviews": true,
+    "seenTips": [],
+    "weekStart": "monday",
+    "defaultSessionMinutes": 40,
+    "defaultReviewMinutes": 20,
+    "autoReviewNewTopics": true,
+    "reduceMotion": true,
+    "defaultPeriod": "semana",
+    "defaultReviewStrategy": "adaptive",
+    "defaultReviewMethod": "auto",
+    "showDailyQuote": true,
+    "seenWhatsNew": "7.2.0",
+    "studyDays": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "savedAnalyses": [],
+    "todayHidden": [],
+    "analyticsStart": "overview",
+    "reviewSuggestions": true,
+    "reviewLayout": "discipline",
+    "aiIncludeComments": true,
+    "timerMode": "free",
+    "pomodoro": {
+      "preset": "classic",
+      "focusMin": 25,
+      "shortMin": 5,
+      "longMin": 15,
+      "every": 4,
+      "autoNext": false,
+      "sound": false,
+      "notify": false
+    }
+  },
+  "integrity": {
+    "algorithm": "cyrb53",
+    "digest": "033d0cea0bb9f5",
+    "counts": {
+      "areas": 1,
+      "disciplines": 2,
+      "topics": 3,
+      "sessions": 2,
+      "plans": 0,
+      "weeklyPlans": 0,
+      "deadlines": 0,
+      "results": 1
+    }
+  }
+}
