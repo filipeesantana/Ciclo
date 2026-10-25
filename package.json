@@ -3,8 +3,9 @@
   "private": true,
   "scripts": {
     "test": "node --test --test-timeout=30000 --test-concurrency=1 tests/*.test.cjs",
-    "check": "node --check app.js && node --check content.js",
+    "check": "node --check app.js && node --check content.js && node --check flashcards.js && node --check reviews.js",
     "audit:browser": "node tests/browser-audit.cjs",
+    "audit:flashcards": "node tests/flashcards-audit.cjs",
     "audit:inventory": "node tests/inventory.cjs",
     "audit:benchmark": "node tests/benchmark.cjs",
     "audit:field": "node tests/field-review.cjs",

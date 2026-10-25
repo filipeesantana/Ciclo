@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — CONTEÚDO ESTÁTICO (v7.2.0 · Foco e planejamento)
+   CICLO — CONTEÚDO ESTÁTICO (v7.3.0 · Reviews & Flashcards)
    Textos, guias e frases. Nada aqui vai para o IndexedDB e nada vem da rede.
 
    Blocos: DAILY_QUOTES · REVIEW_METHOD_GUIDES · HELP_SECTIONS ·
@@ -229,16 +229,16 @@ const REVIEW_METHOD_GUIDES = {
   },
   flashcards: {
     label:'Flashcards',
-    short:'Pergunta de um lado, resposta do outro.',
-    intro:'Você usa cartões com pergunta e resposta para treinar recuperação rápida de fatos.',
+    short:'Tente lembrar, revele e avalie sua resposta.',
+    intro:'Use os cartões nativos do Ciclo ou cartões externos para praticar recordação. Eles complementam exercícios e aplicação real.',
     steps:[
-      'Use cartões de papel ou um aplicativo de flashcards da sua preferência.',
+      'Abra Revisões → Flashcards para praticar cartões criados no Ciclo, ou use seus cartões externos.',
       'Leia a pergunta e responda antes de virar o cartão.',
-      'Separe os que errou para repetir mais vezes.',
-      'Registre aqui como foi a revisão quando terminar.'
+      'Confira a resposta e avalie sua lembrança com honestidade.',
+      'Ao terminar, escolha guardar apenas as respostas ou registrar o tempo uma única vez.'
     ],
     good:'Bom para vocabulário, fórmulas, datas, termos e definições curtas.',
-    note:'O Ciclo não tem um sistema próprio de flashcards — ele agenda a revisão e você usa a ferramenta que preferir.'
+    note:'Cartões e tópicos têm agendas independentes. Responder cartões não revisa automaticamente o tópico. Prática livre preserva a agenda.'
   },
   interleaving: {
     label:'Prática intercalada',
@@ -412,6 +412,18 @@ const HELP_GLOSSARY = {
    que impede a navegação em círculo.
    ========================================================================= */
 const HELP_ARTICLES = [
+  {id:'flashcards-nativos',section:'aprender',group:'nivel-2',title:'Como criar e estudar flashcards no Ciclo',
+    oneLine:'Uma pergunta clara, uma tentativa antes de revelar e uma avaliação honesta.',summary:'Cartões complementam a compreensão e a prática.',
+    keywords:'flashcards cartões lacunas idiomas vocabulário termos problemas sequências modelos conjuntos fsrs',
+    quick:'Abra Revisões → Flashcards. Escolha um dos seis tipos e uma disciplina; tópico e conjunto são opcionais. Tente lembrar antes de revelar e confira sua própria resposta.',
+    example:'Em vez de “Explique tudo sobre Português”, experimente “Qual sinal encerra uma frase declarativa?” → “Ponto-final”.',evidence:'practical',
+    actions:[{action:'openFlashcards',label:'Abrir meus cartões'}],
+    content:[{h:'Escolha o formato'},{ul:['Pergunta e resposta: conceitos específicos.','Termos: nomes e definições; inversa apenas se não houver ambiguidade.','Idiomas: compreensão e produção, com contexto e sinônimos válidos.','Lacunas: selecione trechos e use Ocultar trecho; todas aparecem juntas.','Problemas: resolva antes de conferir a resolução.','Sequências: tente recuperar os passos e sua ordem.']},
+      {h:'Pratique em sessões pequenas'},{p:'Repetição espaçada usa FSRS-6 com parâmetros gerais para sugerir datas, sem porcentagens de memória restante. Não há garantia de aprendizagem. Prática livre inclui antecipados e preserva a agenda. Pausas não contam como estudo.'},
+      {h:'Organize sem burocracia'},{p:'Criar outro mantém disciplina, conjunto e modelo. Salvar preferências como modelo preserva campos e direção. Editar conteúdo mantém o histórico; arquivar guarda; suspender pausa as direções. Modelos não executam HTML ou JavaScript.'},
+      {h:'Tempo e histórico'},{p:'Respostas são eventos individuais. Registrar tempo cria um único estudo, mesmo com várias disciplinas. Revisar cartões não altera tópicos; revisão geral não responde cartões. Backups preservam todo o histórico.'},
+      {h:'Combine com outras técnicas'},{p:'Continue escrevendo código, resolvendo exercícios e usando o idioma. Flashcards não substituem aplicação real. Crie cartões depois de compreender o conteúdo, confira respostas com seu material e ajuste cartões difíceis ou ambíguos.'}],related:['recordacao-ativa','espacamento','metodos-revisao']},
+
 
 /* ---------------------------------------------------------------- USAR · COMEÇANDO */
 {
@@ -1929,9 +1941,10 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Frente: "Por que há crase em Vou à escola?" Verso: a preposição "a" se junta ao artigo "a". Ou, num idioma, a palavra de um lado e o significado do outro.' },
     { h:'No Ciclo' },
-    { p:'O Ciclo não tem um sistema próprio de flashcards. Ele agenda a revisão e você usa papel ou o aplicativo que preferir — depois registra como foi.' }
+    { p:'Abra Revisões → Flashcards para criar e praticar seis tipos de cartão. Tente lembrar antes de revelar e avalie sua resposta. As direções têm agendas independentes. Você também pode usar cartões externos e registrar uma revisão livre.' }
   ],
-  related:['resumos-guia']
+  actions:[{action:'openFlashcards',label:'Abrir meus cartões'}],
+  related:['flashcards-nativos','resumos-guia']
 },
 {
   id:'explicacao-guia', section:'aprender', group:'nivel-3',
@@ -2836,6 +2849,19 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 const CHANGELOG = [
   /* A versão atual tem um resumo curto (janela "O Ciclo foi atualizado.")
      e seções recolhíveis ("Ver todas as novidades"). As anteriores ficam como texto. */
+  { v:'7.3.0', title:'Reviews & Flashcards',
+    intro:'Revisar com liberdade. Recordar com propósito. Aprender no próprio ritmo.',
+    highlights:['Revisões com panorama, revisão livre de várias disciplinas e roteiros personalizáveis.',
+      'Seis tipos de flashcard, conjuntos opcionais, modelos salvos e criação em sequência.',
+      'Prática com respostas e agendas independentes por direção, usando FSRS distribuído com o aplicativo.',
+      'Backups incluem cartões, modelos, respostas e roteiros. O histórico existente é preservado.'],
+    sections:[{title:'Como começar',items:['Abra Revisões e escolha Começar revisão, Revisão guiada ou Flashcards.',
+      'Crie cartões após compreender o conteúdo. Tente responder antes de revelar e confira sua própria tentativa.',
+      'Você pode pausar, pular ou encerrar. Respostas confirmadas continuam guardadas; o tempo só entra no Histórico quando você o registra.']},
+      {title:'Seus dados',items:['Formato de backup 11 e IndexedDB 2. Backups antigos continuam importáveis.',
+      'Agendas de tópicos e cartões permanecem independentes. Uma sessão com vários assuntos conta seu tempo uma única vez.',
+      'Prática livre permite antecipar cartões sem alterar a próxima data sugerida.']}]
+  },
   { v:'7.2.0', title:'Foco e planejamento',
     intro:'Estude com o relógio em destaque, organize uma disciplina em vários dias de uma vez e volte para Hoje com o estudo encerrado assim que ele for registrado.',
     highlights:[

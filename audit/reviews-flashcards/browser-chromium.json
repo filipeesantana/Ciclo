@@ -1,0 +1,529 @@
+{
+  "engine": "chromium",
+  "date": "2026-10-25T16:14:40.591Z",
+  "layouts": [
+    {
+      "label": "panorama",
+      "width": 1920,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 1920,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 1920,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 1920,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 1366,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 1366,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 1366,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 1366,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 768,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 768,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 768,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 768,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 430,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 430,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 430,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 430,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 375,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 375,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 375,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 375,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 1920,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 1920,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 1920,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 1920,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 1366,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 1366,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 1366,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 1366,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 768,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 768,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 768,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 768,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 430,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 430,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 430,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 430,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 375,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 375,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 375,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 375,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "panorama",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "biblioteca",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "editor-idiomas",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    },
+    {
+      "label": "estudo-resposta",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "modalOverflow": false
+    }
+  ],
+  "accessibility": [
+    {
+      "label": "biblioteca dark 1440",
+      "violations": []
+    },
+    {
+      "label": "estudo dark 1440",
+      "violations": []
+    },
+    {
+      "label": "biblioteca light 390",
+      "violations": []
+    },
+    {
+      "label": "estudo light 390",
+      "violations": []
+    },
+    {
+      "label": "editor basic",
+      "violations": []
+    },
+    {
+      "label": "editor term",
+      "violations": []
+    },
+    {
+      "label": "editor language",
+      "violations": []
+    },
+    {
+      "label": "editor cloze",
+      "violations": []
+    },
+    {
+      "label": "editor problem",
+      "violations": []
+    },
+    {
+      "label": "editor sequence",
+      "violations": []
+    },
+    {
+      "label": "seletor de modelos",
+      "violations": []
+    },
+    {
+      "label": "roteiro configuração",
+      "violations": []
+    },
+    {
+      "label": "roteiro prática",
+      "violations": []
+    },
+    {
+      "label": "resultado cartões",
+      "violations": []
+    }
+  ],
+  "errors": [],
+  "requests": [],
+  "performance": {
+    "notes": 1500,
+    "directions": 2000,
+    "responses": 10800,
+    "bytes": 17797601,
+    "writeMs": 7299.800000000279,
+    "loadMs": 1905.1999999997206,
+    "queueMs": 3.5,
+    "renderMs": 15.200000000186265,
+    "searchMs": 12.399999999906868,
+    "answerMs": 55.89999999990687,
+    "exportMs": 360.70000000018626,
+    "parseMs": 616.2000000001863,
+    "restoreMs": 3930.7999999998137
+  }
+}
