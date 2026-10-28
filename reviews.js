@@ -38,7 +38,9 @@ const GuidedReviewCommands={
     await DB.atomic(['meta','topics','disciplines'],async api=>{
       const previous=(await api.get('meta','guidedReview'))?.value;
       if(previous&&!previous.finishedAt) throw new Error('Retome ou encerre o roteiro que já está guardado.');
-      for(const i of draft.items){const t=await api.get('topics',i.topicId);const d=t&&await api.get('disciplines',t.disciplineId);if(!t||t.archived||!d||d.archived)throw new Error('Um dos assuntos não está mais disponível. Atualize a proposta.');}
+      const discIds=new Set();
+      for(const i of draft.items){const t=await api.get('topics',i.topicId);const d=t&&await api.get('disciplines',t.disciplineId);if(!t||t.archived||!d||d.archived)throw new Error('Um dos assuntos não está mais disponível. Atualize a proposta.');discIds.add(t.disciplineId);}
+      if(discIds.size>MAX_DISCIPLINES_PER_STUDY)throw new Error('Escolha até '+MAX_DISCIPLINES_PER_STUDY+' disciplinas por roteiro.');
       await api.put('meta',{key:'guidedReview',value:draft});
     });
     this.changed(draft);return draft;
@@ -110,16 +112,20 @@ function openGuidedReviewBuilder(availableMinutes=20){
     const minutes=h('input',{type:'number',min:'1',max:'600',inputmode:'numeric',value:budget});
     const build=()=>{
       const n=Number(minutes.value);if(!Number.isInteger(n)||n<1||n>600){minutes.focus();toast('Informe de 1 a 600 minutos.','err');return;}
-      budget=n;chosen=[];let left=budget;
+      budget=n;chosen=[];let left=budget;const selected=new Set();
       for(const e of ReviewEngine.rankedQueue().filter(e=>discs.has(e.topic.disciplineId))){
         if(left<=0||chosen.length>=MAX_TOPICS_PER_STUDY)break;
+        if(!selected.has(e.topic.disciplineId)&&selected.size>=MAX_DISCIPLINES_PER_STUDY)continue;
+        selected.add(e.topic.disciplineId);
         const method=ReviewEngine.effectiveMethod(e.topic).method,duration=Math.min(left,ReviewEngine.estimateMinutes(e.topic,method));
         chosen.push({topicId:e.topic.id,method,minutes:duration});left-=duration;
       }draw();
     };
     const add=reviewSelect('guided-add','Adicionar assunto',[['','Escolha um assunto'],...state.topics.filter(t=>!t.archived&&!getDiscipline(t.disciplineId)?.archived).map(t=>[t.id,disciplineName(t.disciplineId)+' — '+t.name])],'',v=>{
       if(!v)return;if(chosen.some(i=>i.topicId===v)){toast('Este assunto já está no roteiro.','info');return;}
-      const t=getTopic(v);chosen.push({topicId:v,method:ReviewEngine.effectiveMethod(t).method,minutes:Math.min(5,budget)});add.node.value='';draw();
+      const t=getTopic(v);
+      if(new Set(chosen.map(i=>getTopic(i.topicId)?.disciplineId).concat(t.disciplineId)).size>MAX_DISCIPLINES_PER_STUDY){toast('Escolha até '+MAX_DISCIPLINES_PER_STUDY+' disciplinas por roteiro.','info');return;}
+      chosen.push({topicId:v,method:ReviewEngine.effectiveMethod(t).method,minutes:Math.min(5,budget)});add.node.value='';draw();
     });
     const updateTotal=()=>{const n=chosen.reduce((n,i)=>n+(Number(i.minutes)||0),0);total.textContent=`${plural(chosen.length,'assunto','assuntos')} · ${n} min propostos de ${budget} min disponíveis.`+(n>budget?' Ajuste as durações para caber no tempo.':'');};
     function draw(focusId){
@@ -137,6 +143,7 @@ function openGuidedReviewBuilder(availableMinutes=20){
           h('div',{class:'tf-actions'},up,down,reviewButton('Remover assunto',()=>{chosen.splice(index,1);draw();add.node.focus();}))));
       });updateTotal();if(focusId)document.getElementById(focusId)?.focus();
     }
+    minutes.addEventListener('input',()=>{const n=Number(minutes.value);if(Number.isInteger(n)&&n>=1&&n<=600){budget=n;updateTotal();}});
     const start=reviewButton('Começar roteiro',async()=>{
       if(saving)return;saving=true;start.disabled=true;
       try{await reviewAction(async()=>{const d=await GuidedReviewCommands.create(chosen,Number(minutes.value));close();await openGuidedReviewPlayer(d.id);});}

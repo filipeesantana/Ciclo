@@ -97,7 +97,7 @@ test('um relógio por vez: roteiro e cronômetro recusam execução simultânea'
 test('editor do roteiro permite adicionar, reordenar, remover, trocar método e duração',async()=>{
  await page.evaluate(()=>{setView('reviews');openGuidedReviewBuilder(20);});
  for(const id of ['pontuacao','crase','fracoes'])await page.locator('#guided-add').selectOption(id);
- await page.getByRole('button',{name:'Subir Frações',exact:true}).click();await page.locator('#guided-method-1').selectOption('flashcards');await page.locator('#guided-duration-1').fill('10');
+ await page.getByRole('button',{name:'Subir Frações',exact:true}).click();await page.locator('.guided-item').last().getByRole('button',{name:'Remover assunto',exact:true}).click();await page.locator('#guided-add').selectOption('crase');await page.locator('#guided-method-1').selectOption('flashcards');await page.locator('#guided-duration-1').fill('10');
  await action('Começar roteiro').click();await page.waitForSelector('.guided-player');
  assert.deepEqual(await page.evaluate(()=>state.meta.guidedReview.items.map(i=>[i.topicId,i.minutes])),[['pontuacao',5],['fracoes',10],['crase',5]]);assert.equal(await page.evaluate(()=>state.meta.guidedReview.items[1].method),'flashcards');
 });
