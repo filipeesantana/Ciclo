@@ -6,7 +6,10 @@ const vm=require('node:vm');
 const acorn=require('acorn');
 const {root}=require('./support.cjs');
 const esc=s=>String(s??'').replace(/\|/g,'\\|').replace(/[\r\n]+/g,' ').replace(/`/g,'′');
-const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
+const main=fs.readFileSync(path.join(root,'app.js'),'utf8');
+const mainLines=main.split('\n').length;
+const app=main+'\n'+(fs.existsSync(path.join(root,'reviews.js'))?fs.readFileSync(path.join(root,'reviews.js'),'utf8'):'');
+const sourceAt=line=>line>mainLines?{file:'reviews.js',line:line-mainLines}:{file:'app.js',line};
 const content=fs.readFileSync(path.join(root,'content.js'),'utf8');
 const ast=acorn.parse(app,{ecmaVersion:'latest',locations:true});
 const contentAst=acorn.parse(content,{ecmaVersion:'latest',locations:true});
@@ -20,10 +23,10 @@ function walk(node,owner='global'){
   const tag=node.arguments[0]?.value;
   if(['button','input','select','textarea','details','form'].includes(tag)){
    const attrs=Object.fromEntries((node.arguments[1]?.properties||[]).map(p=>[p.key.name||p.key.value,value(p.value)]));
-   controls.push({owner,tag,line:node.loc.start.line,id:attrs.id||'',label:attrs['aria-label']||attrs.text||attrs.placeholder||value(node.arguments[2]),type:attrs.type||attrs.role||'',range:attrs.min||attrs.max||''});
+   controls.push({owner,tag,...sourceAt(node.loc.start.line),id:attrs.id||'',label:attrs['aria-label']||attrs.text||attrs.placeholder||value(node.arguments[2]),type:attrs.type||attrs.role||'',range:attrs.min||attrs.max||''});
   }
  }
- if(node.type==='CallExpression'&&['openModal','Drawer.open','close.push'].includes(app.slice(node.callee.start,node.callee.end)))layers.push({owner,kind:app.slice(node.callee.start,node.callee.end),line:node.loc.start.line});
+ if(node.type==='CallExpression'&&['openModal','Drawer.open','close.push'].includes(app.slice(node.callee.start,node.callee.end)))layers.push({owner,kind:app.slice(node.callee.start,node.callee.end),...sourceAt(node.loc.start.line)});
  for(const [k,v]of Object.entries(node)){if(['loc','start','end'].includes(k))continue;if(Array.isArray(v))v.forEach(x=>walk(x,owner));else if(v&&typeof v==='object')walk(v,owner);}
 }
 walk(ast);
@@ -41,10 +44,10 @@ for(const a of catalog.articles){
 }
 for(const [term,g]of Object.entries(catalog.glossary))if(g.article&&!ids.has(g.article))broken.push(`glossário ${term}: artigo ${g.article}`);
 const dest=path.join(root,'audit');fs.mkdirSync(dest,{recursive:true});
-let md=`# Inventário dos controles e camadas\n\nGerado por \`npm run audit:inventory\`. Fonte: app.js. ${controls.length} construções de controles, ${layers.length} construções de camadas e ${functions.length} funções declaradas. Uma construção pode gerar vários controles conforme os dados. Este índice não afirma que todos os estados foram exercitados. Os controles fixos de navegação estão em index.html; as opções dinâmicas e a cobertura estão na [matriz](MATRIZ-FUNCIONALIDADES.md).\n\n| Contexto | Controle | ID / nome | Rótulo ou expressão | Linha |\n|---|---|---|---|---|\n`;
-for(const c of controls)md+=`| ${esc(c.owner)} | ${c.tag} ${esc(c.type)} | ${esc(c.id)} | ${esc(c.label)} | [${c.line}](../app.js#L${c.line}) |\n`;
+let md=`# Inventário dos controles e camadas\n\nGerado por \`npm run audit:inventory\`. Fontes: app.js e reviews.js. ${controls.length} construções de controles, ${layers.length} construções de camadas e ${functions.length} funções declaradas. Uma construção pode gerar vários controles conforme os dados. Este índice não afirma que todos os estados foram exercitados. Os controles fixos de navegação estão em index.html; as opções dinâmicas e a cobertura estão na [matriz](MATRIZ-FUNCIONALIDADES.md).\n\n| Contexto | Controle | ID / nome | Rótulo ou expressão | Linha |\n|---|---|---|---|---|\n`;
+for(const c of controls)md+=`| ${esc(c.owner)} | ${c.tag} ${esc(c.type)} | ${esc(c.id)} | ${esc(c.label)} | [${c.line}](../${c.file}#L${c.line}) |\n`;
 md+='\n## Camadas\n\n| Contexto | Abertura | Linha |\n|---|---|---|\n';
-for(const l of layers)md+=`| ${esc(l.owner)} | ${l.kind} | [${l.line}](../app.js#L${l.line}) |\n`;
+for(const l of layers)md+=`| ${esc(l.owner)} | ${l.kind} | [${l.line}](../${l.file}#L${l.line}) |\n`;
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');let fixed=0;
 md+='\n## Controles fixos em index.html\n\n| Controle | ID | Nome / texto | Linha |\n|---|---|---|---|\n';
 for(const match of html.matchAll(/<(button|input|select|textarea|details)\b([^>]*)>/g)){

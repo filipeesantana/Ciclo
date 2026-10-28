@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — CONTEÚDO ESTÁTICO (v7.2.0 · Foco e planejamento)
+   CICLO — CONTEÚDO ESTÁTICO (v7.3.0 · Experience & Reviews)
    Textos, guias e frases. Nada aqui vai para o IndexedDB e nada vem da rede.
 
    Blocos: DAILY_QUOTES · REVIEW_METHOD_GUIDES · HELP_SECTIONS ·
@@ -1248,7 +1248,7 @@ const HELP_ARTICLES = [
     { h:'Exemplo' },
     { p:'Cada item mostra os motivos em texto — "sugerida há 4 dias", "prioridade alta", "Prova de Cálculo em 5 dias". O cálculo interno nunca aparece, porque o número não ajudaria você a decidir nada.' },
     { h:'Quando a fila acumula' },
-    { p:'Ter 30 revisões pendentes não significa que você precisa fazer 30 hoje. Use "Revisar por 20 min" ou "Escolher tempo", informe quanto tempo você tem, e o Ciclo seleciona os itens mais relevantes que cabem nesse tempo. O restante continua na fila, sem nada ser marcado como concluído.' }
+    { p:'Ter 30 revisões pendentes não significa que você precisa fazer 30 hoje. Use "Montar revisão guiada", informe quanto tempo você tem e ajuste a proposta de assuntos, métodos e durações. Você pode pausar, pular assuntos e retomar o roteiro guardado. Só atividades realizadas entram em um único estudo, com resultados individuais opcionais. O restante continua na fila, sem nada ser marcado como concluído.' }
   ],
   cta:{ action:'openReviews', label:'Abrir Revisões' },
   related:['resultados-revisao','dominio','desativar-revisao']
@@ -2311,7 +2311,7 @@ const HELP_FAQ = [
     a:'Não. Tudo vem com padrões que funcionam: "Adaptativa" para quando revisar e "Automático" para como revisar. Você só mexe se quiser.' },
   { id:'faq-fila-grande', g:'revisoes', article:'adiar-revisao',
     q:'Há muitas revisões sugeridas. Preciso fazer todas?',
-    a:'Não. São sugestões, não tarefas. Revise uma matéria inteira, escolha alguns assuntos, use "Revisar por 20 min" para o Ciclo escolher os mais importantes — ou deixe para depois. Nada é perdido.' },
+    a:'Não. São sugestões, não tarefas. Revise uma matéria inteira, escolha alguns assuntos, use "Montar revisão guiada" para ajustar uma proposta de assuntos — ou deixe para depois. Nada é perdido.' },
   { id:'faq-revisar-materia', g:'revisoes', article:'revisao-de-disciplina',
     q:'Posso revisar uma matéria inteira, sem escolher tópicos?',
     a:'Pode. Em Revisões, "Revisar a disciplina" registra uma revisão geral — por exemplo, Português por 30 minutos. Ela não muda a agenda dos assuntos; se quiser, marque ao final os assuntos que revisou, e só eles são ajustados.' },
@@ -2836,6 +2836,27 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 const CHANGELOG = [
   /* A versão atual tem um resumo curto (janela "O Ciclo foi atualizado.")
      e seções recolhíveis ("Ver todas as novidades"). As anteriores ficam como texto. */
+  { v:'7.3.0', title:'Experience & Reviews',
+    intro:'Registre com menos procura, acompanhe o dia e revise no seu ritmo.',
+    highlights:[
+      'Comentário e outra disciplina com ações visíveis. Recolher preserva o texto; remover é uma escolha separada.',
+      'Seu dia até agora mostra somente estudos registrados hoje, com tempo líquido e acesso direto às Análises e ao Histórico.',
+      'Revisão livre multidisciplinar e roteiro guiado editável, com pausa, pulo, retomada e resultados individuais.',
+      'Navegação preserva os filtros do Histórico e as Análises explicam a leitura dos números.'
+    ],
+    sections:[
+      { title:'Revisões no seu ritmo', items:[
+        'Escolha 10, 20, 30 minutos ou outra duração. Ajuste assuntos, ordem, métodos e tempo antes de começar.',
+        'Uma revisão guiada gera um único estudo. Assuntos pulados não alteram a agenda. Autoavaliação é opcional.',
+        'Flashcards continua como método pessoal: use seus próprios cartões físicos ou de outra ferramenta. O Ciclo não possui uma biblioteca de cartões.'
+      ] },
+      { title:'Continuidade e dados', items:[
+        'Cancelar o registro guarda o rascunho neste navegador. Começar do zero o remove explicitamente.',
+        'Roteiros confirmados sobrevivem ao F5 e entram no backup. Ao restaurar, o roteiro fica pausado.',
+        'Backups anteriores continuam aceitos. Formato lógico 11; IndexedDB 1, sem novas object stores.'
+      ] }
+    ]
+  },
   { v:'7.2.0', title:'Foco e planejamento',
     intro:'Estude com o relógio em destaque, organize uma disciplina em vários dias de uma vez e volte para Hoje com o estudo encerrado assim que ele for registrado.',
     highlights:[

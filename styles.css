@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO v7.2.0 — folha de estilo única · Foco e planejamento
+   CICLO v7.3.0 — folha de estilo única · Experience & Reviews
    (antes "Diário de Estudos")
 
    Organização:
@@ -5520,3 +5520,72 @@ button.tc-sug:hover{ border-color:var(--border-hover); background:var(--surface-
 .dp-facts{ list-style:none; margin:4px 0 12px; padding:0; display:flex; flex-direction:column; gap:10px }
 .dp-facts li{ display:grid; grid-template-columns:18px minmax(0,1fr); gap:10px; font-size:14px; line-height:1.5; color:var(--text-secondary) }
 .dp-facts .btn-icon{ width:16px; height:16px; margin-top:3px; color:var(--text-tertiary) }
+
+/* 31 · v7.3 — ações visíveis e profundidade progressiva */
+.sidebar{height:100dvh;padding:26px 16px 18px;scrollbar-gutter:stable}
+.brand{margin-bottom:32px;gap:12px}
+.nav{gap:5px}
+.nav-item{min-height:44px;gap:13px;padding:10px 13px;border:1px solid transparent}
+.nav-item[aria-current="page"]{border-color:var(--select-border);background:var(--select-bg);font-weight:650}
+.nav-item[aria-current="page"]::before{left:-9px;height:22px;margin-top:-11px;width:3px}
+.nav-sep{margin:16px 12px 12px}
+.sidebar-foot{padding-top:26px}
+.st-add{margin-top:12px;min-height:40px;justify-content:flex-start;font-size:13px}
+.st-add:disabled{opacity:.65}
+.comment-toggle,.res-open>.btn{min-height:40px;font-size:13px}
+.rm-how .how-row{grid-template-columns:minmax(0,1fr);gap:14px;margin-top:0}
+.rm-how .how-results{margin-top:12px;padding-top:0;border-top:0}
+.study-details{margin-top:18px}
+.study-details>summary{font-size:13px;color:var(--text-secondary);min-height:40px;align-content:center}
+.study-details .disclosure-body{display:grid;gap:18px}
+.comment-box .label-row{gap:12px;flex-wrap:wrap}
+.comment-box textarea{width:100%;resize:vertical;scroll-margin-bottom:90px}
+.comment-box>.danger{margin-top:8px}
+.res-open{align-items:center}
+.res-open-hint{flex-basis:100%;margin:0;max-width:50ch}
+.rm .st-block.is-extra{padding:14px;border:1px solid var(--border-soft);border-radius:var(--radius-md);margin-top:14px}
+.today-summary{padding:22px 24px}
+.day-total{font-size:clamp(28px,3vw,38px);font-weight:600;letter-spacing:-.03em;line-height:1.2;margin:14px 0 6px}
+.day-subjects{font-size:14px;color:var(--text-secondary);margin:12px 0 18px;overflow-wrap:anywhere}
+.today-summary .tf-actions{gap:12px}
+.analytics-reading{margin:0 0 22px;font-size:13px}
+.analytics-reading .disclosure-body{max-width:80ch}
+.sc-s{color:var(--text-secondary)}
+.guided-builder>.field{margin-top:18px}
+.guided-builder>.btn{margin:12px 0}
+.guided-plan{display:grid;gap:16px;margin-top:18px}
+.guided-item{padding:18px;border:1px solid var(--border-soft);border-radius:var(--radius-md);background:var(--surface-raised);min-width:0}
+.guided-item h4{margin:0 0 6px;font-size:16px;overflow-wrap:anywhere}
+.guided-fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(110px,1fr);gap:14px;margin:16px 0}
+.guided-fields .field{margin:0;min-width:0}
+.guided-fields select{width:100%;max-width:100%}
+.guided-item .tf-actions{gap:8px}
+.guided-item .btn{font-size:12px;min-height:40px}
+.guided-check{display:flex;gap:10px;align-items:center;min-height:44px;font-size:14px}
+.guided-player{display:grid;gap:16px;min-width:0}
+.guided-player h3{margin:0;overflow-wrap:anywhere}
+.guided-player>p{margin:0}
+.guided-time{display:flex;flex-direction:column;gap:6px;color:var(--text-secondary);font-size:13px}
+.guided-clock{font-size:32px;line-height:1.2;color:var(--text)}
+.guided-player>.btn{justify-self:start}
+.guided-player .method-steps{padding-left:22px;margin:0;font-size:14px;color:var(--text-secondary);line-height:1.7}
+.guided-player .tf-actions{gap:10px}
+@media(min-width:740px){.study-details .disclosure-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+@media(max-width:560px){
+ .guided-fields{grid-template-columns:minmax(0,1fr)}
+ .guided-item{padding:14px}
+ .today-summary{padding:20px}
+ .st-add,.comment-toggle,.res-open>.btn{min-height:44px}
+ .rm-how .how-results{margin-top:10px}
+}
+@media(max-height:760px) and (min-width:900px){.sidebar{padding-top:18px}.brand{margin-bottom:20px}.nav{gap:2px}.nav-sep{margin-top:12px}.sidebar-foot{padding-top:18px}}
+@media(max-width:560px){
+ .modal.study .mode-switch{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:18px}
+ .modal.study .mode-opt{padding:10px 8px;gap:8px;min-width:0}
+ .modal.study .mode-d{display:none}
+ .modal.study .mode-t{font-size:13px}
+ .modal.study .mode-ic{width:25px;height:25px;flex-basis:25px}
+ .modal.study .rm-grid{gap:20px 0}
+ .modal.study .rm-how .res-open{gap:6px}
+ .modal.study .rm-how .res-open-hint{font-size:12px}
+}

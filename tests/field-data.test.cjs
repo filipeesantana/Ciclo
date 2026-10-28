@@ -87,6 +87,7 @@ test('365 dias: exportar, restaurar em outro contexto e F5 conservam o históric
  await importUI(page);
  const exported=await page.evaluate(()=>JSON.stringify(Backup.buildExport()));
  const second=await open(runtime);
+ await second.page.clock.install({time:new Date('2026-10-22T21:00:00Z')});
  try{
   await second.page.evaluate(text=>{modalCloser?.();beginRestore(text,'ida-e-volta.json');},exported);
   await second.page.locator('#modal-actions').getByRole('button',{name:'Restaurar',exact:true}).click();
