@@ -1,0 +1,14 @@
+{"checks":60,"errors":[],"failures":[{"theme":"dark","width":1280,"view":"today","overflow":false,"violations":[{"id":"color-contrast","nodes":[["li:nth-child(1) > .sc-item[type=\"button\"] > .sc-text > .sc-s"]]}]}]}
+AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+  assert.ok(report.layouts.every(r=>!r.overflow&&!r.violations.length))
+
+    at /workspace/Ciclo/tests/experience-visual.cjs:21:303
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

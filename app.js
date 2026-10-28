@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v7.2.0 · Foco e planejamento
+   CICLO — v7.3.0 · Experience & Reviews
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -36,8 +36,9 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '7.2.0';
-const APP_SCHEMA_VERSION = 10;         // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
+const APP_VERSION = '7.3.0';
+const APP_SCHEMA_VERSION = 11;         // v7.3: roteiro opcional em meta e no backup; sem migração de estudos.
+                                      // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
                                        // ganham tipo, status, data de início, orientações e
@@ -4909,6 +4910,7 @@ const BackupIntegrity = {
   canonical(src){
     const o = {};
     this.PARTS.forEach(k => { o[k] = src[k] === undefined ? null : src[k]; });
+    if(Object.prototype.hasOwnProperty.call(src, 'guidedReview')) o.guidedReview = src.guidedReview;
     return JSON.stringify(o);
   },
   /** cyrb53 — hash não criptográfico de 53 bits (domínio público). Rápido e estável entre navegadores. */
@@ -4968,7 +4970,8 @@ const Backup = {
       plans: state.plans,
       weeklyPlans: state.weeklyPlans,
       deadlines: state.deadlines,
-      settings: state.settings
+      settings: state.settings,
+      guidedReview: state.meta.guidedReview ? {...state.meta.guidedReview,elapsedMs:guidedElapsed(state.meta.guidedReview),runningSince:null} : null
     };
     out.integrity = BackupIntegrity.describe(out);
     return out;
@@ -5164,6 +5167,8 @@ const Backup = {
     await DB.atomic(stores.concat('meta'), async api => {
       // Esta leitura adquire a mesma fila transacional usada para iniciar um
       // cronômetro. A decisão da prévia precisa continuar válida AGORA.
+      const guidedNow = (await api.get('meta','guidedReview'))?.value;
+      if(guidedNow && !guidedNow.finishedAt && guidedNow.runningSince){ const err=new Error('Pause sua revisão guiada antes de restaurar os dados.'); err.code='guided-active'; throw err; }
       const reserved = await api.get('meta', 'activeTimer');
       const active = (reserved && reserved.value) || TimerService.currentRunId();
       if(active && active !== allowedRunId){
@@ -5181,6 +5186,8 @@ const Backup = {
       data.weeklyPlans.forEach(x => api.add('weeklyPlans', x));
       data.deadlines.forEach(x => api.add('deadlines', x));
       api.put('settings', { key:'settings', value:data.settings });
+      const guided = data.guidedReview ? {...data.guidedReview, elapsedMs:guidedElapsed(data.guidedReview), runningSince:null} : null;
+      api.put('meta', {key:'guidedReview',value:guided});
       if(allowedRunId){
         api.put('meta', { key:'lastDiscardedTimer', value:allowedRunId });
         if(reserved && reserved.value === allowedRunId) api.delete('meta', 'activeTimer');
@@ -5370,7 +5377,7 @@ const IntegrityValidator = {
     const arr = v => Array.isArray(v) ? v : [];
     source = {
       areas: arr(raw.areas), disciplines: arr(raw.disciplines), topics: arr(raw.topics), sessions: arr(raw.sessions),
-      plans: arr(raw.plans), weeklyPlans: arr(raw.weeklyPlans), deadlines: arr(raw.deadlines),
+      plans: arr(raw.plans), weeklyPlans: arr(raw.weeklyPlans), deadlines: arr(raw.deadlines), guidedReview:raw.guidedReview,
       settings: Object.assign({}, DEFAULT_SETTINGS, (raw.settings && typeof raw.settings === 'object' && !Array.isArray(raw.settings)) ? raw.settings : {})
     };
     return this._finish(this.analyze(source), { format:'v3', notes, raw });
@@ -5380,6 +5387,7 @@ const IntegrityValidator = {
     const r = out.report, d = out.data;
     r.format = meta.format;
     r.notes = meta.notes;
+    if(d.guidedReview && !d.guidedReview.finishedAt) r.notes.push('Um roteiro de revisão será recuperado pausado, com as atividades e respostas confirmadas.');
     r.schemaVersion = isFinite(Number(meta.raw.schemaVersion)) ? Number(meta.raw.schemaVersion) : null;
     r.appVersion = typeof meta.raw.appVersion === 'string' ? meta.raw.appVersion.slice(0, 20) : null;
     r.exportedAt = this.instant(meta.raw.exportedAt);
@@ -5722,7 +5730,9 @@ const IntegrityValidator = {
       };
     });
 
-    const data = { areas, disciplines, topics, sessions, plans, weeklyPlans, deadlines, settings: sanitizeSettings(src.settings) };
+    let guidedReview=null;
+    try { guidedReview=cleanGuidedReview(src.guidedReview); } catch(err){ throw self.fatal(err.message, 'Roteiro inválido'); }
+    const data = { areas, disciplines, topics, sessions, plans, weeklyPlans, deadlines, settings: sanitizeSettings(src.settings), guidedReview };
     return { data, report };
   },
 
@@ -6238,7 +6248,7 @@ const DataSync = {
 
   /** Chamado pela camada de banco depois de cada gravação concluída. */
   committed(stores){
-    const list = (stores || []).filter(s => s !== 'meta');     // `meta` é conveniência de interface de cada aba
+    const list = (stores || []).filter(s => s !== 'meta');     // roteiros em meta emitem aviso explícito pelos seus comandos
     if(list.length) this.send('data', list);
   },
   /** Mudanças grandes, que pedem mais do que reler: backup restaurado, tudo apagado. */
@@ -7325,8 +7335,10 @@ function statusMark(status){
 function setView(view, opts){
   const o = (opts && typeof opts === 'object' && !(opts instanceof Event)) ? opts : {};
   if(!VIEW_TITLES[view]) view = 'today';
+  if(ui.view !== view && Nav.started) Nav.sync('replace');
   if(view === 'analytics' && ui.view !== 'analytics') onEnterAnalytics();
-  if(view === 'plan' && ui.view !== 'plan'){ ui.planEditing = false; ui.planWeekOffset = 0; }
+  if(view === 'plan' && ui.view !== 'plan' && !o.restoreContext){ ui.planEditing = false; ui.planWeekOffset = 0; }
+  if(view === 'history' && ui.view !== 'history' && ui.history.period === 'analises' && !o.restoreContext) ui.historyRange=ui.period ? {...ui.period} : null;
   if(ui.view !== view) ui.prevView = ui.view;
   if(view !== 'history') ui.historyIds = null;     // v7.1: o recorte de uma descoberta vale só enquanto se está no Histórico
   if(ui.returnTo && view !== ui.returnTo.view && ui.view === ui.returnTo.view) ui.returnTo = null;
@@ -7717,6 +7729,8 @@ async function startTimer(disciplineIds, topicIds, presetTypes, presetMethod, ta
   try {
     const started = await DB.atomic(['meta','disciplines'], async api => {
       const reserved = await api.get('meta', 'activeTimer');
+      const guided = (await api.get('meta','guidedReview'))?.value;
+      if(guided && !guided.finishedAt && guided.runningSince){ toast('Pause sua revisão guiada antes de começar outro estudo.', 'info'); return false; }
       if(reserved && reserved.value){
         if(!TimerService.isActive){ TimerService.restore(); renderTimerBar(); }
         if(!TimerService.isActive && TimerService.storedRunId() === null){ unavailableRunId = reserved.value; return false; }
@@ -8347,13 +8361,18 @@ function studyTargetFields(o){
   /* ---------- várias disciplinas ---------- */
   const list = h('div', { class:'st-list' });
   const multiNote = h('p', { class:'hint st-note', hidden:true, text:'Um estudo só, com um tempo só: o Ciclo divide esse tempo entre as disciplinas (e você pode informar a divisão).' });
-  const addBtn = h('button', { class:'linkbtn add-link st-add', type:'button', text:'+ Adicionar outra disciplina',
+  const addBtn = h('button', { class:'btn ghost st-add', type:'button', text:'+ Adicionar outra disciplina',
     onclick:() => addBlock('', [], true) });
+  const addHint=h('p',{class:'hint st-add-hint',id:prefix+'-add-hint',hidden:true,text:'Escolha a primeira disciplina para adicionar outra.'});
+  addBtn.setAttribute('aria-describedby',addHint.id);
   function drawMeta(){
     const n = blocks.length;
     const chosen = blocks.filter(b => b.discId).length;
     const free = activeDisciplines().filter(d => !blocks.some(b => b.discId === d.id)).length;
-    addBtn.hidden = !allowMulti || creating || !blocks[0].discId || n >= MAX_DISCIPLINES_PER_STUDY || free === 0 || blocks.some(b => !b.first && !b.discId);
+    addBtn.hidden = !allowMulti || creating || n >= MAX_DISCIPLINES_PER_STUDY || free === 0 || blocks.some(b => !b.first && !b.discId);
+    addBtn.disabled = !blocks[0].discId;
+    addHint.hidden=addBtn.hidden || !addBtn.disabled;
+    addBtn.title = addBtn.disabled ? 'Escolha a primeira disciplina para adicionar outra.' : '';
     multiNote.hidden = chosen < 2;
     node.classList.toggle('is-multi', n > 1);
   }
@@ -8489,7 +8508,7 @@ function studyTargetFields(o){
     emit('created');
   }
 
-  const node = h('div', { class:'study-target' }, list, newBox, addBtn, multiNote);
+  const node = h('div', { class:'study-target' }, list, newBox, addBtn, addHint, multiNote);
   startIds.forEach(id => addBlock(id, initialTopics, false));
   if(!blocks.length) addBlock('', initialTopics, false);
   blocks.forEach(b => syncBlock(b, false));
@@ -8866,29 +8885,33 @@ function commentField(o){
   const ta = h('textarea', { id:o.id, maxlength:'2000', rows:'3' });
   ta.value = str(o.value);
   const boxId = o.id + '-box';
-  const addBtn = h('button', { class:'linkbtn add-link', type:'button', 'aria-controls':boxId, text:'+ Adicionar comentário' });
-  const hideBtn = h('button', { class:'linkbtn muted', type:'button', text:'Remover', 'aria-label':'Remover o comentário' });
+  const addBtn = h('button', { class:'btn ghost comment-toggle', type:'button', 'aria-controls':boxId });
+  const collapse = h('button', { class:'linkbtn muted', type:'button', text:'Recolher', onclick:() => setOpen(false, true) });
+  const remove = h('button', { class:'linkbtn danger', type:'button', text:'Remover comentário', onclick:async () => {
+    if(ta.value.trim() && !(await confirmStudySubview(o.close, 'Remover o comentário deste registro?', 'Remover comentário'))) return;
+    ta.value = ''; ta.dispatchEvent(new Event('input', { bubbles:true })); setOpen(false, true);
+  } });
   const box = h('div', { class:'field comment-box', id:boxId, hidden:true },
-    h('div', { class:'label-row' }, h('label', { for:o.id }, 'Comentário', h('span', { class:'optional', text:'opcional' })), hideBtn),
-    ta);
-  const setOpen = (open, byUser) => {
-    box.hidden = !open;
-    addBtn.hidden = open;
-    if(!byUser) return;
-    if(open){
-      swapIn(box); ta.focus();
-      // o campo inteiro à vista, acima das ações fixas da janela (scroll-padding no CSS)
-      try { box.scrollIntoView({ block:'nearest' }); } catch(_){}
-    } else addBtn.focus();
-  };
-  addBtn.addEventListener('click', () => setOpen(true, true));
-  hideBtn.addEventListener('click', () => setOpen(false, true));
+    h('div', { class:'label-row' }, h('label', { for:o.id }, 'Comentário', h('span', { class:'optional', text:'opcional' })), collapse), ta, remove);
+  function sync(){ addBtn.textContent = ta.value.trim() ? 'Comentário adicionado · editar' : '+ Adicionar comentário'; }
+  function setOpen(open, byUser){
+    box.hidden = !open; addBtn.hidden = open; addBtn.setAttribute('aria-expanded', String(open)); sync();
+    if(byUser){ if(open){ swapIn(box); ta.focus(); box.scrollIntoView({block:'nearest'}); } else addBtn.focus(); }
+  }
+  addBtn.addEventListener('click', () => setOpen(true, true)); ta.addEventListener('input', sync);
   setOpen(!!ta.value.trim(), false);
-  return {
-    node: h('div', { class:'comment' }, addBtn, box),
-    textarea: ta,
-    get value(){ return box.hidden ? '' : ta.value.trim(); }
-  };
+  return { node:h('div', { class:'comment' }, addBtn, box), textarea:ta, get value(){ return ta.value.trim(); } };
+}
+
+/** Confirmação dentro do modal: os campos e o foco de origem permanecem intactos. */
+function confirmStudySubview(close, message, label){
+  return new Promise(resolve => {
+    let settled=false;
+    const finish=value=>{ if(settled)return; settled=true; close.pop(); resolve(value); };
+    close.push({title:'Confirmar',content:h('p',{class:'modal-sub',text:message}),
+      actions:[h('button',{class:'btn ghost',type:'button',text:'Cancelar',onclick:()=>finish(false)}),
+        h('button',{class:'btn danger',type:'button',text:label,onclick:()=>finish(true)})],onEsc:()=>finish(false)});
+  });
 }
 
 /** Dificuldade percebida — opcional; clicar de novo na escolhida desmarca. */
@@ -8905,13 +8928,13 @@ function difficultyField(idPrefix, value, onPick){
  * a ordem de leitura e do Tab: tipo → dificuldade → resultado → comentário.
  */
 function howGroup(o){
-  const title = h('h4', { class:'rm-group-t', id:o.id, text:'Como foi' });
-  const row = h('div', { class:'how-row' },
-    h('div', { class:'how-col' }, o.difficulty, o.outcome || null),
-    h('div', { class:'how-col' }, o.comment));
-  // v7.1 — "Resultado do estudo" (opcional) ocupa a largura toda, depois de dificuldade e comentário
+  const title = h('h4', { class:'rm-group-t', id:o.id, text:'Complementar registro' });
+  const details = h('details', { class:'disclosure study-details' },
+    h('summary', { text:'Tipo de estudo e dificuldade' }),
+    h('div', { class:'disclosure-body' }, o.type, o.difficulty));
+  const row = h('div', { class:'how-row' }, o.comment, o.outcome || null);
   const results = o.results ? h('div', { class:'how-results' }, o.results) : null;
-  return { node: h('section', { class:'rm-group rm-how', 'aria-labelledby':o.id }, title, o.type, row, results), title, row, results };
+  return { node:h('section', { class:'rm-group rm-how', 'aria-labelledby':o.id }, title, row, results, details), title, row, results, details, difficulty:o.difficulty };
 }
 
 /**
@@ -8958,7 +8981,7 @@ function resultsField(o){
       h('button', { class:'linkbtn muted', type:'button', text:'Recolher', 'aria-controls':p + '-box', onclick:() => setOpen(false, true) })),
     h('p', { class:'hint res-intro', text:'O que você conseguiu fazer? Tudo aqui é opcional e fica registrado como relato seu — não é uma nota.' }),
     list, totalLine, addRow);
-  const openBtn = h('button', { class:'linkbtn add-link', type:'button', 'aria-controls':p + '-box', text:'+ Adicionar resultado',
+  const openBtn = h('button', { class:'btn ghost', type:'button', 'aria-controls':p + '-box', text:'+ Adicionar resultado',
     onclick:() => setOpen(true, true) });
   const openHint = h('span', { class:'hint res-open-hint', text:'Questões e acertos, um conceito explicado ou algo que você conseguiu fazer.' });
 
@@ -9463,8 +9486,7 @@ function breaksEditor(o){
    que a mesma janela abrir — com um aviso e a opção de começar do zero.
      register  "Registrar estudo" (Já estudei), aberto sem um contexto pronto
      finish    o fim de um cronômetro, ligado à identidade dele (runId)
-   O rascunho some ao gravar com sucesso ou ao escolher "Cancelar"/"Começar do
-   zero". Ele é só conveniência: nunca vira estudo sozinho.
+   O rascunho some ao gravar com sucesso ou ao escolher "Começar do zero". Ele é só conveniência: nunca vira estudo sozinho.
    ========================================================================= */
 const FormDraft = {
   PREFIX: 'ciclo:v7.1:draft:',
@@ -9759,21 +9781,21 @@ function openRegisterModal(preset){
   /* v7.1 — rascunho de um "Registrar estudo" que ficou pela metade. Só volta quando a
      janela abre sem um contexto pronto (o botão global): um preset (revisar uma
      matéria, registrar um dia do calendário…) é um pedido novo e não herda nada. */
-  const plainOpen = !p.disciplineId && !p.topicIds && !p.types && !p.type && !p.date && mode === 'manual';
+  const plainOpen = !p.disciplineId && !p.disciplineIds && !p.topicIds && !p.types && !p.type && !p.date && mode === 'manual';
   let draft = plainOpen ? FormDraft.load('register') : null;
   if(draft && !(Array.isArray(draft.discIds) && draft.discIds.some(id => getDiscipline(id)))) draft.discIds = [];
 
-  const ctx = p.disciplineId ? null : registerContext();
-  const wantDisc = p.disciplineId || (ctx && ctx.disciplineId) || null;
+  const ctx = p.disciplineId || p.disciplineIds ? null : registerContext();
+  const wantDisc = p.disciplineId || (p.disciplineIds || [])[0] || (ctx && ctx.disciplineId) || null;
   const wantTopic = p.disciplineId ? (p.topicId || null) : (ctx ? ctx.topicId : null);
   const act = activeDisciplines();
   const presetDisc = wantDisc ? getDiscipline(wantDisc) : null;
   // Sem contexto claro, nada é escolhido pela pessoa — a não ser que só exista uma disciplina.
   const discId0 = (presetDisc && !presetDisc.archived) ? presetDisc.id : (act.length === 1 ? act[0].id : '');
   // v7: vários tópicos já escolhidos (revisar assuntos de uma matéria); um tópico solto continua valendo
-  const wantTopics = p.disciplineId ? (Array.isArray(p.topicIds) ? p.topicIds : (wantTopic ? [wantTopic] : [])) : (wantTopic ? [wantTopic] : []);
-  const topicIds0 = wantTopics.map(id => getTopic(id)).filter(t => t && !t.archived && t.disciplineId === discId0).map(t => t.id);
-  const discIds0 = draft && draft.discIds.length ? draft.discIds.filter(id => getDiscipline(id)) : (discId0 ? [discId0] : []);
+  const wantTopics = (p.disciplineId || p.disciplineIds) ? (Array.isArray(p.topicIds) ? p.topicIds : (wantTopic ? [wantTopic] : [])) : (wantTopic ? [wantTopic] : []);
+  const topicIds0 = wantTopics.map(id => getTopic(id)).filter(t => t && !t.archived && (t.disciplineId === discId0 || (p.disciplineIds || []).includes(t.disciplineId))).map(t => t.id);
+  const discIds0 = draft && draft.discIds.length ? draft.discIds.filter(id => getDiscipline(id)) : (p.disciplineIds || (discId0 ? [discId0] : []));
   const draftTopics = draft && Array.isArray(draft.topicIds) ? draft.topicIds.filter(id => getTopic(id)) : null;
 
   // v6.7: vários tipos (um tipo solto no preset também vale)
@@ -9895,11 +9917,12 @@ function openRegisterModal(preset){
     const outcomeField = h('div', null, outcomes.node, generalNote);
     function renderOutcome(){
       const ids = target.topicIds;
+      outcomeField.hidden = !(mode === 'manual' && types.includes('revisao'));
       outcomes.update(ids, mode === 'manual' && types.includes('revisao'));
       split.update(mode === 'manual' ? target.groups : []);
       syncGeneralReviewNote(generalNote, types, ids, target.discIds);
     }
-    const comment = commentField({ id:'rm-comment', value: draft ? draft.comment : '' });
+    const comment = commentField({ close, id:'rm-comment', value: draft ? draft.comment : '' });
     /* v6.4.1 — três perguntas, três grupos. "Quando" e "O que você estudou" são
        independentes e ficam lado a lado quando há largura; "Como foi" vem
        depois e reúne tipo, dificuldade e comentário. A ordem no documento é a
@@ -9918,7 +9941,7 @@ function openRegisterModal(preset){
       || target.dirty || target.discIds.join(',') !== (discId0 || '') || target.topicIds.join(',') !== topicIds0.join(',') || targetMin !== null || split.dirty || results.dirty;
 
     /* v7.1 — rascunho: guardado a cada mudança (só no "Já estudei", que é o que pode ter muita coisa digitada) */
-    const draftOf = () => (mode === 'manual' && isDirty()) ? {
+    const draftOf = () => isDirty() ? {
       when: when.snapshot(), discIds: target.discIds, topicIds: target.topicIds, types, difficulty,
       target:target.draft, comment: comment.textarea.value, results: results.draft, split:split.draft, outcomes:Object.fromEntries(outcomes.values)
     } : null;
@@ -10031,6 +10054,9 @@ function openRegisterModal(preset){
       whenBlock.hidden = !manual;
       // "Estudar agora" ainda não tem um "como foi": do grupo, fica só o tipo de estudo
       how.title.hidden = !manual;
+      how.details.open = !manual;
+      how.difficulty.hidden = !manual;
+      how.details.querySelector('summary').textContent = manual ? 'Tipo de estudo e dificuldade' : 'Tipo de estudo (opcional)';
       how.row.hidden = !manual;
       if(how.results) how.results.hidden = !manual;
       if(manual) howBlock.setAttribute('aria-labelledby', how.title.id); else howBlock.removeAttribute('aria-labelledby');
@@ -10051,7 +10077,7 @@ function openRegisterModal(preset){
       title: titleOf(),
       content,
       actions:[
-        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => { FormDraft.cancel('register'); FormDraft.clear('register'); close(); } }),
+        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => { FormDraft.flush('register'); close(); } }),
         primaryBtn
       ],
       focus: timerBusy ? when.firstField : $('.mode-opt[aria-checked="true"]', modes)
@@ -10198,7 +10224,7 @@ function openFinishModal(){
       sel.addEventListener('change', () => { method = sel.value; methodTouched = true; });
       methodBox.append(h('label', { for:'fin-method', text:'Como você revisou' }), sel);
     }
-    const comment = commentField({ id:'fin-comment', value: draft ? draft.comment : '' });
+    const comment = commentField({ close, id:'fin-comment', value: draft ? draft.comment : '' });
     const how = howGroup({ id:'fin-g-how', type:typePick.node,
       difficulty: difficultyField('fin', difficulty, v => { difficulty = v; }), outcome:outcomeField, comment:comment.node, results: results.node });
 
@@ -11191,6 +11217,7 @@ function renderToday(){
 
   const hasSessions = state.sessions.length > 0;
   const main = [todayAction(discs, hasSessions)];
+  const daily = todaySummary(); if(daily) main.push(daily);
   const guide = contextGuideCard('today');
   if(guide) main.push(guide);
   if(todayBlockOn('next')){ const n = todayNextSteps(); if(n) main.push(n); }
@@ -11223,6 +11250,8 @@ function syncTodayTimerAction(){
 }
 function todayAction(discs, hasSessions){
   const busy = TimerService.isActive;
+  const guided = state.meta.guidedReview;
+  const hasGuided = !!guided && !guided.finishedAt;
   const status = busy ? timerView() : null;
   const recent = recentDisciplines(5);
   const quick = (recent.length ? recent : discs.slice().sort(sortByName)).slice(0, 5);
@@ -11235,18 +11264,22 @@ function todayAction(discs, hasSessions){
     h('p', { class:'tf-eyebrow', text:`${greetingWord()}.` }),
     h('h3', { class:'tf-title', id:'tf-title', text: busy
       ? status.awaiting ? status.label : status.status === 'paused' ? 'Seu estudo está pausado' : status.status === 'rest' ? 'Você está descansando' : 'Você está estudando agora'
-      : 'O que você gostaria de estudar?' })
+      : hasGuided ? (guided.runningSince ? 'Sua revisão guiada está em andamento' : 'Continue sua revisão quando quiser') : 'O que você gostaria de estudar?' })
   ];
+  if(!busy && hasGuided){
+    head.push(h('p', {class:'tf-reason',text:guided.runningSince ? 'O tempo está contando. Pause quando precisar; os assuntos confirmados estão guardados.' : 'Os assuntos e resultados confirmados estão guardados.'}));
+  }
   if(busy){
     const detail = status.awaiting || status.status === 'paused' ? 'Nada está contando agora.'
       : status.status === 'rest' ? 'O descanso é contado à parte do estudo.' : 'O tempo de estudo está contando.';
     head.push(h('p', { class:'tf-reason', text:`${TimerService.discText()} — ${detail} Quando terminar, finalize para guardar no histórico.` }));
-  } else if(!hasSessions){
-    head.push(h('p', { class:'tf-reason', text:'Seu histórico começa com o primeiro estudo. Escolha uma matéria e o Ciclo conta o tempo — ou registre algo que você já estudou.' }));
+  } else if(!state.sessions.some(s => s.date === todayISO())){
+    head.push(h('p', { class:'tf-reason', text:hasSessions ? 'Nenhum estudo registrado hoje ainda. Escolha uma matéria ou registre algo que já estudou.' : 'Seu histórico começa com o primeiro estudo. Escolha uma matéria e o Ciclo conta o tempo — ou registre algo que você já estudou.' }));
   }
   const actions = h('div', { class:'tf-actions' },
     busy
       ? h('button', { class:'btn primary lg', type:'button', onclick:() => openFinishModal() }, icon('i-check'), 'Finalizar estudo')
+      : hasGuided ? h('button',{class:'btn primary lg',type:'button',text:'Retomar revisão guiada',onclick:()=>openGuidedReviewPlayer(guided.id)})
       : h('button', { class:'btn primary lg', type:'button', onclick:() => openQuickStart() }, icon('i-play'), 'Começar a estudar'),
     h('button', { class:'btn ghost', type:'button', onclick:() => openRegisterModal() }, icon('i-plus'), busy ? 'Registrar outro estudo' : 'Registrar estudo'));
 
@@ -11272,6 +11305,23 @@ function todayAction(discs, hasSessions){
     }
   }
   return h('section', { class:'focus-block today-act', 'aria-labelledby':'tf-title', 'data-timer-key':todayTimerKey() }, head, chips, actions, sugg);
+}
+
+/** v7.3 — só sessões confirmadas, atribuídas ao dia civil de início. */
+function todaySummary(){
+  const list = state.sessions.filter(s => s.date === todayISO());
+  if(!list.length) return null;
+  const ids = Array.from(new Set(list.flatMap(s => SessionModel.disciplineIds(s))));
+  const names = ids.map(disciplineName);
+  const minutes = sum(list, s => Number(s.minutes) || 0);
+  return h('section', {class:'today-card today-summary', 'aria-labelledby':'today-summary-title'},
+    h('h3', {class:'block-label',id:'today-summary-title',text:'Seu dia até agora'}),
+    h('p', {class:'day-total num',text:fmtDuration(minutes)}),
+    h('p', {class:'hint',text:plural(list.length,'estudo registrado','estudos registrados') + ' · tempo líquido, sem descanso e pausa'}),
+    h('p', {class:'day-subjects',text:names.slice(0,4).join(' · ') + (names.length>4 ? ` · +${names.length-4}` : '')}),
+    h('div', {class:'tf-actions'},
+      h('button', {class:'btn ghost sm',type:'button',text:'Ver detalhes do dia',onclick:() => applyAnalyticsQuery({scopeType:'all',periodPreset:'hoje',focus:'overview'})}),
+      h('button', {class:'linkbtn',type:'button',text:'Ver registros de hoje',onclick:() => { ui.history = {...ui.history,search:'',areaId:'',disciplineId:'',topicId:'',period:'hoje',type:'',difficulty:'',results:''}; setView('history'); }})));
 }
 
 /** 2 · A semana em números reais, com um gráfico pequeno. Clicar leva às Análises desta semana. */
@@ -11498,15 +11548,17 @@ function renderReviews(){
   const due = ReviewEngine.getDueReviews();
   const revMin = state.settings.defaultReviewMinutes || 20;
 
-  const freeReview = () => pickDisciplineThen('Qual matéria você quer revisar?', d => openDisciplineReview(d.id));
+  const freeReview = () => openFreeReview();
   if(!anyScheduled){
     mount(root, h('div', { class:'narrow-screen' },
       h('section', { class:'focus-block compact', 'aria-labelledby':'rv-title' },
         h('h3', { class:'tf-title', id:'rv-title', text:'Nada sugerido para revisar agora' }),
         h('p', { class:'tf-reason', text:'Quando você estuda um assunto (um tópico), o Ciclo passa a sugerir quando revisitá-lo. Revisar é opcional — e você pode revisar uma matéria inteira quando quiser.' }),
         h('div', { class:'tf-actions' },
-          activeDisciplines().length ? h('button', { class:'btn primary', type:'button', onclick:freeReview }, icon('i-review'), 'Revisar uma matéria') : null,
-          h('button', { class:'btn ghost', type:'button', text:'Como funcionam as revisões?', onclick:openReviewPrimer }),
+          activeDisciplines().length ? h('button', { class:'btn primary', type:'button', onclick:freeReview }, icon('i-review'), 'Revisão livre') : null,
+          h('button', { class:'btn ghost', type:'button', text:'Montar revisão guiada', onclick:() => openGuidedReviewBuilder(revMin) }),
+          reviewResumeButton(),
+          h('button', { class:'linkbtn', type:'button', text:'Como funcionam as revisões?', onclick:openReviewPrimer }),
           activeDisciplines().length ? h('button', { class:'linkbtn', type:'button', text:'Adicionar um tópico', onclick:() => HELP_ACTIONS.addTopic() }) : null))));
     return;
   }
@@ -11520,11 +11572,11 @@ function renderReviews(){
       : groups.length ? 'São sugestões, não tarefas. Revise a matéria inteira, escolha os assuntos, ou deixe para depois — nada do seu histórico muda por isso.'
       : (upcoming.length ? `A próxima sugestão é ${upcoming[0].name}, ${fmtRelativeFuture(upcoming[0].reviewDueDate)}.` : 'Os assuntos voltam sozinhos quando chega a hora.') }),
     h('div', { class:'tf-actions' },
-      groups.length ? h('button', { class:'btn primary', type:'button', onclick:() => startQueuedReviewSession(revMin) }, icon('i-play'), `Revisar por ${revMin} min`) : null,
+      h('button', { class:'btn ghost', type:'button', onclick:() => openGuidedReviewBuilder(revMin) }, icon('i-play'), 'Montar revisão guiada'),
       h('button', { class: groups.length ? 'btn ghost' : 'btn primary', type:'button', onclick:freeReview }, icon('i-review'), 'Revisão livre'),
       h('button', { class:'linkbtn muted', type:'button', text:'Como funciona?', onclick:openReviewPrimer }),
       off ? h('button', { class:'linkbtn', type:'button', text:'Religar sugestões', onclick: async () => { state.settings.reviewSuggestions = true; await saveSettings(); render(); } }) : null),
-    reviewSituation(due, snoozed, upcoming));
+    reviewResumeButton(), reviewSituation(due, snoozed, upcoming));
   parts.push(lead);
 
   const sugestoes = renderDeadlineSuggestions();
@@ -11915,84 +11967,9 @@ function openReviewOutcomeModal(topicId, method, suggestedMinutes){
 /* =========================================================================
    MONTAR SESSÃO DE REVISÃO — "quanto tempo você tem agora?"
    ========================================================================= */
-function openSessionBuilder(){
-  let minutes = 20;
-  openModal(close => {
-    const preview = h('div');
-    const render = () => {
-      const plan = ReviewEngine.buildSession(minutes);
-      clear(preview);
-      if(!plan.items.length){
-        preview.append(h('p', { class:'hint', text:'Nenhuma revisão pendente no momento.' }));
-        return;
-      }
-      preview.append(h('p', { class:'card-title', style:'margin-top:6px',
-        text:`Revisão de ${plan.totalMinutes} min` }));
-      plan.items.forEach(it => preview.append(h('div', { class:'builder-item' },
-        h('div', { class:'bi-main' },
-          h('div', { class:'bi-name', text: it.topic.name }),
-          h('div', { class:'bi-sub', text: disciplineName(it.topic.disciplineId) + ' · ' + it.reasons.slice(0,2).join(' · ') }),
-          h('div', { class:'bi-method', text: methodLabel(it.method) })),
-        h('span', { class:'num bi-min', text: it.minutes + ' min' }))));
-      if(plan.remaining > 0){
-        preview.append(h('p', { class:'hint', style:'margin-top:10px',
-          text:`Outras ${plan.remaining} revisões continuam na fila para depois. Nada é marcado como concluído sem você revisar.` }));
-      }
-    };
-
-    const chips = h('div', { class:'chips', style:'margin-bottom:12px' },
-      [10,20,30,45].map(v => h('button', { class:'chip', type:'button', 'aria-pressed': v === minutes ? 'true':'false', text: v + ' min',
-        onclick:() => { minutes = v; $$('.chip', chips).forEach(c => c.setAttribute('aria-pressed','false'));
-                        $$('.chip', chips).find(c => c.textContent === v + ' min').setAttribute('aria-pressed','true');
-                        customIn.value = ''; render(); } })));
-    const customIn = h('input', { type:'number', id:'sb-custom', min:'5', step:'5', placeholder:'Outro valor', inputmode:'numeric' });
-    customIn.addEventListener('input', () => {
-      const v = Number(customIn.value);
-      if(v >= 5){ minutes = v; $$('.chip', chips).forEach(c => c.setAttribute('aria-pressed','false')); render(); }
-    });
-    render();
-
-    return {
-      title:'Quanto tempo você tem agora?',
-      content: h('div',
-        chips,
-        h('div', { class:'field' }, h('label', { for:'sb-custom', text:'Personalizado (minutos)' }), customIn),
-        preview),
-      actions:[
-        h('button', { class:'btn ghost', type:'button', text:'Cancelar', onclick:() => close() }),
-        h('button', { class:'btn primary', type:'button', text:'Começar', onclick:() => {
-          const plan = ReviewEngine.buildSession(minutes);
-          if(!plan.items.length){ toast('Nenhuma revisão pendente.', 'err'); return; }
-          close();
-          ui.reviewQueue = plan.items.map(i => ({ topicId:i.topic.id, method:i.method }));
-          runNextQueuedReview();
-        } })
-      ]
-    };
-  }, { size:'wide' });
-}
-
-/** "Revisar por N minutos": monta a sessão direto, sem passar pelo seletor. */
-function startQueuedReviewSession(minutes){
-  const plan = ReviewEngine.buildSession(minutes);
-  if(!plan.items.length){ toast('Nenhuma revisão pendente agora.', 'info'); return; }
-  ui.reviewQueue = plan.items.map(i => ({ topicId:i.topic.id, method:i.method }));
-  toast(`${plan.items.length} ${plan.items.length === 1 ? 'revisão' : 'revisões'} · cerca de ${plan.totalMinutes} min. Comece por ${plan.items[0].topic.name}.`, 'info',
-    { title:`Revisão de ${minutes} minutos pronta` });
-  runNextQueuedReview();
-}
-
-/** Encadeia as revisões escolhidas na sessão montada. */
-function runNextQueuedReview(){
-  if(!ui.reviewQueue || !ui.reviewQueue.length){
-    toast('Todas as revisões escolhidas foram registradas.', 'ok', { title:'Revisões concluídas' });
-    return;
-  }
-  const next = ui.reviewQueue.shift();
-  const t = getTopic(next.topicId);
-  if(!t){ runNextQueuedReview(); return; }
-  startReview(t.id, next.method);
-}
+function openSessionBuilder(){ return openGuidedReviewBuilder(); }
+function startQueuedReviewSession(minutes){ return openGuidedReviewBuilder(minutes); }
+function runNextQueuedReview(){ ui.reviewQueue = null; }
 
 /* =========================================================================
    "COMO FUNCIONAM AS REVISÕES?" — explicação curta e visual
@@ -14713,6 +14690,12 @@ const Nav = {
         const r = resolveDiscNav();
         loc.l = r.level; loc.a = r.areaKey || null; loc.d = r.disc ? r.disc.id : null; loc.t = r.topic ? r.topic.id : null;
       }
+    } else if(v === 'history'){
+      loc.hf = {...ui.history};
+      loc.hids = ui.historyIds;
+      if(ui.history.period === 'analises' && ui.historyRange) loc.hp={start:dateToISO(ui.historyRange.start),end:dateToISO(ui.historyRange.end)};
+    } else if(v === 'plan'){
+      loc.pw=clamp(Math.round(Number(ui.planWeekOffset)||0),-104,26);
     } else if(v === 'help'){
       loc.hr = normHelpRoute(helpUi.route);
     } else if(v === 'analytics'){
@@ -14730,6 +14713,8 @@ const Nav = {
       if(ta === 'deadlines') return true;
       return (a.l || 'root') === (b.l || 'root') && (a.a || null) === (b.a || null) && (a.d || null) === (b.d || null) && (a.t || null) === (b.t || null);
     }
+    if(a.v === 'history') return JSON.stringify(a.hf || {})===JSON.stringify(b.hf || {}) && JSON.stringify(a.hids || null)===JSON.stringify(b.hids || null) && JSON.stringify(a.hp || null)===JSON.stringify(b.hp || null);
+    if(a.v === 'plan') return (a.pw || 0)===(b.pw || 0);
     if(a.v === 'help') return helpRouteEquals(normHelpRoute(a.hr), normHelpRoute(b.hr));
     if(a.v === 'analytics') return (a.am || null) === (b.am || null) && analyticsQueryKey(a.aq) === analyticsQueryKey(b.aq);
     return true;
@@ -14771,6 +14756,7 @@ const Nav = {
     window.addEventListener('scroll', () => { this.scrollAt[this.i] = window.scrollY; }, { passive:true });
     // ao sair/recarregar, a rolagem atual fica guardada na própria entrada
     window.addEventListener('pagehide', () => {
+      this.sync('replace');
       try { const cur = history.state; if(cur && cur.c === 'ciclo') history.replaceState(Object.assign({}, cur, { sy: window.scrollY }), ''); } catch(_){}
     });
   },
@@ -14875,6 +14861,13 @@ function applyLocation(loc, ctx){
         : (c.dir === 'back' && fromDisc ? (discBackFocus(fromDisc, target) || 'level-title') : (target.level !== 'root' ? 'level-title' : null));
       if(target.level !== 'area' || target.areaId !== ui.areaJustCreated) ui.areaJustCreated = null;
     }
+  } else if(view === 'history'){
+    if(l.hf && typeof l.hf === 'object'){ for(const key of Object.keys(ui.history)) if(typeof l.hf[key] === 'string') ui.history[key]=l.hf[key]; }
+    ui.historyIds=l.hids || null;
+    ui.historyRange=l.hp && isStrictISODate(l.hp.start) && isStrictISODate(l.hp.end) ? {start:parseISO(l.hp.start),end:parseISO(l.hp.end)} : null;
+  } else if(view === 'plan'){
+    ui.planWeekOffset=clamp(Math.round(Number(l.pw)||0),-104,26);
+    ui.planEditing=false;
   } else if(view === 'help'){
     helpUi.route = normHelpRoute(l.hr);
     helpUi.stack = Array.isArray(c.helpStack) ? c.helpStack.slice(-20).map(normHelpRoute) : [];
@@ -14882,7 +14875,7 @@ function applyLocation(loc, ctx){
   } else if(view === 'analytics'){
     restoreAnalyticsLocation(l);
   }
-  if(!sameView) setView(view, { noSync:true, noScroll:true });
+  if(!sameView) setView(view, { noSync:true, noScroll:true, restoreContext:true });
   else render();
   window.scrollTo({ top: Math.max(0, c.scrollY || 0), behavior:'auto' });
   if(keepFocus) return;
@@ -17539,6 +17532,15 @@ function rangePicker(d, pick, rerender){
 /* =========================================================================
    RESULTADO — resumo → poucos números → um gráfico → insights → explorar
    ========================================================================= */
+function analyticsReadingGuide(a){
+  return h('details', {class:'disclosure analytics-reading'},
+    h('summary', {text:'Como ler estes números'}),
+    h('div', {class:'disclosure-body'},
+      h('p', {class:'hint',text:'Tempo estudado é líquido: descansos e pausas ficam à parte. Cada estudo conta uma vez, mesmo com várias disciplinas. Dias com estudo são datas com pelo menos um registro.'}),
+      h('p', {class:'hint',text:'≈ indica uma divisão estimada do tempo. Acerto é a soma dos acertos dividida pela soma das questões; não é uma medida de domínio.'}),
+      h('p', {class:'hint',text:a.partial ? 'Este período está em andamento. Os totais consideram somente os dias até hoje.' : 'O período selecionado está completo.'})));
+}
+
 function renderAnalyticsResult(root){
   let q = ui.analyticsQuery;
   let a = AnalyticsEngine.query(q);
@@ -17549,7 +17551,7 @@ function renderAnalyticsResult(root){
     toast('O item que estava sendo analisado não existe mais. Mostrando todos os estudos.', 'info', { title:'Análise ajustada' });
   }
   const focus = q.focus;
-  const parts = [analyticsResultHeader(a)];
+  const parts = [analyticsResultHeader(a), analyticsReadingGuide(a)];
   const empty = analyticsEmptyFor(a, focus);
   if(empty){
     parts.push(empty);
@@ -17636,7 +17638,7 @@ function analyticsPanorama(a){
       h('p', { class:'an-hero-s', text: `${daysText} · ${plural(t.count, 'estudo registrado', 'estudos registrados')}` }),
       deltaText ? h('p', { class:'an-hero-d ' + (delta === null || Math.abs(delta) < 5 ? 'is-flat' : delta >= 0 ? 'is-up' : 'is-down'), text: deltaText,
         title: comparedPeriodsText(cmp) }) : null,
-      deltaText && cmp.partial ? h('p', { class:'an-hero-cmp', text: `${fmtShortRange(cmp.curRange)} × ${fmtShortRange(cmp.prevRange)} (mesmos dias)` }) : null),
+      deltaText ? h('p', { class:'an-hero-cmp', text: `${fmtShortRange(cmp.curRange)} × ${fmtShortRange(cmp.prevRange)}${cmp.partial ? ' (mesmos dias, até hoje)' : ' (períodos completos)'}` }) : null),
     h('dl', { class:'an-hero-facts' + (facts4.length > 3 ? ' is-four' : '') }, facts4)));
 
   /* 2. dois gráficos lado a lado */
@@ -20262,7 +20264,7 @@ function historyActiveFilters(){
   if(f.disciplineId){ out.push({ label: disciplineName(f.disciplineId), clear:() => { f.disciplineId = ''; f.topicId = ''; } }); }
   if(f.topicId){ const tp = getTopic(f.topicId); out.push({ label: tp ? tp.name : 'Tópico', clear:() => { f.topicId = ''; } }); }
   if(f.period && f.period !== 'todos'){
-    const labels = { semana:'Esta semana', mes:'Este mês', analises:'Período da última análise' };
+    const labels = { hoje:'Hoje', semana:'Esta semana', mes:'Este mês', analises:'Período da última análise' };
     out.push({ label: labels[f.period] || f.period, clear:() => { f.period = 'todos'; } });
   }
   if(f.type) out.push({ label: sessionTypeLabel(f.type), clear:() => { f.type = ''; } });
@@ -20292,7 +20294,7 @@ function openHistoryFilters(){
       selectField('hf-disc', 'Disciplina', discOpts, draft.disciplineId, e => { draft.disciplineId = e.target.value; draft.topicId = ''; draw(); $('#hf-disc') && $('#hf-disc').focus(); }),
       selectField('hf-topic', 'Tópico', topicOpts, draft.topicId, e => { draft.topicId = e.target.value; }),
       selectField('hf-period', 'Período', [
-        { value:'todos', label:'Todo o histórico' }, { value:'semana', label:'Esta semana' }, { value:'mes', label:'Este mês' },
+        { value:'todos', label:'Todo o histórico' }, { value:'hoje',label:'Hoje' }, { value:'semana', label:'Esta semana' }, { value:'mes', label:'Este mês' },
         { value:'analises', label:'Período da última análise' }
       ], draft.period, e => { draft.period = e.target.value; }),
       selectField('hf-type', 'Tipo de estudo', [{ value:'', label:'Todos' }].concat(SESSION_TYPES.map(t => ({ value:t.v, label:t.label }))), draft.type, e => { draft.type = e.target.value; }),
@@ -20307,7 +20309,7 @@ function openHistoryFilters(){
     body,
     h('div', { class:'row auto', style:'margin-top:18px' },
       h('button', { class:'btn primary', type:'button', text:'Aplicar filtros', onclick:() => {
-        Object.assign(ui.history, draft); ui.historyLimit = 150; Drawer.close(); renderHistory();
+        Object.assign(ui.history, draft); if(draft.period==='analises') ui.historyRange=ui.period ? {...ui.period} : null; ui.historyLimit = 150; Drawer.close(); renderHistory();
       } }),
       h('button', { class:'btn ghost', type:'button', text:'Limpar', onclick:() => { clearHistoryFilters(); Drawer.close(); renderHistory(); } })));
   Drawer.open('Filtros do histórico', wrap);
@@ -20322,9 +20324,10 @@ function filteredSessions(){
     const ids = new Set(state.disciplines.filter(d => d.areaId === f.areaId).map(d => d.id));
     list = list.filter(s => SessionModel.touchesDisciplines(s, ids));
   }
-  if(f.period === 'semana'){ const r = { start:startOfWeek(today()), end:endOfWeek(today()) }; const a = dateToISO(r.start), b = dateToISO(r.end); list = list.filter(s => s.date >= a && s.date <= b); }
+  if(f.period === 'hoje') list = list.filter(s => s.date === todayISO());
+  else if(f.period === 'semana'){ const r = { start:startOfWeek(today()), end:endOfWeek(today()) }; const a = dateToISO(r.start), b = dateToISO(r.end); list = list.filter(s => s.date >= a && s.date <= b); }
   else if(f.period === 'mes'){ const a = dateToISO(startOfMonth(today())), b = dateToISO(endOfMonth(today())); list = list.filter(s => s.date >= a && s.date <= b); }
-  else if(f.period === 'analises' && ui.period){ const a = dateToISO(ui.period.start), b = dateToISO(ui.period.end); list = list.filter(s => s.date >= a && s.date <= b); }
+  else if(f.period === 'analises' && (ui.historyRange || ui.period)){ const range=ui.historyRange || ui.period; const a = dateToISO(range.start), b = dateToISO(range.end); list = list.filter(s => s.date >= a && s.date <= b); }
   if(f.type) list = list.filter(s => SessionModel.hasType(s, f.type));      // v6.7: estudos que TÊM este tipo (entre outros)
   if(f.difficulty) list = list.filter(s => String(s.difficulty) === f.difficulty);
   // v7.1 — resultados registrados e os registros de uma descoberta
@@ -20369,6 +20372,7 @@ function renderHistoryTable(){
   const holder = $('#history-table-card');
   if(!holder) return;
   const list = filteredSessions();
+  if(ui.view === 'history' && Nav.started && Nav.entries[Nav.i]?.v === 'history') Nav.sync('replace');
   clear(holder);
   holder.append(h('p', { class:'list-summary', role:'status', 'aria-live':'polite' },
     h('strong', { text: plural(list.length, 'estudo', 'estudos') }), ` · ${fmtDuration(sum(list, s => s.minutes))}`));
@@ -20473,7 +20477,7 @@ function openEditSessionModal(id){
 
   openModal(close => {
     let types = SessionModel.types(s).slice(), difficulty = s.difficulty;
-    const comment = commentField({ id:'es-comment', value:s.comment });      // já tem comentário? o campo abre à mostra
+    const comment = commentField({ close, id:'es-comment', value:s.comment });      // já tem comentário? o campo abre à mostra
 
     let lastWhen = null, split = null;
     const when = studyWhenFields({ idPrefix:'es', onChange: r => { lastWhen = r; if(split) split.refreshTotal(); }, initial:{
@@ -20944,7 +20948,7 @@ async function runIntegrityCheck(){
   try {
     const names = ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines'];
     const lists = await Promise.all(names.map(n => DB.getAll(n)));
-    const src = { settings: state.settings };
+    const src = { settings: state.settings, guidedReview:(await DB.get('meta','guidedReview'))?.value };
     names.forEach((n, i) => { src[n] = lists[i] || []; total += src[n].length; });
     result = IntegrityValidator.diagnose(src);
   } catch(err){
@@ -21023,7 +21027,7 @@ function renderData(){
       h('li', { class:'line' },
         h('div', { class:'line-main static' },
           h('span', { class:'line-t', text:'O que o backup contém' }),
-          h('span', { class:'line-s', text: counts.join(' · ') + ', com resultados registrados, descansos e Pomodoro de cada estudo, além de planos e configurações.' }))),
+          h('span', { class:'line-s', text: counts.join(' · ') + ', com resultados, descansos e Pomodoro de cada estudo, além de planos, configurações e o roteiro de revisão confirmado.' }))),
       h('li', { class:'line' },
         h('div', { class:'line-main static' },
           h('span', { class:'line-t', text:'Restauração segura' }),
@@ -21142,6 +21146,7 @@ function beginRestore(text, fileName){
     restoreRefused(err && err.fatal ? err : { message:'O arquivo não pôde ser conferido. Ele pode estar danificado.' });
     return;
   }
+  if(state.meta.guidedReview?.runningSince && !state.meta.guidedReview.finishedAt){toast('Pause sua revisão guiada antes de restaurar os dados.','info');return;}
   if(TimerService.isActive) askTimerBeforeRestore(parsed, fileName);
   else openRestorePreview(parsed, fileName, false);
 }
@@ -21202,6 +21207,7 @@ function openRestorePreview(parsed, fileName, discardTimer){
       try {
         await Backup.restoreInto(d, { discardTimerRunId:discardTimer || null });
       } catch(err){
+        if(err && err.code === 'guided-active'){close();await safeRefresh();toast(err.message,'info');return;}
         if(err && err.code === 'timer-active'){
           close();
           await loadAll(); TimerService.restore();

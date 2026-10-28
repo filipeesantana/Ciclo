@@ -1,0 +1,14 @@
+{
+  "run_id": 40780468933,
+  "run_url": "https://github.com/filipeesantana/Ciclo/actions/runs/40780468933",
+  "head_sha": "a105a6fd51bf21933af74864bcdc3b7789989b8e",
+  "engine": "firefox",
+  "conclusion": "failure",
+  "tests": "99",
+  "passed": "99",
+  "failedStep": "audit:experience",
+  "evidence": [
+    "2026-10-28T22:32:42.5860793Z ℹ fail 0",
+    "2026-10-28T22:34:15.5743706Z {\"checks\":109,\"errors\":[],\"failures\":[{\"theme\":\"dark\",\"width\":320,\"view\":\"guided-player\",\"overflow\":false,\"violations\":[{\"id\":\"target-size\",\"nodes\":[[\"#guided-outcome\"]]}]},{\"theme\":\"light\",\"width\":320,\"view\":\"guided-player\",\"overflow\":false,\"violations\":[{\"id\":\"target-size\",\"nodes\":[[\"#guided-outcome\"]]}]}]}"
+  ]
+}

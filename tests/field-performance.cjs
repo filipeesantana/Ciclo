@@ -10,7 +10,7 @@ const out=process.env.AUDIT_OUTPUT||path.resolve(__dirname,'../test-results/fiel
  const runtime=await start(process.env.BROWSER||'chromium');
  const report={browser:runtime.browser.version(),sourceSha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'app.js'))).digest('hex'),method:'5 renderizações síncronas por tela, cache invalidado. UI de importação, reload até state.ready. Não mede pintura nem desempenho de aparelho real.',results:[],errors:[]};
  try{
-  for(const count of [911,1822,2733,5000,10000]){
+  for(const count of (process.env.CICLO_PERF_COUNTS?process.env.CICLO_PERF_COUNTS.split(',').map(Number):[911,1822,2733,5000,10000])){
    const data=count===911?backup:stress(count),expected=reference(data.sessions),bytes=count===911?buffer:Buffer.from(JSON.stringify(data));
    const {page,context}=await open(runtime);page.setDefaultTimeout(30000);page.on('pageerror',e=>report.errors.push(e.message));
    await page.clock.install({time:new Date('2026-10-22T21:00:00Z')});

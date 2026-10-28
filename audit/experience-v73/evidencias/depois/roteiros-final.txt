@@ -1,0 +1,30 @@
+✔ comentário visível, recolhido e salvo mantém texto; Cancelar e F5 conservam rascunho (1428.371763ms)
+✔ remoção de comentário é explícita e confirmada (1005.572813ms)
+✔ segunda disciplina visível, foco no seletor, sem duplicatas nem minutos multiplicados (980.951777ms)
+✔ troca de modo não apaga comentário, tempo ou rascunho (1161.428026ms)
+✔ Hoje usa só dados do dia, soma multidisciplinar uma vez e ignora descanso e sessão ativa (769.698548ms)
+✔ Hoje muda imediatamente após registrar, editar, mudar data e excluir (924.599522ms)
+✔ Hoje → Análises do dia → Voltar e Histórico de hoje usam o recorte correto (867.269526ms)
+✔ filtros e busca do Histórico voltam depois de outro recorte e de F5 (780.01766ms)
+✔ virada do dia usa atribuição civil ao início e não duplica sessão noturna (703.947696ms)
+✔ revisão livre aceita várias disciplinas sem tópicos e conserva agendas (1071.560623ms)
+✔ roteiro: pulo, respostas individuais e flashcards pessoais geram uma sessão agregada (1053.332637ms)
+✔ roteiro: pausa exclui tempo, confirmação e cursor sobrevivem ao F5 (1138.769675ms)
+✔ duas abas: versão antiga não altera respostas e finalização concorrente não duplica (916.462476ms)
+✔ roteiro rejeita edição concorrente e não confirma falha de IndexedDB (692.794326ms)
+✔ backup lógico 11 guarda progresso pausado e mantém dados antigos e checksum (654.486586ms)
+✔ roteiro sem autoavaliação não inventa resultado; agenda do tópico pulado fica intacta (669.298293ms)
+✔ um relógio por vez: roteiro e cronômetro recusam execução simultânea (678.232219ms)
+✔ editor do roteiro permite adicionar, reordenar, remover, trocar método e duração (965.487009ms)
+✔ roteiro rejeita backup inválido, impede restauração enquanto conta e exporta pausado (613.186379ms)
+✔ Histórico conserva o período usado antes de outra análise e após F5 (948.767385ms)
+✔ Planejamento → Hoje → Histórico → Voltar recupera a semana consultada (830.854545ms)
+✔ roteiro encerrado sem estudo não retorna falso sucesso para uma finalização antiga (625.57189ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19857.082013

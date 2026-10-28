@@ -1,0 +1,39 @@
+✔ comentário visível, recolhido e salvo mantém texto; Cancelar e F5 conservam rascunho (2388.203914ms)
+✔ remoção de comentário é explícita e confirmada (1444.19333ms)
+✔ segunda disciplina visível, foco no seletor, sem duplicatas nem minutos multiplicados (1449.55663ms)
+✔ troca de modo não apaga comentário, tempo ou rascunho (1740.36618ms)
+✔ Hoje usa só dados do dia, soma multidisciplinar uma vez e ignora descanso e sessão ativa (1154.564666ms)
+✔ Hoje muda imediatamente após registrar, editar, mudar data e excluir (1432.764335ms)
+✔ Hoje → Análises do dia → Voltar e Histórico de hoje usam o recorte correto (1399.121606ms)
+✔ filtros e busca do Histórico voltam depois de outro recorte e de F5 (1507.267083ms)
+✔ virada do dia usa atribuição civil ao início e não duplica sessão noturna (1153.58567ms)
+✔ revisão livre aceita várias disciplinas sem tópicos e conserva agendas (1548.426503ms)
+✔ roteiro: pulo, respostas individuais e flashcards pessoais geram uma sessão agregada (1558.868398ms)
+✔ roteiro: pausa exclui tempo, confirmação e cursor sobrevivem ao F5 (1852.75624ms)
+✔ duas abas: versão antiga não altera respostas e finalização concorrente não duplica (1521.250229ms)
+✔ roteiro rejeita edição concorrente e não confirma falha de IndexedDB (1105.343926ms)
+✔ backup lógico 11 guarda progresso pausado e mantém dados antigos e checksum (1016.281161ms)
+✔ roteiro sem autoavaliação não inventa resultado; agenda do tópico pulado fica intacta (1144.321554ms)
+✔ um relógio por vez: roteiro e cronômetro recusam execução simultânea (952.675034ms)
+✔ editor do roteiro permite adicionar, reordenar, remover, trocar método e duração (1384.27858ms)
+✔ roteiro rejeita backup inválido, impede restauração enquanto conta e exporta pausado (1188.739713ms)
+✔ A: estudo livre salvo encerra Hoje imediatamente, sem F5 (1904.801281ms)
+✔ B: Foco → Encerrar → Registrar atualiza Hoje antes de navegar (1581.934714ms)
+✔ C: Pomodoro pausa, retoma, descansa e registra apenas estudo líquido (1667.028838ms)
+✔ D: F5 depois de finalizar não restaura um estudo concluído (1782.881211ms)
+✔ E: Histórico e Voltar mantêm Hoje encerrado (1355.864865ms)
+✔ F: aba observadora deixa de mostrar estudo ativo ao finalizar na outra aba (1379.271502ms)
+✔ G: dois cliques rápidos em Registrar criam uma sessão (909.960016ms)
+✔ H: falha de IndexedDB conserva o estudo e permite tentar novamente (1863.465807ms)
+✔ I: novo estudo depois de finalizar tem identidade própria (1092.573727ms)
+✔ J: sair de tela cheia mantém as ações do Foco e permite finalizar (1096.266601ms)
+✔ Hoje acompanha início, pausa, descanso e descarte sem navegação (1004.649296ms)
+✔ snapshot regravado por aba atrasada não ressuscita um runId salvo (925.920313ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 44504.361505

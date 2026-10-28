@@ -1,0 +1,12 @@
+
+> audit:inventory
+> node tests/inventory.cjs
+
+{
+  "controls": 580,
+  "fixedControls": 25,
+  "layers": 63,
+  "functions": 737,
+  "articles": 91,
+  "broken": []
+}
