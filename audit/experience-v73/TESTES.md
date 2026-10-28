@@ -5,7 +5,7 @@ Execução local em Chromium 154.0.8037.57, com Playwright 1.62.1 e contextos de
 | Verificação | Resultado local |
 |---|---|
 | Baseline funcional original | 79/80; condição de data do teste anual documentada no diagnóstico |
-| Suíte ampliada | **102/102** aprovados, sem ignorados ou cancelados |
+| Suíte ampliada | **103/103** aprovados, sem ignorados ou cancelados |
 | Sintaxe de app.js, content.js e reviews.js | Aprovada |
 | Inventário de controles e destinos | Sem destinos ausentes; inclui reviews.js |
 | Auditoria geral de interface/axe | 95 configurações, 91 artigos; sem violações, overflow, erros ou rede externa observados |
@@ -16,7 +16,7 @@ Execução local em Chromium 154.0.8037.57, com Playwright 1.62.1 e contextos de
 
 [Suíte completa](evidencias/depois/testes.txt) · [regressões finais](evidencias/depois/regressoes.txt) · [auditoria geral](evidencias/depois/acessibilidade/results.json) · [campo](evidencias/depois/campo/review.json) · [experiência](evidencias/depois/results.json) · [inventário](../INVENTARIO-CONTROLES.md).
 
-Os 22 novos testes cobrem comentário visível, foco, recolher, remoção confirmada, rascunho ao cancelar/trocar modo/F5, segunda disciplina, Hoje antes/depois/edição/data/exclusão/virada, destinos do dia, filtros e F5, revisão livre, edição do roteiro, respostas individuais, pulo, pausa/F5, duas abas, retentativa idempotente, falha de IndexedDB, backup, validador e exclusão mútua dos relógios. Duas regressões adicionais verificam período do Histórico depois de outra análise e semana consultada no Planejamento, com Voltar e F5. A suíte anterior mantém onboarding, foco, Pomodoro, planejamento, integridade e fixture anual.
+Os 23 novos testes cobrem comentário visível, foco, recolher, remoção confirmada, rascunho ao cancelar/trocar modo/F5, segunda disciplina, Hoje antes/depois/edição/data/exclusão/virada, destinos do dia, filtros e F5, revisão livre, edição do roteiro, respostas individuais, pulo, pausa/F5, duas abas, retentativa idempotente, falha de IndexedDB, backup, validador e exclusão mútua dos relógios. Duas regressões adicionais verificam período do Histórico depois de outra análise e semana consultada no Planejamento, com Voltar e F5. Um registro de três disciplinas e três tópicos, com respostas diferentes, também confere 45 minutos únicos na sessão, nas divisões e nas Análises. A suíte anterior mantém onboarding, foco, Pomodoro, planejamento, integridade e fixture anual.
 
 A matriz adicional usa os dois temas em 320, 375, 390, 430, 768, 1024, 1280, 1366, 1440 e 1920 px nas telas principais. Modais e roteiro também são ensaiados em larguras intermediárias. O zoom é CSS de 200%, não medição do zoom de todos os navegadores. Teclado e foco são ensaiados na suíte; axe verifica critérios relevantes WCAG 2.2 AA. Isso não certifica conformidade integral nem substitui leitor de tela real. O relógio usa `aria-live=off`.
 
@@ -26,7 +26,7 @@ Chromium foi executado localmente. Firefox/WebKit tiveram download bloqueado por
 
 Chrome e Edge oficiais, Safari/iOS real, Android/iPhone físicos, teclado virtual real e leitores de tela reais não foram testados. A largura mobile é emulada; não equivale a aprovação de dispositivos físicos.
 
-A primeira execução remota (`a105a6f`) passou em 99/99 casos funcionais no Firefox e no WebKit, mas a matriz visual adicional reprovou: alvo parcialmente coberto no roteiro em Firefox/320 px e overflow após redimensionamento em WebKit/430 px. [Firefox](evidencias/ci-primeira-execucao.json) · [WebKit](evidencias/ci-primeira-execucao-webkit.json). O rodapé dos roteiros passou a ocupar espaço próprio, com rolagem no conteúdo. A auditoria aguarda dois quadros após redimensionar/aplicar tema e registra os elementos que ultrapassarem a largura; nenhuma regra de falha foi desativada. A validação remota posterior está vinculada no PR.
+A primeira execução remota (`a105a6f`) passou em 99/99 casos funcionais no Firefox e no WebKit, mas a matriz visual adicional reprovou: alvo parcialmente coberto no roteiro em Firefox/320 px e overflow após redimensionamento em WebKit/430 px. [Firefox](evidencias/ci-primeira-execucao.json) · [WebKit](evidencias/ci-primeira-execucao-webkit.json). O rodapé dos roteiros passou a ocupar espaço próprio, com rolagem no conteúdo. A auditoria aguarda dois quadros após redimensionar/aplicar tema e registra os elementos que ultrapassarem a largura; nenhuma regra de falha foi desativada. A execução seguinte [40781671925](https://github.com/filipeesantana/Ciclo/actions/runs/40781671925), no código `9ddce5d`, aprovou **102/102 testes em cada um dos três motores**, além de sintaxe, inventário e as três auditorias. As contagens foram conferidas nos logs: [proveniência](evidencias/ci-validacao.json). O commit final acrescenta o teste explícito de três disciplinas (103 casos locais); a execução remota vigente está nos checks do PR.
 
 ## Performance
 

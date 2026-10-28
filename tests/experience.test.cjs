@@ -124,3 +124,11 @@ test('Planejamento → Hoje → Histórico → Voltar recupera a semana consulta
 test('roteiro encerrado sem estudo não retorna falso sucesso para uma finalização antiga',async()=>{
  const r=await page.evaluate(async()=>{let d=await GuidedReviewCommands.create([{topicId:'pontuacao',method:'flashcards',minutes:20}],20);d=await GuidedReviewCommands.update(d,r=>{r.items[0].status='done';return r;});await GuidedReviewCommands.update(d,r=>{r.finishedAt=nowISO();return r;});let refused=false;try{await GuidedReviewCommands.finish(d,20);}catch(e){refused=/sem registrar estudo/.test(e.message);}return {refused,count:await DB.count('sessions'),reviewed:(await DB.get('topics','pontuacao')).lastReviewedAt};});assert.deepEqual(r,{refused:true,count:0,reviewed:null});
 });
+test('três disciplinas e três tópicos recebem respostas distintas em um único estudo de 45 minutos',async()=>{
+ await page.evaluate(async()=>{const d={...newDiscipline('Inglês'),id:'ingles'},t={...newTopic('ingles','Verbos'),id:'verbos'};await DB.put('disciplines',d);await DB.put('topics',t);await refresh();openRegisterModal({disciplineIds:['portugues','matematica','ingles'],topicIds:['pontuacao','fracoes','verbos'],types:['revisao']});});
+ await page.getByRole('button',{name:'Não lembro os horários',exact:true}).click();await page.locator('#rm-min').fill('45');
+ for(const [topic,outcome] of [['Pontuação','Lembrei bem'],['Frações','Lembrei com dificuldade'],['Verbos','Esqueci']])await page.getByRole('group',{name:'Resultado de '+topic,exact:true}).getByRole('button',{name:outcome,exact:true}).click();
+ await action('Registrar estudo').click();await page.waitForFunction(()=>state.sessions.length===1&&!Overlay.isOpen);
+ const s=await page.evaluate(()=>({minutes:state.sessions[0].minutes,disciplines:SessionModel.disciplineIds(state.sessions[0]),topics:state.sessions[0].topicEntries.map(t=>[t.topicId,t.outcome]),analytics:AnalyticsEngine.query({periodPreset:'hoje'}).totals.minutes,shares:SessionModel.topicShares(state.sessions[0]).reduce((n,t)=>n+t.minutes,0)}));
+ assert.equal(s.minutes,45);assert.equal(s.analytics,45);assert.equal(s.shares,45);assert.equal(s.disciplines.length,3);assert.deepEqual(s.topics,[['pontuacao','remembered'],['fracoes','hard'],['verbos','forgot']]);
+});

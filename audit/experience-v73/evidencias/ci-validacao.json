@@ -1,0 +1,361 @@
+{
+  "run_id": 40781671925,
+  "url": "https://github.com/filipeesantana/Ciclo/actions/runs/40781671925",
+  "head_sha": "9ddce5db1d5bda87976164c5b1c27c5b77fd43d6",
+  "conclusion": "success",
+  "records": [
+    {
+      "engine": "chromium",
+      "tests": 102,
+      "passed": 102,
+      "failed": 0,
+      "summaries": [
+        "2026-10-28T22:42:24.5712613Z ℹ tests 102",
+        "2026-10-28T22:42:24.5713866Z ℹ pass 102",
+        "2026-10-28T22:42:24.5714266Z ℹ fail 0",
+        "2026-10-28T22:42:59.4724734Z   \"violations\": [],",
+        "2026-10-28T22:42:59.4726516Z   \"outgoing\": [],",
+        "2026-10-28T22:43:10.8503379Z   \"layouts\": 24,",
+        "2026-10-28T22:43:10.8504091Z   \"violations\": [],",
+        "2026-10-28T22:43:10.8505793Z   \"outgoing\": [],",
+        "2026-10-28T22:43:34.2029944Z {\"checks\":109,\"errors\":[],\"failures\":[]}"
+      ]
+    },
+    {
+      "engine": "firefox",
+      "tests": 102,
+      "passed": 102,
+      "failed": 0,
+      "summaries": [
+        "2026-10-28T22:41:32.7799363Z ℹ tests 102",
+        "2026-10-28T22:41:32.7799848Z ℹ pass 102",
+        "2026-10-28T22:41:32.7800106Z ℹ fail 0",
+        "2026-10-28T22:42:00.3093578Z   \"violations\": [],",
+        "2026-10-28T22:42:00.3094482Z   \"outgoing\": [],",
+        "2026-10-28T22:42:10.2806080Z   \"layouts\": 24,",
+        "2026-10-28T22:42:10.2806210Z   \"violations\": [],",
+        "2026-10-28T22:42:10.2806570Z   \"outgoing\": [],",
+        "2026-10-28T22:42:28.8470372Z {\"checks\":109,\"errors\":[],\"failures\":[]}"
+      ]
+    },
+    {
+      "engine": "webkit",
+      "tests": 102,
+      "passed": 102,
+      "failed": 0,
+      "summaries": [
+        "2026-10-28T22:44:50.9486705Z ℹ tests 102",
+        "2026-10-28T22:44:50.9487817Z ℹ pass 102",
+        "2026-10-28T22:44:50.9488307Z ℹ fail 0",
+        "2026-10-28T22:45:25.1210525Z   \"violations\": [],",
+        "2026-10-28T22:45:25.1212727Z   \"outgoing\": [],",
+        "2026-10-28T22:45:41.7869940Z   \"layouts\": 24,",
+        "2026-10-28T22:45:41.7870378Z   \"violations\": [],",
+        "2026-10-28T22:45:41.7871317Z   \"outgoing\": [],",
+        "2026-10-28T22:46:12.4377455Z {\"checks\":109,\"errors\":[],\"failures\":[]}"
+      ]
+    }
+  ],
+  "jobs": [
+    {
+      "id": 123144629866,
+      "name": "browser (firefox)",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 40781671925,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run npm ci --ignore-scripts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Run npx playwright install --with-deps firefox",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Run npm run check",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Run npm run audit:inventory",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Testes funcionais",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Run npm run audit:browser",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "Run npm run audit:field",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10
+        },
+        {
+          "name": "Run npm run audit:experience",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25
+        }
+      ]
+    },
+    {
+      "id": 123144630219,
+      "name": "browser (webkit)",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 40781671925,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run npm ci --ignore-scripts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Run npx playwright install --with-deps webkit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Run npm run check",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Run npm run audit:inventory",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Testes funcionais",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Run npm run audit:browser",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "Run npm run audit:field",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10
+        },
+        {
+          "name": "Run npm run audit:experience",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25
+        }
+      ]
+    },
+    {
+      "id": 123144630268,
+      "name": "browser (chromium)",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 40781671925,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run npm ci --ignore-scripts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Run npx playwright install --with-deps chromium",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Run npm run check",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Run npm run audit:inventory",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Testes funcionais",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Run npm run audit:browser",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "Run npm run audit:field",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10
+        },
+        {
+          "name": "Run npm run audit:experience",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25
+        }
+      ]
+    }
+  ]
+}
