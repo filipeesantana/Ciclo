@@ -16,11 +16,11 @@ O modal inicial medido em desktop passou de 821 para 730 px. Em 390×844, a rola
 
 O banco físico continua na versão 1. O formato lógico passa para 11 para incluir um roteiro opcional na store `meta` e no backup. Não foram criadas stores, dependências de produção nem conversões de estudos. A canonicalização de backups anteriores é preservada. Restauração é atômica e recupera o roteiro pausado; falhas não confirmam sucesso.
 
-**99/99 testes funcionais passaram no Chromium**, incluindo 19 novos. Auditoria geral: 95 configurações e 91 artigos. Auditoria de campo: 24 configurações. Experiência: 109 configurações, incluindo dois temas, larguras de 320–1920 px, modais, roteiro e zoom CSS de 200%. Resultados completos, repetições após refinamentos e limitações estão em [TESTES.md](TESTES.md).
+**102/102 testes funcionais passaram no Chromium**, incluindo 22 novos. Auditoria geral: 95 configurações e 91 artigos. Auditoria de campo: 24 configurações. Experiência: 109 configurações, incluindo dois temas, larguras de 320–1920 px, modais, roteiro e zoom CSS de 200%. Resultados completos, repetições após refinamentos e limitações estão em [TESTES.md](TESTES.md).
 
 O fixture anual manteve 911 estudos, 77.379 minutos líquidos, 6.754 minutos de descanso e 461 resultados, com ida/volta do backup. A carga percorreu de 100 a 10.000 estudos e manteve as séries históricas completas. As medições são específicas desta máquina e não equivalem a benchmarks de dispositivos reais.
 
-Firefox/WebKit não foram executados localmente: os downloads foram bloqueados pela rede. A CI do PR executa os três motores; a conclusão remota será vinculada com sua proveniência após terminar. Não houve teste em Safari/Chrome/Edge oficiais, aparelhos físicos ou leitores de tela reais.
+Firefox/WebKit não foram executados localmente: os downloads foram bloqueados pela rede. A CI do PR executa os três motores; os resultados remotos e sua proveniência estão nos checks e na descrição do [PR #4](https://github.com/filipeesantana/Ciclo/pull/4). Não houve teste em Safari/Chrome/Edge oficiais, aparelhos físicos ou leitores de tela reais.
 
 ## Evidências e decisões
 

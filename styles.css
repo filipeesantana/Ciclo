@@ -5589,3 +5589,8 @@ button.tc-sug:hover{ border-color:var(--border-hover); background:var(--surface-
  .modal.study .rm-how .res-open{gap:6px}
  .modal.study .rm-how .res-open-hint{font-size:12px}
 }
+/* O rodapé do roteiro ocupa espaço próprio: não cobre os últimos controles. */
+.modal.review{display:flex;flex-direction:column;overflow:hidden;max-height:90dvh}
+.modal.review>#modal-title{flex-shrink:0}
+.modal.review>#modal-content{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-block:8px;scroll-padding-block:12px}
+.modal.review>#modal-actions{position:static;flex-shrink:0;margin-top:18px}

@@ -25,7 +25,7 @@ O PR #3 estava aberto, sem merge, em `3751e05ba6e2839cce4f7659e97325618cc29bb7`.
 | Hoje → Análises/Histórico | Não havia caminho direto para os registros do dia | Dois destinos explícitos com período pronto |
 | Revisão livre | Entrada principal escolhia só uma disciplina numa janela intermediária | Reutilizar formulário multidisciplinar canônico |
 | Revisar com tempo disponível | Fila antiga abria um cronômetro por tópico | Um roteiro e uma sessão agregada |
-| Histórico → outra tela → retorno | Filtros viviam apenas no estado global da tela | Capturar filtros, busca e recorte em cada entrada de navegação |
+| Histórico → outra tela → retorno | Filtros viviam apenas no estado global da tela | Capturar filtros, busca, recorte e datas analisadas em cada entrada; recuperar também a semana do Planejamento |
 | Análises → aprofundar → voltar | Consulta e período já estavam no History API | Preservar e testar; explicar métricas e mostrar datas da comparação |
 | Planejamento, Dados, Ajuda | Fluxos estabelecidos e cobertura existente | Conferir regressões; incluir roteiro no backup e atualizar textos |
 

@@ -109,3 +109,18 @@ test('roteiro rejeita backup inválido, impede restauração enquanto conta e ex
   return {blocked,invalid,paused:b.guidedReview.runningSince===null,elapsed:b.guidedReview.elapsedMs,n:await DB.count('sessions')};
  });assert.equal(r.blocked,true);assert.equal(r.invalid,true);assert.equal(r.paused,true);assert.ok(r.elapsed>=600000);assert.equal(r.n,0);
 });
+test('Histórico conserva o período usado antes de outra análise e após F5',async()=>{
+ await page.evaluate(async()=>{await SessionCommands.create({disciplineId:'portugues',minutes:40,date:todayISO()});await SessionCommands.create({disciplineId:'matematica',minutes:50,date:addDaysISO(todayISO(),-1)});await refresh();applyAnalyticsQuery({periodPreset:'hoje',focus:'time'});ui.history.period='analises';setView('history');});
+ assert.equal(await page.evaluate(()=>filteredSessions().length),1);
+ await page.evaluate(()=>{setView('analytics');applyAnalyticsQuery({periodPreset:'30d',focus:'time'});setView('history');});assert.equal(await page.evaluate(()=>filteredSessions().length),2);
+ await page.goBack();await page.goBack();await page.goBack();assert.equal(await page.evaluate(()=>ui.view),'history');assert.equal(await page.evaluate(()=>filteredSessions().length),1);
+ await page.reload();await page.waitForFunction(()=>state.ready);assert.equal(await page.evaluate(()=>filteredSessions().length),1);
+});
+test('Planejamento → Hoje → Histórico → Voltar recupera a semana consultada',async()=>{
+ await page.evaluate(()=>{setView('plan');ui.planWeekOffset=-3;renderPlan();setView('today');setView('history');});await page.goBack();await page.goBack();
+ assert.equal(await page.evaluate(()=>ui.view),'plan');assert.equal(await page.evaluate(()=>ui.planWeekOffset),-3);
+ await page.reload();await page.waitForFunction(()=>state.ready);assert.equal(await page.evaluate(()=>ui.planWeekOffset),-3);
+});
+test('roteiro encerrado sem estudo não retorna falso sucesso para uma finalização antiga',async()=>{
+ const r=await page.evaluate(async()=>{let d=await GuidedReviewCommands.create([{topicId:'pontuacao',method:'flashcards',minutes:20}],20);d=await GuidedReviewCommands.update(d,r=>{r.items[0].status='done';return r;});await GuidedReviewCommands.update(d,r=>{r.finishedAt=nowISO();return r;});let refused=false;try{await GuidedReviewCommands.finish(d,20);}catch(e){refused=/sem registrar estudo/.test(e.message);}return {refused,count:await DB.count('sessions'),reviewed:(await DB.get('topics','pontuacao')).lastReviewedAt};});assert.deepEqual(r,{refused:true,count:0,reviewed:null});
+});

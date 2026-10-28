@@ -62,7 +62,10 @@ const GuidedReviewCommands={
     const result=await DB.atomic(SessionCommands.STORES.concat('meta'),async api=>{
       const cur=(await api.get('meta','guidedReview'))?.value;
       if(!cur||cur.id!==draft.id)throw new Error('Roteiro não encontrado.');
-      if(cur.finishedAt)return {duplicate:true,sessionId:cur.sessionId,draft:cur};
+      if(cur.finishedAt){
+        if(!cur.sessionId)throw new Error('Este roteiro foi encerrado sem registrar estudo. Nada foi gravado.');
+        return {duplicate:true,sessionId:cur.sessionId,draft:cur};
+      }
       if(cur.rev!==draft.rev)throw new Error('O roteiro mudou em outra aba. Retome a versão atual antes de registrar.');
       if(cur.runningSince)throw new Error('Pause o roteiro antes de registrar.');
       const done=cur.items.filter(i=>i.status==='done');
@@ -156,7 +159,7 @@ function openGuidedReviewBuilder(availableMinutes=20){
       reviewField('guided-budget','Tempo disponível (minutos)',minutes),
       h('details',{class:'disclosure'},h('summary',{text:'Escolher disciplinas da proposta'}),h('div',{class:'disclosure-body'},activeDisciplines().map(d=>h('label',{class:'guided-check'},h('input',{type:'checkbox',checked:true,onchange:e=>{if(e.target.checked)discs.add(d.id);else discs.delete(d.id);}}),d.name)))),
       reviewButton('Atualizar proposta',build),add.field,total,preview),actions:[reviewButton('Cancelar',()=>close()),start]};
-  },{size:'wide'});
+  },{size:'wide review'});
 }
 async function openGuidedReviewPlayer(id){
   let draft=await reviewAction(()=>GuidedReviewCommands.read());if(!draft||draft.id!==id||draft.finishedAt)return;
@@ -196,7 +199,7 @@ async function openGuidedReviewPlayer(id){
     return {title:'Sua revisão guiada',content:body,actions:[reviewButton('Guardar e sair',saveAndClose),reviewButton('Encerrar roteiro',async()=>{
       if(busy)return;const ok=await change(r=>{r.runningSince=null;return r;});if(!ok)return;close();await safeRefresh();openGuidedReviewResult(draft);
     })]};
-  },{size:'wide',dismissible:false,onClose:()=>{closed=true;clearInterval(tick);}});
+  },{size:'wide review',dismissible:false,onClose:()=>{closed=true;clearInterval(tick);}});
 }
 function openGuidedReviewResult(draft){
   let saving=false;
@@ -219,5 +222,5 @@ function openGuidedReviewResult(draft){
           if(!(await confirmStudySubview(close,'Encerrar este roteiro sem registrar estudo nem alterar as agendas?','Encerrar sem registrar')))return;
           saving=true;try{await reviewAction(async()=>{await GuidedReviewCommands.update(draft,r=>{r.finishedAt=nowISO();return r;});close();await safeRefresh();});}finally{saving=false;}
         }),finish]};
-  },{size:'wide',dismissible:false});
+  },{size:'wide review',dismissible:false});
 }

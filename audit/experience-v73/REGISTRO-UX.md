@@ -26,7 +26,7 @@ Ainda é necessário rolar no celular; a medição não afirma que todas as aç�
 
 A barra lateral mantém as seis seções principais e separa utilidades por espaço e divisor. A seção atual usa superfície, borda, peso e marcador, além de `aria-current`. Itens têm pelo menos 44 px; alturas menores têm composição mais compacta e rolagem vertical. A navegação inferior mobile e o menu Mais são preservados.
 
-O History API agora guarda busca, filtros e seleção de registros do Histórico em cada entrada, inclusive na recarga. A mudança foi testada indo de um Histórico filtrado a outro recorte e voltando. Uma regressão encontrada durante a implementação foi corrigida: o desenho do Histórico só substitui a entrada quando ela já pertence ao Histórico, preservando a página anterior.
+O History API agora guarda busca, filtros e seleção de registros do Histórico em cada entrada, inclusive na recarga. O período originado de uma análise é guardado com suas datas, para outra análise não alterar o Histórico anterior. Voltar ao Planejamento também recupera a semana consultada. A mudança foi testada indo de um Histórico filtrado a outro recorte e voltando. Uma regressão encontrada durante a implementação foi corrigida: o desenho do Histórico só substitui a entrada quando ela já pertence ao Histórico, preservando a página anterior.
 
 Análises mantém o motor, gráficos e aprofundamento existentes. “Como ler estes números” explica tempo líquido, sessões, dias ativos, estimativas e acerto ponderado. As datas dos dois períodos comparados deixam de depender de tooltip; períodos parciais são identificados. Nenhum novo gráfico foi adicionado.
 

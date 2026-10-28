@@ -6248,7 +6248,7 @@ const DataSync = {
 
   /** Chamado pela camada de banco depois de cada gravação concluída. */
   committed(stores){
-    const list = (stores || []).filter(s => s !== 'meta');     // `meta` é conveniência de interface de cada aba
+    const list = (stores || []).filter(s => s !== 'meta');     // roteiros em meta emitem aviso explícito pelos seus comandos
     if(list.length) this.send('data', list);
   },
   /** Mudanças grandes, que pedem mais do que reler: backup restaurado, tudo apagado. */
@@ -7337,7 +7337,8 @@ function setView(view, opts){
   if(!VIEW_TITLES[view]) view = 'today';
   if(ui.view !== view && Nav.started) Nav.sync('replace');
   if(view === 'analytics' && ui.view !== 'analytics') onEnterAnalytics();
-  if(view === 'plan' && ui.view !== 'plan'){ ui.planEditing = false; ui.planWeekOffset = 0; }
+  if(view === 'plan' && ui.view !== 'plan' && !o.restoreContext){ ui.planEditing = false; ui.planWeekOffset = 0; }
+  if(view === 'history' && ui.view !== 'history' && ui.history.period === 'analises' && !o.restoreContext) ui.historyRange=ui.period ? {...ui.period} : null;
   if(ui.view !== view) ui.prevView = ui.view;
   if(view !== 'history') ui.historyIds = null;     // v7.1: o recorte de uma descoberta vale só enquanto se está no Histórico
   if(ui.returnTo && view !== ui.returnTo.view && ui.view === ui.returnTo.view) ui.returnTo = null;
@@ -14692,6 +14693,9 @@ const Nav = {
     } else if(v === 'history'){
       loc.hf = {...ui.history};
       loc.hids = ui.historyIds;
+      if(ui.history.period === 'analises' && ui.historyRange) loc.hp={start:dateToISO(ui.historyRange.start),end:dateToISO(ui.historyRange.end)};
+    } else if(v === 'plan'){
+      loc.pw=clamp(Math.round(Number(ui.planWeekOffset)||0),-104,26);
     } else if(v === 'help'){
       loc.hr = normHelpRoute(helpUi.route);
     } else if(v === 'analytics'){
@@ -14709,7 +14713,8 @@ const Nav = {
       if(ta === 'deadlines') return true;
       return (a.l || 'root') === (b.l || 'root') && (a.a || null) === (b.a || null) && (a.d || null) === (b.d || null) && (a.t || null) === (b.t || null);
     }
-    if(a.v === 'history') return JSON.stringify(a.hf || {})===JSON.stringify(b.hf || {}) && JSON.stringify(a.hids || null)===JSON.stringify(b.hids || null);
+    if(a.v === 'history') return JSON.stringify(a.hf || {})===JSON.stringify(b.hf || {}) && JSON.stringify(a.hids || null)===JSON.stringify(b.hids || null) && JSON.stringify(a.hp || null)===JSON.stringify(b.hp || null);
+    if(a.v === 'plan') return (a.pw || 0)===(b.pw || 0);
     if(a.v === 'help') return helpRouteEquals(normHelpRoute(a.hr), normHelpRoute(b.hr));
     if(a.v === 'analytics') return (a.am || null) === (b.am || null) && analyticsQueryKey(a.aq) === analyticsQueryKey(b.aq);
     return true;
@@ -14859,6 +14864,10 @@ function applyLocation(loc, ctx){
   } else if(view === 'history'){
     if(l.hf && typeof l.hf === 'object'){ for(const key of Object.keys(ui.history)) if(typeof l.hf[key] === 'string') ui.history[key]=l.hf[key]; }
     ui.historyIds=l.hids || null;
+    ui.historyRange=l.hp && isStrictISODate(l.hp.start) && isStrictISODate(l.hp.end) ? {start:parseISO(l.hp.start),end:parseISO(l.hp.end)} : null;
+  } else if(view === 'plan'){
+    ui.planWeekOffset=clamp(Math.round(Number(l.pw)||0),-104,26);
+    ui.planEditing=false;
   } else if(view === 'help'){
     helpUi.route = normHelpRoute(l.hr);
     helpUi.stack = Array.isArray(c.helpStack) ? c.helpStack.slice(-20).map(normHelpRoute) : [];
@@ -14866,7 +14875,7 @@ function applyLocation(loc, ctx){
   } else if(view === 'analytics'){
     restoreAnalyticsLocation(l);
   }
-  if(!sameView) setView(view, { noSync:true, noScroll:true });
+  if(!sameView) setView(view, { noSync:true, noScroll:true, restoreContext:true });
   else render();
   window.scrollTo({ top: Math.max(0, c.scrollY || 0), behavior:'auto' });
   if(keepFocus) return;
@@ -20300,7 +20309,7 @@ function openHistoryFilters(){
     body,
     h('div', { class:'row auto', style:'margin-top:18px' },
       h('button', { class:'btn primary', type:'button', text:'Aplicar filtros', onclick:() => {
-        Object.assign(ui.history, draft); ui.historyLimit = 150; Drawer.close(); renderHistory();
+        Object.assign(ui.history, draft); if(draft.period==='analises') ui.historyRange=ui.period ? {...ui.period} : null; ui.historyLimit = 150; Drawer.close(); renderHistory();
       } }),
       h('button', { class:'btn ghost', type:'button', text:'Limpar', onclick:() => { clearHistoryFilters(); Drawer.close(); renderHistory(); } })));
   Drawer.open('Filtros do histórico', wrap);
@@ -20318,7 +20327,7 @@ function filteredSessions(){
   if(f.period === 'hoje') list = list.filter(s => s.date === todayISO());
   else if(f.period === 'semana'){ const r = { start:startOfWeek(today()), end:endOfWeek(today()) }; const a = dateToISO(r.start), b = dateToISO(r.end); list = list.filter(s => s.date >= a && s.date <= b); }
   else if(f.period === 'mes'){ const a = dateToISO(startOfMonth(today())), b = dateToISO(endOfMonth(today())); list = list.filter(s => s.date >= a && s.date <= b); }
-  else if(f.period === 'analises' && ui.period){ const a = dateToISO(ui.period.start), b = dateToISO(ui.period.end); list = list.filter(s => s.date >= a && s.date <= b); }
+  else if(f.period === 'analises' && (ui.historyRange || ui.period)){ const range=ui.historyRange || ui.period; const a = dateToISO(range.start), b = dateToISO(range.end); list = list.filter(s => s.date >= a && s.date <= b); }
   if(f.type) list = list.filter(s => SessionModel.hasType(s, f.type));      // v6.7: estudos que TÊM este tipo (entre outros)
   if(f.difficulty) list = list.filter(s => String(s.difficulty) === f.difficulty);
   // v7.1 — resultados registrados e os registros de uma descoberta

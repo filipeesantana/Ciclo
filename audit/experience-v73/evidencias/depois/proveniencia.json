@@ -1,0 +1,13 @@
+{
+  "recordedAt": "2026-10-28T22:39:36.044549+00:00",
+  "localFunctionalTests": 102,
+  "localFunctionalPassed": 102,
+  "sources": {
+    "app.js": "e5e2f5a6cd8ca53d05a3d94e2d47ea1db85c4ebba812b0a06c440721d65a9f87",
+    "reviews.js": "03ad22fee41522649d1c963f6ec5c7f435bf264d147c6dc2c41dadefe11d68a3",
+    "content.js": "3ad6db6c0a5ca6f60606c336de4e616946ff215e3af2eebc1f960ddc72542102",
+    "styles.css": "b43ff0520d17a60227bf8774379dd2aeb5e2b0a4a2e9f21d0a02ee3c223affca",
+    "tests/experience.test.cjs": "b7ed0f65831666c47902a3b2b794b643d5a50e25a0d05ae72e9e21d7226dee1f"
+  },
+  "ciResults": "Checks e descri\u00e7\u00e3o do PR #4; fonte testada identificada pelos SHAs dos runs."
+}
