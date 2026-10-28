@@ -1,0 +1,63 @@
+{
+  "browser": "154.0.8037.57",
+  "method": "Formulário com Português pré-selecionado, sem tempo nem detalhes preenchidos. Geometria do DOM; não mede descoberta por pessoas.",
+  "result": [
+    {
+      "width": 1440,
+      "modalHeight": 821,
+      "scrollHeight": 821,
+      "comment": {
+        "width": 161,
+        "height": 24,
+        "top": 692,
+        "aboveFooter": true
+      },
+      "secondDiscipline": {
+        "width": 174,
+        "height": 22,
+        "top": 441,
+        "aboveFooter": true
+      },
+      "visibleTypeChoices": 6,
+      "visibleDifficultyChoices": 5
+    },
+    {
+      "width": 390,
+      "modalHeight": 758,
+      "scrollHeight": 1375,
+      "comment": {
+        "width": 161,
+        "height": 24,
+        "top": 1196,
+        "aboveFooter": false
+      },
+      "secondDiscipline": {
+        "width": 174,
+        "height": 22,
+        "top": 812,
+        "aboveFooter": false
+      },
+      "visibleTypeChoices": 6,
+      "visibleDifficultyChoices": 5
+    },
+    {
+      "width": 320,
+      "modalHeight": 758,
+      "scrollHeight": 1635,
+      "comment": {
+        "width": 161,
+        "height": 24,
+        "top": 1437,
+        "aboveFooter": false
+      },
+      "secondDiscipline": {
+        "width": 174,
+        "height": 22,
+        "top": 854,
+        "aboveFooter": false
+      },
+      "visibleTypeChoices": 6,
+      "visibleDifficultyChoices": 5
+    }
+  ]
+}

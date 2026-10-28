@@ -1,0 +1,435 @@
+{
+  "browser": "154.0.8037.57",
+  "errors": [],
+  "layouts": [
+    {
+      "theme": "dark",
+      "width": 1920,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1920,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1920,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1280,
+      "view": "today",
+      "overflow": false,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "nodes": [
+            [
+              "li:nth-child(1) > .sc-item[type=\"button\"] > .sc-text > .sc-s"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "width": 1280,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1280,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1024,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1024,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 1024,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 768,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 768,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 768,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 430,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 430,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 430,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 375,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 375,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 375,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1920,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1920,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1920,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1440,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1280,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1280,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1280,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1024,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1024,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 1024,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 768,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 768,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 768,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 430,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 430,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 430,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 375,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 375,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 375,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "view": "today",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "view": "reviews",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "view": "analytics",
+      "overflow": false,
+      "violations": []
+    }
+  ]
+}

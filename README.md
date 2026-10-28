@@ -1,6 +1,6 @@
 # Ciclo
 
-**v7.2.0 — Foco e planejamento**, preparada para revisão no PR #2. [Auditoria de campo de 22/10/2026 e testes com 365 dias](audit/campo-365/RELATORIO-FINAL.md). A publicação é uma etapa separada.
+**v7.3.0 — Experience & Reviews**, candidata a revisão em PR independente. [Diagnóstico, mudanças, testes e limites](audit/experience-v73/RELATORIO-FINAL.md). Sem publicação automática.
 
 **Seu sistema de estudos.** Organize o que você estuda, registre seus estudos, receba sugestões de revisão no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta e sem servidor. Depois de aberto, o Ciclo não usa a internet para nada.
 
@@ -49,7 +49,7 @@ Você não precisa criar Área de Estudo, definir prioridade, montar um plano ou
 
 Cada tela responde a uma pergunta. O que importa aparece primeiro; o resto fica a um clique.
 
-**Hoje** — *o que eu quero estudar agora?* A tela começa pela ação: *O que você gostaria de estudar?*, com as matérias recentes a um clique, *Começar a estudar* e *Registrar estudo*. Se quiser, há uma sugestão do Ciclo com o motivo e um *Por quê?* — um convite, nunca uma ordem. No computador, ao lado, **Esta semana** mostra o tempo estudado, os dias com estudo, a meta (se houver) e um gráfico pequeno; clicar abre as Análises da semana. Abaixo vêm os **próximos passos** (assuntos que podem valer uma revisão, prazos próximos, a organização do dia) e atalhos para o resto do Ciclo. Sem histórico, não há gráfico vazio: *"Seu histórico começa com o primeiro estudo."*
+**Hoje** — *o que acontece no meu dia?* **Seu dia até agora** resume os estudos confirmados na data local: tempo líquido, sessões e disciplinas. **Ver detalhes do dia** abre Análises no período correto; **Ver registros de hoje** abre o Histórico filtrado. O cronômetro e o roteiro em andamento permanecem separados dos estudos concluídos. O restante da tela responde *o que eu quero estudar agora?* A tela começa pela ação: *O que você gostaria de estudar?*, com as matérias recentes a um clique, *Começar a estudar* e *Registrar estudo*. Se quiser, há uma sugestão do Ciclo com o motivo e um *Por quê?* — um convite, nunca uma ordem. No computador, ao lado, **Esta semana** mostra o tempo estudado, os dias com estudo, a meta (se houver) e um gráfico pequeno; clicar abre as Análises da semana. Abaixo vêm os **próximos passos** (assuntos que podem valer uma revisão, prazos próximos, a organização do dia) e atalhos para o resto do Ciclo. Sem histórico, não há gráfico vazio: *"Seu histórico começa com o primeiro estudo."*
 
 **Começar a estudar** — *quero estudar agora.* Você escolhe a disciplina — ou mais de uma, ou nenhuma por enquanto — e, se quiser, tópicos, tipos de estudo e o jeito de contar o tempo: **cronômetro livre** (o padrão) ou **Pomodoro**. O cronômetro começa.
 
@@ -76,9 +76,9 @@ As duas ações ficam na mesma janela — *Estudar agora* e *Já estudei* — e 
 - **Depois da meia-noite.** *23:50 → 00:12* são 22 minutos; a data é sempre a do dia em que o estudo começou.
 - **Engano de digitação.** Se o intervalo passar de 8 horas, o Ciclo pergunta se está certo antes de registrar. Ele só pergunta — estudos longos continuam valendo.
 - **Não lembra os horários?** Informe só quanto tempo estudou.
-- **Pausar ou descansar.** O cronômetro tem três estados — *Estudando*, *Pausado* e *Descansando*. *Pausar* é para uma interrupção (alguém chamou, o telefone tocou): o relógio para e esse tempo não conta como estudo nem como descanso. *Descansar* é um intervalo planejado, contado à parte. Num estudo que já aconteceu, use *+ Adicionar descanso*.
+- **Pausar ou descansar.** O cronômetro tem três estados — *Estudando*, *Pausado* e *Descansando*. *Pausar* é para uma interrupção (alguém chamou, o telefone tocou): o relógio para e esse tempo não conta como estudo nem como descanso. *Descansar* é um intervalo planejado, contado à parte. Num estudo que já aconteceu, use *+ Adicionar descanso*. Comentário e outra disciplina aparecem como botões; *Recolher* mantém o comentário no registro, e *Remover comentário* pede uma escolha explícita.
 - **Começar sem escolher a disciplina.** Com pressa, ligue o cronômetro e escolha a matéria só ao finalizar.
-- **Rascunhos.** Um registro que você começou e não terminou fica guardado neste navegador por até 7 dias. Ao voltar, o Ciclo avisa e oferece *Começar do zero*.
+- **Rascunhos.** Um registro que você começou e não terminou, inclusive ao cancelar, fica guardado neste navegador por até 7 dias. *Começar do zero* remove o rascunho explicitamente. Ao voltar, o Ciclo avisa e oferece *Começar do zero*.
 
 Os rascunhos também recuperam descansos, divisões de tempo, respostas de revisão e o nome de uma disciplina ainda não criada. Um comentário na finalização não congela o tempo que o cronômetro continua medindo. Se o navegador impedir o armazenamento do rascunho, o Ciclo avisa.
 
@@ -169,7 +169,9 @@ Depois que você estuda um assunto, o Ciclo passa a sugerir quando vale revê-lo
 - **Escolher assuntos.** Marque os assuntos que vai revisar. Ao terminar, cada um recebe o próprio resultado (*Esqueci*, *Lembrei com dificuldade*, *Lembrei bem*, *Dominei*) e a própria próxima data. Só os assuntos escolhidos são afetados.
 - **Em que pé está cada sugestão.** *"Sugerida para hoje"*, *"Data sugerida já passou · 15 de out"* ou *"Programada · em 3 dias"* — e, ao lado, *Revisar agora*.
 - **Deixar para depois.** No menu ⋯ de um assunto (que também abre o assunto) ou da matéria: para amanhã, daqui a 3 dias ou para a semana que vem. Adiar esconde só a sugestão: a data marcada, o intervalo e o histórico continuam iguais. Se a data do assunto mudar (por exemplo, porque você o revisou), o adiamento deixa de valer sozinho. Também dá para parar de sugerir um assunto.
-- **Revisar com o tempo que você tem.** *Revisar por 20 min* escolhe os assuntos que cabem nesse tempo.
+- **Revisão livre.** A mesma janela de estudo aceita várias disciplinas e tópicos opcionais, com cronômetro ou registro manual.
+- **Montar revisão guiada.** Escolha 10, 20, 30 minutos ou outra duração e ajuste assuntos, disciplinas da proposta, ordem, métodos e minutos. Você pode pausar, voltar, pular e guardar para depois. Os resultados confirmados sobrevivem ao F5. Ao encerrar, somente assuntos realizados entram em **um único estudo**, com autoavaliação individual opcional. Flashcards é um método para usar seus próprios cartões, físicos ou externos; não existe biblioteca nativa.
+- **Roteiro e tempo.** O relógio do roteiro conta até pausar; **Guardar e sair** pausa antes de fechar. O Ciclo impede executar esse relógio junto com o cronômetro. A data é a do início do roteiro. Apenas um roteiro fica guardado por vez e o backup o recupera pausado.
 - **Desligar as sugestões.** Em *Configurações → Revisões e sugestões*. O número ao lado de Revisões some; a agenda continua sendo calculada e você revisa quando quiser.
 
 A **consolidação estimada** de um tópico (de 1 a 5) sai só das suas respostas nas revisões. É uma estimativa para orientar a agenda, não uma medição da sua memória. Quem quiser mais controle pode escolher outro ritmo em *Quando revisar* (ciclo programado, intensiva para provas, manutenção) por disciplina ou por tópico.
@@ -293,7 +295,7 @@ O Ciclo é uma aplicação local-first feita em HTML, CSS e JavaScript puro, sem
 
 Curto e direto, para quem quer saber exatamente o que esperar.
 
-- **Navegadores.** A auditoria desta evolução executou testes automatizados em Chromium, Firefox e WebKit, nos dois temas e em telas de 320 px a 1920 px; a carga com até 10.000 estudos foi medida no Chromium. Consulte a [matriz com resultados e limites](audit/campo-365/MATRIZ-CROSS-BROWSER.md) e os checks do PR #2 para a execução da v7.2.0. Chrome/Edge oficiais, Safari real, aparelhos físicos e leitores de tela não foram testados.
+- **Navegadores.** A execução local da v7.3 utiliza Chromium, nos dois temas e em telas de 320 a 1920 px, com carga de até 10.000 estudos. Firefox e WebKit são conferidos na CI; consulte os resultados efetivamente obtidos e os limites no [relatório](audit/experience-v73/TESTES.md). Chrome/Edge oficiais, Safari real, aparelhos físicos e leitores de tela não foram testados.
 - **Avisos do Pomodoro.** O som e o aviso do navegador dependem de permissões e do próprio navegador. Com a aba em segundo plano ou o aparelho bloqueado, o aviso pode atrasar ou não aparecer — o tempo registrado continua certo mesmo assim. A tela cheia do modo foco também depende do navegador.
 - **Animações.** São curtas e opcionais: com *Reduzir animações* (em Configurações → Aparência) ou com a preferência do sistema ligada, tudo muda de estado na hora. Nenhuma informação depende de uma animação.
 - **Onde os dados ficam.** No IndexedDB do navegador; o cronômetro em andamento, o tema e os rascunhos de registro ficam no `localStorage`, e o rascunho do guia do primeiro uso, no `sessionStorage` da aba. Nada é enviado para fora.
@@ -301,8 +303,8 @@ Curto e direto, para quem quer saber exatamente o que esperar.
 - **O que as datas significam.** Datas de estudo, de prazo e de revisão são dias do calendário **no fuso do seu aparelho**. Um estudo pertence ao dia em que começou.
 - **Copiar o prompt.** Depende da permissão do navegador para a área de transferência. Quando ela é negada, o Ciclo avisa e mostra o texto para copiar à mão.
 - **Duas abas.** Pode usar. As abas compartilham os dados e se avisam quando algo muda; com um formulário aberto, o Ciclo avisa em vez de mexer no que você está digitando.
-- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v7.2.0 mantém o formato lógico 10 e o IndexedDB 1 da v7.1, sem conversão de dados. Os arquivos de interface usam o identificador de cache 7.2.0. Recarregue as outras abas abertas para que todas usem a mesma versão.
-- **Voltar para uma versão anterior.** A v7.1 usa o mesmo formato de backup da v7.2.0. Versões até a v7.0 recusam esses backups por não conhecerem o formato 10; os dados do navegador continuam intactos.
+- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v7.3.0 usa o formato lógico 11 e mantém o IndexedDB 1, sem conversão dos estudos. Os arquivos de interface usam o identificador de cache 7.3.0. Recarregue as outras abas abertas para que todas usem a mesma versão.
+- **Voltar para uma versão anterior.** Versões até a v7.2 recusam os backups novos por não conhecerem o formato 11; os dados do navegador continuam intactos.
 - **Se algo der errado.** Recarregar a página é seguro: tudo o que foi registrado já está gravado. Se uma gravação falhar, o Ciclo diz isso e mantém a janela aberta com o que você digitou. Se os dados sumirem, restaure o último backup em **Dados → Restaurar backup**.
 
 ## Contato
@@ -313,14 +315,17 @@ O endereço também está no aplicativo, em **Ajuda** e em **Configurações →
 
 ## Versão atual
 
-**v7.2.0 — Foco e planejamento**
+**v7.3.0 — Experience & Reviews**
 
-- **Hoje sem estudo fantasma:** o estudo salvo libera o cronômetro antes de atualizar a tela; snapshots atrasados de outra aba são reconciliados.
-- **Foco com relógio em destaque**, contexto compacto, estudo e descanso separados e controles conforme o estado.
-- **Planejamento em vários dias:** escolha a disciplina e os dias, com duração e horário opcionais. Arraste, edição, reordenação e modelos continuam disponíveis.
-- **Históricos longos completos:** Análises deixam de cortar séries após 520 semanas; o quadro semanal evita ciclos de redimensionamento no WebKit.
+- Registro com ações visíveis para comentário, outra disciplina e resultado; tipo e dificuldade sob demanda.
+- Hoje resume apenas sessões persistidas da data local, sem somar pausas, descansos ou multiplicar tempo multidisciplinar.
+- Revisão guiada com proposta editável, pausa, retomada, pulo e uma sessão agregada com resultados individuais opcionais.
+- Histórico preserva filtros no retorno e na recarga. Sidebar com seleção e agrupamento mais claros. Análises explicam métricas e períodos comparados.
+- Flashcards pessoais continuam como método; cartões nativos, FSRS e dependências do PR #3 não foram incorporados.
 
-Mesmo formato lógico **10** e banco físico **1** da v7.1, sem migração. Backups anteriores continuam sendo aceitos. O backup sintético de 365 dias permanece com seus bytes e metadados originais para testar a compatibilidade.
+Formato lógico **11**, IndexedDB físico **1**. O único novo conteúdo durável é um roteiro na store `meta` existente, incluído no backup e validado antes da restauração. Nenhum estudo antigo é convertido ou recalculado. A canonicalização do checksum de backups anteriores permanece igual. Versões até 7.2 recusam backups novos para evitar descartar o roteiro; guarde seu backup anterior se precisar voltar.
+
+[Relatório da v7.3](audit/experience-v73/RELATORIO-FINAL.md). A [auditoria da v7.2](audit/campo-365/RELATORIO-FINAL.md) permanece como histórico.
 
 ### v7.1.0
 
@@ -457,7 +462,7 @@ Desenvolvido por **Filipe Santana**
 
 ## Auditoria e validação de desenvolvimento
 
-A evolução em revisão está preparada como **7.2.0**, com schema lógico **10** e IndexedDB físico **1**. Consulte [a auditoria de campo](audit/campo-365/RELATORIO-FINAL.md) e [a matriz de navegadores](audit/campo-365/MATRIZ-CROSS-BROWSER.md). Os relatórios na raiz de `audit/` preservam a rodada anterior sobre a v7.1.0. Não há publicação automática.
+A evolução em revisão está preparada como **7.3.0**, com schema lógico **11** e IndexedDB físico **1**. Consulte [a auditoria desta versão](audit/experience-v73/RELATORIO-FINAL.md). Os relatórios na raiz de `audit/` preservam a rodada anterior sobre a v7.1.0. Não há publicação automática.
 
 O aplicativo continua sendo servido diretamente pelos quatro arquivos estáticos, sem dependências de produção. Para desenvolver e testar, use Node.js 24:
 

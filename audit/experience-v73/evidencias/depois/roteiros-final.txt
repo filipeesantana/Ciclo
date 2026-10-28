@@ -1,0 +1,27 @@
+✔ comentário visível, recolhido e salvo mantém texto; Cancelar e F5 conservam rascunho (1559.264158ms)
+✔ remoção de comentário é explícita e confirmada (978.928199ms)
+✔ segunda disciplina visível, foco no seletor, sem duplicatas nem minutos multiplicados (1042.775228ms)
+✔ troca de modo não apaga comentário, tempo ou rascunho (1058.624349ms)
+✔ Hoje usa só dados do dia, soma multidisciplinar uma vez e ignora descanso e sessão ativa (661.384806ms)
+✔ Hoje muda imediatamente após registrar, editar, mudar data e excluir (850.305922ms)
+✔ Hoje → Análises do dia → Voltar e Histórico de hoje usam o recorte correto (774.348706ms)
+✔ filtros e busca do Histórico voltam depois de outro recorte e de F5 (753.205752ms)
+✔ virada do dia usa atribuição civil ao início e não duplica sessão noturna (635.808625ms)
+✔ revisão livre aceita várias disciplinas sem tópicos e conserva agendas (1063.067856ms)
+✔ roteiro: pulo, respostas individuais e flashcards pessoais geram uma sessão agregada (1013.838521ms)
+✔ roteiro: pausa exclui tempo, confirmação e cursor sobrevivem ao F5 (1134.917434ms)
+✔ duas abas: versão antiga não altera respostas e finalização concorrente não duplica (931.934321ms)
+✔ roteiro rejeita edição concorrente e não confirma falha de IndexedDB (632.267165ms)
+✔ backup lógico 11 guarda progresso pausado e mantém dados antigos e checksum (613.955969ms)
+✔ roteiro sem autoavaliação não inventa resultado; agenda do tópico pulado fica intacta (600.856624ms)
+✔ um relógio por vez: roteiro e cronômetro recusam execução simultânea (615.45795ms)
+✔ editor do roteiro permite adicionar, reordenar, remover, trocar método e duração (1099.876557ms)
+✔ roteiro rejeita backup inválido, impede restauração enquanto conta e exporta pausado (698.059574ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17163.244217

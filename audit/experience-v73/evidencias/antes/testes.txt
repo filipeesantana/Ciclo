@@ -1,0 +1,270 @@
+
+> test
+> node --test --test-timeout=30000 --test-concurrency=1 tests/*.test.cjs
+
+✔ 365 dias: importar pela interface preserva todos os registros sem reparos (2803.247428ms)
+✔ 365 dias: Análises confere tempo, descansos, dias, questões e todas as disciplinas (1755.728023ms)
+✔ 365 dias: 53 semanas preservam metas históricas, datas e totais reais (2621.217283ms)
+✔ 365 dias: comparação parcial e completa usa os intervalos que declara (1163.67006ms)
+✖ 365 dias: exportar, restaurar em outro contexto e F5 conservam o histórico (2580.663604ms)
+✔ 365 dias: editar e excluir um estudo conserva totais sem multiplicar vínculos (1237.57492ms)
+✔ entradas adversariais e restauração inválida preservam o banco existente (1502.862514ms)
+✔ mais de 520 semanas: séries de constância, questões e planejamento incluem o período inteiro (942.348363ms)
+✔ A: estudo livre salvo encerra Hoje imediatamente, sem F5 (1175.79903ms)
+✔ B: Foco → Encerrar → Registrar atualiza Hoje antes de navegar (948.903408ms)
+✔ C: Pomodoro pausa, retoma, descansa e registra apenas estudo líquido (999.82978ms)
+✔ D: F5 depois de finalizar não restaura um estudo concluído (1093.128011ms)
+✔ E: Histórico e Voltar mantêm Hoje encerrado (922.315681ms)
+✔ F: aba observadora deixa de mostrar estudo ativo ao finalizar na outra aba (1318.902462ms)
+✔ G: dois cliques rápidos em Registrar criam uma sessão (868.063756ms)
+✔ H: falha de IndexedDB conserva o estudo e permite tentar novamente (1878.319994ms)
+✔ I: novo estudo depois de finalizar tem identidade própria (1040.047335ms)
+✔ J: sair de tela cheia mantém as ações do Foco e permite finalizar (989.855365ms)
+✔ Hoje acompanha início, pausa, descanso e descarte sem navegação (934.264111ms)
+✔ snapshot regravado por aba atrasada não ressuscita um runId salvo (845.865424ms)
+✔ redimensionar a semana não gera ciclos do ResizeObserver nem transbordamento (1231.610897ms)
+✔ planejar pelo toque: uma disciplina em dois dias sem horário nem duração (1094.417603ms)
+✔ planejar com duração e horário, mover pelo editor e depois tirar o horário (1139.074454ms)
+✔ Foco em paisagem e zoom CSS de 200% permite alcançar Encerrar (917.516132ms)
+✔ cancelar seleção ou enviar sem dias preserva a semana (963.320003ms)
+✔ inclusão em vários dias recusa conflito, disciplina removida e limite sem inclusão parcial (628.942586ms)
+✔ opções avançadas ficam acessíveis e a busca conserva a seleção (801.372378ms)
+✔ Foco mostra rótulo do relógio, contexto compacto e descanso fora do estudo (742.787515ms)
+✔ Foco em 320 px e com tempo longo mantém relógio e controles alcançáveis (4199.158035ms)
+✔ 120 minutos em duas disciplinas continuam sendo um estudo de 120 minutos (824.785385ms)
+✔ divisão estimada de 90 minutos e tipos preserva totais e indica estimativa (578.185726ms)
+✔ percentual ponderado é 51/101; zero não gera percentual (607.331441ms)
+✔ resultados sem disciplina específica não vazam para o recorte de uma disciplina (603.569269ms)
+✔ revisão geral não altera os tópicos; revisão retroativa preserva a agenda atual (684.743722ms)
+✔ excluir o único estudo reconcilia o tópico e os totais (587.166273ms)
+✔ finalização simultânea em duas abas grava uma única sessão (843.299368ms)
+✔ edições conflitantes recusam a sobrescrita (604.024884ms)
+✔ backup atual preserva resultados, pausas e Pomodoro; migração é idempotente (577.07788ms)
+✔ versão futura, JSON truncado e IDs que colidem são recusados sem alterar o banco (495.14103ms)
+✔ restauração é atômica quando uma gravação falha depois da limpeza (587.033105ms)
+✔ CSV escapa fórmulas e comentários com aspas, vírgulas e quebras; sem texto privado (578.474974ms)
+✔ comentários são texto inerte e não criam HTML (660.010894ms)
+✔ datas civis respeitam bissexto, virada do ano e meia-noite em São Paulo (547.875285ms)
+✔ REGRESSÃO: pausar após suspensão aplica o limite do Pomodoro antes da pausa (538.016634ms)
+✔ REGRESSÃO: um rascunho recupera descansos sem inflar o tempo líquido (560.454411ms)
+✔ REGRESSÃO: schema ilegível e truncamento de resultados são sinalizados (528.575869ms)
+✔ REGRESSÃO: revisão de tópico sem autoavaliação não gera descoberta de revisão ausente (621.31754ms)
+✔ REGRESSÃO: período em andamento não conta registros com data futura (581.725922ms)
+✔ REGRESSÃO: backup V2 normaliza referências numéricas e recusa duplicatas ambíguas (556.771824ms)
+✔ backups dos schemas 6, 7 e 9 mantêm minutos e resultados de revisão (540.963698ms)
+✔ Português: registrar 30 minutos sem tópicos, permanecer no Histórico e recuperar após F5 (1115.607241ms)
+✔ primeiro uso rápido: só o nome, sem plano, tópico ou prazo inventado (1346.156025ms)
+✔ guitarra: marco opcional aparece na evolução sem exigir organização (613.855432ms)
+✔ meta global cumprida com distribuição diferente da sugestão (724.994445ms)
+✔ adiar revisão não muda data, intervalo nem histórico (821.465887ms)
+✔ Voltar, Avançar e F5 preservam o caminho sem criar loop (875.041566ms)
+✔ rascunho completo persiste antes dos 400 ms e recupera descansos, divisão e revisão (1163.770922ms)
+✔ falha de escrita mantém o formulário e o rascunho; retentativa grava uma vez (2191.081593ms)
+✔ Pomodoro: dois blocos são 50 minutos de estudo e 5 de descanso em um retrato (583.439721ms)
+✔ pausa e descanso sobrevivem a F5 com o estudo congelado (864.823472ms)
+✔ finalização com comentário não congela os minutos medidos ao reabrir (734.225262ms)
+✔ modal prende o foco e Esc devolve ao botão que o abriu (788.893187ms)
+✔ prazo usa rádios com teclado e conserva só aria-checked (683.457261ms)
+✔ resultados mostram a distribuição, revelam disciplinas além da 12ª e mantêm o período ao aprofundar (750.514734ms)
+✔ evolução oferece acesso aos marcos e conceitos além dos limites iniciais (703.375554ms)
+✔ rascunho recupera o nome de uma disciplina ainda não criada (886.033681ms)
+✔ REGRESSÃO: cronômetro iniciado em outra aba durante a prévia bloqueia a restauração (1378.939373ms)
+✔ duas abas iniciando ao mesmo tempo compartilham um único cronômetro (1629.983493ms)
+✔ cronômetro descartado pela restauração não pode ser finalizado depois (1183.837626ms)
+✔ falha de restauração mantém o cronômetro e não confirma seu descarte (1095.890406ms)
+✔ iniciar pela janela aguarda o cronômetro e finaliza o mesmo runId (1308.153288ms)
+✔ começar sem disciplina mantém a janela se o início falhar (1085.500116ms)
+✔ reserva sem relógio após liberação interrompida pode ser cancelada ou descartada para continuar (1030.819567ms)
+✔ recuperação de reserva não descarta relógio reaparecido nem reserva substituída na confirmação (922.397339ms)
+✔ semanas parciais comparam os mesmos dias e zero não cria acerto (1255.133151ms)
+✔ mover bloco preserva sua identidade e recusa revisão obsoleta de outra aba (965.968352ms)
+✔ dias ocultos conservam os prazos reais na tela móvel (1074.391771ms)
+✔ arrastar para um dia grava um bloco e Esc cancela outro arraste (1767.26684ms)
+✔ preferências persistem e valores inválidos voltam aos padrões (1093.676429ms)
+✔ datas locais atravessam horário de verão, ano bissexto e o início da semana (3216.489809ms)
+ℹ tests 80
+ℹ suites 0
+ℹ pass 79
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 88911.310829
+
+✖ failing tests:
+
+test at tests/field-data.test.cjs:86:1
+✖ 365 dias: exportar, restaurar em outro contexto e F5 conservam o histórico (2580.663604ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    [
+      {
+        allocations: [
+          {
+            disciplineId: '852eea84-e78c-4622-99e5-61548209c86e',
+  ...
+      },
+  +   {
+  +     allocations: [
+  +       {
+  +         disciplineId: '6631b680-c2d8-44c1-a795-7aa9a75c83a3',
+  +         minWeeklyMinutes: 0,
+  +         priority: 5,
+  +         targetMinutes: 135
+  +       },
+  +       {
+  +         disciplineId: 'd367ff74-7426-41c0-a35d-8a98da7deedd',
+  +         minWeeklyMinutes: 0,
+  +         priority: 5,
+  +         targetMinutes: 135
+  +       },
+  +       {
+  +         disciplineId: 'ef5eeb71-0545-4144-9f16-aa26b2ccde1f',
+  +         minWeeklyMinutes: 0,
+  +         priority: 3,
+  +         targetMinutes: 81
+  +       },
+  +       {
+  +         disciplineId: '1604ce27-eadc-4b5c-919a-1937b1179419',
+  +         minWeeklyMinutes: 0,
+  +         priority: 2,
+  +         targetMinutes: 54
+  +       },
+  +       {
+  +         disciplineId: '2fda4f42-3437-4f3c-8f8b-5a4237a46f53',
+  +         minWeeklyMinutes: 0,
+  +         priority: 2,
+  +         targetMinutes: 54
+  +       },
+  +       {
+  +         disciplineId: '2735d2b0-0586-44f3-9b7e-9df39ff412be',
+  +         minWeeklyMinutes: 0,
+  +         priority: 5,
+  +         targetMinutes: 135
+  +       },
+  +       {
+  +         disciplineId: '32486887-b878-44d8-96f0-d51678c00c74',
+  +         minWeeklyMinutes: 0,
+  +         priority: 2,
+  +         targetMinutes: 54
+  +       },
+  +       {
+  +         disciplineId: 'd2651626-a21f-4d33-864d-c753fe3b8cad',
+  +         minWeeklyMinutes: 0,
+  +         priority: 5,
+  +         targetMinutes: 135
+  +       },
+  +       {
+  +         disciplineId: 'aa16c6ca-65d8-490a-8299-a20d3f3f19d7',
+  +         minWeeklyMinutes: 0,
+  +         priority: 4,
+  +         targetMinutes: 108
+  +       },
+  +       {
+  +         disciplineId: '4442d19d-6166-4e92-9802-cb9ab23dd2fd',
+  +         minWeeklyMinutes: 0,
+  +         priority: 4,
+  +         targetMinutes: 108
+  +       },
+  +       {
+  +         disciplineId: '42fdecf5-c867-427c-84f0-fc321ef74d13',
+  +         minWeeklyMinutes: 0,
+  +         priority: 3,
+  +         targetMinutes: 81
+  +       }
+  +     ],
+  +     availableMinutes: 1080,
+  +     basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc',
+  +     blocks: [
+  +       {
+  +         date: '2026-10-26',
+  +         disciplineId: '6631b680-c2d8-44c1-a795-7aa9a75c83a3',
+  +         id: '7ee980e6-749b-4199-968e-480670cb4f11@2026-10-26',
+  +         minutes: 90,
+  +         order: 0,
+  +         start: '19:00'
+  +       },
+  +       {
+  +         date: '2026-10-26',
+  +         disciplineId: '32486887-b878-44d8-96f0-d51678c00c74',
+  +         id: '8590f195-2feb-4a53-bf4e-22a65c55ff62@2026-10-26',
+  +         minutes: 45,
+  +         order: 1,
+  +         start: null
+  +       },
+  +       {
+  +         date: '2026-10-27',
+  +         disciplineId: 'd367ff74-7426-41c0-a35d-8a98da7deedd',
+  +         id: 'c2d612c8-0832-4048-af92-9aeab907d169@2026-10-26',
+  +         minutes: 60,
+  +         order: 0,
+  +         start: '08:00'
+  +       },
+  +       {
+  +         date: '2026-10-28',
+  +         disciplineId: 'ef5eeb71-0545-4144-9f16-aa26b2ccde1f',
+  +         id: '54105781-0078-4e9d-95f4-825bb557d297@2026-10-26',
+  +         minutes: 45,
+  +         order: 0,
+  +         start: null
+  +       },
+  +       {
+  +         date: '2026-10-28',
+  +         disciplineId: 'd2651626-a21f-4d33-864d-c753fe3b8cad',
+  +         id: '1d81cbd4-7d17-4367-ad49-1b6f04b901de@2026-10-26',
+  +         minutes: 60,
+  +         order: 1,
+  +         start: '08:00'
+  +       },
+  +       {
+  +         date: '2026-10-29',
+  +         disciplineId: '1604ce27-eadc-4b5c-919a-1937b1179419',
+  +         id: 'dab0aee5-058b-464c-a731-e89fe7ca8c75@2026-10-26',
+  +         minutes: 75,
+  +         order: 0,
+  +         start: '14:30'
+  +       },
+  +       {
+  +         date: '2026-10-30',
+  +         disciplineId: '2fda4f42-3437-4f3c-8f8b-5a4237a46f53',
+  +         id: 'be9383f3-ce2d-4d8e-b481-577db11a4d80@2026-10-26',
+  +         minutes: 45,
+  +         order: 0,
+  +         start: '19:00'
+  +       },
+  +       {
+  +         date: '2026-10-31',
+  +         disciplineId: '2735d2b0-0586-44f3-9b7e-9df39ff412be',
+  +         id: '4ae520d8-976d-42eb-8cd7-7188a32ed2c1@2026-10-26',
+  +         minutes: 75,
+  +         order: 0,
+  +         start: null
+  +       }
+  +     ],
+  +     createdAt: '2026-10-28T22:10:30.408Z',
+  +     fromTemplate: true,
+  +     id: '2026-10-26',
+  +     rev: 0,
+  +     updatedAt: '2026-10-28T22:10:30.408Z',
+  +     weekEnd: '2026-11-01',
+  +     weekStart: '2026-10-26'
+  +   }
+    ]
+  
+      at TestContext.<anonymous> (/workspace/Ciclo/tests/field-data.test.cjs:97:105)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ { id: '2025-10-20', weekStart: '2025-10-20', weekEnd: '2025-10-26', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-10-23T11:00:00.000Z', updatedAt: '2025-10-26T11:00:00.000Z', blocks: [Array], rev: 3, fromTemplate: false }, { id: '2025-10-27', weekStart: '2025-10-27', weekEnd: '2025-11-02', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-10-27T11:00:00.000Z', updatedAt: '2025-11-02T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2025-11-03', weekStart: '2025-11-03', weekEnd: '2025-11-09', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 600, allocations: [Array], createdAt: '2025-11-03T11:00:00.000Z', updatedAt: '2025-11-09T11:00:00.000Z', blocks: [Array], rev: 14, fromTemplate: false }, { id: '2025-11-10', weekStart: '2025-11-10', weekEnd: '2025-11-16', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-11-10T11:00:00.000Z', updatedAt: '2025-11-16T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: false }, { id: '2025-11-17', weekStart: '2025-11-17', weekEnd: '2025-11-23', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 720, allocations: [Array], createdAt: '2025-11-17T11:00:00.000Z', updatedAt: '2025-11-23T11:00:00.000Z', blocks: [Array], rev: 7, fromTemplate: false }, { id: '2025-11-24', weekStart: '2025-11-24', weekEnd: '2025-11-30', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-11-24T11:00:00.000Z', updatedAt: '2025-11-30T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: false }, { id: '2025-12-01', weekStart: '2025-12-01', weekEnd: '2025-12-07', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-12-01T11:00:00.000Z', updatedAt: '2025-12-07T11:00:00.000Z', blocks: [Array], rev: 8, fromTemplate: false }, { id: '2025-12-08', weekStart: '2025-12-08', weekEnd: '2025-12-14', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-12-08T11:00:00.000Z', updatedAt: '2025-12-14T11:00:00.000Z', blocks: [Array], rev: 2, fromTemplate: false }, { id: '2025-12-15', weekStart: '2025-12-15', weekEnd: '2025-12-21', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-12-15T11:00:00.000Z', updatedAt: '2025-12-21T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: false }, { id: '2025-12-22', weekStart: '2025-12-22', weekEnd: '2025-12-28', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-12-22T11:00:00.000Z', updatedAt: '2025-12-28T11:00:00.000Z', blocks: [Array], rev: 4, fromTemplate: false }, { id: '2025-12-29', weekStart: '2025-12-29', weekEnd: '2026-01-04', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-12-29T11:00:00.000Z', updatedAt: '2026-01-04T11:00:00.000Z', blocks: [Array], rev: 9, fromTemplate: false }, { id: '2026-01-05', weekStart: '2026-01-05', weekEnd: '2026-01-11', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2026-01-05T11:00:00.000Z', updatedAt: '2026-01-11T11:00:00.000Z', blocks: [Array], rev: 3, fromTemplate: false }, { id: '2026-01-12', weekStart: '2026-01-12', weekEnd: '2026-01-18', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 480, allocations: [Array], createdAt: '2026-01-12T11:00:00.000Z', updatedAt: '2026-01-18T11:00:00.000Z', blocks: [Array], rev: 6, fromTemplate: false }, { id: '2026-01-19', weekStart: '2026-01-19', weekEnd: '2026-01-25', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2026-01-19T11:00:00.000Z', updatedAt: '2026-01-25T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-01-26', weekStart: '2026-01-26', weekEnd: '2026-02-01', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2026-01-26T11:00:00.000Z', updatedAt: '2026-02-01T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: false }, { id: '2026-02-02', weekStart: '2026-02-02', weekEnd: '2026-02-08', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2026-02-02T11:00:00.000Z', updatedAt: '2026-02-08T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-02-09', weekStart: '2026-02-09', weekEnd: '2026-02-15', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2026-02-09T11:00:00.000Z', updatedAt: '2026-02-15T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-02-16', weekStart: '2026-02-16', weekEnd: '2026-02-22', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2026-02-16T11:00:00.000Z', updatedAt: '2026-02-22T11:00:00.000Z', blocks: [Array], rev: 2, fromTemplate: false }, { id: '2026-02-23', weekStart: '2026-02-23', weekEnd: '2026-03-01', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 720, allocations: [Array], createdAt: '2026-02-23T11:00:00.000Z', updatedAt: '2026-03-01T11:00:00.000Z', blocks: [Array], rev: 11, fromTemplate: false }, { id: '2026-03-02', weekStart: '2026-03-02', weekEnd: '2026-03-08', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-03-02T11:00:00.000Z', updatedAt: '2026-03-08T11:00:00.000Z', blocks: [Array], rev: 3, fromTemplate: false }, { id: '2026-03-09', weekStart: '2026-03-09', weekEnd: '2026-03-15', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-03-09T11:00:00.000Z', updatedAt: '2026-03-15T11:00:00.000Z', blocks: [Array], rev: 7, fromTemplate: false }, { id: '2026-03-16', weekStart: '2026-03-16', weekEnd: '2026-03-22', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-03-16T11:00:00.000Z', updatedAt: '2026-03-22T11:00:00.000Z', blocks: [Array], rev: 1, fromTemplate: false }, { id: '2026-03-23', weekStart: '2026-03-23', weekEnd: '2026-03-29', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1200, allocations: [Array], createdAt: '2026-03-23T11:00:00.000Z', updatedAt: '2026-03-29T11:00:00.000Z', blocks: [Array], rev: 4, fromTemplate: false }, { id: '2026-03-30', weekStart: '2026-03-30', weekEnd: '2026-04-05', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-03-30T11:00:00.000Z', updatedAt: '2026-04-05T11:00:00.000Z', blocks: [Array], rev: 10, fromTemplate: false }, { id: '2026-04-06', weekStart: '2026-04-06', weekEnd: '2026-04-12', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-04-06T11:00:00.000Z', updatedAt: '2026-04-12T11:00:00.000Z', blocks: [Array], rev: 6, fromTemplate: false }, { id: '2026-04-13', weekStart: '2026-04-13', weekEnd: '2026-04-19', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-04-13T11:00:00.000Z', updatedAt: '2026-04-19T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-04-20', weekStart: '2026-04-20', weekEnd: '2026-04-26', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 600, allocations: [Array], createdAt: '2026-04-20T11:00:00.000Z', updatedAt: '2026-04-26T11:00:00.000Z', blocks: [Array], rev: 9, fromTemplate: false }, { id: '2026-04-27', weekStart: '2026-04-27', weekEnd: '2026-05-03', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 600, allocations: [Array], createdAt: '2026-04-27T11:00:00.000Z', updatedAt: '2026-05-03T11:00:00.000Z', blocks: [Array], rev: 2, fromTemplate: false }, { id: '2026-05-04', weekStart: '2026-05-04', weekEnd: '2026-05-10', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-05-04T11:00:00.000Z', updatedAt: '2026-05-10T11:00:00.000Z', blocks: [Array], rev: 1, fromTemplate: false }, { id: '2026-05-11', weekStart: '2026-05-11', weekEnd: '2026-05-17', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 600, allocations: [Array], createdAt: '2026-05-11T11:00:00.000Z', updatedAt: '2026-05-17T11:00:00.000Z', blocks: [Array], rev: 2, fromTemplate: false }, { id: '2026-05-18', weekStart: '2026-05-18', weekEnd: '2026-05-24', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-05-18T11:00:00.000Z', updatedAt: '2026-05-24T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: false }, { id: '2026-05-25', weekStart: '2026-05-25', weekEnd: '2026-05-31', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-05-25T11:00:00.000Z', updatedAt: '2026-05-31T11:00:00.000Z', blocks: [Array], rev: 7, fromTemplate: false }, { id: '2026-06-01', weekStart: '2026-06-01', weekEnd: '2026-06-07', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 480, allocations: [Array], createdAt: '2026-06-01T11:00:00.000Z', updatedAt: '2026-06-07T11:00:00.000Z', blocks: [Array], rev: 4, fromTemplate: false }, { id: '2026-06-08', weekStart: '2026-06-08', weekEnd: '2026-06-14', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-06-08T11:00:00.000Z', updatedAt: '2026-06-14T11:00:00.000Z', blocks: [Array], rev: 1, fromTemplate: false }, { id: '2026-06-15', weekStart: '2026-06-15', weekEnd: '2026-06-21', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-06-15T11:00:00.000Z', updatedAt: '2026-06-21T11:00:00.000Z', blocks: [Array], rev: 10, fromTemplate: false }, { id: '2026-06-22', weekStart: '2026-06-22', weekEnd: '2026-06-28', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-06-22T11:00:00.000Z', updatedAt: '2026-06-28T11:00:00.000Z', blocks: [Array], rev: 2, fromTemplate: true }, { id: '2026-06-29', weekStart: '2026-06-29', weekEnd: '2026-07-05', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1200, allocations: [Array], createdAt: '2026-06-29T11:00:00.000Z', updatedAt: '2026-07-05T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-07-06', weekStart: '2026-07-06', weekEnd: '2026-07-12', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 480, allocations: [Array], createdAt: '2026-07-06T11:00:00.000Z', updatedAt: '2026-07-12T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: true }, { id: '2026-07-13', weekStart: '2026-07-13', weekEnd: '2026-07-19', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 600, allocations: [Array], createdAt: '2026-07-13T11:00:00.000Z', updatedAt: '2026-07-19T11:00:00.000Z', blocks: [Array], rev: 7, fromTemplate: true }, { id: '2026-07-20', weekStart: '2026-07-20', weekEnd: '2026-07-26', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-07-20T11:00:00.000Z', updatedAt: '2026-07-26T11:00:00.000Z', blocks: [Array], rev: 7, fromTemplate: true }, { id: '2026-07-27', weekStart: '2026-07-27', weekEnd: '2026-08-02', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-07-27T11:00:00.000Z', updatedAt: '2026-08-02T11:00:00.000Z', blocks: [Array], rev: 6, fromTemplate: true }, { id: '2026-08-03', weekStart: '2026-08-03', weekEnd: '2026-08-09', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-08-03T11:00:00.000Z', updatedAt: '2026-08-09T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: false }, { id: '2026-08-10', weekStart: '2026-08-10', weekEnd: '2026-08-16', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-08-10T11:00:00.000Z', updatedAt: '2026-08-16T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-08-17', weekStart: '2026-08-17', weekEnd: '2026-08-23', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-08-17T11:00:00.000Z', updatedAt: '2026-08-23T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: true }, { id: '2026-08-24', weekStart: '2026-08-24', weekEnd: '2026-08-30', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 720, allocations: [Array], createdAt: '2026-08-24T11:00:00.000Z', updatedAt: '2026-08-30T11:00:00.000Z', blocks: [Array], rev: 8, fromTemplate: true }, { id: '2026-08-31', weekStart: '2026-08-31', weekEnd: '2026-09-06', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1200, allocations: [Array], createdAt: '2026-08-31T11:00:00.000Z', updatedAt: '2026-09-06T11:00:00.000Z', blocks: [Array], rev: 9, fromTemplate: false }, { id: '2026-09-07', weekStart: '2026-09-07', weekEnd: '2026-09-13', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-09-07T11:00:00.000Z', updatedAt: '2026-09-13T11:00:00.000Z', blocks: [Array], rev: 1, fromTemplate: false }, { id: '2026-09-14', weekStart: '2026-09-14', weekEnd: '2026-09-20', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-09-14T11:00:00.000Z', updatedAt: '2026-09-20T11:00:00.000Z', blocks: [Array], rev: 4, fromTemplate: true }, { id: '2026-09-21', weekStart: '2026-09-21', weekEnd: '2026-09-27', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-09-21T11:00:00.000Z', updatedAt: '2026-09-27T11:00:00.000Z', blocks: [Array], rev: 13, fromTemplate: true }, { id: '2026-09-28', weekStart: '2026-09-28', weekEnd: '2026-10-04', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-09-28T11:00:00.000Z', updatedAt: '2026-10-04T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-10-05', weekStart: '2026-10-05', weekEnd: '2026-10-11', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-10-05T11:00:00.000Z', updatedAt: '2026-10-11T11:00:00.000Z', blocks: [Array], rev: 7, fromTemplate: true }, { id: '2026-10-12', weekStart: '2026-10-12', weekEnd: '2026-10-18', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 600, allocations: [Array], createdAt: '2026-10-12T11:00:00.000Z', updatedAt: '2026-10-18T11:00:00.000Z', blocks: [Array], rev: 3, fromTemplate: true }, { id: '2026-10-19', weekStart: '2026-10-19', weekEnd: '2026-10-25', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-10-19T11:00:00.000Z', updatedAt: '2026-10-22T11:00:00.000Z', blocks: [Array], rev: 6, fromTemplate: false }, { id: '2026-10-26', weekStart: '2026-10-26', weekEnd: '2026-11-01', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], blocks: [Array], rev: 0, fromTemplate: true, createdAt: '2026-10-28T22:10:30.408Z', updatedAt: '2026-10-28T22:10:30.408Z' } ],
+    expected: [ { id: '2025-10-20', weekStart: '2025-10-20', weekEnd: '2025-10-26', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-10-23T11:00:00.000Z', updatedAt: '2025-10-26T11:00:00.000Z', blocks: [Array], rev: 3, fromTemplate: false }, { id: '2025-10-27', weekStart: '2025-10-27', weekEnd: '2025-11-02', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-10-27T11:00:00.000Z', updatedAt: '2025-11-02T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2025-11-03', weekStart: '2025-11-03', weekEnd: '2025-11-09', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 600, allocations: [Array], createdAt: '2025-11-03T11:00:00.000Z', updatedAt: '2025-11-09T11:00:00.000Z', blocks: [Array], rev: 14, fromTemplate: false }, { id: '2025-11-10', weekStart: '2025-11-10', weekEnd: '2025-11-16', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-11-10T11:00:00.000Z', updatedAt: '2025-11-16T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: false }, { id: '2025-11-17', weekStart: '2025-11-17', weekEnd: '2025-11-23', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 720, allocations: [Array], createdAt: '2025-11-17T11:00:00.000Z', updatedAt: '2025-11-23T11:00:00.000Z', blocks: [Array], rev: 7, fromTemplate: false }, { id: '2025-11-24', weekStart: '2025-11-24', weekEnd: '2025-11-30', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-11-24T11:00:00.000Z', updatedAt: '2025-11-30T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: false }, { id: '2025-12-01', weekStart: '2025-12-01', weekEnd: '2025-12-07', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-12-01T11:00:00.000Z', updatedAt: '2025-12-07T11:00:00.000Z', blocks: [Array], rev: 8, fromTemplate: false }, { id: '2025-12-08', weekStart: '2025-12-08', weekEnd: '2025-12-14', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-12-08T11:00:00.000Z', updatedAt: '2025-12-14T11:00:00.000Z', blocks: [Array], rev: 2, fromTemplate: false }, { id: '2025-12-15', weekStart: '2025-12-15', weekEnd: '2025-12-21', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-12-15T11:00:00.000Z', updatedAt: '2025-12-21T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: false }, { id: '2025-12-22', weekStart: '2025-12-22', weekEnd: '2025-12-28', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-12-22T11:00:00.000Z', updatedAt: '2025-12-28T11:00:00.000Z', blocks: [Array], rev: 4, fromTemplate: false }, { id: '2025-12-29', weekStart: '2025-12-29', weekEnd: '2026-01-04', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2025-12-29T11:00:00.000Z', updatedAt: '2026-01-04T11:00:00.000Z', blocks: [Array], rev: 9, fromTemplate: false }, { id: '2026-01-05', weekStart: '2026-01-05', weekEnd: '2026-01-11', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2026-01-05T11:00:00.000Z', updatedAt: '2026-01-11T11:00:00.000Z', blocks: [Array], rev: 3, fromTemplate: false }, { id: '2026-01-12', weekStart: '2026-01-12', weekEnd: '2026-01-18', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 480, allocations: [Array], createdAt: '2026-01-12T11:00:00.000Z', updatedAt: '2026-01-18T11:00:00.000Z', blocks: [Array], rev: 6, fromTemplate: false }, { id: '2026-01-19', weekStart: '2026-01-19', weekEnd: '2026-01-25', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2026-01-19T11:00:00.000Z', updatedAt: '2026-01-25T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-01-26', weekStart: '2026-01-26', weekEnd: '2026-02-01', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2026-01-26T11:00:00.000Z', updatedAt: '2026-02-01T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: false }, { id: '2026-02-02', weekStart: '2026-02-02', weekEnd: '2026-02-08', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2026-02-02T11:00:00.000Z', updatedAt: '2026-02-08T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-02-09', weekStart: '2026-02-09', weekEnd: '2026-02-15', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2026-02-09T11:00:00.000Z', updatedAt: '2026-02-15T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-02-16', weekStart: '2026-02-16', weekEnd: '2026-02-22', basePlanId: '1ce4f2ec-57e6-4119-aedb-98d34c40a57c', availableMinutes: 840, allocations: [Array], createdAt: '2026-02-16T11:00:00.000Z', updatedAt: '2026-02-22T11:00:00.000Z', blocks: [Array], rev: 2, fromTemplate: false }, { id: '2026-02-23', weekStart: '2026-02-23', weekEnd: '2026-03-01', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 720, allocations: [Array], createdAt: '2026-02-23T11:00:00.000Z', updatedAt: '2026-03-01T11:00:00.000Z', blocks: [Array], rev: 11, fromTemplate: false }, { id: '2026-03-02', weekStart: '2026-03-02', weekEnd: '2026-03-08', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-03-02T11:00:00.000Z', updatedAt: '2026-03-08T11:00:00.000Z', blocks: [Array], rev: 3, fromTemplate: false }, { id: '2026-03-09', weekStart: '2026-03-09', weekEnd: '2026-03-15', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-03-09T11:00:00.000Z', updatedAt: '2026-03-15T11:00:00.000Z', blocks: [Array], rev: 7, fromTemplate: false }, { id: '2026-03-16', weekStart: '2026-03-16', weekEnd: '2026-03-22', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-03-16T11:00:00.000Z', updatedAt: '2026-03-22T11:00:00.000Z', blocks: [Array], rev: 1, fromTemplate: false }, { id: '2026-03-23', weekStart: '2026-03-23', weekEnd: '2026-03-29', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1200, allocations: [Array], createdAt: '2026-03-23T11:00:00.000Z', updatedAt: '2026-03-29T11:00:00.000Z', blocks: [Array], rev: 4, fromTemplate: false }, { id: '2026-03-30', weekStart: '2026-03-30', weekEnd: '2026-04-05', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-03-30T11:00:00.000Z', updatedAt: '2026-04-05T11:00:00.000Z', blocks: [Array], rev: 10, fromTemplate: false }, { id: '2026-04-06', weekStart: '2026-04-06', weekEnd: '2026-04-12', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-04-06T11:00:00.000Z', updatedAt: '2026-04-12T11:00:00.000Z', blocks: [Array], rev: 6, fromTemplate: false }, { id: '2026-04-13', weekStart: '2026-04-13', weekEnd: '2026-04-19', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-04-13T11:00:00.000Z', updatedAt: '2026-04-19T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-04-20', weekStart: '2026-04-20', weekEnd: '2026-04-26', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 600, allocations: [Array], createdAt: '2026-04-20T11:00:00.000Z', updatedAt: '2026-04-26T11:00:00.000Z', blocks: [Array], rev: 9, fromTemplate: false }, { id: '2026-04-27', weekStart: '2026-04-27', weekEnd: '2026-05-03', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 600, allocations: [Array], createdAt: '2026-04-27T11:00:00.000Z', updatedAt: '2026-05-03T11:00:00.000Z', blocks: [Array], rev: 2, fromTemplate: false }, { id: '2026-05-04', weekStart: '2026-05-04', weekEnd: '2026-05-10', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-05-04T11:00:00.000Z', updatedAt: '2026-05-10T11:00:00.000Z', blocks: [Array], rev: 1, fromTemplate: false }, { id: '2026-05-11', weekStart: '2026-05-11', weekEnd: '2026-05-17', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 600, allocations: [Array], createdAt: '2026-05-11T11:00:00.000Z', updatedAt: '2026-05-17T11:00:00.000Z', blocks: [Array], rev: 2, fromTemplate: false }, { id: '2026-05-18', weekStart: '2026-05-18', weekEnd: '2026-05-24', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-05-18T11:00:00.000Z', updatedAt: '2026-05-24T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: false }, { id: '2026-05-25', weekStart: '2026-05-25', weekEnd: '2026-05-31', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-05-25T11:00:00.000Z', updatedAt: '2026-05-31T11:00:00.000Z', blocks: [Array], rev: 7, fromTemplate: false }, { id: '2026-06-01', weekStart: '2026-06-01', weekEnd: '2026-06-07', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 480, allocations: [Array], createdAt: '2026-06-01T11:00:00.000Z', updatedAt: '2026-06-07T11:00:00.000Z', blocks: [Array], rev: 4, fromTemplate: false }, { id: '2026-06-08', weekStart: '2026-06-08', weekEnd: '2026-06-14', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-06-08T11:00:00.000Z', updatedAt: '2026-06-14T11:00:00.000Z', blocks: [Array], rev: 1, fromTemplate: false }, { id: '2026-06-15', weekStart: '2026-06-15', weekEnd: '2026-06-21', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 960, allocations: [Array], createdAt: '2026-06-15T11:00:00.000Z', updatedAt: '2026-06-21T11:00:00.000Z', blocks: [Array], rev: 10, fromTemplate: false }, { id: '2026-06-22', weekStart: '2026-06-22', weekEnd: '2026-06-28', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-06-22T11:00:00.000Z', updatedAt: '2026-06-28T11:00:00.000Z', blocks: [Array], rev: 2, fromTemplate: true }, { id: '2026-06-29', weekStart: '2026-06-29', weekEnd: '2026-07-05', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1200, allocations: [Array], createdAt: '2026-06-29T11:00:00.000Z', updatedAt: '2026-07-05T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-07-06', weekStart: '2026-07-06', weekEnd: '2026-07-12', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 480, allocations: [Array], createdAt: '2026-07-06T11:00:00.000Z', updatedAt: '2026-07-12T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: true }, { id: '2026-07-13', weekStart: '2026-07-13', weekEnd: '2026-07-19', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 600, allocations: [Array], createdAt: '2026-07-13T11:00:00.000Z', updatedAt: '2026-07-19T11:00:00.000Z', blocks: [Array], rev: 7, fromTemplate: true }, { id: '2026-07-20', weekStart: '2026-07-20', weekEnd: '2026-07-26', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-07-20T11:00:00.000Z', updatedAt: '2026-07-26T11:00:00.000Z', blocks: [Array], rev: 7, fromTemplate: true }, { id: '2026-07-27', weekStart: '2026-07-27', weekEnd: '2026-08-02', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-07-27T11:00:00.000Z', updatedAt: '2026-08-02T11:00:00.000Z', blocks: [Array], rev: 6, fromTemplate: true }, { id: '2026-08-03', weekStart: '2026-08-03', weekEnd: '2026-08-09', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-08-03T11:00:00.000Z', updatedAt: '2026-08-09T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: false }, { id: '2026-08-10', weekStart: '2026-08-10', weekEnd: '2026-08-16', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-08-10T11:00:00.000Z', updatedAt: '2026-08-16T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-08-17', weekStart: '2026-08-17', weekEnd: '2026-08-23', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-08-17T11:00:00.000Z', updatedAt: '2026-08-23T11:00:00.000Z', blocks: [Array], rev: 5, fromTemplate: true }, { id: '2026-08-24', weekStart: '2026-08-24', weekEnd: '2026-08-30', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 720, allocations: [Array], createdAt: '2026-08-24T11:00:00.000Z', updatedAt: '2026-08-30T11:00:00.000Z', blocks: [Array], rev: 8, fromTemplate: true }, { id: '2026-08-31', weekStart: '2026-08-31', weekEnd: '2026-09-06', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1200, allocations: [Array], createdAt: '2026-08-31T11:00:00.000Z', updatedAt: '2026-09-06T11:00:00.000Z', blocks: [Array], rev: 9, fromTemplate: false }, { id: '2026-09-07', weekStart: '2026-09-07', weekEnd: '2026-09-13', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-09-07T11:00:00.000Z', updatedAt: '2026-09-13T11:00:00.000Z', blocks: [Array], rev: 1, fromTemplate: false }, { id: '2026-09-14', weekStart: '2026-09-14', weekEnd: '2026-09-20', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-09-14T11:00:00.000Z', updatedAt: '2026-09-20T11:00:00.000Z', blocks: [Array], rev: 4, fromTemplate: true }, { id: '2026-09-21', weekStart: '2026-09-21', weekEnd: '2026-09-27', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-09-21T11:00:00.000Z', updatedAt: '2026-09-27T11:00:00.000Z', blocks: [Array], rev: 13, fromTemplate: true }, { id: '2026-09-28', weekStart: '2026-09-28', weekEnd: '2026-10-04', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-09-28T11:00:00.000Z', updatedAt: '2026-10-04T11:00:00.000Z', blocks: [Array], rev: 12, fromTemplate: false }, { id: '2026-10-05', weekStart: '2026-10-05', weekEnd: '2026-10-11', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-10-05T11:00:00.000Z', updatedAt: '2026-10-11T11:00:00.000Z', blocks: [Array], rev: 7, fromTemplate: true }, { id: '2026-10-12', weekStart: '2026-10-12', weekEnd: '2026-10-18', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 600, allocations: [Array], createdAt: '2026-10-12T11:00:00.000Z', updatedAt: '2026-10-18T11:00:00.000Z', blocks: [Array], rev: 3, fromTemplate: true }, { id: '2026-10-19', weekStart: '2026-10-19', weekEnd: '2026-10-25', basePlanId: '5bc57535-294c-4cf1-beff-0090c57f88cc', availableMinutes: 1080, allocations: [Array], createdAt: '2026-10-19T11:00:00.000Z', updatedAt: '2026-10-22T11:00:00.000Z', blocks: [Array], rev: 6, fromTemplate: false } ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

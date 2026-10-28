@@ -1,0 +1,14 @@
+
+> audit:field:performance
+> node tests/field-performance.cjs
+
+{"count":100,"importMs":530.47777,"reloadMs":248.88203900000008,"rhythmWeeks":53,"resultWeeks":53,"first":"2025-10-23","last":"2026-10-22"}
+{"count":911,"importMs":734.9015369999997,"reloadMs":397.94887500000004,"rhythmWeeks":53,"resultWeeks":53,"first":"2025-10-23","last":"2026-10-22"}
+{"count":1000,"importMs":1522.1671560000013,"reloadMs":607.0433139999986,"rhythmWeeks":105,"resultWeeks":105,"first":"2024-10-24","last":"2026-10-22"}
+{"count":5000,"importMs":4018.9322539999994,"reloadMs":969.0258070000018,"rhythmWeeks":313,"resultWeeks":313,"first":"2020-10-29","last":"2026-10-22"}
+{"count":10000,"importMs":5452.626193999997,"reloadMs":1649.434097999998,"rhythmWeeks":573,"resultWeeks":573,"first":"2015-11-05","last":"2026-10-22"}
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
