@@ -5749,3 +5749,39 @@ body{background:var(--workspace-bg)}
   .focus-mode.is-presenting .focus-totals div{min-width:0;padding-inline:10px}
   .focus-mode .focus-clock,.focus-mode.is-presenting .focus-clock{font-size:clamp(48px,15vw,100px)}
 }
+
+/* Relatório visual: formulário e mesma superfície bitmap que será exportada. */
+.results-toolbar{display:flex;justify-content:flex-end;margin-bottom:14px}
+.modal.report{width:min(1110px,100%);max-width:1110px;display:flex;flex-direction:column;overflow:hidden}
+.modal.report>#modal-title{flex-shrink:0}
+.modal.report>#modal-content{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:6px 3px}
+.modal.report>#modal-actions{position:static;flex-shrink:0;margin-top:17px}
+.report-editor{display:grid;grid-template-columns:minmax(300px,.9fr) minmax(0,1.1fr);align-items:start;gap:clamp(16px,3vw,34px)}
+.report-controls{min-width:0;display:grid;gap:13px}
+.report-editor .field{margin:0;min-width:0}
+.report-editor select,.report-editor input:not([type="checkbox"]){width:100%;max-width:100%}
+.report-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.report-fields[hidden]{display:none}
+.report-controls .disclosure-body{display:grid;gap:9px}
+.report-editor input[type="color"]{min-height:40px}
+.report-scope-list{max-height:160px;overflow:auto;padding-inline:5px;border:1px solid var(--border-soft);border-radius:8px;overscroll-behavior:contain}
+.report-scope-list .guided-check{border-bottom:1px solid var(--border-soft);overflow-wrap:anywhere}
+.report-stage{position:sticky;top:0;display:grid;justify-items:center;gap:8px;padding:13px 10px;background:var(--workspace-bg);border:1px solid var(--workspace-line);border-radius:15px;min-width:0}
+.report-preview-heading{margin:0;font-weight:650}
+#report-preview{display:block;width:auto;height:auto;max-width:100%;max-height:min(58dvh,620px);border-radius:6px;object-fit:contain}
+#report-preview[hidden]{display:none}
+.report-status{margin:0;text-align:center}
+.report-order{padding:0;margin:0;list-style:none}
+.report-order li{display:flex;justify-content:space-between;gap:6px;align-items:center;border-top:1px solid var(--border-soft);padding:4px 0}
+.report-order-buttons{display:flex;gap:4px}
+.report-order-buttons .icon-btn{min-width:34px;min-height:38px}
+@media(max-width:760px){
+  .report-editor{grid-template-columns:minmax(0,1fr)}
+  .report-stage{position:static;grid-row:1;max-height:none}
+  #report-preview{max-height:min(32dvh,340px)}
+}
+@media(max-width:410px){
+  .modal.report{padding-inline:15px}
+  .report-order-buttons .icon-btn{min-width:38px;min-height:44px}
+  .report-editor select,.report-editor input:not([type="checkbox"]){font-size:16px}
+}

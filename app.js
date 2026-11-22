@@ -11343,6 +11343,7 @@ function todaySummary(){
     h('p', {class:'hint',text:plural(list.length,'estudo registrado','estudos registrados') + ' · tempo líquido, sem descanso e pausa'}),
     h('div', {class:'day-subjects'}, names.slice(0,4).map(name => h('span', {text:name})), names.length>4 ? h('span', {text:'+' + (names.length-4)}) : null),
     h('div', {class:'tf-actions'},
+      h('button', {class:'btn ghost sm',type:'button',text:'Criar relatório',onclick:() => openVisualReport({periodPreset:'hoje'})}),
       h('button', {class:'btn ghost sm',type:'button',text:'Ver detalhes do dia',onclick:() => applyAnalyticsQuery({scopeType:'all',periodPreset:'hoje',focus:'overview'})}),
       h('button', {class:'linkbtn',type:'button',text:'Ver registros de hoje',onclick:() => { ui.history = {...ui.history,search:'',areaId:'',disciplineId:'',topicId:'',period:'hoje',type:'',difficulty:'',results:''}; setView('history'); }})));
 }
@@ -17017,6 +17018,8 @@ function renderAnalytics(opts){
     if(!ui.anPick) ui.anPick = { search:'', month:null, editing:false, revealed:ui.analyticsDraft.scopeType, custom:false, period:null };
     if(sub) sub.textContent = 'O que você quer descobrir sobre seus estudos?';
     renderAnalyticsSelector(root);
+    root.prepend(h('div', {class:'results-toolbar'}, h('button', {class:'btn primary sm',type:'button',onclick:() => openVisualReport(ui.analyticsQuery)},
+      icon('i-download'), 'Criar relatório')));
   }
   if(o.animate && !prefersReducedMotion()){
     root.classList.remove('an-swap'); void root.offsetWidth; root.classList.add('an-swap');
@@ -17756,6 +17759,14 @@ function analyticsNextQuestions(a, focus){
       h('span', { class:'an-next-t', text: focusInfo(f).question }), icon('i-arrow', 'btn-icon')))));
 }
 
+function openAnalyticsRecords(analysis){
+  clearHistoryFilters();
+  ui.history.search = '';
+  ui.historyIds = {ids:analysis.sessions.map(s => s.id),label:'Análise · ' + analyticsPeriodLabel(analysis.query)};
+  setView('history');
+  focusViewHeading('history');
+}
+
 function analyticsResultHeader(a){
   const q = a.query;
   const sc = a.scope;
@@ -17770,13 +17781,14 @@ function analyticsResultHeader(a){
   if(sc.types) chips.push(h('button', { class:'filter-chip', type:'button', 'aria-label':`Tirar o filtro de tipos ${sc.typesLabel}`,
     onclick:() => setAnalyticsTypes([]) }, h('span', { text: 'Estudos com ' + sc.typesLabel }), icon('i-close', 'btn-icon')));
   const periods = h('div', { class:'an-chips an-head-periods', role:'radiogroup', 'aria-label':'Trocar o período' });
-  READY_PERIODS.concat(q.periodPreset === 'custom' || READY_PERIODS.includes(q.periodPreset) ? [] : [q.periodPreset]).forEach(v => {
+  const common = ['hoje','semana','mes','30d'];
+  common.concat(q.periodPreset === 'custom' || common.includes(q.periodPreset) ? [] : [q.periodPreset]).forEach(v => {
     const p = ANALYTICS_PRESETS.find(x => x.v === v);
     periods.append(h('button', { class:'an-chip sm', type:'button', role:'radio', 'aria-checked': q.periodPreset === v ? 'true' : 'false', text:p.label,
       onclick:() => { if(q.periodPreset !== v) setAnalyticsPeriod(presetRange(v), v); } }));
   });
   periods.append(h('button', { class:'an-chip sm', type:'button', role:'radio', 'aria-checked': q.periodPreset === 'custom' ? 'true' : 'false',
-    text: q.periodPreset === 'custom' ? fmtRangeLabel(a.range) : 'Outro…', onclick:() => openAnalyticsSelector({ section:'period' }) }));
+    text: q.periodPreset === 'custom' ? fmtRangeLabel(a.range) : 'Personalizado…', onclick:() => openAnalyticsSelector({ section:'period' }) }));
   rovingInit(periods);
   return h('header', { class:'an-head', id:'an-context' },
     h('div', { class:'an-head-main' },
@@ -17789,6 +17801,8 @@ function analyticsResultHeader(a){
         chips.length > 1 ? h('button', { class:'linkbtn muted', type:'button', text:'limpar', onclick:() => applyAnalyticsQuery(Object.assign({}, q, { scopeType:'all', scopeIds:[], scopeId:null, types:[] })) }) : null) : null,
       periods),
     h('div', { class:'an-head-actions' },
+      h('button', {class:'btn primary sm',type:'button',onclick:() => openVisualReport(q)}, icon('i-download'), 'Criar relatório'),
+      a.sessions.length ? h('button', {class:'btn ghost sm',type:'button',text:'Ver registros',onclick:() => openAnalyticsRecords(a)}) : null,
       q.focus !== 'overview' ? h('button', { class:'btn ghost sm an-to-pan', type:'button', onclick:() => setAnalyticsFocus('overview') }, icon('i-back'), 'Panorama') : null,
       h('button', { class:'btn ghost sm', type:'button', onclick:() => openAnalyticsSelector() }, 'Alterar análise'),
       menuButton('Mais', [
