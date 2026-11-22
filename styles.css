@@ -5924,3 +5924,9 @@ body{background:var(--workspace-bg)}
 
 .tip-main > summary { cursor: pointer; font-weight: 600; color: var(--text); }
 .tip-main[open] > p { margin-block: 6px 0; }
+@media (min-width: 861px) and (min-height: 580px) {
+  #analytics-body .an-result { margin-block-end: 0; padding-block-end: 0; }
+  #help-panel > .disclosure, .data-options > .disclosure { margin-block: 6px; }
+  #help-panel > .help-section-head { margin-top: 0; }
+  #help-body #help-panel { margin-top: 0; }
+}

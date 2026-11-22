@@ -12,9 +12,15 @@ test('v8.1 · enquadramento e ações principais por área', {timeout:120000}, a
   await fs.mkdir(out, {recursive:true});
   try {
     const {page, context} = await open(runtime);
+    await page.clock.setFixedTime(new Date('2026-11-20T17:00:00Z'));
     await seed(page);
     await page.evaluate(async () => {
-      await SessionCommands.create({disciplineId:'portugues',topicId:'crase',minutes:40,date:todayISO()});
+      for(const [disciplineId,topicId,minutes,ago] of [
+        ['portugues','crase',40,0],['matematica','fracoes',55,1],
+        ['portugues','pontuacao',25,3],['matematica','fracoes',35,5]
+      ]){
+        await SessionCommands.create({disciplineId,topicId,minutes,date:addDaysISO(todayISO(),-ago)});
+      }
       await refresh();
     });
     for(const [width,height] of [[1440,900],[1366,768],[1280,720],[390,844]]){
@@ -29,8 +35,9 @@ test('v8.1 · enquadramento e ações principais por área', {timeout:120000}, a
         });
         measurements.push({engine,width,height,view,...data});
         if(engine === 'chromium' && width === 1366 && view === 'relatorio'){
-          const preview = await page.locator('#report-preview').evaluate(c => c.toDataURL('image/png').split(',')[1]);
-          await fs.writeFile(path.join(out,'relatorio-exportado.png'),Buffer.from(preview,'base64'));
+          const download = page.waitForEvent('download');
+          await page.getByRole('button',{name:'Baixar PNG'}).click();
+          await (await download).saveAs(path.join(out,'relatorio-exportado.png'));
         }
         if(width === 1366 || width === 390) await page.screenshot({path:path.join(out,view+'-'+width+'.png'),animations:'disabled'});
       };
@@ -49,11 +56,12 @@ test('v8.1 · enquadramento e ações principais por área', {timeout:120000}, a
       await page.evaluate(() => openRegisterModal());
       await measure('registro','#modal-actions .primary');
       await page.evaluate(() => modalCloser());
-      await page.evaluate(() => openVisualReport({periodPreset:'hoje'}));
+      await page.evaluate(() => openVisualReport({periodPreset:'7d'}));
       await page.locator('#report-preview').waitFor({state:'visible'});
       await measure('relatorio','#modal-actions .primary');
       await page.evaluate(() => modalCloser());
       await page.evaluate(async () => {await startTimer('portugues',['crase'],[]); FocusMode.enter();});
+      await page.locator('#toasts .toast').first().waitFor({state:'hidden'});
       await measure('foco','#focus-actions button');
       await page.locator('#focus-presentation').click();
       await measure('apresentacao','#focus-exit');
@@ -79,14 +87,6 @@ test('v8.1 · enquadramento e ações principais por área', {timeout:120000}, a
         return canvas.toDataURL('image/jpeg',.86).split(',')[1];
       },frames);
       await fs.writeFile(path.join(out,'panorama.jpg'),Buffer.from(jpeg,'base64'));
-      // Transporte pontual das imagens sintéticas desta revisão para o relatório do PR.
-      if(process.env.GITHUB_ACTIONS){
-        for(const name of ['panorama.jpg','relatorio-exportado.png']){
-          const bytes = await fs.readFile(path.join(out,name));
-          const encoded = bytes.toString('base64');
-          for(let i=0;i<encoded.length;i+=6000) console.log('CICLO_EVIDENCIA '+name+' '+i+' '+encoded.slice(i,i+6000));
-        }
-      }
     }
     await context.close();
   } finally {

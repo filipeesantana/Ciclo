@@ -11266,7 +11266,7 @@ function renderToday(){
   const hasSessions = state.sessions.length > 0;
   const main = [todayAction(discs, hasSessions)];
   const guide = contextGuideCard('today');
-  if(guide) main.push(h('details', {class:'today-links'}, h('summary', {text:'Orientação para hoje'}), guide));
+  if(guide) main.push(guide);
   if(todayBlockOn('next')){ const n = todayNextSteps(); if(n) main.push(n); }
 
   const side = [];
@@ -11276,11 +11276,10 @@ function renderToday(){
   if(todayBlockOn('start') && guidanceFull()){ const sg = startGuideCard(); if(sg) side.push(sg); }
 
   const quoteCard = todayBlockOn('quote') ? dailyQuoteCard() : null;
-  const quote = quoteCard ? h('details', {class:'today-links'}, h('summary', {text:'Frase do dia'}), quoteCard) : null;
+  if(quoteCard) side.push(h('details', {class:'today-links'}, h('summary', {text:'Frase do dia'}), quoteCard));
   mount(root, h('div', { class:'today-v7' + (side.length ? '' : ' is-single') },
     h('div', { class:'today-main' }, main),
-    side.length ? h('div', { class:'today-side' }, side) : null,
-    quote ? h('div', { class:'today-foot' }, quote) : null));
+    side.length ? h('div', { class:'today-side' }, side) : null));
 }
 
 /** 1 · A ação principal: a pessoa escolhe. A sugestão do Ciclo é um convite, com o motivo. */
@@ -21086,8 +21085,8 @@ function renderData(){
     plural(state.weeklyPlans.length, 'semana registrada', 'semanas registradas'), plural(state.deadlines.length, 'prazo', 'prazos')
   ];
   /* v7 — Ciclo + outras ferramentas: tudo sai por arquivo, por decisão da pessoa */
-  const tools = h('section', { class:'list-block', 'aria-labelledby':'dt-tools' },
-    h('h3', { class:'block-label', id:'dt-tools', text:'Ciclo + outras ferramentas' }),
+  const tools = h('details', {class:'disclosure'},
+    h('summary', {id:'dt-tools',text:'Exportar para planilhas ou IA'}),
     h('ul', { class:'line-list' },
       h('li', { class:'line air-line' },
         h('div', { class:'line-main static' },
@@ -21101,8 +21100,8 @@ function renderData(){
         h('button', { class:'btn ghost sm', type:'button', text:'Exportar', onclick: once(exportCSVWithFeedback) }))),
     h('button', { class:'linkbtn muted', type:'button', text:'Como usar meus dados com IA ou planilhas?', onclick:() => openHelpArticle('ciclo-ferramentas') }));
 
-  const more = h('section', { class:'list-block' },
-    h('h3', { class:'block-label', text:'Outras opções' }),
+  const more = h('details', {class:'disclosure'},
+    h('summary', {text:'Conferir dados e conteúdo do backup'}),
     h('ul', { class:'line-list' },
       h('li', { class:'line' },
         h('div', { class:'line-main static' },
@@ -21122,8 +21121,8 @@ function renderData(){
   const storageLine = h('span', { class:'line-s', text:'Calculando…' });
   const persistLine = h('span', { class:'line-s', text:'Verificando…' });
   const persistBtn = h('button', { class:'btn ghost sm', type:'button', text:'Pedir ao navegador', hidden:true });
-  const protect = h('section', { class:'list-block data-protect', 'aria-labelledby':'dt-protect' },
-    h('h3', { class:'block-label', id:'dt-protect', text:'Como seus dados ficam guardados' }),
+  const protect = h('details', {class:'disclosure data-protect'},
+    h('summary', {id:'dt-protect',text:'Armazenamento e privacidade'}),
     h('ul', { class:'dp-facts' },
       h('li', null, icon('i-shield', 'btn-icon'), h('span', { text:'Seus registros ficam no banco do próprio navegador (IndexedDB), neste aparelho. Não há conta, e nada é enviado automaticamente a um servidor do Ciclo — nem a uma IA.' })),
       h('li', null, icon('i-download', 'btn-icon'), h('span', { text:'Você controla as cópias: o backup é um arquivo que você gera e guarda onde quiser. Cada backup leva uma soma de verificação para detectar alterações acidentais no arquivo (não é criptografia).' })),
@@ -23366,8 +23365,8 @@ function renderHelpPanel(){
    resposta curta já visível. Depois, as duas bibliotecas (Usar o Ciclo e Como
    estudar), o guia do primeiro uso, as perguntas comuns e o contato. */
 function helpHomePanel(box){
-  box.append(h('section', { class:'help-mainq', 'aria-labelledby':'hmq-t' },
-    h('div', { class:'help-section-head' }, h('h3', { id:'hmq-t', text:'Perguntas principais' })),
+  const questions = h('details', {class:'disclosure'},
+    h('summary', {id:'hmq-t',text:'Perguntas principais'}),
     h('div', { class:'hmq-grid' }, HELP_MAIN_QUESTIONS.map(mq => {
       const a = getArticle(mq.article);
       if(!a) return null;
@@ -23375,7 +23374,7 @@ function helpHomePanel(box){
         h('span', { class:'hmq-q', text:mq.q }),
         h('span', { class:'hmq-a', text: plainText(a.quick || a.oneLine) }),
         icon('i-arrow', 'nav-icon hmq-go'));
-    }))));
+    })));
 
   /* as duas bibliotecas */
   const count = id => articlesOf(id).length;
@@ -23392,9 +23391,10 @@ function helpHomePanel(box){
 
   /* guia do primeiro uso: retomar sem apagar nada */
   const prog = startProgress();
-  box.append(h('section', { class:'help-guide card', 'aria-labelledby':'hg-t' },
-    h('div', { class:'hg-main' },
-      h('h3', { class:'hg-t', id:'hg-t', text:'Guia do primeiro uso' }),
+  box.append(questions);
+  box.append(h('details', {class:'disclosure'},
+    h('summary', {id:'hg-t',text:'Guia do primeiro uso'}),
+    h('div', {class:'hg-main'},
       h('p', { class:'hg-s', text:`Rever a apresentação, mostrar as dicas de novo ou continuar os primeiros passos (${prog.doneCount} de ${prog.total} feitos). Nada do que você já registrou é apagado.` })),
     h('div', { class:'hg-actions' },
       h('button', { class:'btn ghost sm', type:'button', text:'Rever a apresentação', onclick:() => runHelpAction('startGuide') }),
@@ -23403,15 +23403,14 @@ function helpHomePanel(box){
 
   /* perguntas comuns — lista simples, sem moldura */
   const faqs = HELP_HOME_FAQ.map(id => HELP_FAQ_BY_ID.get(id)).filter(Boolean);
-  box.append(h('section', { class:'help-plain' },
-    h('div', { class:'help-plain-head' },
-      h('h3', { class:'block-label', text:'Perguntas comuns' }),
-      h('button', { class:'linkbtn', type:'button', text:'Ver todas', onclick:() => helpGo({ kind:'faq' }) })),
-    faqs.map(f => faqNode(f, false))));
+  box.append(h('details', {class:'disclosure'},
+    h('summary', {text:'Dúvidas frequentes'}),
+    faqs.map(f => faqNode(f, false)),
+    h('button', {class:'linkbtn',type:'button',text:'Ver todas as perguntas',onclick:() => helpGo({kind:'faq'})})));
 
   /* apoio: uma linha, sem cartões concorrentes */
-  box.append(h('section', { class:'help-plain' },
-    h('h3', { class:'block-label', text:'Mais ajuda' }),
+  box.append(h('details', {class:'disclosure'},
+    h('summary', {text:'Glossário e suporte'}),
     h('ul', { class:'line-list' },
       h('li', { class:'line' }, h('button', { class:'line-main', type:'button', onclick:() => helpGo({ kind:'article', id:'ciclo-ferramentas' }) },
         h('span', { class:'line-t', text:'Ciclo + outras ferramentas' }), h('span', { class:'line-s', text:'Planilhas, IA, documentos e organização pessoal — usos opcionais.' })), icon('i-arrow', 'nav-icon line-go')),

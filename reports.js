@@ -220,13 +220,16 @@ function drawVisualReport(canvas, model, settings){
   if(model.brand){
     ctx.save();
     ctx.fillStyle = p.bg;
-    ctx.fillRect(ruleEnd-84,32,84,38);
+    ctx.font = '700 21px system-ui, sans-serif';
+    const wordWidth = Math.ceil(ctx.measureText('Ciclo').width) + 2;
+    const wordLeft = ruleEnd - wordWidth;
+    ctx.fillRect(wordLeft-42,32,wordWidth+42,38);
     ctx.strokeStyle = p.accent;
     ctx.lineWidth = 4;
     ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.arc(ruleEnd-61,50,10,-Math.PI/2,Math.PI); ctx.stroke();
-    ctx.beginPath(); ctx.arc(ruleEnd-68,42,2.5,0,2*Math.PI); ctx.fillStyle = p.accent; ctx.fill();
-    reportText(ctx,'Ciclo',ruleEnd-43,39,48,21,{weight:700,color:p.ink});
+    ctx.beginPath(); ctx.arc(wordLeft-18,50,10,-Math.PI/2,Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.arc(wordLeft-25,42,2.5,0,2*Math.PI); ctx.fillStyle = p.accent; ctx.fill();
+    reportText(ctx,'Ciclo',wordLeft,39,wordWidth,21,{weight:700,color:p.ink});
     ctx.restore();
   }
   let y = 77;
@@ -307,7 +310,12 @@ function drawReportBlock(ctx, block, x,y,width,height,p,layout){
       const label = block.buckets.length <= 7 || i === 0 || i === block.buckets.length - 1;
       const left = w+i*barSlot+(barSlot-barWidth)/2;
       reportRect(ctx,left,base-h,barWidth,h,Math.min(3,h/2),bucket.minutes ? p.chart : p.line);
-      if(label && barSlot >= 40) reportText(ctx,fmtDateBR(dateToISO(bucket.range.start)).slice(0,5),w+i*barSlot,base+3,barSlot-1,16,{color:p.cardSoft});
+      if(label && barSlot >= 40){
+        ctx.save();
+        ctx.textAlign = 'center';
+        reportText(ctx,fmtDateBR(dateToISO(bucket.range.start)).slice(0,5),w+(i+.5)*barSlot,base+3,barSlot-1,16,{color:p.cardSoft});
+        ctx.restore();
+      }
     });
     const peak = Math.max(...block.buckets.map(b => b.minutes));
     reportText(ctx,block.detail + (peak ? ' · máximo ' + reportDuration(peak) : ''),w,base+21,area,18,{color:p.cardSoft});

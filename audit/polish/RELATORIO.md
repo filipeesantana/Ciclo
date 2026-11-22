@@ -20,3 +20,18 @@ A moldura de desktop se aplica a partir de 861 × 580 pixels CSS. Listas, artigo
 O teste `tests/polish.test.cjs` mede a altura e a largura do documento e os limites de uma ação por área em 1440 × 900, 1366 × 768, 1280 × 720 e 390 × 844. Ele salva as medidas em `test-results/polish/layout.json` e captura todas as áreas em notebook e celular. A auditoria existente da v8 também gera imagens dos dois temas e arquivos PNG exportados com dados sintéticos.
 
 A matriz do PR executa `npm run check`, `npm test` e as auditorias do repositório em Chromium, Firefox e WebKit. Cada motor entrega seu diretório `test-results` como artefato. Resultados da execução são registrados no PR.
+
+## Resultado da revisão
+
+Com quatro estudos de exemplo, as 14 áreas verificadas mantiveram a ação medida dentro da janela em 1440 × 900, 1366 × 768 e 1280 × 720. A altura do documento coincidiu com a altura da janela nas 42 verificações de desktop no Chromium local. A agenda também foi exercitada com 48 tópicos, seleção de todos os resultados e troca de página. O Histórico permite percorrer mais datas no painel mantendo a busca acessível. Em 1280 × 720, a Ajuda e os detalhes de Resultados também podem ultrapassar a altura do painel.
+
+| Evidência | Conteúdo |
+| --- | --- |
+| [Panorama em notebook](evidencias/panorama.jpg) | Começar a estudar, Revisões, Resultados, Histórico, Foco e editor PNG em 1366 × 768 |
+| [Revisões no celular](evidencias/reviews-390.png) | Agenda, estados e ações em 390 × 844 |
+| [Arquivo PNG exportado](evidencias/relatorio-exportado.png) | Quatro sessões somam 2h35 nos últimos sete dias |
+| [Medidas por área](evidencias/layout.json) | 56 combinações de área e janela, limites da ação e rolagem do documento e do painel |
+
+Na revisão do primeiro uso, o convite para continuar ou dispensar a orientação passou a ficar visível logo após cadastrar a disciplina. A inspeção do PNG identificou um corte na palavra Ciclo. O exportador agora mede a marca na fonte do próprio navegador e alinha as datas às respectivas barras do gráfico.
+
+As capturas usam dados sintéticos. No celular, a avaliação usa navegadores automatizados com viewport móvel. A matriz oficial, os resultados por motor e os arquivos completos ficam nos checks do [PR #6](https://github.com/filipeesantana/Ciclo/pull/6/checks).
