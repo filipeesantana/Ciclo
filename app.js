@@ -372,6 +372,7 @@ const DEFAULT_SETTINGS = {
   defaultReviewMinutes: 20,
   autoReviewNewTopics: true,
   reduceMotion: false,
+  presentationHidden: ['today'],
   defaultPeriod: 'semana',
   /* v4 */
   defaultReviewStrategy: 'adaptive',   // estratégia global (disciplina/tópico podem sobrescrever)
@@ -5805,6 +5806,7 @@ function sanitizeSettings(s){
     reviewLayout: src.reviewLayout === 'list' ? 'list' : 'discipline',
     aiIncludeComments: src.aiIncludeComments !== false,
     /* v7.1 — instalações e backups anteriores não têm estes campos: cronômetro livre e Pomodoro clássico. */
+    presentationHidden: Array.isArray(src.presentationHidden) ? PRESENTATION_BLOCKS.map(([key]) => key).filter(key => src.presentationHidden.includes(key)) : ['today'],
     timerMode: src.timerMode === 'pomodoro' ? 'pomodoro' : 'free',
     pomodoro: sanitizePomodoroSettings(src.pomodoro)
   };
@@ -21678,7 +21680,13 @@ async function init(){
   }
   Nav.start();
 
-  if(TimerService.isActive) offerStaleSession();
+  if(TimerService.isActive){
+    offerStaleSession();
+    if(new URLSearchParams(location.search).get('apresentacao') === '1' && !Overlay.isOpen){
+      FocusMode.enter();
+      FocusMode.setPresentation(true);
+    }
+  }
   if(timerAlreadySaved) toast('O cronômetro que estava aberto já tinha sido salvo no histórico.', 'info', { title:'Esse estudo já foi registrado.' });
   if(TimerService.isActive && !TimerService.persisted) renderTimerBar();
 
@@ -22381,11 +22389,16 @@ const NAV_ICONS = {
    navegador oferece; sair da tela cheia não fecha o modo foco nem toca no
    cronômetro. O relógio nunca é anunciado a leitores de tela — só as mudanças.
    ========================================================================= */
+const PRESENTATION_BLOCKS = [
+  ['clock','Relógio'], ['discipline','Disciplina'], ['topics','Tópicos'], ['rest','Descanso'],
+  ['progress','Progresso'], ['pomodoro','Pomodoro'], ['today','Resumo de hoje']
+];
 const FocusMode = {
   tick: null,
   _layer: null,
   _key: null,
   _fsBound: false,
+  presenting: false,
   enter(){
     if(!TimerService.isActive){ toast('Comece a estudar para usar o modo foco.', 'info'); return; }
     if(this.isOpen) return;
@@ -22396,7 +22409,7 @@ const FocusMode = {
     this.bindChrome();
     this.render();
     this.tick = setInterval(() => this.renderClock(), 1000);
-    this._layer = Overlay.open(root, root.querySelector('.focus-inner'), () => FocusMode.exit());
+    this._layer = Overlay.open(root, root.querySelector('.focus-inner'), () => this.escape());
     const first = document.querySelector('#focus-actions button');
     if(first) setTimeout(() => { if(FocusMode.isOpen) first.focus(); }, 40);
   },
@@ -22404,6 +22417,9 @@ const FocusMode = {
     const root = document.getElementById('focus-root');
     if(!root || root.hidden || LayerFx.isLeaving(root)) return;
     if(this.fsElement() === root) this.exitFullscreen();
+    this.presenting = false;
+    root.classList.remove('is-presenting');
+    $('#focus-display-options').open = false;
     // a página volta a aparecer por baixo enquanto o modo foco se desfaz
     document.documentElement.classList.remove('focus-active');
     LayerFx.leave(root, MOTION.layerOut);
@@ -22412,6 +22428,24 @@ const FocusMode = {
     this._layer = null;
   },
   get isOpen(){ const r = document.getElementById('focus-root'); return !!r && !r.hidden && !LayerFx.isLeaving(r); },
+
+  escape(){
+    if(this.fsElement()){ this.exitFullscreen(); return; }
+    if(this.presenting){ this.setPresentation(false); return; }
+    this.exit();
+  },
+  setPresentation(on){
+    if(!this.isOpen) return;
+    this.presenting = on;
+    $('#focus-root').classList.toggle('is-presenting', on);
+    if(!on){
+      if(this.fsElement()) this.exitFullscreen();
+      $('#focus-display-options').open = false;
+    }
+    this.render();
+    if(!on) $('#focus-presentation').focus();
+  },
+  shows(key){ return !this.presenting || !state.settings.presentationHidden.includes(key); },
 
   /* ---------- tela cheia (opcional) ---------- */
   fsAvailable(){ return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); },
@@ -22430,7 +22464,7 @@ const FocusMode = {
   syncFsButton(){
     const b = document.getElementById('focus-fs');
     if(!b) return;
-    b.hidden = !this.fsAvailable();
+    b.hidden = !this.presenting || !this.fsAvailable();
     const on = !!this.fsElement();
     const label = on ? 'Sair da tela cheia' : 'Tela cheia';
     b.setAttribute('aria-label', label); b.title = label;
@@ -22442,6 +22476,21 @@ const FocusMode = {
     const fs = document.getElementById('focus-fs'), ex = document.getElementById('focus-exit');
     if(fs) fs.addEventListener('click', () => this.toggleFullscreen());
     if(ex) ex.addEventListener('click', () => this.exit());
+    $('#focus-presentation').addEventListener('click', () => this.setPresentation(!this.presenting));
+    $('#focus-open-window').addEventListener('click', () => {
+      const url = new URL(location.href);
+      url.searchParams.set('apresentacao','1');
+      url.hash = '';
+      window.open(url.href, '_blank', 'noopener,popup');
+    });
+    mount($('#focus-display-fields'), PRESENTATION_BLOCKS.map(([key,label]) =>
+      h('label', {class:'guided-check'}, h('input', {type:'checkbox', dataset:{block:key}, onchange:e => {
+        const hidden = new Set(state.settings.presentationHidden);
+        if(e.target.checked) hidden.delete(key); else hidden.add(key);
+        state.settings.presentationHidden = [...hidden];
+        void saveSettings();
+        this.render();
+      }}), label)));
     const onFs = () => { this.syncFsButton(); if(this.isOpen){ const a = document.querySelector('#focus-actions button'); if(a && !document.getElementById('focus-root').contains(document.activeElement)) a.focus(); } };
     document.addEventListener('fullscreenchange', onFs);
     document.addEventListener('webkitfullscreenchange', onFs);
@@ -22457,6 +22506,11 @@ const FocusMode = {
     const root = document.getElementById('focus-root');
     root.setAttribute('data-state', v.state === 'done' ? 'done' : v.status);
     root.classList.toggle('is-pomodoro', v.pomo);
+    const presentationButton = $('#focus-presentation');
+    presentationButton.setAttribute('aria-pressed', String(this.presenting));
+    $('#focus-display-options').hidden = !this.presenting;
+    $('#focus-hint').textContent = this.presenting ? 'Esc volta à visualização anterior.' : 'Esc sai do modo Foco e mantém a sessão.';
+    $$('#focus-display-fields input').forEach(box => { box.checked = this.shows(box.dataset.block); });
     const compact = (names, limit) => names.slice(0, limit).join(' · ') + (names.length > limit ? ` · +${names.length - limit}` : '');
     const contextLine = (id, names, limit) => {
       const el = document.getElementById(id);
@@ -22464,12 +22518,13 @@ const FocusMode = {
       el.title = names.join(' · '); el.setAttribute('aria-label', names.join(' · '));
     };
     document.getElementById('focus-disc').textContent = TimerService.discIds().length ? TimerService.discText() : 'Estudo livre';
-    contextLine('focus-topic', topicNames, 2);
-    contextLine('focus-types', (d.presetTypes || []).map(sessionTypeLabel), 2);
+    $('#focus-disc').hidden = !this.shows('discipline');
+    contextLine('focus-topic', this.shows('topics') ? topicNames : [], this.presenting ? 6 : 2);
+    contextLine('focus-types', this.presenting ? [] : (d.presetTypes || []).map(sessionTypeLabel), 2);
     const areas = [...new Set(TimerService.discIds().map(id => getDiscipline(id)?.areaId).filter(Boolean))];
-    contextLine('focus-area', areas.length === 1 && getArea(areas[0]) ? [getArea(areas[0]).name] : [], 1);
+    contextLine('focus-area', !this.presenting && areas.length === 1 && getArea(areas[0]) ? [getArea(areas[0]).name] : [], 1);
     document.getElementById('focus-state').textContent = v.label;
-    document.getElementById('focus-line').textContent = v.line || '';
+    $('#focus-line').textContent = this.shows('pomodoro') ? v.line || '' : '';
     // v6.5: o aviso de que o cronômetro não pôde ser guardado aparece também aqui (a barra fica escondida no modo foco)
     const warn = document.getElementById('focus-warn');
     if(warn){
@@ -22484,7 +22539,7 @@ const FocusMode = {
     mount(actions, timerActions('focus').map((a, i) => h('button', { class:'btn ' + (a.kind === 'primary' ? 'primary' : 'ghost'), type:'button',
       'data-fk': i === 0 ? 'focus-toggle' : 'focus-' + a.key, 'data-action':a.key, text:a.label, onclick:a.run })));
     if(hadFocus){ const b = actions.querySelector('[data-fk="focus-toggle"]'); if(b) b.focus(); }
-    if(o.switched){ swapIn(document.getElementById('focus-state')); swapIn(document.getElementById('focus-clock')); }
+    if(o.switched) swapIn($('#focus-state'));
   },
   stateKey(){ const d = TimerService.data; return d ? TimerService.status + '|' + ((d.pomo && d.pomo.awaiting) || '') + '|' + (d.pomo ? d.pomo.phase : '') : ''; },
   /** A cada segundo, só o texto do relógio (o estado só muda nas transições). */
@@ -22493,30 +22548,45 @@ const FocusMode = {
     if(!fromRender && this.stateKey() !== this._key){ this.render({ switched:true }); return; }    // trocado em outra aba ou pelo fim de um bloco
     const v = timerView();
     const el = document.getElementById('focus-clock');
+    const clockLabel = $('#focus-clock-label');
+    el.hidden = clockLabel.hidden = !this.shows('clock');
     if(el.textContent !== v.clock) el.textContent = v.clock;
-    el.title = v.clockTitle || '';
-    document.getElementById('focus-clock-label').textContent = v.clockTitle || '';
+    if(clockLabel.textContent !== v.clockTitle) clockLabel.textContent = v.clockTitle || '';
     const now = Date.now(), T = TimerService, p = T.data.pomo;
     const study = T.getElapsed(now), rest = T.getBreakTotal(now);
-    document.getElementById('focus-totals').hidden = !p && T.status === 'study' && rest === 0;
-    document.getElementById('focus-rest-stat').hidden = rest === 0;
-    document.getElementById('focus-study-total').textContent = fmtTimer(study);
-    document.getElementById('focus-rest-total').textContent = fmtTimer(rest);
+    const showStudy = this.presenting || p || T.status !== 'study' || rest > 0;
+    const showRest = this.shows('rest') && (this.presenting || rest > 0);
+    const showToday = this.presenting && this.shows('today');
+    $('#focus-totals').hidden = !(showStudy || showRest || showToday);
+    $('#focus-study-stat').hidden = !showStudy;
+    $('#focus-rest-stat').hidden = !showRest;
+    $('#focus-today-stat').hidden = !showToday;
+    const update = (id, value) => { const node = $(id); if(node.textContent !== value) node.textContent = value; };
+    update('#focus-study-total', fmtTimer(study));
+    update('#focus-rest-total', fmtTimer(rest));
+    if(showToday){
+      const date = today();
+      const total = DerivedCache.get('presentation-today:' + dateToISO(date), () => sum(sessionsToday(), s => s.minutes));
+      update('#focus-today-total', fmtDuration(total));
+    }
     // Fatos do estado atual. O texto muda nas transições ou a cada cinco
     // minutos, sem mensagens motivacionais e sem anúncio a cada segundo.
     const minutes = Math.floor(study / 300000) * 5;
     const insight = p && p.awaiting ? v.sub
       : T.isPaused ? 'Nada está contando. Retome quando quiser.'
       : T.isOnBreak ? (p ? 'Ao terminar o descanso, escolha quando começar o próximo bloco.' : 'O descanso é contado à parte. Retome quando quiser.')
-      : p ? `Depois deste bloco, ${nextBreakAfterFocus(p)} min de descanso.`
+      : p && this.shows('pomodoro') ? `Depois deste bloco, ${nextBreakAfterFocus(p)} min de descanso.`
       : minutes >= 5 ? `Você chegou a ${fmtDurationWords(minutes)} de estudo nesta sessão.`
       : 'O tempo de estudo está contando. Pause ou descanse quando quiser.';
     const sub = document.getElementById('focus-sub');
     if(sub.textContent !== insight) sub.textContent = insight;
+    sub.hidden = this.presenting;
     const bar = document.getElementById('focus-progress');
     if(bar){
-      bar.hidden = v.progress === null;
-      if(v.progress !== null) bar.firstElementChild.style.transform = `scaleX(${v.progress.toFixed(4)})`;
+      const goal = T.data.targetMinutes;
+      const progress = v.progress ?? (this.presenting && goal ? clamp(study / (goal * 60000), 0, 1) : null);
+      bar.hidden = !this.shows('progress') || progress === null;
+      if(!bar.hidden) bar.firstElementChild.style.transform = `scaleX(${progress.toFixed(4)})`;
     }
   }
 };

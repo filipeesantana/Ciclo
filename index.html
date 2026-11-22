@@ -247,6 +247,9 @@
     <header class="focus-top">
       <span class="focus-brand"><svg class="brand-mark" aria-hidden="true" focusable="false"><use href="#i-brand"></use></svg><span>Ciclo</span></span>
       <span class="focus-top-actions">
+        <button class="btn ghost sm" id="focus-presentation" type="button" aria-pressed="false">
+          <svg class="btn-icon" aria-hidden="true"><use href="#i-expand"></use></svg>Apresentação
+        </button>
         <button class="icon-btn focus-fs" id="focus-fs" type="button" aria-label="Tela cheia" title="Tela cheia" hidden>
           <svg class="nav-icon" aria-hidden="true"><use href="#i-expand"></use></svg>
         </button>
@@ -255,6 +258,11 @@
         </button>
       </span>
     </header>
+    <details class="focus-display-options" id="focus-display-options" hidden>
+      <summary>Personalizar painel</summary>
+      <div id="focus-display-fields"></div>
+      <button class="btn ghost sm" id="focus-open-window" type="button">Abrir em outra janela</button>
+    </details>
     <div class="focus-center">
       <p class="focus-state" id="focus-state"></p>
       <p class="focus-clock-label" id="focus-clock-label"></p>
@@ -268,14 +276,15 @@
         <p class="focus-types" id="focus-types" hidden></p>
       </div>
       <dl class="focus-totals" id="focus-totals" aria-live="off" hidden>
-        <div><dt>Estudo líquido</dt><dd class="num" id="focus-study-total"></dd></div>
+        <div id="focus-study-stat"><dt>Estudo líquido</dt><dd class="num" id="focus-study-total"></dd></div>
         <div id="focus-rest-stat"><dt>Descansos</dt><dd class="num" id="focus-rest-total"></dd></div>
+        <div id="focus-today-stat" hidden><dt>Registrado hoje</dt><dd class="num" id="focus-today-total"></dd></div>
       </dl>
       <p class="focus-sub" id="focus-sub" aria-live="off"></p>
       <p class="focus-warn" id="focus-warn" role="status" hidden></p>
       <div class="focus-actions" id="focus-actions"></div>
     </div>
-    <p class="focus-hint">Esc sai do modo foco sem encerrar o estudo.</p>
+    <p class="focus-hint" id="focus-hint">Esc sai do modo foco sem encerrar o estudo.</p>
   </div>
 </div>
 

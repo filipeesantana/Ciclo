@@ -5723,3 +5723,29 @@ body{background:var(--workspace-bg)}
   .review-agenda-row{grid-template-columns:minmax(0,1fr);gap:2px}
   .review-agenda-row-actions{padding-left:23px}
 }
+
+/* Foco e apresentação compartilham os mesmos controles e o mesmo relógio. */
+.focus-mode{background:radial-gradient(ellipse 65% 65% at 50% 38%,var(--study-surface),transparent 100%),var(--workspace-bg)}
+.focus-mode.is-presenting{background:radial-gradient(ellipse 90% 80% at 50% 38%,var(--study-surface),transparent 95%),var(--workspace-bg)}
+.focus-mode[data-state="rest"]{background:radial-gradient(ellipse 70% 60% at 50% 40%,var(--info-soft),transparent 96%),var(--workspace-bg)}
+.focus-top-actions{align-items:center}
+.focus-top-actions .btn,.focus-top-actions .icon-btn{min-height:44px}
+.focus-top-actions .icon-btn{min-width:44px}
+#focus-presentation[aria-pressed="true"]{background:var(--primary-soft);color:var(--text)}
+.focus-display-options{align-self:flex-end;max-width:100%;margin-top:10px}
+.focus-display-options summary{cursor:pointer;padding:8px 0;color:var(--text-secondary);text-align:right;min-height:40px;align-content:center}
+#focus-display-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}
+.focus-display-options[open]{padding:0 12px 12px;border:1px solid var(--workspace-line);border-radius:12px;background:var(--surface)}
+.focus-mode .focus-clock{font-size:clamp(54px,11.5vw,144px);font-variant-numeric:tabular-nums;font-weight:580;letter-spacing:-.06em}
+.focus-mode.is-presenting .focus-clock{font-size:clamp(58px,min(18vw,24vh),290px)}
+.focus-mode.is-presenting .focus-center{max-width:1050px}
+.focus-mode.is-presenting .focus-totals{gap:10px;margin-block:27px 0}
+.focus-mode.is-presenting .focus-totals div{min-width:135px;padding:10px 16px;border:1px solid var(--workspace-line);border-radius:12px;background:var(--surface)}
+.focus-mode.is-presenting .focus-totals dd{font-size:clamp(16px,2.8vw,29px)}
+.focus-mode.is-presenting .focus-context{margin-top:16px}
+.focus-mode .focus-context:has(> :not([hidden])){display:block}
+.focus-mode .focus-context:not(:has(> :not([hidden]))){display:none}
+@media(max-width:480px){
+  .focus-mode.is-presenting .focus-totals div{min-width:0;padding-inline:10px}
+  .focus-mode .focus-clock,.focus-mode.is-presenting .focus-clock{font-size:clamp(48px,15vw,100px)}
+}
