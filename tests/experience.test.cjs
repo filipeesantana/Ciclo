@@ -3,7 +3,7 @@ const {start,open,seed}=require('./support.cjs');let runtime,context,page;
 before(async()=>{runtime=await start(process.env.BROWSER||'chromium');});after(async()=>runtime?.close());
 beforeEach(async()=>{({context,page}=await open(runtime));page.setDefaultTimeout(7000);await seed(page);});afterEach(async()=>context.close());
 const action=name=>page.locator('#modal-actions').getByRole('button',{name,exact:true});
-async function register(){await page.evaluate(()=>openRegisterModal({disciplineId:'portugues'}));await page.getByRole('button',{name:'Não lembro os horários',exact:true}).click();await page.locator('#rm-min').fill('40');}
+async function register(){await page.evaluate(()=>openRegisterModal({disciplineId:'portugues'}));await page.locator('#rm-min').fill('40');}
 async function draft(){return page.evaluate(()=>GuidedReviewCommands.create([{topicId:'pontuacao',method:'active_recall',minutes:10},{topicId:'crase',method:'flashcards',minutes:5},{topicId:'fracoes',method:'exercises',minutes:5}],20));}
 async function guided(){await page.evaluate(async()=>{window.gd=await GuidedReviewCommands.create([{topicId:'pontuacao',method:CONCRETE_METHODS[0],minutes:10},{topicId:'crase',method:'flashcards',minutes:5},{topicId:'fracoes',method:CONCRETE_METHODS[0],minutes:5}],20);await openGuidedReviewPlayer(gd.id);});}
 
@@ -58,8 +58,8 @@ test('virada do dia usa atribuição civil ao início e não duplica sessão not
  await page.clock.fastForward(3*60000);await page.evaluate(async()=>{while(DayWatch.running)await new Promise(r=>setTimeout(r,10));await DayWatch.check();});assert.equal(await page.locator('.today-summary').count(),0);
 });
 test('revisão livre aceita várias disciplinas sem tópicos e conserva agendas',async()=>{
- await page.evaluate(()=>{setView('reviews');openFreeReview();});await page.getByRole('radio',{name:/Já estudei/}).click();await page.getByRole('button',{name:'Não lembro os horários',exact:true}).click();await page.locator('#rm-min').fill('45');
- await page.locator('#rm-disc').click();await page.getByRole('option',{name:/Português/}).click();await page.getByRole('button',{name:'+ Adicionar outra disciplina',exact:true}).click();await page.getByRole('option',{name:/Matemática/}).click();
+ await page.evaluate(()=>{setView('reviews');openFreeReview();});await page.getByRole('radio',{name:/Já estudei/}).click();await page.locator('#rm-min').fill('45');
+ await page.locator('#rm-disc').click();await page.locator('#modal-box').getByRole('option',{name:/Português/}).click();await page.getByRole('button',{name:'+ Adicionar outra disciplina',exact:true}).click();await page.locator('#modal-box').getByRole('option',{name:/Matemática/}).click();
  const before=await page.evaluate(()=>JSON.stringify(state.topics));await action('Registrar estudo').click();await page.waitForFunction(()=>state.sessions.length===1);assert.equal(await page.evaluate(()=>JSON.stringify(state.topics)),before);assert.equal(await page.evaluate(()=>state.sessions[0].minutes),45);
 });
 test('roteiro: pulo, respostas individuais e flashcards pessoais geram uma sessão agregada',async()=>{
@@ -84,9 +84,9 @@ test('roteiro rejeita edição concorrente e não confirma falha de IndexedDB',a
  await page.evaluate(async()=>{await openGuidedReviewPlayer(state.meta.guidedReview.id);window.atomic=DB.atomic;DB.atomic=async()=>{throw new Error('Falha simulada de escrita');};});
  await action('Encerrar roteiro').click();assert.equal(await page.locator('#modal-title').textContent(),'Sua revisão guiada');assert.equal(await page.evaluate(()=>state.sessions.length),0);await page.evaluate(()=>DB.atomic=window.atomic);
 });
-test('backup lógico 11 guarda progresso pausado e mantém dados antigos e checksum',async()=>{
+test('backup lógico 12 guarda progresso pausado e mantém dados antigos e checksum',async()=>{
  await page.evaluate(async()=>{let d=await GuidedReviewCommands.create([{topicId:'pontuacao',method:'flashcards',minutes:20}],20);await GuidedReviewCommands.update(d,r=>{r.items[0].status='done';r.items[0].outcome='hard';return r;});await loadAll();});
- const r=await page.evaluate(async()=>{const b=Backup.buildExport(),p=Backup.parseBackup(JSON.stringify(b));await Backup.restoreInto(p.data);await loadAll();return {schema:b.schemaVersion,idb:IDB_VERSION,integrity:BackupIntegrity.verify(b),same:JSON.stringify(b.guidedReview)===JSON.stringify(state.meta.guidedReview),native:await new Promise((resolve,reject)=>{const req=indexedDB.open(IDB_NAME);req.onsuccess=()=>{const db=req.result;resolve([...db.objectStoreNames].filter(s=>/card/i.test(s)));db.close();};req.onerror=()=>reject(req.error);})};});assert.equal(r.schema,11);assert.equal(r.idb,1);assert.equal(r.integrity,'ok');assert.equal(r.same,true);assert.deepEqual(r.native,[]);
+ const r=await page.evaluate(async()=>{const b=Backup.buildExport(),p=Backup.parseBackup(JSON.stringify(b));await Backup.restoreInto(p.data);await loadAll();return {schema:b.schemaVersion,idb:IDB_VERSION,integrity:BackupIntegrity.verify(b),same:JSON.stringify(b.guidedReview)===JSON.stringify(state.meta.guidedReview),native:await new Promise((resolve,reject)=>{const req=indexedDB.open(IDB_NAME);req.onsuccess=()=>{const db=req.result;resolve([...db.objectStoreNames].filter(s=>/card/i.test(s)));db.close();};req.onerror=()=>reject(req.error);})};});assert.equal(r.schema,12);assert.equal(r.idb,1);assert.equal(r.integrity,'ok');assert.equal(r.same,true);assert.deepEqual(r.native,[]);
 });
 test('roteiro sem autoavaliação não inventa resultado; agenda do tópico pulado fica intacta',async()=>{
  const r=await page.evaluate(async()=>{let d=await GuidedReviewCommands.create([{topicId:'pontuacao',method:'flashcards',minutes:20}],20);d=await GuidedReviewCommands.update(d,r=>{r.items[0].status='done';return r;});await GuidedReviewCommands.finish(d,20);await loadAll();return state.sessions[0].topicEntries[0].outcome;});assert.equal(r,null);
@@ -126,7 +126,7 @@ test('roteiro encerrado sem estudo não retorna falso sucesso para uma finaliza�
 });
 test('três disciplinas e três tópicos recebem respostas distintas em um único estudo de 45 minutos',async()=>{
  await page.evaluate(async()=>{const d={...newDiscipline('Inglês'),id:'ingles'},t={...newTopic('ingles','Verbos'),id:'verbos'};await DB.put('disciplines',d);await DB.put('topics',t);await refresh();openRegisterModal({disciplineIds:['portugues','matematica','ingles'],topicIds:['pontuacao','fracoes','verbos'],types:['revisao']});});
- await page.getByRole('button',{name:'Não lembro os horários',exact:true}).click();await page.locator('#rm-min').fill('45');
+await page.locator('#rm-min').fill('45');
  for(const [topic,outcome] of [['Pontuação','Lembrei bem'],['Frações','Lembrei com dificuldade'],['Verbos','Esqueci']])await page.getByRole('group',{name:'Resultado de '+topic,exact:true}).getByRole('button',{name:outcome,exact:true}).click();
  await action('Registrar estudo').click();await page.waitForFunction(()=>state.sessions.length===1&&!Overlay.isOpen);
  const s=await page.evaluate(()=>({minutes:state.sessions[0].minutes,disciplines:SessionModel.disciplineIds(state.sessions[0]),topics:state.sessions[0].topicEntries.map(t=>[t.topicId,t.outcome]),analytics:AnalyticsEngine.query({periodPreset:'hoje'}).totals.minutes,shares:SessionModel.topicShares(state.sessions[0]).reduce((n,t)=>n+t.minutes,0)}));
