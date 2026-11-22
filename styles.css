@@ -5796,3 +5796,20 @@ body{background:var(--workspace-bg)}
   .today-v7 .today-side > :not(.today-summary){order:3}
   .today-v7 .today-foot{order:4}
 }
+
+/* As ações ocupam uma faixa própria para manter os campos acessíveis durante a rolagem. */
+.modal.study:not(.is-sub){display:flex;flex-direction:column;overflow:hidden}
+.modal.study:not(.is-sub)>#modal-title{flex-shrink:0}
+.modal.study:not(.is-sub)>#modal-content{
+  min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding-block:9px;padding:4px 3px;
+}
+.modal.study:not(.is-sub)>#modal-actions{position:static;flex-shrink:0;box-shadow:none}
+@media(max-width:650px){
+  .modal.study .rm-grid{gap:12px 0}
+  .modal.study .rm-group-t{margin-bottom:7px}
+  .modal.study .mode-switch{margin-bottom:10px}
+  .modal.study .st-add{margin-top:7px}
+  .modal.study .when-details{margin-top:5px}
+  .modal.study .rm-how .how-results{margin-top:6px}
+  .modal.study:not(.is-sub)>#modal-actions{margin-top:10px;padding-top:10px}
+}

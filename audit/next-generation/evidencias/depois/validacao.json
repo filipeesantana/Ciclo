@@ -355,43 +355,43 @@
     {
       "width": 1440,
       "theme": "dark",
-      "height": 502,
-      "viewport": 502,
+      "height": 506,
+      "viewport": 506,
       "minutesVisible": true
     },
     {
       "width": 390,
       "theme": "dark",
-      "height": 744,
-      "viewport": 744,
+      "height": 708,
+      "viewport": 624,
       "minutesVisible": true
     },
     {
       "width": 320,
       "theme": "dark",
-      "height": 810,
-      "viewport": 810,
+      "height": 800,
+      "viewport": 624,
       "minutesVisible": true
     },
     {
       "width": 1440,
       "theme": "light",
-      "height": 502,
-      "viewport": 502,
+      "height": 506,
+      "viewport": 506,
       "minutesVisible": true
     },
     {
       "width": 390,
       "theme": "light",
-      "height": 744,
-      "viewport": 744,
+      "height": 708,
+      "viewport": 624,
       "minutesVisible": true
     },
     {
       "width": 320,
       "theme": "light",
-      "height": 810,
-      "viewport": 810,
+      "height": 800,
+      "viewport": 624,
       "minutesVisible": true
     }
   ]

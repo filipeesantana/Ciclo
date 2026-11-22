@@ -28,7 +28,7 @@ Contagem manual de ações em um perfil com duas disciplinas. Digitação foi me
 | Abrir Planejamento ou Histórico pela navegação geral | 1 clique no desktop | 2 cliques pelos grupos Organizar e Resultados. Atalhos contextuais levam direto ao recorte. |
 | Criar a imagem com aparência e dados padrão | Sem exportação PNG | 2 cliques a partir das Análises |
 
-Com o mesmo conjunto sintético, Chromium em 1440 px mediu o conteúdo do registro em 515 → 502 px. Em 390 px, 814 → 744 px. Em 320 px, 866 → 810 px. Os minutos ficaram visíveis de início nos dois temas. Esses números são alturas CSS do conteúdo do formulário, sem o título e o rodapé. [Antes](evidencias/antes/validacao.json) · [Depois](evidencias/depois/validacao.json)
+Com o mesmo conjunto sintético, Chromium em 1440 px mediu o conteúdo do registro em 515 → 506 px. Em 390 px, 814 → 708 px. Em 320 px, 866 → 800 px. Os minutos ficaram visíveis de início nos dois temas. Esses números são alturas CSS do conteúdo do formulário. Em telas menores, o conteúdo rola numa área própria com as ações sempre visíveis. [Antes](evidencias/antes/validacao.json) · [Depois](evidencias/depois/validacao.json)
 
 ## Desempenho no histórico sintético
 
@@ -49,7 +49,7 @@ Em uma medida complementar via CDP, após recarga e coleta de lixo, o heap JavaS
 
 - O IndexedDB mantém a versão física **1**. O formato lógico **12** acrescenta o campo opcional `reviewSchedule` ao tópico. Registros antigos sem esse campo continuam usando a agenda reconhecida anteriormente. O carregamento dispensa regravação ou migração dos estudos. O backup novo valida, verifica o checksum e restaura as escolhas na mesma transação dos outros dados.
 - A data manual não substitui o histórico nem o cálculo de intervalo interno. Um lote valida tópicos e suas disciplinas antes de gravar. Arquivamento, exclusão concorrente ou falha de gravação impedem a aplicação parcial.
-- A exportação visual usa Canvas de origem local, texto literal, Blob PNG e URL temporária. A CSP existente continua ativa. Os testes verificam ausência de tráfego externo nas jornadas e igualdade dos pixels entre a prévia e o PNG baixado. O compartilhamento nativo depende do suporte do dispositivo e da ação da pessoa.
+- A exportação visual usa Canvas de origem local, texto literal, Blob PNG e URL temporária. A CSP existente continua ativa. Os testes verificam ausência de tráfego externo nas jornadas e igualdade dos pixels entre a prévia e o PNG baixado. O compartilhamento nativo depende do suporte do dispositivo e da ação da pessoa. A auditoria do npm não relatou vulnerabilidades nas dependências de teste.
 - A abertura da v8 lê os backups anteriores. Antes de voltar à v7.3, exporte e guarde um backup da v8 para recuperar as escolhas manuais mais tarde. A v7.3 recusa o formato 12 e exibe a agenda automática que conhece. Preserve o banco do navegador durante o rollback. Para recuperar as escolhas, reabra a v8 ou restaure o arquivo com a v8.
 
 ## Capturas e verificações

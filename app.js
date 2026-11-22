@@ -6777,6 +6777,7 @@ function openModal(build, opts){
       content: Array.from(contentEl.childNodes),
       actions: Array.from(actionsEl.childNodes),
       scroll: box.scrollTop,
+      contentScroll: contentEl.scrollTop,
       focus: document.activeElement,
       onEsc: sub.onEsc || null
     });
@@ -6785,7 +6786,7 @@ function openModal(build, opts){
     mount(actionsEl, ...(sub.actions || []));
     guardModalActions(actionsEl);
     box.classList.add('is-sub');            // v6.4.1: uma subtela é um formulário simples — a janela larga se estreita
-    box.scrollTop = 0;
+    box.scrollTop = contentEl.scrollTop = 0;
     const target = sub.focus || box.querySelector('#modal-content input,#modal-content select,#modal-content textarea,#modal-content button');
     if(target) setTimeout(() => { if(!closed && document.contains(target)) target.focus(); }, 30);
   };
@@ -6798,6 +6799,7 @@ function openModal(build, opts){
     mount(actionsEl, v.actions);
     box.classList.toggle('is-sub', views.length > 0);
     box.scrollTop = v.scroll;
+    contentEl.scrollTop = v.contentScroll;
     const target = (focusEl && document.contains(focusEl)) ? focusEl : v.focus;
     if(target && document.contains(target) && typeof target.focus === 'function'){
       try { target.focus({ preventScroll:true }); } catch(_){ target.focus(); }
@@ -6821,7 +6823,7 @@ function openModal(build, opts){
   mount($('#modal-actions'), ...(cfg.actions || []));
   guardModalActions($('#modal-actions'));
   root.hidden = false;
-  box.scrollTop = 0;
+  box.scrollTop = contentEl.scrollTop = 0;
   if(wasVisible) swapIn(box);               // troca de janela: o conteúdo muda no lugar, o fundo não pisca
   root.addEventListener('mousedown', onBackdrop);
   modalCloser = close;
