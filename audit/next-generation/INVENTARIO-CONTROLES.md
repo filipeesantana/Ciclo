@@ -428,165 +428,165 @@ Gerado por `npm run audit:inventory`. Fontes: app.js, reviews.js, reports.js. 61
 | renderHistory | button button |  | Filtros | [20273](../../app.js#L20273) |
 | renderHistory | button button |  | dinâmico: ′Remover filtro ${x.label}′ | [20280](../../app.js#L20280) |
 | renderHistory | button button |  | limpar tudo | [20282](../../app.js#L20282) |
-| openHistoryFilters | button button |  | Aplicar filtros | [20341](../../app.js#L20341) |
-| openHistoryFilters | button button |  | Limpar | [20344](../../app.js#L20344) |
-| renderHistoryTable | button button |  | Limpar busca | [20414](../../app.js#L20414) |
-| renderHistoryTable | button button |  | dinâmico: label | [20444](../../app.js#L20444) |
-| renderHistoryTable | button button |  | dinâmico: ′Mostrar mais (${list.length - shown.length} restantes)′ | [20456](../../app.js#L20456) |
-| openEditSessionModal | button button |  | remover estudo | [20628](../../app.js#L20628) |
-| openEditSessionModal | button button |  | Cancelar | [20634](../../app.js#L20634) |
-| openEditSessionModal | button button |  | Salvar | [20635](../../app.js#L20635) |
-| confirmLongEdit | button button |  | Voltar e corrigir | [20703](../../app.js#L20703) |
-| confirmLongEdit | button button |  | Está certo, salvar | [20704](../../app.js#L20704) |
-| openAIReportModal | textarea  |  | Texto do prompt | [20849](../../app.js#L20849) |
-| openAIReportModal | details  |  | dinâmico: h('summary', null, h('span', { text:'Ver o prompt' })) | [20850](../../app.js#L20850) |
-| openAIReportModal | button button |  | dinâmico: x.label | [20875](../../app.js#L20875) |
-| openAIReportModal | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:p.label }) | [20889](../../app.js#L20889) |
-| openAIReportModal | input checkbox | air-comments |  | [20897](../../app.js#L20897) |
-| openAIReportModal | button button |  | dinâmico: retry.label | [20952](../../app.js#L20952) |
-| openAIReportModal | button button |  | dinâmico: icon('i-download', 'btn-icon') | [20960](../../app.js#L20960) |
-| openAIReportModal | button button |  | Só baixar o CSV | [20966](../../app.js#L20966) |
-| openAIReportModal | button button |  | Só copiar o prompt | [20967](../../app.js#L20967) |
-| openAIReportModal | button button |  | Fechar | [20977](../../app.js#L20977) |
-| runIntegrityCheck | button button |  | Fechar | [21009](../../app.js#L21009) |
-| renderData | input file | import-file |  | [21021](../../app.js#L21021) |
-| renderData | button button |  | dinâmico: icon('i-data') | [21034](../../app.js#L21034) |
-| renderData | button button |  | Onde meus dados ficam? | [21038](../../app.js#L21038) |
-| renderData | button button |  | Preparar | [21053](../../app.js#L21053) |
-| renderData | button button |  | Exportar | [21058](../../app.js#L21058) |
-| renderData | button button |  | Como usar meus dados com IA ou planilhas? | [21059](../../app.js#L21059) |
-| renderData | button button |  | Verificar | [21076](../../app.js#L21076) |
-| renderData | button button |  | Pedir ao navegador | [21081](../../app.js#L21081) |
-| renderData | button button |  | apagar cópia antiga da V2 | [21126](../../app.js#L21126) |
-| renderData | details  |  | dinâmico: h('summary', null, h('span', { text:'Apagar todos os dados' })) | [21133](../../app.js#L21133) |
-| renderData | button button |  | Apagar todos os dados | [21137](../../app.js#L21137) |
-| restoreRefused | button button |  | Entendi | [21174](../../app.js#L21174) |
-| askTimerBeforeRestore | button button |  | Cancelar a restauração | [21201](../../app.js#L21201) |
-| askTimerBeforeRestore | button button |  | Descartar o tempo e restaurar | [21202](../../app.js#L21202) |
-| askTimerBeforeRestore | button button |  | Finalizar o estudo primeiro | [21203](../../app.js#L21203) |
-| openRestorePreview | button button |  | dinâmico: hasData ? 'Substituir e restaurar' : 'Restaurar' | [21239](../../app.js#L21239) |
-| openRestorePreview | button button |  | Cancelar | [21277](../../app.js#L21277) |
-| openRestorePreview | details  |  | dinâmico: h('summary', null, ′Ajustes que serão feitos (${sum(r.repaired, x => x.count)})′) | [21288](../../app.js#L21288) |
-| openRestorePreview | details  |  | dinâmico: h('summary', null, ′O que fica de fora (${sum(r.ignored, x => x.count)})′) | [21291](../../app.js#L21291) |
-| openRestorePreview | button button |  | Fazer backup dos dados atuais | [21296](../../app.js#L21296) |
-| bindEvents | button button |  | dinâmico: icon(NAV_ICONS[v], 'nav-icon') | [21375](../../app.js#L21375) |
-| bindEvents | button button |  | Fechar | [21377](../../app.js#L21377) |
-| helpDot | button button |  | dinâmico: 'O que é ' + info.title + '?' | [22014](../../app.js#L22014) |
-| GlossaryPopover | button button |  | dinâmico: glossaryCallLabel(key) | [22073](../../app.js#L22073) |
-| GlossaryPopover | button button |  | Fechar explicação | [22076](../../app.js#L22076) |
-| glossaryTerm | button button |  | dinâmico: (label \|\| g.term) + ' — ver explicação' | [22131](../../app.js#L22131) |
-| Palette | button button | dinâmico: 'pal-opt-' + i | dinâmico: icon(item.icon, 'nav-icon') | [22352](../../app.js#L22352) |
-| FocusMode | input checkbox |  |  | [22511](../../app.js#L22511) |
-| FocusMode | button button |  | dinâmico: a.label | [22563](../../app.js#L22563) |
-| pickDisciplineThen | button button |  | dinâmico: h('span', { text:d.name }) | [22779](../../app.js#L22779) |
-| pickDisciplineThen | button button |  | Cancelar | [22781](../../app.js#L22781) |
-| renderReturnPill | button button |  | dinâmico: 'Voltar à Ajuda: ' + r.label | [22860](../../app.js#L22860) |
-| renderReturnPill | button button |  | Fechar este atalho | [22862](../../app.js#L22862) |
-| pickDisciplineForPriority | button button |  | dinâmico: h('span', { text:d.name }) | [22884](../../app.js#L22884) |
-| pickDisciplineForPriority | button button |  | Cancelar | [22887](../../app.js#L22887) |
-| detailsBlock | button button |  | dinâmico: h('span', { text: d.title \|\| 'Entenda em mais detalhes' }) | [22923](../../app.js#L22923) |
-| helpBreadcrumb | button button |  | dinâmico: label | [22966](../../app.js#L22966) |
-| articleBody | button button |  | dinâmico: x.label | [23019](../../app.js#L23019) |
-| articleBody | button button |  | dinâmico: h('span', { text:'Entenda melhor' }) | [23032](../../app.js#L23032) |
-| articleBody | button button |  | dinâmico: h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:r.title }), h('div', { class:'hi-su | [23046](../../app.js#L23046) |
-| articleBody | button button |  | Ver este artigo na Central de Ajuda | [23056](../../app.js#L23056) |
-| helpItemButton | button button |  | dinâmico: h('span', { class:'hi-main' }, o.showPath ? h('div', { class:'hi-cat', text: articlePath(a) }) : nul | [23068](../../app.js#L23068) |
-| faqNode | button button |  | dinâmico: 'Ver explicação completa: ' + getArticle(f.article).title | [23083](../../app.js#L23083) |
-| faqNode | button button |  | dinâmico: h('span', { text:f.q }) | [23086](../../app.js#L23086) |
-| helpSearchCard | input search | help-q | Pesquisar na Ajuda | [23105](../../app.js#L23105) |
-| helpSearchCard | button button |  | Limpar busca | [23140](../../app.js#L23140) |
-| helpSearchCard | button button |  | dinâmico: '“' + x + '”' | [23150](../../app.js#L23150) |
-| helpResultsPanel | button button |  | Voltar para toda a Ajuda | [23235](../../app.js#L23235) |
-| helpResultsPanel | button button | dinâmico: id | dinâmico: h('span', { class:'hr-main' }, h('span', { class:'hr-path', text: e.path }), h('span', { class:'hr-t | [23249](../../app.js#L23249) |
-| helpResultsPanel | button button |  | dinâmico: 'Ver todos os ' + all.length + ' resultados' | [23266](../../app.js#L23266) |
-| helpSuggestionList | button button |  | dinâmico: icon('i-search', 'nav-icon') | [23278](../../app.js#L23278) |
-| helpHomePanel | button button |  | dinâmico: h('span', { class:'hmq-q', text:mq.q }) | [23324](../../app.js#L23324) |
-| helpHomePanel | button button |  | dinâmico: h('span', { class:'hp-icon' }, icon(sec.icon, 'nav-icon')) | [23334](../../app.js#L23334) |
-| helpHomePanel | button button |  | Rever a apresentação | [23350](../../app.js#L23350) |
-| helpHomePanel | button button |  | Mostrar as dicas de novo | [23351](../../app.js#L23351) |
-| helpHomePanel | button button |  | Ver o guia | [23352](../../app.js#L23352) |
-| helpHomePanel | button button |  | Ver todas | [23359](../../app.js#L23359) |
-| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Ciclo + outras ferramentas' }) | [23366](../../app.js#L23366) |
-| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Glossário' }) | [23368](../../app.js#L23368) |
-| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Entrar em contato' }) | [23370](../../app.js#L23370) |
-| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Relatar um problema' }) | [23372](../../app.js#L23372) |
-| helpSectionPanel | button button |  | dinâmico: x.label | [23386](../../app.js#L23386) |
-| helpSectionPanel | button button |  | dinâmico: 'Ver todo o caminho “' + s.label + '”' | [23409](../../app.js#L23409) |
-| helpBackBar | button button |  | dinâmico: icon('i-chev', 'back-chev') | [23446](../../app.js#L23446) |
-| helpGlossaryPanel | input search | gloss-q | Filtrar termos do glossário | [23487](../../app.js#L23487) |
-| drawGlossary | button button |  | dinâmico: glossaryCallLabel(k) | [23529](../../app.js#L23529) |
-| openContactDrawer | input text | contact-mail-field | Endereço de e-mail do Ciclo | [23626](../../app.js#L23626) |
-| openContactDrawer | button button |  | dinâmico: icon('i-copy') | [23653](../../app.js#L23653) |
-| openContactDrawer | button button |  | dinâmico: icon('i-mail') | [23656](../../app.js#L23656) |
-| openContactDrawer | button button |  | Encontrou um problema? Relatar | [23660](../../app.js#L23660) |
-| openReportProblemDrawer | textarea  | report-desc | Ex.: O botão X não responde quando eu clico depois de registrar um estudo. | [23694](../../app.js#L23694) |
-| openReportProblemDrawer | details  |  | dinâmico: h('summary', { text:'Ver o texto completo' }) | [23734](../../app.js#L23734) |
-| openReportProblemDrawer | button button |  | dinâmico: icon('i-copy') | [23749](../../app.js#L23749) |
-| openReportProblemDrawer | button button |  | dinâmico: icon('i-mail') | [23750](../../app.js#L23750) |
-| openScreenHelp | button button |  | dinâmico: s.cta.label | [23773](../../app.js#L23773) |
-| openScreenHelp | button button |  | dinâmico: h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:a.title }), h('div', { class:'hi-su | [23777](../../app.js#L23777) |
-| openScreenHelp | button button |  | Abrir a Central de Ajuda | [23784](../../app.js#L23784) |
-| renderTips | button button |  | Entendi | [23816](../../app.js#L23816) |
-| toastRich | button button |  | dinâmico: a.label | [23840](../../app.js#L23840) |
-| startHereChecklistCard | button button |  | dinâmico: st.action.text | [24007](../../app.js#L24007) |
-| maybeShowWhatsNew | button button |  | Ver todas as novidades | [24038](../../app.js#L24038) |
-| maybeShowWhatsNew | button button |  | Continuar | [24041](../../app.js#L24041) |
-| stepIntro | button button |  | dinâmico: h('span', { class:'ob-choice-t', text:title }) | [24094](../../app.js#L24094) |
-| stepQuick | input text | ob-name | Ex.: Português | [24109](../../app.js#L24109) |
-| stepQuick | button button |  | dinâmico: ex | [24113](../../app.js#L24113) |
-| stepWhat | input text | ob-add | Escreva e tecle Enter — ex.: Matemática | [24124](../../app.js#L24124) |
-| stepWhat | button button |  | dinâmico: p.label | [24128](../../app.js#L24128) |
-| stepWhat | button button |  | dinâmico: 'Tirar ' + n | [24134](../../app.js#L24134) |
-| stepWhat | button button |  | dinâmico: icon('i-plus') | [24140](../../app.js#L24140) |
-| stepGoal | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:t }) | [24149](../../app.js#L24149) |
-| stepGoal | input text | ob-goal-t | Ex.: Prova de Inglês | [24157](../../app.js#L24157) |
-| stepGoal | input date | ob-goal-d |  | [24159](../../app.js#L24159) |
-| stepGoal | select  | ob-goal-disc |  | [24161](../../app.js#L24161) |
-| stepTime | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:t }) | [24176](../../app.js#L24176) |
-| stepTime | input number | ob-hours | Outro | [24185](../../app.js#L24185) |
-| stepTime | button button |  | dinâmico: fmtDuration(v) | [24188](../../app.js#L24188) |
-| buildActions | button button |  | Voltar | [24244](../../app.js#L24244) |
-| buildActions | button button |  | dinâmico: o.revisit ? 'Fechar' : 'Prefiro explorar sozinho' | [24247](../../app.js#L24247) |
-| buildActions | button button |  | Criar e continuar | [24251](../../app.js#L24251) |
-| buildActions | button button |  | Continuar | [24253](../../app.js#L24253) |
-| buildActions | button button |  | Continuar | [24259](../../app.js#L24259) |
-| buildActions | button button |  | Continuar | [24267](../../app.js#L24267) |
-| buildActions | button button |  | Criar e começar | [24272](../../app.js#L24272) |
-| guideNote | button button |  | dinâmico: a.label | [24432](../../app.js#L24432) |
-| guideNote | button button |  | Agora não | [24434](../../app.js#L24434) |
-| startGuideCard | button button |  | ocultar | [24468](../../app.js#L24468) |
-| startGuideCard | button button |  | dinâmico: s2.actionLabel | [24484](../../app.js#L24484) |
-| reviewDemoNode | button button |  | dinâmico: o.label | [24513](../../app.js#L24513) |
-| structureDemoNode | button button |  | dinâmico: ex.label | [24542](../../app.js#L24542) |
-| openFirstReviewIntro | button button |  | Agora não | [24600](../../app.js#L24600) |
-| openFirstReviewIntro | button button |  | Começar | [24603](../../app.js#L24603) |
-| pomodoroSettingsRows | input number |  | dinâmico: label | [24648](../../app.js#L24648) |
-| segmented | button button |  | dinâmico: o.label | [24693](../../app.js#L24693) |
-| switchControl | button button |  | dinâmico: ariaLabel \|\| '' | [24706](../../app.js#L24706) |
-| numberControl | input number |  | dinâmico: ariaLabel \|\| '' | [24717](../../app.js#L24717) |
-| selectControl | select  |  | dinâmico: ariaLabel \|\| '' | [24723](../../app.js#L24723) |
-| renderSettings | input checkbox | dinâmico: 'tb-' + b.id |  | [24756](../../app.js#L24756) |
-| renderSettings | button button |  | Rever a apresentação | [24789](../../app.js#L24789) |
-| renderSettings | button button |  | Mostrar novamente | [24791](../../app.js#L24791) |
-| renderSettings | button button |  | dinâmico: plan ? 'Abrir Planejamento' : 'Definir uma meta' | [24805](../../app.js#L24805) |
-| renderSettings | button button |  | Mostrar todas de novo | [24845](../../app.js#L24845) |
-| renderSettings | button button |  | Como funcionam as revisões? | [24850](../../app.js#L24850) |
-| renderSettings | button button |  | Ver | [24870](../../app.js#L24870) |
-| renderSettings | button button |  | Fazer backup agora | [24882](../../app.js#L24882) |
-| renderSettings | button button |  | Abrir tela Dados | [24884](../../app.js#L24884) |
-| renderSettings | button button |  | Onde meus dados ficam? | [24885](../../app.js#L24885) |
-| renderSettings | button button |  | Preparar | [24887](../../app.js#L24887) |
-| renderSettings | button button |  | dinâmico: icon('i-mail') | [24903](../../app.js#L24903) |
-| renderSettings | button button |  | dinâmico: icon('i-flag') | [24904](../../app.js#L24904) |
-| renderSettings | button button |  | Central de Ajuda | [24905](../../app.js#L24905) |
-| renderSettings | button button |  | Novidades desta versão | [24906](../../app.js#L24906) |
-| renderSettings | button button | dinâmico: 'stab-' + g.id | dinâmico: g.label | [24924](../../app.js#L24924) |
-| openChangelog | details  |  | dinâmico: h('summary', null, sec.title) | [24955](../../app.js#L24955) |
-| openChangelog | details  |  | dinâmico: h('summary', null, h('span', { class:'num', text:'v' + c.v }), c.title ? h('span', { class:'cl-old-t | [24963](../../app.js#L24963) |
-| renderDeadlineSuggestions | button button |  | Usar revisão intensiva | [25029](../../app.js#L25029) |
-| renderDeadlineSuggestions | button button |  | Manter atual | [25037](../../app.js#L25037) |
-| renderDeadlineSuggestions | button button |  | Voltar ao padrão | [25060](../../app.js#L25060) |
-| renderDeadlineSuggestions | button button |  | Continuar intensiva | [25065](../../app.js#L25065) |
+| openHistoryFilters | button button |  | Aplicar filtros | [20344](../../app.js#L20344) |
+| openHistoryFilters | button button |  | Limpar | [20347](../../app.js#L20347) |
+| renderHistoryTable | button button |  | Limpar busca | [20417](../../app.js#L20417) |
+| renderHistoryTable | button button |  | dinâmico: label | [20447](../../app.js#L20447) |
+| renderHistoryTable | button button |  | dinâmico: ′Mostrar mais (${list.length - shown.length} restantes)′ | [20459](../../app.js#L20459) |
+| openEditSessionModal | button button |  | remover estudo | [20631](../../app.js#L20631) |
+| openEditSessionModal | button button |  | Cancelar | [20637](../../app.js#L20637) |
+| openEditSessionModal | button button |  | Salvar | [20638](../../app.js#L20638) |
+| confirmLongEdit | button button |  | Voltar e corrigir | [20706](../../app.js#L20706) |
+| confirmLongEdit | button button |  | Está certo, salvar | [20707](../../app.js#L20707) |
+| openAIReportModal | textarea  |  | Texto do prompt | [20852](../../app.js#L20852) |
+| openAIReportModal | details  |  | dinâmico: h('summary', null, h('span', { text:'Ver o prompt' })) | [20853](../../app.js#L20853) |
+| openAIReportModal | button button |  | dinâmico: x.label | [20878](../../app.js#L20878) |
+| openAIReportModal | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:p.label }) | [20892](../../app.js#L20892) |
+| openAIReportModal | input checkbox | air-comments |  | [20900](../../app.js#L20900) |
+| openAIReportModal | button button |  | dinâmico: retry.label | [20955](../../app.js#L20955) |
+| openAIReportModal | button button |  | dinâmico: icon('i-download', 'btn-icon') | [20963](../../app.js#L20963) |
+| openAIReportModal | button button |  | Só baixar o CSV | [20969](../../app.js#L20969) |
+| openAIReportModal | button button |  | Só copiar o prompt | [20970](../../app.js#L20970) |
+| openAIReportModal | button button |  | Fechar | [20980](../../app.js#L20980) |
+| runIntegrityCheck | button button |  | Fechar | [21012](../../app.js#L21012) |
+| renderData | input file | import-file |  | [21024](../../app.js#L21024) |
+| renderData | button button |  | dinâmico: icon('i-data') | [21037](../../app.js#L21037) |
+| renderData | button button |  | Onde meus dados ficam? | [21041](../../app.js#L21041) |
+| renderData | button button |  | Preparar | [21056](../../app.js#L21056) |
+| renderData | button button |  | Exportar | [21061](../../app.js#L21061) |
+| renderData | button button |  | Como usar meus dados com IA ou planilhas? | [21062](../../app.js#L21062) |
+| renderData | button button |  | Verificar | [21079](../../app.js#L21079) |
+| renderData | button button |  | Pedir ao navegador | [21084](../../app.js#L21084) |
+| renderData | button button |  | apagar cópia antiga da V2 | [21129](../../app.js#L21129) |
+| renderData | details  |  | dinâmico: h('summary', null, h('span', { text:'Apagar todos os dados' })) | [21136](../../app.js#L21136) |
+| renderData | button button |  | Apagar todos os dados | [21140](../../app.js#L21140) |
+| restoreRefused | button button |  | Entendi | [21177](../../app.js#L21177) |
+| askTimerBeforeRestore | button button |  | Cancelar a restauração | [21204](../../app.js#L21204) |
+| askTimerBeforeRestore | button button |  | Descartar o tempo e restaurar | [21205](../../app.js#L21205) |
+| askTimerBeforeRestore | button button |  | Finalizar o estudo primeiro | [21206](../../app.js#L21206) |
+| openRestorePreview | button button |  | dinâmico: hasData ? 'Substituir e restaurar' : 'Restaurar' | [21242](../../app.js#L21242) |
+| openRestorePreview | button button |  | Cancelar | [21280](../../app.js#L21280) |
+| openRestorePreview | details  |  | dinâmico: h('summary', null, ′Ajustes que serão feitos (${sum(r.repaired, x => x.count)})′) | [21291](../../app.js#L21291) |
+| openRestorePreview | details  |  | dinâmico: h('summary', null, ′O que fica de fora (${sum(r.ignored, x => x.count)})′) | [21294](../../app.js#L21294) |
+| openRestorePreview | button button |  | Fazer backup dos dados atuais | [21299](../../app.js#L21299) |
+| bindEvents | button button |  | dinâmico: icon(NAV_ICONS[v], 'nav-icon') | [21378](../../app.js#L21378) |
+| bindEvents | button button |  | Fechar | [21380](../../app.js#L21380) |
+| helpDot | button button |  | dinâmico: 'O que é ' + info.title + '?' | [22017](../../app.js#L22017) |
+| GlossaryPopover | button button |  | dinâmico: glossaryCallLabel(key) | [22076](../../app.js#L22076) |
+| GlossaryPopover | button button |  | Fechar explicação | [22079](../../app.js#L22079) |
+| glossaryTerm | button button |  | dinâmico: (label \|\| g.term) + ' — ver explicação' | [22134](../../app.js#L22134) |
+| Palette | button button | dinâmico: 'pal-opt-' + i | dinâmico: icon(item.icon, 'nav-icon') | [22355](../../app.js#L22355) |
+| FocusMode | input checkbox |  |  | [22514](../../app.js#L22514) |
+| FocusMode | button button |  | dinâmico: a.label | [22566](../../app.js#L22566) |
+| pickDisciplineThen | button button |  | dinâmico: h('span', { text:d.name }) | [22782](../../app.js#L22782) |
+| pickDisciplineThen | button button |  | Cancelar | [22784](../../app.js#L22784) |
+| renderReturnPill | button button |  | dinâmico: 'Voltar à Ajuda: ' + r.label | [22863](../../app.js#L22863) |
+| renderReturnPill | button button |  | Fechar este atalho | [22865](../../app.js#L22865) |
+| pickDisciplineForPriority | button button |  | dinâmico: h('span', { text:d.name }) | [22887](../../app.js#L22887) |
+| pickDisciplineForPriority | button button |  | Cancelar | [22890](../../app.js#L22890) |
+| detailsBlock | button button |  | dinâmico: h('span', { text: d.title \|\| 'Entenda em mais detalhes' }) | [22926](../../app.js#L22926) |
+| helpBreadcrumb | button button |  | dinâmico: label | [22969](../../app.js#L22969) |
+| articleBody | button button |  | dinâmico: x.label | [23022](../../app.js#L23022) |
+| articleBody | button button |  | dinâmico: h('span', { text:'Entenda melhor' }) | [23035](../../app.js#L23035) |
+| articleBody | button button |  | dinâmico: h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:r.title }), h('div', { class:'hi-su | [23049](../../app.js#L23049) |
+| articleBody | button button |  | Ver este artigo na Central de Ajuda | [23059](../../app.js#L23059) |
+| helpItemButton | button button |  | dinâmico: h('span', { class:'hi-main' }, o.showPath ? h('div', { class:'hi-cat', text: articlePath(a) }) : nul | [23071](../../app.js#L23071) |
+| faqNode | button button |  | dinâmico: 'Ver explicação completa: ' + getArticle(f.article).title | [23086](../../app.js#L23086) |
+| faqNode | button button |  | dinâmico: h('span', { text:f.q }) | [23089](../../app.js#L23089) |
+| helpSearchCard | input search | help-q | Pesquisar na Ajuda | [23108](../../app.js#L23108) |
+| helpSearchCard | button button |  | Limpar busca | [23143](../../app.js#L23143) |
+| helpSearchCard | button button |  | dinâmico: '“' + x + '”' | [23153](../../app.js#L23153) |
+| helpResultsPanel | button button |  | Voltar para toda a Ajuda | [23238](../../app.js#L23238) |
+| helpResultsPanel | button button | dinâmico: id | dinâmico: h('span', { class:'hr-main' }, h('span', { class:'hr-path', text: e.path }), h('span', { class:'hr-t | [23252](../../app.js#L23252) |
+| helpResultsPanel | button button |  | dinâmico: 'Ver todos os ' + all.length + ' resultados' | [23269](../../app.js#L23269) |
+| helpSuggestionList | button button |  | dinâmico: icon('i-search', 'nav-icon') | [23281](../../app.js#L23281) |
+| helpHomePanel | button button |  | dinâmico: h('span', { class:'hmq-q', text:mq.q }) | [23327](../../app.js#L23327) |
+| helpHomePanel | button button |  | dinâmico: h('span', { class:'hp-icon' }, icon(sec.icon, 'nav-icon')) | [23337](../../app.js#L23337) |
+| helpHomePanel | button button |  | Rever a apresentação | [23353](../../app.js#L23353) |
+| helpHomePanel | button button |  | Mostrar as dicas de novo | [23354](../../app.js#L23354) |
+| helpHomePanel | button button |  | Ver o guia | [23355](../../app.js#L23355) |
+| helpHomePanel | button button |  | Ver todas | [23362](../../app.js#L23362) |
+| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Ciclo + outras ferramentas' }) | [23369](../../app.js#L23369) |
+| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Glossário' }) | [23371](../../app.js#L23371) |
+| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Entrar em contato' }) | [23373](../../app.js#L23373) |
+| helpHomePanel | button button |  | dinâmico: h('span', { class:'line-t', text:'Relatar um problema' }) | [23375](../../app.js#L23375) |
+| helpSectionPanel | button button |  | dinâmico: x.label | [23389](../../app.js#L23389) |
+| helpSectionPanel | button button |  | dinâmico: 'Ver todo o caminho “' + s.label + '”' | [23412](../../app.js#L23412) |
+| helpBackBar | button button |  | dinâmico: icon('i-chev', 'back-chev') | [23449](../../app.js#L23449) |
+| helpGlossaryPanel | input search | gloss-q | Filtrar termos do glossário | [23490](../../app.js#L23490) |
+| drawGlossary | button button |  | dinâmico: glossaryCallLabel(k) | [23532](../../app.js#L23532) |
+| openContactDrawer | input text | contact-mail-field | Endereço de e-mail do Ciclo | [23629](../../app.js#L23629) |
+| openContactDrawer | button button |  | dinâmico: icon('i-copy') | [23656](../../app.js#L23656) |
+| openContactDrawer | button button |  | dinâmico: icon('i-mail') | [23659](../../app.js#L23659) |
+| openContactDrawer | button button |  | Encontrou um problema? Relatar | [23663](../../app.js#L23663) |
+| openReportProblemDrawer | textarea  | report-desc | Ex.: O botão X não responde quando eu clico depois de registrar um estudo. | [23697](../../app.js#L23697) |
+| openReportProblemDrawer | details  |  | dinâmico: h('summary', { text:'Ver o texto completo' }) | [23737](../../app.js#L23737) |
+| openReportProblemDrawer | button button |  | dinâmico: icon('i-copy') | [23752](../../app.js#L23752) |
+| openReportProblemDrawer | button button |  | dinâmico: icon('i-mail') | [23753](../../app.js#L23753) |
+| openScreenHelp | button button |  | dinâmico: s.cta.label | [23776](../../app.js#L23776) |
+| openScreenHelp | button button |  | dinâmico: h('span', { class:'hi-main' }, h('div', { class:'hi-title', text:a.title }), h('div', { class:'hi-su | [23780](../../app.js#L23780) |
+| openScreenHelp | button button |  | Abrir a Central de Ajuda | [23787](../../app.js#L23787) |
+| renderTips | button button |  | Entendi | [23819](../../app.js#L23819) |
+| toastRich | button button |  | dinâmico: a.label | [23843](../../app.js#L23843) |
+| startHereChecklistCard | button button |  | dinâmico: st.action.text | [24010](../../app.js#L24010) |
+| maybeShowWhatsNew | button button |  | Ver todas as novidades | [24041](../../app.js#L24041) |
+| maybeShowWhatsNew | button button |  | Continuar | [24044](../../app.js#L24044) |
+| stepIntro | button button |  | dinâmico: h('span', { class:'ob-choice-t', text:title }) | [24097](../../app.js#L24097) |
+| stepQuick | input text | ob-name | Ex.: Português | [24112](../../app.js#L24112) |
+| stepQuick | button button |  | dinâmico: ex | [24116](../../app.js#L24116) |
+| stepWhat | input text | ob-add | Escreva e tecle Enter — ex.: Matemática | [24127](../../app.js#L24127) |
+| stepWhat | button button |  | dinâmico: p.label | [24131](../../app.js#L24131) |
+| stepWhat | button button |  | dinâmico: 'Tirar ' + n | [24137](../../app.js#L24137) |
+| stepWhat | button button |  | dinâmico: icon('i-plus') | [24143](../../app.js#L24143) |
+| stepGoal | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:t }) | [24152](../../app.js#L24152) |
+| stepGoal | input text | ob-goal-t | Ex.: Prova de Inglês | [24160](../../app.js#L24160) |
+| stepGoal | input date | ob-goal-d |  | [24162](../../app.js#L24162) |
+| stepGoal | select  | ob-goal-disc |  | [24164](../../app.js#L24164) |
+| stepTime | button button |  | dinâmico: h('span', { class:'ob-opt-t', text:t }) | [24179](../../app.js#L24179) |
+| stepTime | input number | ob-hours | Outro | [24188](../../app.js#L24188) |
+| stepTime | button button |  | dinâmico: fmtDuration(v) | [24191](../../app.js#L24191) |
+| buildActions | button button |  | Voltar | [24247](../../app.js#L24247) |
+| buildActions | button button |  | dinâmico: o.revisit ? 'Fechar' : 'Prefiro explorar sozinho' | [24250](../../app.js#L24250) |
+| buildActions | button button |  | Criar e continuar | [24254](../../app.js#L24254) |
+| buildActions | button button |  | Continuar | [24256](../../app.js#L24256) |
+| buildActions | button button |  | Continuar | [24262](../../app.js#L24262) |
+| buildActions | button button |  | Continuar | [24270](../../app.js#L24270) |
+| buildActions | button button |  | Criar e começar | [24275](../../app.js#L24275) |
+| guideNote | button button |  | dinâmico: a.label | [24435](../../app.js#L24435) |
+| guideNote | button button |  | Agora não | [24437](../../app.js#L24437) |
+| startGuideCard | button button |  | ocultar | [24471](../../app.js#L24471) |
+| startGuideCard | button button |  | dinâmico: s2.actionLabel | [24487](../../app.js#L24487) |
+| reviewDemoNode | button button |  | dinâmico: o.label | [24516](../../app.js#L24516) |
+| structureDemoNode | button button |  | dinâmico: ex.label | [24545](../../app.js#L24545) |
+| openFirstReviewIntro | button button |  | Agora não | [24603](../../app.js#L24603) |
+| openFirstReviewIntro | button button |  | Começar | [24606](../../app.js#L24606) |
+| pomodoroSettingsRows | input number |  | dinâmico: label | [24651](../../app.js#L24651) |
+| segmented | button button |  | dinâmico: o.label | [24696](../../app.js#L24696) |
+| switchControl | button button |  | dinâmico: ariaLabel \|\| '' | [24709](../../app.js#L24709) |
+| numberControl | input number |  | dinâmico: ariaLabel \|\| '' | [24720](../../app.js#L24720) |
+| selectControl | select  |  | dinâmico: ariaLabel \|\| '' | [24726](../../app.js#L24726) |
+| renderSettings | input checkbox | dinâmico: 'tb-' + b.id |  | [24759](../../app.js#L24759) |
+| renderSettings | button button |  | Rever a apresentação | [24792](../../app.js#L24792) |
+| renderSettings | button button |  | Mostrar novamente | [24794](../../app.js#L24794) |
+| renderSettings | button button |  | dinâmico: plan ? 'Abrir Planejamento' : 'Definir uma meta' | [24808](../../app.js#L24808) |
+| renderSettings | button button |  | Mostrar todas de novo | [24848](../../app.js#L24848) |
+| renderSettings | button button |  | Como funcionam as revisões? | [24853](../../app.js#L24853) |
+| renderSettings | button button |  | Ver | [24873](../../app.js#L24873) |
+| renderSettings | button button |  | Fazer backup agora | [24885](../../app.js#L24885) |
+| renderSettings | button button |  | Abrir tela Dados | [24887](../../app.js#L24887) |
+| renderSettings | button button |  | Onde meus dados ficam? | [24888](../../app.js#L24888) |
+| renderSettings | button button |  | Preparar | [24890](../../app.js#L24890) |
+| renderSettings | button button |  | dinâmico: icon('i-mail') | [24906](../../app.js#L24906) |
+| renderSettings | button button |  | dinâmico: icon('i-flag') | [24907](../../app.js#L24907) |
+| renderSettings | button button |  | Central de Ajuda | [24908](../../app.js#L24908) |
+| renderSettings | button button |  | Novidades desta versão | [24909](../../app.js#L24909) |
+| renderSettings | button button | dinâmico: 'stab-' + g.id | dinâmico: g.label | [24927](../../app.js#L24927) |
+| openChangelog | details  |  | dinâmico: h('summary', null, sec.title) | [24958](../../app.js#L24958) |
+| openChangelog | details  |  | dinâmico: h('summary', null, h('span', { class:'num', text:'v' + c.v }), c.title ? h('span', { class:'cl-old-t | [24966](../../app.js#L24966) |
+| renderDeadlineSuggestions | button button |  | Usar revisão intensiva | [25032](../../app.js#L25032) |
+| renderDeadlineSuggestions | button button |  | Manter atual | [25040](../../app.js#L25040) |
+| renderDeadlineSuggestions | button button |  | Voltar ao padrão | [25063](../../app.js#L25063) |
+| renderDeadlineSuggestions | button button |  | Continuar intensiva | [25068](../../app.js#L25068) |
 | reviewButton | button button |  | dinâmico: text | [95](../../reviews.js#L95) |
 | reviewSelect | select  | dinâmico: id | dinâmico: options.map(([v,text])=>h('option',{value:v,text,selected:v===value})) | [98](../../reviews.js#L98) |
 | openGuidedReviewBuilder | input number |  |  | [115](../../reviews.js#L115) |
@@ -660,25 +660,25 @@ Gerado por `npm run audit:inventory`. Fontes: app.js, reviews.js, reports.js. 61
 | openBucketDrawer | Drawer.open | [19467](../../app.js#L19467) |
 | openDistributionDrawer | Drawer.open | [19553](../../app.js#L19553) |
 | copySummary | openModal | [20062](../../app.js#L20062) |
-| openHistoryFilters | Drawer.open | [20345](../../app.js#L20345) |
-| openEditSessionModal | openModal | [20515](../../app.js#L20515) |
-| confirmLongEdit | close.push | [20699](../../app.js#L20699) |
-| openAIReportModal | openModal | [20846](../../app.js#L20846) |
-| runIntegrityCheck | openModal | [20997](../../app.js#L20997) |
-| restoreRefused | openModal | [21169](../../app.js#L21169) |
-| askTimerBeforeRestore | openModal | [21195](../../app.js#L21195) |
-| openRestorePreview | openModal | [21237](../../app.js#L21237) |
-| bindEvents | openModal | [21371](../../app.js#L21371) |
-| openHelpArticle | Drawer.open | [22706](../../app.js#L22706) |
-| pickDisciplineThen | openModal | [22776](../../app.js#L22776) |
-| pickDisciplineForPriority | openModal | [22880](../../app.js#L22880) |
-| openContactDrawer | Drawer.open | [23661](../../app.js#L23661) |
-| openReportProblemDrawer | Drawer.open | [23753](../../app.js#L23753) |
-| openScreenHelp | Drawer.open | [23787](../../app.js#L23787) |
-| maybeShowWhatsNew | openModal | [24030](../../app.js#L24030) |
-| openWelcome | openModal | [24087](../../app.js#L24087) |
-| openFirstReviewIntro | openModal | [24591](../../app.js#L24591) |
-| openChangelog | Drawer.open | [24967](../../app.js#L24967) |
+| openHistoryFilters | Drawer.open | [20348](../../app.js#L20348) |
+| openEditSessionModal | openModal | [20518](../../app.js#L20518) |
+| confirmLongEdit | close.push | [20702](../../app.js#L20702) |
+| openAIReportModal | openModal | [20849](../../app.js#L20849) |
+| runIntegrityCheck | openModal | [21000](../../app.js#L21000) |
+| restoreRefused | openModal | [21172](../../app.js#L21172) |
+| askTimerBeforeRestore | openModal | [21198](../../app.js#L21198) |
+| openRestorePreview | openModal | [21240](../../app.js#L21240) |
+| bindEvents | openModal | [21374](../../app.js#L21374) |
+| openHelpArticle | Drawer.open | [22709](../../app.js#L22709) |
+| pickDisciplineThen | openModal | [22779](../../app.js#L22779) |
+| pickDisciplineForPriority | openModal | [22883](../../app.js#L22883) |
+| openContactDrawer | Drawer.open | [23664](../../app.js#L23664) |
+| openReportProblemDrawer | Drawer.open | [23756](../../app.js#L23756) |
+| openScreenHelp | Drawer.open | [23790](../../app.js#L23790) |
+| maybeShowWhatsNew | openModal | [24033](../../app.js#L24033) |
+| openWelcome | openModal | [24090](../../app.js#L24090) |
+| openFirstReviewIntro | openModal | [24594](../../app.js#L24594) |
+| openChangelog | Drawer.open | [24970](../../app.js#L24970) |
 | openGuidedReviewBuilder | openModal | [113](../../reviews.js#L113) |
 | openGuidedReviewPlayer | openModal | [167](../../reviews.js#L167) |
 | openGuidedReviewResult | openModal | [206](../../reviews.js#L206) |

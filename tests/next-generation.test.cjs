@@ -190,10 +190,11 @@ test('PNG nos quatro formatos e temas tem os mesmos pixels da prévia e dados da
    assert.equal(png.toString('hex',0,8),'89504e470d0a1a0a');
    assert.equal(png.readUInt32BE(16),w);assert.equal(png.readUInt32BE(20),h);
    assert.equal(await canvas.evaluate(async(c,data)=>{
-    const bytes=Uint8Array.from(atob(data),x=>x.charCodeAt(0));
-    const image=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
+    const image=new Image();
+    image.src='data:image/png;base64,'+data;
+    await image.decode();
     const out=document.createElement('canvas');out.width=c.width;out.height=c.height;
-    const ctx=out.getContext('2d');ctx.drawImage(image,0,0);image.close();
+    const ctx=out.getContext('2d');ctx.drawImage(image,0,0);
     const rendered=ctx.getImageData(0,0,c.width,c.height).data;
     const preview=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
     return rendered.every((byte,i)=>byte===preview[i]);
@@ -267,4 +268,19 @@ test('relatório extenso, contraste reforçado e títulos longos conservam métr
  assert.equal(result.sessions,10000);
  assert.equal(result.minutes,result.canonical);assert.equal(result.chart,result.expected);
  assert.equal(result.range,true);assert.ok(result.contrast>=7);assert.ok(result.cardContrast>=4.5);
+});
+
+test('Resultados abre os registros do recorte e Voltar preserva período e disciplina',async()=>{
+ await page.evaluate(async()=>{
+  await SessionCommands.create({disciplineId:'portugues',minutes:35,date:todayISO(),comment:'Ensaio de uma explicação'});
+  await SessionCommands.create({disciplineId:'matematica',minutes:20,date:todayISO()});
+  await refresh();
+  ui.history.search='busca antiga';
+  applyAnalyticsQuery({periodPreset:'hoje',scopeType:'discipline',scopeIds:['portugues'],focus:'overview'});
+ });
+ await page.getByRole('button',{name:'Ver registros',exact:true}).click();
+ assert.match(await page.locator('#history-body').textContent(),/Registros da análise · Hoje \(1\)/);
+ assert.deepEqual(await page.evaluate(()=>filteredSessions().map(s=>s.disciplineId)),['portugues']);
+ await page.goBack();
+ assert.deepEqual(await page.evaluate(()=>[ui.analyticsQuery.periodPreset,ui.analyticsQuery.scopeIds]),['hoje',['portugues']]);
 });

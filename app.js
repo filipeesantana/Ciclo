@@ -17765,7 +17765,7 @@ function analyticsNextQuestions(a, focus){
 function openAnalyticsRecords(analysis){
   clearHistoryFilters();
   ui.history.search = '';
-  ui.historyIds = {ids:analysis.sessions.map(s => s.id),label:'Análise · ' + analyticsPeriodLabel(analysis.query)};
+  ui.historyIds = {ids:analysis.sessions.map(s => s.id),kind:'analysis',label:analyticsPeriodLabel(analysis.query)};
   setView('history');
   focusViewHeading('history');
 }
@@ -20287,8 +20287,11 @@ function renderHistory(){
 /** Filtros ativos em linguagem simples, cada um com seu jeito de sair. */
 function historyActiveFilters(){
   const f = ui.history, out = [];
-  // v7.1 — os registros usados numa descoberta ("Ver registros usados")
-  if(ui.historyIds && Array.isArray(ui.historyIds.ids)) out.push({ label:`Registros da descoberta (${ui.historyIds.ids.length})`, clear:() => { ui.historyIds = null; } });
+  if(ui.historyIds && Array.isArray(ui.historyIds.ids)){
+    const {ids,kind,label} = ui.historyIds;
+    const text = kind === 'analysis' ? `Registros da análise · ${label}` : 'Registros da descoberta';
+    out.push({label:`${text} (${ids.length})`, clear:() => {ui.historyIds = null;}});
+  }
   if(f.results) out.push({ label: f.results === 'questions' ? 'Com questões' : f.results === 'notes' ? 'Com marcos ou conceitos' : 'Com resultado', clear:() => { f.results = ''; } });
   if(f.areaId){ const a = getArea(f.areaId); out.push({ label: a ? a.name : AREA_TERM, clear:() => { f.areaId = ''; f.disciplineId = ''; f.topicId = ''; } }); }
   if(f.disciplineId){ out.push({ label: disciplineName(f.disciplineId), clear:() => { f.disciplineId = ''; f.topicId = ''; } }); }

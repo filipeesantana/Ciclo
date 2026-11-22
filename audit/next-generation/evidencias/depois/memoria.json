@@ -1,0 +1,74 @@
+{
+  "browser": "154.0.8037.57",
+  "method": "Heap JS via CDP após GC e reload. Tempos incluem setView e duas solicitações de frame, com cinco repetições por tela. Sem memória de GPU, cache do browser ou dispositivos físicos.",
+  "results": [
+    {
+      "count": 911,
+      "heapUsedBytes": 4884416,
+      "viewsMs": {
+        "today": [
+          32,
+          33,
+          47,
+          32,
+          32
+        ],
+        "reviews": [
+          48,
+          33,
+          33,
+          33,
+          33
+        ],
+        "analytics": [
+          83,
+          63,
+          46,
+          48,
+          51
+        ],
+        "history": [
+          49,
+          48,
+          48,
+          47,
+          48
+        ]
+      }
+    },
+    {
+      "count": 10000,
+      "heapUsedBytes": 16230448,
+      "viewsMs": {
+        "today": [
+          47,
+          46,
+          48,
+          32,
+          48
+        ],
+        "reviews": [
+          48,
+          32,
+          32,
+          32,
+          32
+        ],
+        "analytics": [
+          97,
+          49,
+          64,
+          49,
+          64
+        ],
+        "history": [
+          80,
+          48,
+          48,
+          48,
+          48
+        ]
+      }
+    }
+  ]
+}

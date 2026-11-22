@@ -13,6 +13,8 @@ Candidata em revisão. A base é a `main` v7.3.0 em `6a1de8e71092efb722206214109
 
 [Inventário funcional e decisões](DIAGNOSTICO.md) · [Inventário dos controles](INVENTARIO-CONTROLES.md) · [Conteúdo de Ajuda](CONTEUDO.md)
 
+A barra lateral perdeu os atalhos principais duplicados, o contador de sugestões e a entrada separada de Histórico. O registro por horário passou para os detalhes. O guia inicial, a frase e sugestões continuam acessíveis quando a pessoa decide abri-los.
+
 ## Atrito observado
 
 Contagem manual de ações em um perfil com duas disciplinas. Digitação foi medida separadamente. O registro da v8 pede que a pessoa informe os minutos ou escolha uma duração sugerida.
@@ -27,6 +29,21 @@ Contagem manual de ações em um perfil com duas disciplinas. Digitação foi me
 | Criar a imagem com aparência e dados padrão | Sem exportação PNG | 2 cliques a partir das Análises |
 
 Com o mesmo conjunto sintético, Chromium em 1440 px mediu o conteúdo do registro em 515 → 502 px. Em 390 px, 814 → 744 px. Em 320 px, 866 → 810 px. Os minutos ficaram visíveis de início nos dois temas. Esses números são alturas CSS do conteúdo do formulário, sem o título e o rodapé. [Antes](evidencias/antes/validacao.json) · [Depois](evidencias/depois/validacao.json)
+
+## Desempenho no histórico sintético
+
+Chromium 154.0.8037.57, execuções consecutivas com o mesmo roteiro. Tempos de tela são medianas de cinco chamadas de renderização síncrona com os caches derivados invalidados. Inicialização mede uma recarga até o aplicativo marcar os dados como prontos. Importação mede uma execução pela interface com confirmação e verificação dos totais.
+
+| Estudos | Inicialização, ms | Importação, ms | Hoje, ms | Revisões, ms | Histórico, ms | Análises, ms |
+|---:|---:|---:|---:|---:|---:|---:|
+| 911 | 326 → 264 | 1.157 → 788 | 11 → 13 | 57 → 16 | 51 → 27 | 31 → 28 |
+| 1.000 | 282 → 280 | 650 → 699 | 21 → 13 | 61 → 15 | 37 → 23 | 36 → 37 |
+| 5.000 | 666 → 669 | 2.814 → 2.344 | 31 → 15 | 56 → 15 | 55 → 20 | 34 → 36 |
+| 10.000 | 1.116 → 1.089 | 4.586 → 4.916 | 32 → 21 | 61 → 12 | 49 → 29 | 37 → 32 |
+
+Revisões e Histórico renderizaram mais rápido nos quatro tamanhos. As consultas frias e a importação oscilaram. Com 10.000 estudos, a primeira busca no Histórico mediu 110 → 115 ms. O primeiro índice textual e as consultas analíticas ainda fazem trabalho síncrono. Os totais de tempo, descanso e questões coincidiram e as séries alcançaram todas as semanas esperadas. Os tempos não medem FPS ou desempenho de aparelhos físicos. [Medições da v7.3](evidencias/antes/carga.json) · [Medições da v8](evidencias/depois/carga.json)
+
+Em uma medida complementar via CDP, após recarga e coleta de lixo, o heap JavaScript foi de 4,6 → 4,7 MiB com 911 estudos e ficou em 15,5 MiB com 10.000. Para 10.000 estudos, a mediana de navegação incluindo dois frames foi de 66 → 32 ms em Revisões, 82 → 48 ms no Histórico e 49 → 64 ms em Análises. A amostra de heap exclui GPU, cache do navegador e memória do sistema. [Amostra da v7.3](evidencias/antes/memoria.json) · [Amostra da v8](evidencias/depois/memoria.json)
 
 ## Dados, recuperação e segurança
 
@@ -60,5 +77,7 @@ As auditorias automatizadas cobrem toque emulado, foco de teclado, zoom CSS a 20
 3. Abra Foco → Apresentação, confira o relógio em outra janela e finalize. Em Resultados, confira o recorte e baixe a imagem.
 4. Após revisão e aprovação da matriz, valide Safari em iPhone e Chrome em Android antes da publicação definitiva. Revise leitor de tela e compartilhamento nativo em pelo menos uma plataforma compatível.
 5. Para uma publicação futura aprovada, guarde um backup, publique os arquivos estáticos juntos e verifique inicialização e exportação. Em caso de regressão, restaure o commit anterior dos arquivos estáticos com o mesmo endereço, preservando o IndexedDB. Mantenha o backup da v8 e a versão capaz de lê-lo disponíveis.
+
+A suíte original passou com 103 testes no Chromium local. A v8 passou com 113 no ciclo inicial e o teste contextual seguinte também passou. As auditorias locais adicionais fizeram 95 verificações gerais, 109 de experiência, 24 de campo e 49 de jornadas e layout no desenho da v8. [Suíte original](evidencias/antes/testes.txt) · [Suíte v8](evidencias/depois/testes.txt) · [Jornadas v8](evidencias/depois/jornadas-v8.txt)
 
 A versão está pronta para revisão em PR. As medições são de navegador automatizado. Chrome e Edge oficiais, Safari, aparelhos físicos e leitores de tela permanecem fora da execução local.

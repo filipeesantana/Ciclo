@@ -7,13 +7,15 @@ const acorn=require('acorn');
 const {root}=require('./support.cjs');
 const esc=s=>String(s??'').replace(/\|/g,'\\|').replace(/[\r\n]+/g,' ').replace(/`/g,'′');
 const sources=['app.js','reviews.js','reports.js'].filter(file=>fs.existsSync(path.join(root,file)))
- .map(file=>({file,code:fs.readFileSync(path.join(root,file),'utf8')}));
+ .map(file=>{
+  const code=fs.readFileSync(path.join(root,file),'utf8');
+  return {file,code,lines:code.split('\n').length};
+ });
 const app=sources.map(source=>source.code).join('\n');
 const sourceAt=line=>{
  for(const source of sources){
-  const count=source.code.split('\n').length;
-  if(line<=count)return {file:source.file,line};
-  line-=count;
+  if(line<=source.lines)return {file:source.file,line};
+  line-=source.lines;
  }
 };
 const content=fs.readFileSync(path.join(root,'content.js'),'utf8');

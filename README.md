@@ -301,7 +301,7 @@ O Ciclo é uma aplicação local-first feita em HTML, CSS e JavaScript puro, sem
 
 Curto e direto, para quem quer saber exatamente o que esperar.
 
-- **Navegadores.** A execução local da v7.3 utiliza Chromium, nos dois temas e em telas de 320 a 1920 px, com carga de até 10.000 estudos. Firefox e WebKit são conferidos na CI; consulte os resultados efetivamente obtidos e os limites no [relatório](audit/experience-v73/TESTES.md). Chrome/Edge oficiais, Safari real, aparelhos físicos e leitores de tela não foram testados.
+- **Navegadores.** A suíte da v8 cobre a navegação, o cronômetro, o backup e o PNG. A matriz executa em Chromium, Firefox e WebKit. Consulte os motores efetivamente verificados e os limites da execução no [relatório](audit/next-generation/RELATORIO.md).
 - **Avisos do Pomodoro.** O som e o aviso do navegador dependem de permissões e do próprio navegador. Com a aba em segundo plano ou o aparelho bloqueado, o aviso pode atrasar ou não aparecer — o tempo registrado continua certo mesmo assim. A tela cheia do modo foco também depende do navegador.
 - **Animações.** São curtas e opcionais: com *Reduzir animações* (em Configurações → Aparência) ou com a preferência do sistema ligada, tudo muda de estado na hora. Nenhuma informação depende de uma animação.
 - **Onde os dados ficam.** No IndexedDB do navegador; o cronômetro em andamento, o tema e os rascunhos de registro ficam no `localStorage`, e o rascunho do guia do primeiro uso, no `sessionStorage` da aba. Nada é enviado para fora.
