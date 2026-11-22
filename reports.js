@@ -96,7 +96,7 @@ function visualReportModel(analysis, settings){
     title:settings.title.trim() || 'Meus estudos', subtitle:settings.subtitle.trim(), range, scope:scopeText,
     empty:!totals.count, estimateNote:showEstimate ? 'Parte do tempo exibido vem de uma divisão estimada.' : '',
     blocks:settings.order.filter(id => settings.visible.has(id)).map(id => ({id,label:label[id],...blocks[id]})),
-    brand:settings.brand
+    brand:settings.brand, signature:settings.signed ? (settings.signature || '').trim().slice(0,48) : ''
   };
 }
 
@@ -204,12 +204,27 @@ function drawVisualReport(canvas, model, settings){
   ctx.fillStyle = p.bg;ctx.fillRect(0,0,width,height);
 
   if(editorial){
-    ctx.strokeStyle = p.line;ctx.lineWidth = 2;
+    ctx.strokeStyle = p.line;
+    ctx.lineWidth = 2;
     ctx.strokeRect(25,25,width-50,height-50);
-  } else {
-    reportRect(ctx,pad,49,settings.layout === 'painel' ? 146 : 58,6,3,p.accent);
   }
-  let y = 73;
+  // A linha de abertura reserva espaço para a marca sem competir com o título.
+  const ruleEnd = width - pad;
+  reportRect(ctx,pad,50,contentWidth,2,1,p.line);
+  reportRect(ctx,pad,49,editorial ? 72 : 108,5,2,p.accent);
+  if(model.brand){
+    ctx.save();
+    ctx.fillStyle = p.bg;
+    ctx.fillRect(ruleEnd-84,32,84,38);
+    ctx.strokeStyle = p.accent;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(ruleEnd-61,50,10,-Math.PI/2,Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.arc(ruleEnd-68,42,2.5,0,2*Math.PI); ctx.fillStyle = p.accent; ctx.fill();
+    reportText(ctx,'Ciclo',ruleEnd-43,39,48,21,{weight:700,color:p.ink});
+    ctx.restore();
+  }
+  let y = 77;
   const titleSize = model.title.length > 48 ? 49 : editorial ? 69 : 68;
   y += reportText(ctx,model.title,pad,y,contentWidth,titleSize,{weight:700,color:p.ink,lines:3,serif:editorial});
   y += reportText(ctx,model.subtitle,pad,y+5,contentWidth,25,{color:p.soft,lines:2}) + 7;
@@ -219,7 +234,7 @@ function drawVisualReport(canvas, model, settings){
   let rows = reportRows(model.blocks,landscape ? 6 : 3,settings.layout);
   if(rows.length > (landscape ? 3 : 5)) rows = reportRows(model.blocks,landscape ? 4 : 3,'compact');
   const gap = 14;
-  const bottom = height - (model.brand ? 100 : 64);
+  const bottom = height - (model.signature ? 100 : 64);
   const weights = rows.map(row => row.some(({block}) => block.buckets || block.rows) ? 1.6 : .85);
   const countWeight = weights.reduce((total,weight) => total+weight,0);
   const free = bottom-y-Math.max(0,rows.length-1)*gap;
@@ -235,14 +250,11 @@ function drawVisualReport(canvas, model, settings){
     }
     y += rowHeight+gap;
   });
-  if(model.brand){
-    const base = height - 66;
-    ctx.beginPath();ctx.arc(pad+16,base+12,13,-Math.PI/2,Math.PI, false);
-    ctx.strokeStyle=p.accent;ctx.lineWidth=4;ctx.lineCap='round';ctx.stroke();
-    ctx.beginPath();ctx.arc(pad+4,base+6,3,0,2*Math.PI);ctx.fillStyle=p.accent;ctx.fill();
-    reportText(ctx,'Ciclo',pad+39,base,contentWidth-39,24,{weight:700,color:p.ink});
+  if(model.signature){
+    reportRect(ctx,pad,bottom+9,contentWidth,2,1,p.line);
+    reportText(ctx,model.signature,pad,bottom+23,contentWidth,25,{weight:550,color:p.ink,serif:editorial});
   }
-  canvas.setAttribute('aria-label', [model.title, model.subtitle, model.range, model.scope, model.estimateNote,
+  canvas.setAttribute('aria-label', [model.title, model.subtitle, model.range, model.scope, model.estimateNote, model.signature,
     model.empty ? 'Nenhum estudo registrado.' : '',
     ...model.blocks.map(b => [b.label,b.value,b.detail,b.rows?.map(r => r.label + ' ' + r.value).join(', ')].filter(Boolean).join('. '))]
     .filter(Boolean).join('. '));
@@ -254,6 +266,9 @@ function drawReportBlock(ctx, block, x,y,width,height,p,layout){
   const w = x+gap;
   const innerY = y+gap;
   reportRect(ctx,x,y,width,height,layout === 'editorial' ? 3 : 20,p.card);
+  if(block.id === 'time'){
+    reportRect(ctx,x+1,y+gap,5,Math.max(18,height-2*gap),2,p.chart);
+  }
   reportText(ctx,block.label,w,innerY,area,height < 135 ? 19 : 22,{weight:650,color:p.cardSoft});
   let at = innerY+(height < 135 ? 27 : 34);
   const room = y+height-gap-at;
@@ -312,7 +327,7 @@ function openVisualReport(rawQuery){
   const settings = {
     format:'portrait', layout:'essencial', theme, palette:firstPalette[0], accent:firstPalette[theme === 'light' ? 2 : 3],
     background:theme === 'light' ? '#eff6f0' : '#102522', highContrast:false,
-    title:'Meus estudos', subtitle:'', names:false, brand:true, order:REPORT_BLOCKS.map(([id]) => id), visible:new Set(REPORT_DEFAULT_BLOCKS)
+    title:'Meus estudos', subtitle:'', names:false, brand:true, signed:false, signature:'', order:REPORT_BLOCKS.map(([id]) => id), visible:new Set(REPORT_DEFAULT_BLOCKS)
   };
   const query = {...initial, scopeId:null};
   const scopes = {};
@@ -365,6 +380,16 @@ function openVisualReport(rawQuery){
     const palettes = reviewSelect('report-palette','Paleta',REPORT_PALETTES.map(([id,label]) => [id,label]), settings.palette, v => {settings.palette=v;applyPalette();});
     const check = (label,key) => h('label',{class:'guided-check'},
       h('input',{type:'checkbox',checked:settings[key],onchange:e => {settings[key]=e.target.checked;queue();}}),label);
+    const signature = h('input', {type:'text', maxlength:'48', autocomplete:'off',
+      oninput:e => {settings.signature = e.target.value; queue();}});
+    const signatureField = reviewField('report-signature','Texto da assinatura',signature);
+    signatureField.hidden = true;
+    const signed = h('label', {class:'guided-check'},
+      h('input', {type:'checkbox', onchange:e => {
+        settings.signed = e.target.checked;
+        signatureField.hidden = !settings.signed;
+        queue();
+      }}), 'Incluir minha assinatura');
     const order = h('ol',{class:'report-order'});
     const structure = h('div', {class:'report-editor'},
       h('div', {class:'report-controls'},
@@ -379,11 +404,13 @@ function openVisualReport(rawQuery){
         h('details', {class:'disclosure'},
           h('summary',{text:'Blocos e privacidade'}),
           h('div',{class:'disclosure-body'},
-            check('Mostrar nomes das disciplinas','names'), check('Mostrar marca do Ciclo','brand'),
+            check('Mostrar nomes das disciplinas','names'), check('Mostrar marca do Ciclo','brand'), signed, signatureField,
             h('p',{class:'hint',text:'Controle a ordem e os dados da imagem. Comentários e nomes de sessões ficam fora.'}), order))),
       h('div', {class:'report-stage'},
         h('p',{class:'report-preview-heading',text:'Prévia da imagem'}),
-        canvas, message));
+        canvas, message,
+        h('details', {class:'inline-guide'}, h('summary', {text:'Como conferir a imagem'}),
+          h('p', {class:'hint',text:'A prévia mostra os pixels do arquivo. Confira o período e os blocos. Em Blocos e privacidade, escolha se quer mostrar nomes, marca e assinatura.'}))));
     let frame = 0, pngGeneration = 0, shareFile = null, closed = false;
 
     function scopeOptions(){

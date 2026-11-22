@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v8.0.0 · The Next Generation
+   CICLO — v8.1.0 · Polish, Clarity & Identity
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -36,7 +36,7 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '8.0.0';
+const APP_VERSION = '8.1.0';
 const APP_SCHEMA_VERSION = 12;         // v8: agenda manual opcional por tópico.
                                       // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
@@ -7341,6 +7341,16 @@ function statusMark(status){
  *   opts.noSync   — quem chama cuida do histórico (navDisc, popstate, início)
  *   opts.noScroll — quem chama cuida da rolagem (restauração de posição)
  */
+function viewScrollSurface(){
+  return matchMedia('(min-width:861px) and (min-height:580px)').matches
+    ? document.querySelector('.view.active > .view-body') || window : window;
+}
+
+function viewScrollPosition(){
+  const surface = viewScrollSurface();
+  return surface === window ? window.scrollY : surface.scrollTop;
+}
+
 function setView(view, opts){
   const o = (opts && typeof opts === 'object' && !(opts instanceof Event)) ? opts : {};
   if(!VIEW_TITLES[view]) view = 'today';
@@ -7372,7 +7382,7 @@ function setView(view, opts){
   GlossaryPopover.close();       // nenhuma explicação flutuando sobre outra tela
   // v6.2: a tela nova começa no topo na hora — rolar "suave" por um conteúdo
   // que acabou de ser trocado só atrasava a leitura.
-  if(!o.noScroll) window.scrollTo({ top:0, behavior:'auto' });
+  if(!o.noScroll) viewScrollSurface().scrollTo({ top:0, behavior:'auto' });
   render();
   if(!o.noSync) Nav.sync('push');
 }
@@ -9945,7 +9955,7 @@ function openRegisterModal(preset){
       h('h4', { class:'rm-group-t', id:'rm-g-when', text:'Duração' }), when.node);
     const whatTitle = h('h4', { class:'rm-group-t', id:'rm-g-what', text:'O que você estudou' });
     const whatBlock = h('section', { class:'rm-group rm-what', 'aria-labelledby':'rm-g-what' }, whatTitle, target.node, split.node, schedule.node);
-    const grid = h('div', { class:'rm-grid' }, whatBlock, whenBlock, howBlock, timerBlock);
+    const grid = h('div', { class:'rm-grid' }, whatBlock, whenBlock, timerBlock, howBlock);
     // Já há algo preenchido além do que veio pronto? Então um clique fora da janela não a fecha.
     isDirty = () => when.isDirty() || !!comment.textarea.value.trim() || types.join(',') !== types0 || difficulty !== null || outcomes.dirty
       || target.dirty || target.discIds.join(',') !== (discId0 || '') || target.topicIds.join(',') !== topicIds0.join(',') || targetMin !== null || split.dirty || results.dirty || !!schedule.snapshot.choice;
@@ -10066,7 +10076,7 @@ function openRegisterModal(preset){
       whenBlock.hidden = !manual;
       // "Estudar agora" ainda não tem um "como foi": do grupo, fica só o tipo de estudo
       how.title.hidden = !manual;
-      how.details.open = !manual;
+      how.details.open = types.length > 0 || (manual && difficulty !== null);
       how.difficulty.hidden = !manual;
       how.details.querySelector('summary').textContent = manual ? 'Tipo de estudo e dificuldade' : 'Tipo de estudo (opcional)';
       how.row.hidden = !manual;
@@ -10082,7 +10092,20 @@ function openRegisterModal(preset){
     }
     setMode(mode, false);
 
-    const content = h('div', { class:'rm' }, draftNotice, timerBusy ? busyNote : modes, grid);
+    const studyHelp = h('details', {class:'inline-guide'},
+      h('summary', null, icon('i-help', 'btn-icon'), 'Ajuda do registro'),
+      h('p', {class:'hint', text:'Use o cronômetro para um estudo em andamento. Para guardar um estudo já feito, informe a disciplina e os minutos de estudo.'}));
+    studyHelp.addEventListener('toggle', () => {
+      if(!studyHelp.open) return;
+      const name = target.discIds.length ? disciplineName(target.discIds[0]) : activeDisciplines()[0]?.name;
+      const example = name ? ' em ' + name : '';
+      const line = studyHelp.querySelector('.guide-example') || h('p', {class:'hint guide-example'});
+      line.textContent = mode === 'manual'
+        ? 'Exemplo: para guardar meia hora de estudo' + example + ', informe 30 minutos. Acrescente os tópicos se quiser encontrá-los depois.'
+        : 'Para estudar' + example + ', escolha a disciplina e inicie o relógio. Ao finalizar, confira o tempo antes de salvar.';
+      studyHelp.append(line);
+    });
+    const content = h('div', { class:'rm' }, draftNotice, timerBusy ? busyNote : modes, grid, studyHelp);
     content.addEventListener('input', saveDraft);
     content.addEventListener('click', saveDraft);
     return {
@@ -11348,9 +11371,9 @@ function todaySummary(){
     h('p', {class:'hint',text:plural(list.length,'estudo registrado','estudos registrados') + ' · tempo líquido, sem descanso e pausa'}),
     h('div', {class:'day-subjects'}, names.slice(0,4).map(name => h('span', {text:name})), names.length>4 ? h('span', {text:'+' + (names.length-4)}) : null),
     h('div', {class:'tf-actions'},
-      h('button', {class:'btn ghost sm',type:'button',text:'Criar relatório',onclick:() => openVisualReport({periodPreset:'hoje'})}),
-      h('button', {class:'btn ghost sm',type:'button',text:'Ver detalhes do dia',onclick:() => applyAnalyticsQuery({scopeType:'all',periodPreset:'hoje',focus:'overview'})}),
-      h('button', {class:'linkbtn',type:'button',text:'Ver registros de hoje',onclick:() => { ui.history = {...ui.history,search:'',areaId:'',disciplineId:'',topicId:'',period:'hoje',type:'',difficulty:'',results:''}; setView('history'); }})));
+      h('button', {class:'btn ghost sm',type:'button',onclick:() => { clearHistoryFilters(); ui.history.search = ''; ui.history.period = 'hoje'; setView('history'); focusViewHeading('history'); }}, icon('i-history'), 'Ver registros de hoje'),
+      h('button', {class:'linkbtn',type:'button',text:'Criar relatório',onclick:() => openVisualReport({periodPreset:'hoje'})}),
+      h('button', {class:'btn ghost sm',type:'button',text:'Ver detalhes do dia',onclick:() => applyAnalyticsQuery({scopeType:'all',periodPreset:'hoje',focus:'overview'})})));
 }
 
 /** 2 · A semana em números reais, com um gráfico pequeno. Clicar leva às Análises desta semana. */
@@ -11580,10 +11603,10 @@ function renderReviews(){
   const freeReview = () => openFreeReview();
   const agenda = reviewAgendaCard();
   if(!anyScheduled){
-    mount(root, h('div', { class:'narrow-screen' },
+    mount(root, h('div', { class:'narrow-screen wide reviews-v7' },
       h('section', { class:'focus-block compact', 'aria-labelledby':'rv-title' },
         h('h3', { class:'tf-title', id:'rv-title', text:'Nada sugerido para revisar agora' }),
-        h('p', { class:'tf-reason', text:'Quando você estuda um assunto (um tópico), o Ciclo passa a sugerir quando revisitá-lo. Revisar é opcional — e você pode revisar uma matéria inteira quando quiser.' }),
+        h('p', { class:'tf-reason', text:'Estude um tópico para receber uma sugestão ou marque uma data na agenda. A revisão livre também aceita uma disciplina inteira.' }),
         h('div', { class:'tf-actions' },
           activeDisciplines().length ? h('button', { class:'btn primary', type:'button', onclick:freeReview }, icon('i-review'), 'Revisão livre') : null,
           h('button', { class:'btn ghost', type:'button', text:'Montar revisão guiada', onclick:() => openGuidedReviewBuilder(revMin) }),
@@ -11596,15 +11619,15 @@ function renderReviews(){
   const parts = [];
   const lead = h('section', { class:'focus-block compact', 'aria-labelledby':'rv-title' },
     h('h3', { class:'tf-title', id:'rv-title', text: off ? 'Sugestões de revisão desligadas'
-      : groups.length ? (groups.length === 1 ? `Você pode revisar ${groups[0].discipline.name}.` : 'Há assuntos que podem valer uma revisão.')
+      : groups.length ? (groups.length === 1 ? `Revisar ${groups[0].discipline.name}` : 'Assuntos para revisitar')
       : 'Nada sugerido para revisar agora.' }),
     h('p', { class:'tf-reason', text: off ? 'Você escolheu não ver sugestões. Dá para revisar qualquer matéria quando quiser, e religar as sugestões em Configurações.'
-      : groups.length ? 'São sugestões, não tarefas. Revise a matéria inteira, escolha os assuntos, ou deixe para depois — nada do seu histórico muda por isso.'
+      : groups.length ? 'Escolha um assunto na agenda ou use Revisão livre para estudar uma disciplina inteira.'
       : (upcoming.length ? `A próxima sugestão é ${upcoming[0].name}, ${fmtRelativeFuture(ReviewSchedule.due(upcoming[0]))}.` : 'Os assuntos voltam sozinhos quando chega a hora.') }),
     h('div', { class:'tf-actions' },
       h('button', { class:'btn ghost', type:'button', onclick:() => openGuidedReviewBuilder(revMin) }, icon('i-play'), 'Montar revisão guiada'),
       h('button', { class: groups.length ? 'btn ghost' : 'btn primary', type:'button', onclick:freeReview }, icon('i-review'), 'Revisão livre'),
-      h('button', { class:'linkbtn muted', type:'button', text:'Como funciona?', onclick:openReviewPrimer }),
+      h('button', { class:'linkbtn muted', type:'button', text:'Entender as sugestões', onclick:openReviewPrimer }),
       off ? h('button', { class:'linkbtn', type:'button', text:'Religar sugestões', onclick: async () => { state.settings.reviewSuggestions = true; await saveSettings(); render(); } }) : null),
     reviewResumeButton(), reviewSituation(due, snoozed, upcoming));
   parts.push(lead, agenda);
@@ -14767,15 +14790,17 @@ const Nav = {
     this.i = s && isNum(s.i) && s.i >= 0 ? s.i : 0;
     if(s && s.p) this.entries[this.i - 1] = s.p;
     this.entries[this.i] = this.location();
-    this.scrollAt[this.i] = window.scrollY;
+    this.scrollAt[this.i] = viewScrollPosition();
     this._replace(this.entries[this.i]);
     this.started = true;
     window.addEventListener('popstate', (e) => this._onPop(e));
-    window.addEventListener('scroll', () => { this.scrollAt[this.i] = window.scrollY; }, { passive:true });
+    window.addEventListener('scroll', e => {
+      if(e.target === document || e.target === viewScrollSurface()) this.scrollAt[this.i] = viewScrollPosition();
+    }, {passive:true, capture:true});
     // ao sair/recarregar, a rolagem atual fica guardada na própria entrada
     window.addEventListener('pagehide', () => {
       this.sync('replace');
-      try { const cur = history.state; if(cur && cur.c === 'ciclo') history.replaceState(Object.assign({}, cur, { sy: window.scrollY }), ''); } catch(_){}
+      try { const cur = history.state; if(cur && cur.c === 'ciclo') history.replaceState(Object.assign({}, cur, { sy: viewScrollPosition() }), ''); } catch(_){}
     });
   },
 
@@ -14895,7 +14920,7 @@ function applyLocation(loc, ctx){
   }
   if(!sameView) setView(view, { noSync:true, noScroll:true, restoreContext:true });
   else render();
-  window.scrollTo({ top: Math.max(0, c.scrollY || 0), behavior:'auto' });
+  viewScrollSurface().scrollTo({ top: Math.max(0, c.scrollY || 0), behavior:'auto' });
   if(keepFocus) return;
   // foco: nunca fica num elemento que saiu da tela; troca de tela → título da tela
   const ae = document.activeElement;
@@ -15023,7 +15048,7 @@ function navDisc(target, dir, opts){
   const prev = ui.discNav || { level:'root' };
   const inIndex = ui.view === 'disciplines' && ui.discTab !== 'deadlines';
   const fromLoc = inIndex ? Nav.location() : null;
-  if(inIndex) ui.discScroll[discLevelKey(prev)] = window.scrollY;
+  if(inIndex) ui.discScroll[discLevelKey(prev)] = viewScrollPosition();
   const next = Object.assign({ level:'root', areaId:null, disciplineId:null, topicId:null }, target || {});
   // salto direto para dentro: a página-pai entra antes no caminho (a não ser que já estejamos no próprio destino)
   if(o.parentLoc && !(Nav.started && Nav.equals(Nav.entries[Nav.i], discLoc(next)))) Nav.pushParent(o.parentLoc);
@@ -15038,7 +15063,7 @@ function navDisc(target, dir, opts){
   else renderDisciplines();
   Nav.sync(o.replace ? 'replace' : 'push');
   const y = dir === 'back' ? (ui.discScroll[discLevelKey(next)] || 0) : 0;
-  window.scrollTo({ top:y, behavior:'auto' });
+  viewScrollSurface().scrollTo({ top:y, behavior:'auto' });
   if(dir === 'back' && document.activeElement) revealElement(document.activeElement);
 }
 /**
@@ -16893,7 +16918,7 @@ function applyAnalyticsQuery(raw, opts){
   if(ui.view !== 'analytics'){ ui.analyticsKeepMode = true; setView('analytics'); }
   else {
     renderAnalytics({ animate:true });
-    window.scrollTo({ top:0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    viewScrollSurface().scrollTo({ top:0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
     if(!o.noHistory) Nav.sync(o.replaceHistory ? 'replace' : 'push');     // v7: cada análise vista é uma entrada do histórico
   }
   return true;
@@ -17015,7 +17040,7 @@ function renderAnalytics(opts){
   const o = opts || {};
   const sub = $('#view-analytics .page-head .sub');
   if(ui.analyticsMode === 'result' && ui.analyticsQuery){
-    if(sub) sub.textContent = 'O resultado da sua escolha. Explore os detalhes quando quiser.';
+    if(sub) sub.textContent = '';
     renderAnalyticsResult(root);
   } else {
     ui.analyticsMode = 'select';
@@ -17562,6 +17587,12 @@ function analyticsReadingGuide(a){
       h('p', {class:'hint',text:a.partial ? 'Este período está em andamento. Os totais consideram somente os dias até hoje.' : 'O período selecionado está completo.'})));
 }
 
+function resultDisclosure(title, nodes){
+  const content = nodes.filter(Boolean);
+  return content.length ? h('details', {class:'disclosure result-detail'},
+    h('summary', {text:title}), h('div', {class:'disclosure-body'}, content)) : null;
+}
+
 function renderAnalyticsResult(root){
   let q = ui.analyticsQuery;
   let a = AnalyticsEngine.query(q);
@@ -17572,18 +17603,19 @@ function renderAnalyticsResult(root){
     toast('O item que estava sendo analisado não existe mais. Mostrando todos os estudos.', 'info', { title:'Análise ajustada' });
   }
   const focus = q.focus;
-  const parts = [analyticsResultHeader(a), analyticsReadingGuide(a)];
+  const parts = [analyticsResultHeader(a)];
   const empty = analyticsEmptyFor(a, focus);
   if(empty){
-    parts.push(empty);
+    parts.push(empty, analyticsReadingGuide(a));
     mount(root, h('div', { class:'an-result' }, parts));
     return;
   }
   // v7 — a visão geral é um PANORAMA: a resposta grande, dois gráficos e os caminhos para explorar
   if(focus === 'overview'){
-    parts.push(...analyticsPanorama(a));
-    const ex = analyticsExploreBlock(a, focus);
-    if(ex) parts.push(ex);
+    const [summary, ...details] = analyticsPanorama(a);
+    parts.push(summary, resultDisclosure('Gráficos e observações', details.slice(0,-1)),
+      resultDisclosure('Explorar este período', [details.at(-1), analyticsExploreBlock(a, focus)]),
+      analyticsReadingGuide(a));
     mount(root, h('div', { class:'an-result is-panorama' }, parts));
     return;
   }
@@ -17603,10 +17635,7 @@ function renderAnalyticsResult(root){
   } else parts.push(vizNode, resultNode);
   const ins = analyticsInsightsBlock(a, focus);
   if(ins) parts.push(ins);
-  const next = analyticsNextQuestions(a, focus);
-  if(next) parts.push(next);
-  const ex = analyticsExploreBlock(a, focus);
-  if(ex) parts.push(ex);
+  parts.push(resultDisclosure('Explorar este período', [analyticsNextQuestions(a, focus), analyticsExploreBlock(a, focus)]), analyticsReadingGuide(a));
   mount(root, h('div', { class:'an-result' }, parts));
 }
 
@@ -20280,14 +20309,13 @@ function renderHistory(){
   const filterBtn = h('button', { class:'btn ghost', type:'button', 'aria-haspopup':'dialog', onclick:openHistoryFilters },
     'Filtros', active.length ? h('span', { class:'btn-count', text:String(active.length) }) : null);
   mount(root, h('div', { class:'narrow-screen' },
-    historyDiscoveries(),
-    h('h3', { class:'block-label hist-what', text:'O que aconteceu' }),
+
     h('div', { class:'search-bar' }, search.node, filterBtn),
     active.length ? h('div', { class:'filter-chips', role:'group', 'aria-label':'Filtros ativos' },
       active.map(x => h('button', { class:'filter-chip', type:'button', 'aria-label':`Remover filtro ${x.label}`,
         onclick:() => { x.clear(); ui.historyLimit = HISTORY_PAGE_SIZE; renderHistory(); } }, h('span', { text:x.label }), icon('i-close', 'btn-icon'))),
       h('button', { class:'linkbtn muted', type:'button', text:'limpar tudo', onclick:() => { clearHistoryFilters(); renderHistory(); } })) : null,
-    tableHolder));
+    tableHolder, historyDiscoveries()));
   renderHistoryTable();
 }
 
@@ -20453,7 +20481,7 @@ function renderHistoryTable(){
         return h('li', { class:'line' },
           h('button', { class:'line-main', type:'button', 'aria-label':label, title: allTopics.length > 3 ? allTopics.join(' · ') : null,
               onclick:() => openEditSessionModal(s.id) },
-            h('span', { class:'line-t', text: title }),
+            h('span', { class:'line-t hist-edit' }, title, h('span', {class:'edit-affordance', 'aria-hidden':'true', text:'Editar'})),
             sub ? h('span', { class:'line-s', text: sub }) : null,
             s.comment ? h('span', { class:'line-why', text: '“' + s.comment + '”' }) : null,
             // v7.1 — um marco registrado aparece na leitura do dia (é parte do que aconteceu)
@@ -21146,7 +21174,8 @@ function renderData(){
       h('p', { class:'block-note', text:'Apaga áreas, disciplinas, tópicos, estudos registrados, planos e prazos deste navegador. Não pode ser desfeito — faça um backup antes.' }),
       h('button', { class:'btn danger sm', type:'button', text:'Apagar todos os dados', onclick:wipeAll })));
 
-  mount(root, h('div', { class:'narrow-screen' }, main, protect, tools, more, v2Block, danger));
+  mount(root, h('div', {class:'data-workspace'}, main,
+    h('div', {class:'data-options'}, protect, tools, more, v2Block, danger)));
 }
 
 /* ---------- RESTAURAR BACKUP (v6.5) ----------
@@ -22700,7 +22729,7 @@ function helpClearSearch(){
 }
 
 function helpScrollTop(){
-  window.scrollTo({ top:0, behavior:'auto' });     // v6.2: página nova começa no topo, sem esperar
+  viewScrollSurface().scrollTo({ top:0, behavior:'auto' });     // v6.2: página nova começa no topo, sem esperar
 }
 
 /** Abre um artigo dentro da Central (com trilha) ou em painel, fora dela. */
@@ -23771,13 +23800,51 @@ function openReportProblemDrawer(){
  * significam e qual o próximo passo. Nunca abre um artigo inteiro quando três
  * linhas resolvem — o aprofundamento fica em "Leia também", nomeado.
  */
+function screenHelpExample(view){
+  const subject = activeDisciplines()[0];
+  switch(view){
+    case 'analytics': {
+      const analysis = AnalyticsEngine.query(ui.analyticsMode === 'result' && ui.analyticsQuery || defaultAnalyticsQuery());
+      return analyticsPeriodLabel(analysis.query) + ' reúne ' + plural(analysis.totals.count, 'estudo', 'estudos') +
+        ' e ' + fmtDuration(analysis.totals.minutes) + ' de estudo. Em Ver registros, confira as sessões que formam esse total.';
+    }
+    case 'reviews': {
+      const topic = state.topics.find(t => !t.archived && !getDiscipline(t.disciplineId)?.archived && getDiscipline(t.disciplineId));
+      return topic ? 'Na agenda, procure “' + topic.name + '”, de ' + disciplineName(topic.disciplineId) +
+        '. Agendar permite escolher outra data ou desligar sugestões. Marque mais assuntos para aplicar a mesma escolha em lote.'
+        : 'Adicione um tópico em Organizar para marcar a primeira revisão. A revisão livre também funciona só com a disciplina.';
+    }
+    case 'history': {
+      const record = filteredSessions()[0];
+      return record ? 'Abra o registro de ' + SessionModel.title(record) + ' de ' + fmtDateBR(record.date) +
+        '. Você pode conferir os ' + fmtDuration(record.minutes) + ', corrigir os campos e salvar.'
+        : 'Registre um estudo e procure pelo nome da disciplina. Se houver filtros ativos, limpe-os para consultar todo o histórico.';
+    }
+    case 'today': {
+      const count = sessionsToday().length;
+      return count ? 'Você já registrou ' + plural(count,'estudo','estudos') + ' hoje. Abra Ver registros de hoje para conferir ou corrigir.'
+        : subject ? 'Para começar com ' + subject.name + ', escolha Estudar. Se já terminou, use Registrar estudo e informe os minutos.'
+        : 'Adicione sua primeira disciplina. Depois, escolha se quer iniciar o cronômetro ou registrar minutos já estudados.';
+    }
+    case 'disciplines': return subject ? 'Abra ' + subject.name + ' para consultar os tópicos ou acrescentar um assunto.' : 'Cadastre a primeira disciplina. Os tópicos podem ser acrescentados quando você precisar.';
+    case 'plan': return subject ? 'Em Planejamento, defina o tempo disponível na semana. Você pode reservar parte dele para ' + subject.name + '.' : 'Comece cadastrando uma disciplina em Organizar. Depois escolha uma meta para a semana.';
+    case 'data': return 'Seu navegador guarda ' + plural(state.sessions.length,'estudo','estudos') + '. Use Fazer backup para guardar uma cópia em arquivo.';
+    case 'settings': return 'O tema atual é ' + (document.documentElement.dataset.theme === 'dark' ? 'escuro' : 'claro') + '. Em Aparência, escolha o tema e confira a mudança na própria tela.';
+    default: return 'Busque uma dúvida, como “revisão”. Abra um artigo e use Voltar para retomar a consulta.';
+  }
+}
+
 function openScreenHelp(){
   const s = SCREEN_HELP[ui.view];
   if(!s){ setView('help'); return; }
   const articles = (s.articles || []).map(getArticle).filter(Boolean).slice(0, 4);
   const body = h('div',
-    h('p', { class:'prose', style:'margin-bottom:14px', text:s.intro }),
-    h('ul', { class:'reasons' }, s.points.map(p => h('li', null, richText(p)))),
+    h('h4', {class:'block-label', text:'Como funciona'}),
+    h('p', {class:'prose', text:s.intro}),
+    h('h4', {class:'block-label guide-heading', text:'Na prática'}),
+    h('p', {class:'guide-example', text:screenHelpExample(ui.view)}),
+    h('details', {class:'disclosure'}, h('summary', {text:'Passo a passo'}),
+      h('ul', {class:'reasons'}, s.points.map(p => h('li', null, richText(p))))),
     s.cta ? h('div', { class:'help-cta' },
       h('p', { class:'card-title', text:'Próximo passo' }),
       h('button', { class:'btn primary sm', type:'button', text:s.cta.label,

@@ -1,6 +1,6 @@
 # Ciclo
 
-**v8.0.0 — The Next Generation**, em revisão. [Relatório de transformação e evidências](audit/next-generation/RELATORIO.md).
+**v8.1.0 — Polish, Clarity & Identity**, em revisão. [Relatório da versão e validação](audit/polish/RELATORIO.md).
 
 **Seu sistema de estudos.** Organize o que você estuda, registre seus estudos, receba sugestões de revisão no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta e sem servidor. Depois de aberto, o Ciclo não usa a internet para nada.
 

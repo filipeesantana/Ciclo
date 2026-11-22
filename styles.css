@@ -5813,3 +5813,91 @@ body{background:var(--workspace-bg)}
   .modal.study .rm-how .how-results{margin-top:6px}
   .modal.study:not(.is-sub)>#modal-actions{margin-top:10px;padding-top:10px}
 }
+
+/* v8.1 · estações de trabalho e detalhes progressivos */
+.guide-heading { margin-block: 20px 6px; }
+.guide-example { padding: 12px 16px; border-inline-start: 3px solid var(--primary); background: var(--primary-tint); color: var(--text); }
+.inline-guide { margin-top: 12px; color: var(--text-secondary); }
+.inline-guide summary { cursor: pointer; width: fit-content; padding-block: 8px; font-size: 14px; }
+.inline-guide summary svg { vertical-align: middle; margin-inline: 4px; }
+.inline-guide p { margin-block: 4px 10px; max-width: 62ch; }
+.inline-guide summary:hover, .disclosure summary:hover { color: var(--text); }
+.hist-edit { display: flex; align-items: baseline; gap: 12px; }
+.edit-affordance { font-size: 12px; font-weight: 550; color: var(--primary); }
+.an-head-actions { flex-wrap: wrap; }
+.an-hero-fact { background: transparent; border: 0; border-inline-start: 1px solid var(--workspace-line); border-radius: 0; }
+.result-detail { margin-block: 8px; }
+.result-detail > summary { font-weight: 600; }
+.result-detail .an-block { margin-block: 8px; }
+.review-agenda-selection .tf-actions[hidden], .report-controls .field[hidden] { display: none; }
+.agenda-status { display: inline-block; font-size: 12px; line-height: 1.4; color: var(--text-secondary); }
+.agenda-status[data-when="today"] { color: var(--primary); font-weight: 650; }
+.agenda-status[data-when="past"] { font-weight: 600; }
+.review-agenda-row:has(.review-agenda-topic input:checked) { background: var(--primary-tint); }
+.review-agenda-topic input { accent-color: var(--primary); }
+.review-agenda .review-agenda-row { padding-inline: 6px; }
+.focus-brand { color: var(--text); font-weight: 650; font-size: 16px; }
+.focus-brand .brand-mark { color: var(--primary); width: 25px; height: 25px; }
+.focus-top { border-bottom: 1px solid var(--workspace-line); padding-bottom: 10px; }
+.focus-mode .focus-clock { font-weight: 520; }
+.focus-state { display: inline-flex; align-items: center; gap: 8px; }
+.focus-state::before { content: ''; width: 11px; height: 11px; border: 2px solid currentColor; border-inline-end-color: transparent; border-radius: 50%; }
+.focus-mode[data-state="paused"] .focus-state::before { border-radius: 1px; border: 0; border-inline: 3px solid currentColor; width: 8px; }
+.focus-guide { align-self: center; text-align: center; }
+.focus-guide > summary { margin-inline: auto; }
+.focus-guide p, .report-stage .inline-guide p { font-size: 14px; }
+.focus-hint { margin-top: 2px; }
+.data-workspace, .data-options { display: grid; align-items: start; gap: 18px; }
+.data-workspace > *, .data-options > * { margin-top: 0; }
+@media (min-width: 861px) and (min-height: 580px) {
+  .app { height: 100dvh; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+  .app > div, .main, .view.active { min-height: 0; }
+  .main { height: 100%; display: flex; flex-direction: column; padding-block: clamp(12px,2vh,24px) 12px; }
+  .main > :not(.view), .view > .page-head { flex: none; }
+  .view.active { display: flex; flex-direction: column; flex: 1; }
+  .view.active > .view-body { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; overscroll-behavior-y: contain; padding: 4px 8px 12px 3px; }
+  .toolbar, .section-nav { margin-bottom: 8px; }
+  .page-head { margin-bottom: 12px; }
+  .page-head h2 { font-size: clamp(31px,3vw,44px); }
+  .page-head .sub { margin-top: 4px; }
+  .sidebar { max-height: 100dvh; overflow-y: auto; }
+  .main .tip, .main .timerbar { margin-bottom: 10px; }
+  .an-result, .disc-screen, .data-workspace, .reviews-v7 { max-width: none; }
+  .an-head { margin-block: 0 10px; padding-block: 12px; }
+  .an-hero { margin-block: 8px 12px; padding: clamp(16px,2vh,24px); }
+  .reviews-v7 { display: grid; grid-template-columns: minmax(225px,.72fr) minmax(0,1.6fr); gap: 12px 20px; align-items: start; }
+  .reviews-v7 > * { grid-column: 1; margin: 0; }
+  .reviews-v7 .review-agenda { grid-column: 2; grid-row: 1 / span 4; width: 100%; }
+  .reviews-v7 > .focus-block { padding: 18px; }
+  .review-agenda { padding: 16px; }
+  .review-agenda-controls { gap: 8px; margin-block: 10px; grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .review-agenda-selection { margin-bottom: 4px; }
+  .review-agenda-list { max-height: clamp(125px,calc(100dvh - 470px),580px); overflow-y: auto; scrollbar-gutter: stable; }
+  .data-workspace { grid-template-columns: minmax(240px,.9fr) minmax(0,1.1fr); }
+  .set-nav, .plan-screen .wk-calendar-head { position: sticky; top: 0; background: var(--workspace-bg); z-index: 1; }
+  #history-body > .narrow-screen { display: grid; max-width: none; grid-template-columns: minmax(0,1.5fr) minmax(220px,.8fr); column-gap: 22px; }
+  #history-body > .narrow-screen > * { grid-column: 1; }
+  #history-body .disc-block { grid-column: 2; grid-row: 1 / span 4; margin-block: 0; }
+  #history-body .narrow-screen:not(:has(.disc-block)) { grid-template-columns: minmax(0,1fr); }
+  #history-table-card { max-height: calc(100dvh - 355px); overflow-y: auto; scrollbar-gutter: stable; }
+  #help-body { display: grid; grid-template-columns: minmax(205px,.65fr) minmax(0,1.55fr); gap: 20px; align-items: start; }
+  #help-body .help-searchcard { position: sticky; top: 0; margin: 0; }
+  #help-panel { min-width: 0; }
+  .modal.study .rm-grid[data-mode="timer"] { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px 24px; }
+  .modal.study .rm-grid[data-mode="timer"] > .rm-timer { grid-column: 2; grid-row: 1 / span 2; }
+  .modal.study .rm-grid[data-mode="timer"] > .rm-how { grid-column: 1; }
+  .modal.study .type-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .modal.study .type-opt { min-height: 38px; padding: 6px 10px; }
+  .modal.study .type-ic { width: 20px; height: 20px; }
+  .modal.study .type-d { display: none; }
+  .modal.study .rm-grid[data-mode="manual"] > .rm-how { padding-top: 9px; }
+}
+@media (max-width: 860px) {
+  .mobile-head-actions { gap: 0; }
+  .mobile-head .brand-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .an-hero-fact { border-inline-start: 0; border-block-start: 1px solid var(--workspace-line); }
+  .review-agenda-topic .agenda-status { display: block; }
+}
+@media (forced-colors: active) {
+  .agenda-status[data-when="today"], .an-hero-fact { border: 1px solid CanvasText; }
+}

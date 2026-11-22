@@ -2840,6 +2840,16 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 const CHANGELOG = [
   /* A versão atual tem um resumo curto (janela "O Ciclo foi atualizado.")
      e seções recolhíveis ("Ver todas as novidades"). As anteriores ficam como texto. */
+  { v:'8.1.0', title:'Polish, Clarity & Identity',
+    intro:'Mais espaço para estudar, conferir o histórico e escolher a próxima revisão.',
+    highlights:[
+      'No registro, escolha a disciplina e o tempo. Os tipos de estudo ficam em um grupo opcional.',
+      'Revisões organiza os assuntos por data. Marque tópicos para agendar ou revisar juntos.',
+      'Resultados começa pelo panorama. Abra os gráficos ou confira os registros do período.',
+      'Personalize a assinatura e a marca da imagem antes de baixar o relatório.'
+    ],
+    sections:[{title:'Ajuda desta tela',items:['Abra a ajuda para ver um exemplo com os estudos deste navegador. O exemplo acompanha a tela e o período escolhido.']}]
+  },
   { v:'8.0.0', title:'The Next Generation',
     intro:'Comece em Hoje, escolha quando revisar e transforme Resultados em uma imagem.',
     highlights:[
