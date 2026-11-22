@@ -6,10 +6,16 @@ const vm=require('node:vm');
 const acorn=require('acorn');
 const {root}=require('./support.cjs');
 const esc=s=>String(s??'').replace(/\|/g,'\\|').replace(/[\r\n]+/g,' ').replace(/`/g,'′');
-const main=fs.readFileSync(path.join(root,'app.js'),'utf8');
-const mainLines=main.split('\n').length;
-const app=main+'\n'+(fs.existsSync(path.join(root,'reviews.js'))?fs.readFileSync(path.join(root,'reviews.js'),'utf8'):'');
-const sourceAt=line=>line>mainLines?{file:'reviews.js',line:line-mainLines}:{file:'app.js',line};
+const sources=['app.js','reviews.js','reports.js'].filter(file=>fs.existsSync(path.join(root,file)))
+ .map(file=>({file,code:fs.readFileSync(path.join(root,file),'utf8')}));
+const app=sources.map(source=>source.code).join('\n');
+const sourceAt=line=>{
+ for(const source of sources){
+  const count=source.code.split('\n').length;
+  if(line<=count)return {file:source.file,line};
+  line-=count;
+ }
+};
 const content=fs.readFileSync(path.join(root,'content.js'),'utf8');
 const ast=acorn.parse(app,{ecmaVersion:'latest',locations:true});
 const contentAst=acorn.parse(content,{ecmaVersion:'latest',locations:true});
@@ -43,22 +49,23 @@ for(const a of catalog.articles){
  for(const [,term]of JSON.stringify(a).matchAll(/\[\[([a-zA-Z]+)(?:\|[^\]]+)?\]\]/g))if(!catalog.glossary[term])broken.push(`${a.id}: glossário ${term}`);
 }
 for(const [term,g]of Object.entries(catalog.glossary))if(g.article&&!ids.has(g.article))broken.push(`glossário ${term}: artigo ${g.article}`);
-const dest=path.join(root,'audit');fs.mkdirSync(dest,{recursive:true});
-let md=`# Inventário dos controles e camadas\n\nGerado por \`npm run audit:inventory\`. Fontes: app.js e reviews.js. ${controls.length} construções de controles, ${layers.length} construções de camadas e ${functions.length} funções declaradas. Uma construção pode gerar vários controles conforme os dados. Este índice não afirma que todos os estados foram exercitados. Os controles fixos de navegação estão em index.html; as opções dinâmicas e a cobertura estão na [matriz](MATRIZ-FUNCIONALIDADES.md).\n\n| Contexto | Controle | ID / nome | Rótulo ou expressão | Linha |\n|---|---|---|---|---|\n`;
-for(const c of controls)md+=`| ${esc(c.owner)} | ${c.tag} ${esc(c.type)} | ${esc(c.id)} | ${esc(c.label)} | [${c.line}](../${c.file}#L${c.line}) |\n`;
+const dest=process.env.AUDIT_OUTPUT || path.join(root,'audit');
+const sourcePath=path.relative(dest,root).split(path.sep).join('/');fs.mkdirSync(dest,{recursive:true});
+let md=`# Inventário dos controles e camadas\n\nGerado por \`npm run audit:inventory\`. Fontes: ${sources.map(s=>s.file).join(', ')}. ${controls.length} construções de controles, ${layers.length} construções de camadas e ${functions.length} funções declaradas. Uma construção pode gerar vários controles conforme os dados. Este índice não afirma que todos os estados foram exercitados. Os controles fixos de navegação estão em index.html; as opções dinâmicas e a cobertura estão na [matriz](${sourcePath}/audit/MATRIZ-FUNCIONALIDADES.md).\n\n| Contexto | Controle | ID / nome | Rótulo ou expressão | Linha |\n|---|---|---|---|---|\n`;
+for(const c of controls)md+=`| ${esc(c.owner)} | ${c.tag} ${esc(c.type)} | ${esc(c.id)} | ${esc(c.label)} | [${c.line}](${sourcePath}/${c.file}#L${c.line}) |\n`;
 md+='\n## Camadas\n\n| Contexto | Abertura | Linha |\n|---|---|---|\n';
-for(const l of layers)md+=`| ${esc(l.owner)} | ${l.kind} | [${l.line}](../${l.file}#L${l.line}) |\n`;
+for(const l of layers)md+=`| ${esc(l.owner)} | ${l.kind} | [${l.line}](${sourcePath}/${l.file}#L${l.line}) |\n`;
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');let fixed=0;
 md+='\n## Controles fixos em index.html\n\n| Controle | ID | Nome / texto | Linha |\n|---|---|---|---|\n';
 for(const match of html.matchAll(/<(button|input|select|textarea|details)\b([^>]*)>/g)){
  const attrs=Object.fromEntries([...match[2].matchAll(/([\w-]+)="([^"]*)"/g)].map(m=>[m[1],m[2]]));
  const end=html.indexOf('</'+match[1]+'>',match.index),label=end>=0?html.slice(match.index+match[0].length,end).replace(/<[^>]*>/g,'').trim():'';
  const line=html.slice(0,match.index).split('\n').length;fixed++;
- md+=`| ${match[1]} | ${esc(attrs.id)} | ${esc(attrs['aria-label']||label||attrs.placeholder)} | [${line}](../index.html#L${line}) |\n`;
+ md+=`| ${match[1]} | ${esc(attrs.id)} | ${esc(attrs['aria-label']||label||attrs.placeholder)} | [${line}](${sourcePath}/index.html#L${line}) |\n`;
 }
 fs.writeFileSync(path.join(dest,'INVENTARIO-CONTROLES.md'),md);
 md=`# Conteúdo e destinos\n\nInventário dos ${catalog.articles.length} artigos, ${catalog.faq.length} perguntas frequentes, ${Object.keys(catalog.glossary).length} termos e ${catalog.prompts.length} prompts. Links, ações e glossário conferidos automaticamente; abertura dos artigos verificada em navegador. Isso não substitui validação científica ou pesquisa com estudantes.\n\n| Artigo | Local | Resposta curta / propósito | Fonte |\n|---|---|---|---|\n`;
-for(const a of catalog.articles)md+=`| ${esc(a.title)} | ${a.section} / ${a.group} | ${esc(a.quick||a.oneLine||a.summary)} | [${a.id}](../content.js#L${articleLines.get(a.id)}) |\n`;
+for(const a of catalog.articles)md+=`| ${esc(a.title)} | ${a.section} / ${a.group} | ${esc(a.quick||a.oneLine||a.summary)} | [${a.id}](${sourcePath}/content.js#L${articleLines.get(a.id)}) |\n`;
 md+='\n## Perguntas frequentes\n\n';for(const f of catalog.faq)md+=`- ${esc(f.q)} → ${esc(f.article||f.id)}\n`;
 md+='\n## Prompts e colunas\n\n';for(const p of catalog.prompts)md+=`- ${esc(p.title||p.label||p.id)}: ${esc(p.desc||p.description||p.ask||'prompt local copiável')}.\n`;
 md+='\nCSV completo: '+catalog.columns.map(c=>'`'+c.col+'`').join(', ')+'.\n';

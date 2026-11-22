@@ -9,7 +9,8 @@
     "audit:benchmark": "node tests/benchmark.cjs",
     "audit:field": "node tests/field-review.cjs",
     "audit:field:performance": "node tests/field-performance.cjs",
-    "audit:experience": "node tests/experience-visual.cjs"
+    "audit:experience": "node tests/experience-visual.cjs",
+    "audit:next-generation": "node tests/next-generation-audit.cjs"
   },
   "devDependencies": {
     "acorn": "8.15.0",

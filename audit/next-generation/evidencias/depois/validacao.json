@@ -1,0 +1,398 @@
+{
+  "engine": "chromium",
+  "version": "154.0.8037.57",
+  "versions": [
+    "8.0.0"
+  ],
+  "errors": [],
+  "requests": [],
+  "layout": [
+    {
+      "name": "hoje",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "registro",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "agenda",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "relatorio",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "foco",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "apresentacao",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "hoje",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "registro",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "agenda",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "relatorio",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "foco",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "apresentacao",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "hoje",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "registro",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "agenda",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "relatorio",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "foco",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "apresentacao",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "hoje",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "registro",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "agenda",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "relatorio",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "foco",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "apresentacao",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "hoje",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "registro",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "agenda",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "relatorio",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "foco",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "apresentacao",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "hoje",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "registro",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "agenda",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "relatorio",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "foco",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "apresentacao",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "zoom-css-200",
+      "width": 1280,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    }
+  ],
+  "forms": [
+    {
+      "width": 1440,
+      "theme": "dark",
+      "height": 502,
+      "viewport": 502,
+      "minutesVisible": true
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "height": 744,
+      "viewport": 744,
+      "minutesVisible": true
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "height": 810,
+      "viewport": 810,
+      "minutesVisible": true
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "height": 502,
+      "viewport": 502,
+      "minutesVisible": true
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "height": 744,
+      "viewport": 744,
+      "minutesVisible": true
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "height": 810,
+      "viewport": 810,
+      "minutesVisible": true
+    }
+  ]
+}
