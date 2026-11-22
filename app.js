@@ -11611,7 +11611,6 @@ function renderReviews(){
           activeDisciplines().length ? h('button', { class:'btn primary', type:'button', onclick:freeReview }, icon('i-review'), 'Revisão livre') : null,
           h('button', { class:'btn ghost', type:'button', text:'Montar revisão guiada', onclick:() => openGuidedReviewBuilder(revMin) }),
           reviewResumeButton(),
-          h('button', { class:'linkbtn', type:'button', text:'Como funcionam as revisões?', onclick:openReviewPrimer }),
           activeDisciplines().length ? h('button', { class:'linkbtn', type:'button', text:'Adicionar um tópico', onclick:() => HELP_ACTIONS.addTopic() }) : null)), agenda));
     return;
   }
@@ -11627,7 +11626,6 @@ function renderReviews(){
     h('div', { class:'tf-actions' },
       h('button', { class:'btn ghost', type:'button', onclick:() => openGuidedReviewBuilder(revMin) }, icon('i-play'), 'Montar revisão guiada'),
       h('button', { class: groups.length ? 'btn ghost' : 'btn primary', type:'button', onclick:freeReview }, icon('i-review'), 'Revisão livre'),
-      h('button', { class:'linkbtn muted', type:'button', text:'Entender as sugestões', onclick:openReviewPrimer }),
       off ? h('button', { class:'linkbtn', type:'button', text:'Religar sugestões', onclick: async () => { state.settings.reviewSuggestions = true; await saveSettings(); render(); } }) : null),
     reviewResumeButton(), reviewSituation(due, snoozed, upcoming));
   parts.push(lead, agenda);
@@ -17589,8 +17587,15 @@ function analyticsReadingGuide(a){
 
 function resultDisclosure(title, nodes){
   const content = nodes.filter(Boolean);
-  return content.length ? h('details', {class:'disclosure result-detail'},
-    h('summary', {text:title}), h('div', {class:'disclosure-body'}, content)) : null;
+  if(!content.length) return null;
+  const expanded = ui.analyticsExplore;
+  const detail = h('details', {class:'disclosure result-detail', open:expanded.has(title)},
+    h('summary', {text:title}), h('div', {class:'disclosure-body'}, content));
+  detail.addEventListener('toggle', () => {
+    if(!detail.isConnected) return;
+    if(detail.open) expanded.add(title); else expanded.delete(title);
+  });
+  return detail;
 }
 
 function renderAnalyticsResult(root){
@@ -17612,9 +17617,9 @@ function renderAnalyticsResult(root){
   }
   // v7 — a visão geral é um PANORAMA: a resposta grande, dois gráficos e os caminhos para explorar
   if(focus === 'overview'){
-    const [summary, ...details] = analyticsPanorama(a);
-    parts.push(summary, resultDisclosure('Gráficos e observações', details.slice(0,-1)),
-      resultDisclosure('Explorar este período', [details.at(-1), analyticsExploreBlock(a, focus)]),
+    const {summary,details,paths} = analyticsPanorama(a);
+    parts.push(summary, resultDisclosure('Gráficos e observações', details),
+      resultDisclosure('Explorar este período', [paths, analyticsExploreBlock(a, focus)]),
       analyticsReadingGuide(a));
     mount(root, h('div', { class:'an-result is-panorama' }, parts));
     return;
@@ -17662,7 +17667,7 @@ const ANALYTICS_PATHS = [
 ];
 function analyticsPanorama(a){
   const t = a.totals, cmp = a.previousComparison, sc = a.scope;
-  const out = [];
+  const details = [];
   /* 1. a resposta, grande */
   const delta = cmp.available && isNum(cmp.minutesDelta) && t.count > 0 ? cmp.minutesDelta : null;
   const deltaText = delta === null ? null
@@ -17681,7 +17686,7 @@ function analyticsPanorama(a){
     rq.sets ? heroFact('Acerto registrado', fmtAccuracy(rq.pct), `${rq.correct} de ${plural(rq.total, 'questão', 'questões')}`, () => setAnalyticsFocus('results'))
       : a.results.milestoneCount ? heroFact('Marcos registrados', String(a.results.milestoneCount), 'o que você conseguiu fazer', () => setAnalyticsFocus('learning')) : null
   ].filter(Boolean);
-  out.push(h('section', { class:'an-hero', 'aria-label':'Resumo do período' },
+  const summary = h('section', { class:'an-hero', 'aria-label':'Resumo do período' },
     h('div', { class:'an-hero-main' },
       h('p', { class:'an-hero-k', text: sc.type === 'all' ? 'Tempo estudado' : 'Tempo estudado em ' + sc.label }),
       h('p', { class:'an-hero-v num', text: fmtDuration(t.minutes) }),
@@ -17689,7 +17694,7 @@ function analyticsPanorama(a){
       deltaText ? h('p', { class:'an-hero-d ' + (delta === null || Math.abs(delta) < 5 ? 'is-flat' : delta >= 0 ? 'is-up' : 'is-down'), text: deltaText,
         title: comparedPeriodsText(cmp) }) : null,
       deltaText ? h('p', { class:'an-hero-cmp', text: `${fmtShortRange(cmp.curRange)} × ${fmtShortRange(cmp.prevRange)}${cmp.partial ? ' (mesmos dias, até hoje)' : ' (períodos completos)'}` }) : null),
-    h('dl', { class:'an-hero-facts' + (facts4.length > 3 ? ' is-four' : '') }, facts4)));
+    h('dl', { class:'an-hero-facts' + (facts4.length > 3 ? ' is-four' : '') }, facts4));
 
   /* 2. dois gráficos lado a lado */
   const charts = [];
@@ -17709,7 +17714,7 @@ function analyticsPanorama(a){
             onclick:() => setAnalyticsFocus(distMode === 'topic' ? 'topics' : 'distribution') }) : null,
       estimateNote(top, distMode)));
   }
-  if(charts.length) out.push(h('div', { class:'an-pan-grid' + (charts.length === 1 ? ' is-single' : '') }, charts));
+  if(charts.length) details.push(h('div', { class:'an-pan-grid' + (charts.length === 1 ? ' is-single' : '') }, charts));
 
   /* 3. até três observações factuais */
   const facts = [];
@@ -17723,7 +17728,7 @@ function analyticsPanorama(a){
   else if(delta !== null) facts.push('Seu tempo registrado ficou parecido com o do período anterior equivalente.');
   const best = a.byWeekday.slice().sort((x, y) => y.minutes - x.minutes)[0];
   if(facts.length < 3 && a.days >= 14 && t.count >= 5 && best && best.minutes > 0) facts.push(`${best.label} foi o dia da semana com mais estudo.`);
-  if(facts.length) out.push(h('section', { class:'an-block an-pan-facts', 'aria-labelledby':'an-pan-f' },
+  if(facts.length) details.push(h('section', { class:'an-block an-pan-facts', 'aria-labelledby':'an-pan-f' },
     h('h3', { class:'an-block-t', id:'an-pan-f' }, 'O que se destaca', helpDot('insights')),
     h('ul', { class:'an-fact-list' }, facts.slice(0, 3).map(f => h('li', { text:f }))),
     h('p', { class:'an-foot-note', text:'Fatos calculados dos seus registros — sem palpites sobre causas.' })));
@@ -17743,7 +17748,7 @@ function analyticsPanorama(a){
     learning: () => a.results.milestoneCount ? plural(a.results.milestoneCount, 'marco registrado', 'marcos registrados') : (a.results.conceptCount ? plural(a.results.conceptCount, 'conceito explicado', 'conceitos explicados') : 'nenhum marco registrado'),
     compare: () => 'esta semana ao lado da anterior'
   };
-  out.push(h('section', { class:'an-block an-paths', 'aria-labelledby':'an-paths-t' },
+  const paths = h('section', { class:'an-block an-paths', 'aria-labelledby':'an-paths-t' },
     h('h3', { class:'an-block-t', id:'an-paths-t', text:'Explore seus estudos' }),
     h('p', { class:'an-step-help', text:`Cada pergunta usa o mesmo período (${analyticsPeriodLabel(a.query).toLowerCase()})${sc.type === 'all' ? '' : ' e o mesmo recorte'}.` }),
     h('div', { class:'an-paths-grid', role:'list' }, ANALYTICS_PATHS.map(pth => {
@@ -17758,8 +17763,8 @@ function analyticsPanorama(a){
     })),
     h('div', { class:'an-paths-foot' },
       h('button', { class:'btn ghost sm', type:'button', text:'Personalizar análise', onclick:() => openAnalyticsSelector({ custom:true }) }),
-      h('span', { class:'hint', text:'Escolha disciplinas, tópicos, tipos de estudo e o período.' }))));
-  return out;
+      h('span', { class:'hint', text:'Escolha disciplinas, tópicos, tipos de estudo e o período.' })));
+  return {summary,details,paths};
 }
 function heroFact(label, value, sub, onOpen){
   return h('div', { class:'an-hero-fact' },
@@ -23810,7 +23815,8 @@ function screenHelpExample(view){
   const subject = activeDisciplines()[0];
   switch(view){
     case 'analytics': {
-      const analysis = AnalyticsEngine.query(ui.analyticsMode === 'result' && ui.analyticsQuery || defaultAnalyticsQuery());
+      if(ui.analyticsMode !== 'result') return 'Escolha o período e uma pergunta. Para consultar uma disciplina ou um tópico, use Personalizar análise.';
+      const analysis = AnalyticsEngine.query(ui.analyticsQuery || defaultAnalyticsQuery());
       return analyticsPeriodLabel(analysis.query) + ' reúne ' + plural(analysis.totals.count, 'estudo', 'estudos') +
         ' e ' + fmtDuration(analysis.totals.minutes) + ' de estudo. Em Ver registros, confira as sessões que formam esse total.';
     }
@@ -23853,6 +23859,7 @@ function openScreenHelp(){
     h('p', {class:'prose', text:s.intro}),
     h('h4', {class:'block-label guide-heading', text:'Na prática'}),
     h('p', {class:'guide-example', text:screenHelpExample(ui.view)}),
+    ui.view === 'reviews' ? h('button', {class:'linkbtn', type:'button', text:'Entender as sugestões de revisão', onclick:openReviewPrimer}) : null,
     h('details', {class:'disclosure'}, h('summary', {text:'Passo a passo'}),
       h('ul', {class:'reasons'}, s.points.map(p => h('li', null, richText(p))))),
     s.cta ? h('div', { class:'help-cta' },
@@ -23898,8 +23905,9 @@ function renderTips(){
 
   slot.appendChild(h('div', { class:'tip', role:'note' },
     icon('i-help', 'nav-icon'),
-    h('div', { class:'tip-main' }, h('strong', { text:tip.title }),
-      tip.steps ? h('ol', { class:'tip-steps' }, tip.steps.map(x => h('li', { text:x }))) : h('span', { text:tip.text })),
+    h('details', {class:'tip-main'},
+      h('summary', {text:tip.title}),
+      h('p', {text:tip.text})),
     h('button', { class:'btn ghost sm', type:'button', text:'Entendi', onclick: async () => {
       const list = Array.isArray(state.settings.seenTips) ? state.settings.seenTips.slice() : [];
       if(!list.includes(tip.id)) list.push(tip.id);

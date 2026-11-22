@@ -35,10 +35,10 @@ test('v8.1 · enquadramento e ações principais por área', {timeout:120000}, a
         if(width === 1366 || width === 390) await page.screenshot({path:path.join(out,view+'-'+width+'.png'),animations:'disabled'});
       };
       for(const [view, selector] of [
-        ['today','.today-act .tf-actions button'],['disciplines','#dtab-disciplines'],
-        ['plan','#plan-body button'],['reviews','#agenda-search'],['analytics','.an-head-periods button'],
+        ['today','.today-act .tf-actions button'],['disciplines','#dpanel .panel-bar button[aria-haspopup]'],
+        ['plan','#plan-body button'],['reviews','.review-agenda-row-actions button'],['analytics','.an-head-periods button'],
         ['history','#hf-search'],['help','#help-body input'],['data','#data-body .tf-actions button'],
-        ['settings','#stab-appearance']
+        ['settings','#spanel button']
       ]){
         await page.evaluate(v => setView(v),view);
         await measure(view,selector);
@@ -50,6 +50,7 @@ test('v8.1 · enquadramento e ações principais por área', {timeout:120000}, a
       await measure('registro','#modal-actions .primary');
       await page.evaluate(() => modalCloser());
       await page.evaluate(() => openVisualReport({periodPreset:'hoje'}));
+      await page.locator('#report-preview').waitFor({state:'visible'});
       await measure('relatorio','#modal-actions .primary');
       await page.evaluate(() => modalCloser());
       await page.evaluate(async () => {await startTimer('portugues',['crase'],[]); FocusMode.enter();});
@@ -114,6 +115,42 @@ test('v8.1 · exemplo contextual e assinatura privada por escolha', async () => 
     await page.waitForFunction(() => document.querySelector('#report-preview').getAttribute('aria-label').includes('Caderno de Ana'));
     await signed.uncheck();
     await page.waitForFunction(() => !document.querySelector('#report-preview').getAttribute('aria-label').includes('Caderno de Ana'));
+    await context.close();
+  } finally {
+    await runtime.close();
+  }
+});
+
+test('v8.1 · agenda extensa, ajuda completa e exploração após redesenho', async () => {
+  const runtime = await start(process.env.BROWSER || 'chromium');
+  try {
+    const {page,context} = await open(runtime, {viewport:{width:1280,height:720}});
+    await seed(page);
+    await page.evaluate(async () => {
+      const topics = Array.from({length:45}, (_,i) => newTopic('portugues','Leitura '+(i+1)));
+      await DB.transactional(['topics'],api => topics.forEach(t => api.put('topics',t)));
+      state.settings.helpMode = 'full';
+      await saveSettings();
+      await SessionCommands.create({disciplineId:'portugues',minutes:30,date:todayISO()});
+      await refresh();
+      setView('reviews');
+    });
+    const agenda = page.locator('.review-agenda');
+    await agenda.getByRole('checkbox',{name:/Selecionar os assuntos encontrados/}).check();
+    const batch = agenda.getByRole('button',{name:'Agendar seleção'});
+    assert.equal(await batch.isEnabled(),true);
+    await agenda.getByRole('button',{name:'Próxima'}).click();
+    assert.ok(await agenda.locator('.review-agenda-topic input:checked').count() > 0);
+    const dims = await page.evaluate(() => {
+      const list = document.querySelector('.review-agenda-list');
+      return [document.scrollingElement.scrollHeight <= innerHeight+1,list.scrollHeight > list.clientHeight];
+    });
+    assert.deepEqual(dims,[true,true]);
+    await page.evaluate(() => applyAnalyticsQuery({periodPreset:'30d',focus:'overview'}));
+    await page.getByText('Gráficos e observações',{exact:true}).click();
+    await page.waitForFunction(() => ui.analyticsExplore.has('Gráficos e observações'));
+    await page.evaluate(() => render());
+    assert.equal(await page.locator('.result-detail').first().getAttribute('open') !== null,true);
     await context.close();
   } finally {
     await runtime.close();
