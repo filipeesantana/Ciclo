@@ -5913,7 +5913,7 @@ body{background:var(--workspace-bg)}
 .focus-mode.is-presenting .focus-clock::before { width: min(60vmin, 550px); }
 .focus-brand .brand-mark { --brand-dot: var(--accent); }
 @media (min-width: 861px) {
-  .toolbar { justify-content: flex-start; gap: 10px; }
+  .toolbar { justify-content: flex-start; flex-wrap: wrap; gap: 10px; }
   .toolbar-help { margin-inline-start: auto; }
   .toolbar .fab { position: static; flex-shrink: 0; min-height: 40px; padding: 8px 14px; box-shadow: none; margin: 0; }
 }
