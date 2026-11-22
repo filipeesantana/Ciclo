@@ -11266,12 +11266,12 @@ function renderToday(){
   const hasSessions = state.sessions.length > 0;
   const main = [todayAction(discs, hasSessions)];
   const guide = contextGuideCard('today');
-  if(guide) main.push(guide);
+  if(guide) main.push(h('details', {class:'today-links'}, h('summary', {text:'Orientação para hoje'}), guide));
   if(todayBlockOn('next')){ const n = todayNextSteps(); if(n) main.push(n); }
 
   const side = [];
   const daily = todaySummary(); if(daily) side.push(daily);
-  if(todayBlockOn('week') && hasSessions) side.push(todayWeekPanel());
+  if(todayBlockOn('week') && hasSessions) side.push(h('details', {class:'today-links'}, h('summary', {text:'Resumo da semana'}), todayWeekPanel()));
   if(todayBlockOn('explore')) side.push(h('details', {class:'today-links'}, h('summary', {text:'Atalhos e organização'}), todayShortcuts()));
   if(todayBlockOn('start') && guidanceFull()){ const sg = startGuideCard(); if(sg) side.push(sg); }
 
@@ -17830,8 +17830,8 @@ function analyticsResultHeader(a){
   rovingInit(periods);
   return h('header', { class:'an-head', id:'an-context' },
     h('div', { class:'an-head-main' },
-      h('p', { class:'an-head-k', text: kicker }),
-      h('h3', { class:'an-head-t', text: sc.type === 'all' ? 'Seus estudos' : sc.label }),
+      sc.type !== 'all' ? h('p', { class:'an-head-k', text: kicker }) : null,
+      h('h3', { class:'an-head-t', text: sc.type === 'all' ? 'Resumo do período' : sc.label }),
       h('p', { class:'an-head-meta' },
         h('span', { class:'an-head-focus', text: focusInfo(q.focus).label }),
         h('span', { class:'an-head-range', text: `${analyticsPeriodLabel(q)} · ${fmtRangeLabel(a.range)}` })),
@@ -22483,6 +22483,7 @@ const FocusMode = {
     this.presenting = false;
     root.classList.remove('is-presenting');
     $('#focus-display-options').open = false;
+    $('.focus-guide').open = false;
     // a página volta a aparecer por baixo enquanto o modo foco se desfaz
     document.documentElement.classList.remove('focus-active');
     LayerFx.leave(root, MOTION.layerOut);
@@ -22587,6 +22588,11 @@ const FocusMode = {
     const areas = [...new Set(TimerService.discIds().map(id => getDiscipline(id)?.areaId).filter(Boolean))];
     contextLine('focus-area', !this.presenting && areas.length === 1 && getArea(areas[0]) ? [getArea(areas[0]).name] : [], 1);
     document.getElementById('focus-state').textContent = v.label;
+    const example = $('#focus-guide-example');
+    example.textContent = v.status === 'paused' ? 'Sua sessão está pausada. Use Retomar para continuar contando o tempo.'
+      : v.status === 'rest' ? 'O intervalo está contando à parte. Volte ao estudo quando terminar o descanso.'
+      : v.awaiting ? 'O bloco terminou. Escolha a próxima etapa nos controles do relógio.'
+      : 'Quando terminar este estudo, use Encerrar para conferir os minutos e salvar o registro.';
     $('#focus-line').textContent = this.shows('pomodoro') ? v.line || '' : '';
     // v6.5: o aviso de que o cronômetro não pôde ser guardado aparece também aqui (a barra fica escondida no modo foco)
     const warn = document.getElementById('focus-warn');
@@ -23809,7 +23815,11 @@ function screenHelpExample(view){
         ' e ' + fmtDuration(analysis.totals.minutes) + ' de estudo. Em Ver registros, confira as sessões que formam esse total.';
     }
     case 'reviews': {
-      const topic = state.topics.find(t => !t.archived && !getDiscipline(t.disciplineId)?.archived && getDiscipline(t.disciplineId));
+      const filtered = ui.reviewAgenda?.discipline;
+      const topic = state.topics.find(t => {
+        const discipline = getDiscipline(t.disciplineId);
+        return !t.archived && discipline && !discipline.archived && (!filtered || discipline.id === filtered);
+      });
       return topic ? 'Na agenda, procure “' + topic.name + '”, de ' + disciplineName(topic.disciplineId) +
         '. Agendar permite escolher outra data ou desligar sugestões. Marque mais assuntos para aplicar a mesma escolha em lote.'
         : 'Adicione um tópico em Organizar para marcar a primeira revisão. A revisão livre também funciona só com a disciplina.';

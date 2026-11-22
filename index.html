@@ -135,6 +135,9 @@
         <button class="btn ghost sm toolbar-help" id="screen-help" type="button">
           <svg class="btn-icon" aria-hidden="true"><use href="#i-help"></use></svg>Ajuda desta tela
         </button>
+        <button class="fab" id="fab" type="button" aria-label="Registrar estudo">
+          <svg class="btn-icon" aria-hidden="true"><use href="#i-plus"></use></svg><span class="fab-label" aria-hidden="true"><span class="fab-verb">Registrar</span><span class="fab-noun"> estudo</span></span>
+        </button>
       </div>
       <div id="section-nav"></div>
       <div id="return-slot"></div>
@@ -200,9 +203,6 @@
 
 <!-- ================= BOTÃO GLOBAL ================= -->
 <!-- v6.4 — "Registrar estudo": guarda algo que você já estudou. Vale em qualquer tela. -->
-<button class="fab" id="fab" type="button" aria-label="Registrar estudo">
-  <svg class="btn-icon" aria-hidden="true"><use href="#i-plus"></use></svg><span class="fab-label" aria-hidden="true"><span class="fab-verb">Registrar</span><span class="fab-noun"> estudo</span></span>
-</button>
 
 <!-- ================= MODAIS ================= -->
 <div class="overlay" id="modal-root" hidden>
@@ -290,6 +290,7 @@
     <details class="inline-guide focus-guide">
       <summary>Ajuda do Foco</summary>
       <p>O relógio acompanha a sessão. Descansar conta o intervalo à parte. Pausar interrompe a contagem.</p>
+      <p id="focus-guide-example"></p>
       <p>Em Apresentação, escolha os dados visíveis nas opções de exibição. Sair do Foco mantém a sessão em andamento.</p>
     </details>
     <p class="focus-hint" id="focus-hint">Esc sai do modo foco sem encerrar o estudo.</p>

@@ -5901,3 +5901,23 @@ body{background:var(--workspace-bg)}
 @media (forced-colors: active) {
   .agenda-status[data-when="today"], .an-hero-fact { border: 1px solid CanvasText; }
 }
+
+.focus-mode .focus-clock { position: relative; isolation: isolate; }
+.focus-mode .focus-clock::before {
+  content: ''; position: absolute; z-index: -1; pointer-events: none;
+  width: min(50vmin, 420px); aspect-ratio: 1; border-radius: 50%;
+  top: 45%; left: 50%; transform: translate(-50%, -50%) rotate(-28deg);
+  border: 1px solid var(--study-orbit); border-inline-start-color: transparent; opacity: .26;
+}
+.focus-mode[data-state="paused"] .focus-clock::before { opacity: .12; }
+.focus-mode.is-presenting .focus-clock::before { width: min(60vmin, 550px); }
+.focus-brand .brand-mark { --brand-dot: var(--accent); }
+@media (min-width: 861px) {
+  .toolbar { justify-content: flex-start; gap: 10px; }
+  .toolbar-help { margin-inline-start: auto; }
+  .toolbar .fab { position: static; flex-shrink: 0; min-height: 40px; padding: 8px 14px; box-shadow: none; margin: 0; }
+}
+@media (max-width: 860px) {
+  #toolbar { display: contents; }
+  #toolbar > :not(.fab) { display: none; }
+}

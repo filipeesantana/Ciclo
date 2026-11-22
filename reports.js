@@ -181,7 +181,12 @@ function reportRows(blocks, columns, layout){
   let row = [], span = 0;
   for(const block of blocks){
     const metric = ['time','sessions','days','disciplines','reviews'].includes(block.id);
-    const slots = layout === 'compact' ? 1 : columns === 6 ? (metric ? 2 : 3) : (layout === 'painel' || metric ? 1 : 2);
+    let slots = 1;
+    if(layout !== 'compact'){
+      if(layout === 'editorial' && block.id === 'time') slots = columns;
+      else if(columns === 6) slots = metric ? 2 : 3;
+      else if(layout !== 'painel' && !metric) slots = 2;
+    }
     if(span+slots > columns){ rows.push(row); row = []; span = 0; }
     row.push({block,slots});
     span += slots;
@@ -265,16 +270,35 @@ function drawReportBlock(ctx, block, x,y,width,height,p,layout){
   const area = width-gap*2;
   const w = x+gap;
   const innerY = y+gap;
-  reportRect(ctx,x,y,width,height,layout === 'editorial' ? 3 : 20,p.card);
-  if(block.id === 'time'){
-    reportRect(ctx,x+1,y+gap,5,Math.max(18,height-2*gap),2,p.chart);
+  const lead = block.id === 'time';
+  const background = lead ? p.accent : p.card;
+  const ink = lead ? (reportContrast('#ffffff',background) > reportContrast('#000000',background) ? '#ffffff' : '#000000') : p.cardInk;
+  reportRect(ctx,x,y,width,height,layout === 'editorial' ? 3 : 18,background);
+  if(lead && width > 300 && height >= 120){
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x+8,y+6,width-16,height-12);
+    ctx.clip();
+    ctx.strokeStyle = reportMix(background,ink,.13);
+    ctx.lineWidth = 2;
+    const radius = Math.min(width*.24,height*.75);
+    for(const scale of [1,1.24,1.48]){
+      ctx.beginPath(); ctx.arc(x+width-12,y+height*.67,radius*scale,0,Math.PI*2); ctx.stroke();
+    }
+    ctx.restore();
   }
-  reportText(ctx,block.label,w,innerY,area,height < 135 ? 19 : 22,{weight:650,color:p.cardSoft});
+  reportText(ctx,block.label,w,innerY,area,height < 135 ? 19 : 22,{weight:650,color:lead ? ink : p.cardSoft});
   let at = innerY+(height < 135 ? 27 : 34);
   const room = y+height-gap-at;
   if(block.buckets){
     const chart = Math.max(24, room - 41);
     const base = at + chart;
+    ctx.strokeStyle = p.line;
+    ctx.lineWidth = 1;
+    for(const level of [0,.5,1]){
+      const yLine = base - chart*level;
+      ctx.beginPath(); ctx.moveTo(w,yLine); ctx.lineTo(w+area,yLine); ctx.stroke();
+    }
     const max = Math.max(1,...block.buckets.map(b => b.minutes));
     const barSlot = area / block.buckets.length;
     const barWidth = Math.max(2, Math.min(barSlot * .54, 44));
@@ -309,7 +333,7 @@ function drawReportBlock(ctx, block, x,y,width,height,p,layout){
     ctx.font = `700 ${preferred}px system-ui, sans-serif`;
     const measured = ctx.measureText(block.value).width;
     const size = Math.min(preferred, Math.floor(preferred * area / Math.max(1,measured)));
-    at += reportText(ctx,block.value,w,at,area,size,{weight:700,color:p.cardInk}) + 4;
+    at += reportText(ctx,block.value,w,at,area,size,{weight:700,color:ink}) + 4;
   }
   if(block.periods){
     const size = Math.min(19, Math.max(14, (y+height-gap-at)/2.44));

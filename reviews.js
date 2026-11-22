@@ -466,7 +466,7 @@ function reviewAgendaCard(){
     const prev = reviewButton('Anterior', () => paginate(-1)); prev.disabled = agenda.page === 0; prev.classList.add('agenda-prev');
     const next = reviewButton('Próxima', () => paginate(1)); next.disabled = agenda.page + 1 >= pageCount; next.classList.add('agenda-next');
     mount(results, matches.length ? [
-      h('label', {class:'review-agenda-select'}, mark, plural(matches.length, 'Selecionar o assunto encontrado', 'Selecionar os assuntos encontrados')),
+      h('label', {class:'review-agenda-select'}, mark, matches.length === 1 ? 'Selecionar o assunto encontrado' : 'Selecionar os assuntos encontrados (' + matches.length + ')'),
       list,
       pageCount > 1 ? h('div', {class:'review-agenda-page'}, prev, h('span', {class:'hint', text:`${agenda.page + 1} de ${pageCount}`}), next) : null
     ] : h('p', {class:'quiet-empty', text:'Nenhum assunto neste recorte.'}));

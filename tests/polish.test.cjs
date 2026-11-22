@@ -28,6 +28,10 @@ test('v8.1 · enquadramento e ações principais por área', {timeout:120000}, a
             actionHeight:r.height, inside:body.scrollHeight > body.clientHeight + 1};
         });
         measurements.push({engine,width,height,view,...data});
+        if(engine === 'chromium' && width === 1366 && view === 'relatorio'){
+          const preview = await page.locator('#report-preview').evaluate(c => c.toDataURL('image/png').split(',')[1]);
+          await fs.writeFile(path.join(out,'relatorio-exportado.png'),Buffer.from(preview,'base64'));
+        }
         if(width === 1366 || width === 390) await page.screenshot({path:path.join(out,view+'-'+width+'.png'),animations:'disabled'});
       };
       for(const [view, selector] of [
@@ -53,6 +57,35 @@ test('v8.1 · enquadramento e ações principais por área', {timeout:120000}, a
       await page.locator('#focus-presentation').click();
       await measure('apresentacao','#focus-exit');
       await page.evaluate(() => {FocusMode.exit(); TimerService.clear(); renderTimerBar();});
+    }
+    if(engine === 'chromium'){
+      const names = ['estudar-1366','reviews-1366','analytics-1366','history-1366','foco-1366','relatorio-1366'];
+      const frames = await Promise.all(names.map(async name =>
+        'data:image/png;base64,' + (await fs.readFile(path.join(out,name+'.png'))).toString('base64')));
+      const jpeg = await page.evaluate(async frames => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1440;
+        canvas.height = 1222;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#586566';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        for(const [index,src] of frames.entries()){
+          const img = new Image();
+          img.src = src;
+          await img.decode();
+          ctx.drawImage(img,(index % 2)*722,Math.floor(index/2)*408,718,404);
+        }
+        return canvas.toDataURL('image/jpeg',.86).split(',')[1];
+      },frames);
+      await fs.writeFile(path.join(out,'panorama.jpg'),Buffer.from(jpeg,'base64'));
+      // Transporte pontual das imagens sintéticas desta revisão para o relatório do PR.
+      if(process.env.GITHUB_ACTIONS){
+        for(const name of ['panorama.jpg','relatorio-exportado.png']){
+          const bytes = await fs.readFile(path.join(out,name));
+          const encoded = bytes.toString('base64');
+          for(let i=0;i<encoded.length;i+=6000) console.log('CICLO_EVIDENCIA '+name+' '+i+' '+encoded.slice(i,i+6000));
+        }
+      }
     }
     await context.close();
   } finally {
