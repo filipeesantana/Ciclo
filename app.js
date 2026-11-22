@@ -17772,6 +17772,10 @@ function openAnalyticsRecords(analysis){
   focusViewHeading('history');
 }
 
+function analyticsEstimatedTime(sessions){
+  return sessions.some(s => s._projected && s._discShares.some(share => share.estimated));
+}
+
 function analyticsResultHeader(a){
   const q = a.query;
   const sc = a.scope;
@@ -17802,6 +17806,7 @@ function analyticsResultHeader(a){
       h('p', { class:'an-head-meta' },
         h('span', { class:'an-head-focus', text: focusInfo(q.focus).label }),
         h('span', { class:'an-head-range', text: `${analyticsPeriodLabel(q)} · ${fmtRangeLabel(a.range)}` })),
+      analyticsEstimatedTime(a.sessions) ? h('p', {class:'hint',text:'Parte do tempo neste recorte vem de uma divisão estimada.'}) : null,
       chips.length ? h('div', { class:'filter-chips an-head-chips', role:'group', 'aria-label':'Filtros desta análise' }, chips,
         chips.length > 1 ? h('button', { class:'linkbtn muted', type:'button', text:'limpar', onclick:() => applyAnalyticsQuery(Object.assign({}, q, { scopeType:'all', scopeIds:[], scopeId:null, types:[] })) }) : null) : null,
       periods),

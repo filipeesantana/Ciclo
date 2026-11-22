@@ -23,8 +23,8 @@ const REPORT_MAX_SCOPE = 40;
 const PT_NUM = new Intl.NumberFormat('pt-BR');
 const reportSeriesCache = new WeakMap();
 
-function reportDuration(minutes){
-  return fmtDuration(Math.round(minutes));
+function reportDuration(minutes,estimated = false){
+  return (estimated ? '≈ ' : '') + fmtDuration(Math.round(minutes));
 }
 
 function reportPeriods(){
@@ -65,6 +65,10 @@ function visualReportModel(analysis, settings){
     : plural(analysis.scope.ids.length, {area:'área',discipline:'disciplina',topic:'tópico'}[analysis.scope.type], {area:'áreas',discipline:'disciplinas',topic:'tópicos'}[analysis.scope.type]);
   const scopeText = scope + (analysis.scope.types ? ' · ' + analysis.scope.typesLabel : '');
   const distribution = analysis.byDiscipline.filter(d => d.minutes > 0);
+  const estimated = analyticsEstimatedTime(analysis.sessions);
+  const previousEstimated = settings.visible.has('comparison')
+    && analyticsEstimatedTime(AnalyticsScope.sessions(analysis.scope,comparison.prevRange));
+  const time = reportDuration(totals.minutes,estimated);
   const named = (d,index) => settings.names ? d.label : 'Disciplina ' + (index + 1);
   const names = distribution.slice(0,4).map(named);
   if(distribution.length > names.length) names.push('e mais ' + (distribution.length - names.length));
@@ -72,23 +76,25 @@ function visualReportModel(analysis, settings){
   const series = reportSeries(analysis);
   const label = Object.fromEntries(REPORT_BLOCKS);
   const blocks = {
-    time:{value:reportDuration(totals.minutes)},
+    time:{value:time},
     sessions:{value:fmt(totals.count)},
     days:{value:fmt(totals.activeDays)},
     trend:{...series, detail:series.daysPerBar === 1 ? 'Minutos por dia' : 'Minutos por intervalo de até ' + series.daysPerBar + ' dias'},
-    distribution:{rows:distribution.slice(0,3).map((d,i) => ({label:named(d,i),minutes:d.minutes})), extra:Math.max(0,distribution.length - 3)},
+    distribution:{rows:distribution.slice(0,3).map((d,i) => ({label:named(d,i),minutes:d.minutes,value:reportDuration(d.minutes,d.estimated>0)})), extra:Math.max(0,distribution.length - 3)},
     disciplines:{value:fmt(distribution.length), detail:settings.names ? names.join(' · ') : ''},
     questions:q.sets ? {value:fmt(q.correct) + ' / ' + fmt(q.total), detail:'Acertos de ' + fmt(q.total) + ' questões · ' + fmtAccuracy(q.pct)} : {detail:'Sem questões registradas'},
     reviews:{value:fmt(analysis.reviews.studiesWithReview), detail:plural(analysis.reviews.completed,'assunto revisitado','assuntos revisitados')},
-    comparison:{value:reportDuration(comparison.prevTotals.minutes) + ' → ' + reportDuration(totals.minutes),
+    comparison:{value:reportDuration(comparison.prevTotals.minutes,previousEstimated) + ' → ' + time,
       periods:[formatRange(comparison.prevRange), formatRange(comparison.curRange)],
       detail:formatRange(comparison.prevRange) + ' → ' + formatRange(comparison.curRange)},
-    summary:{detail:totals.count ? reportDuration(totals.minutes) + ' de estudo em ' + plural(totals.activeDays,'dia','dias') + '.'
+    summary:{detail:totals.count ? time + ' de estudo em ' + plural(totals.activeDays,'dia','dias') + '.'
       : 'Nenhum estudo registrado neste recorte.'}
   };
+  const showEstimate = (estimated && ['time','trend','summary','comparison'].some(id => settings.visible.has(id)))
+    || previousEstimated || (settings.visible.has('distribution') && distribution.slice(0,3).some(d => d.estimated>0));
   return {
     title:settings.title.trim() || 'Meus estudos', subtitle:settings.subtitle.trim(), range, scope:scopeText,
-    empty:!totals.count,
+    empty:!totals.count, estimateNote:showEstimate ? 'Parte do tempo exibido vem de uma divisão estimada.' : '',
     blocks:settings.order.filter(id => settings.visible.has(id)).map(id => ({id,label:label[id],...blocks[id]})),
     brand:settings.brand
   };
@@ -208,6 +214,7 @@ function drawVisualReport(canvas, model, settings){
   y += reportText(ctx,model.title,pad,y,contentWidth,titleSize,{weight:700,color:p.ink,lines:3,serif:editorial});
   y += reportText(ctx,model.subtitle,pad,y+5,contentWidth,25,{color:p.soft,lines:2}) + 7;
   y += reportText(ctx,model.range+'  ·  '+model.scope,pad,y,contentWidth,23,{weight:650,color:p.accent,lines:2}) + 19;
+  if(model.estimateNote) y += reportText(ctx,model.estimateNote,pad,y-6,contentWidth,21,{color:p.soft}) + 4;
   if(model.empty) y += reportText(ctx,'Nenhum estudo registrado neste recorte.',pad,y,contentWidth,24,{color:p.soft}) + 8;
   let rows = reportRows(model.blocks,landscape ? 6 : 3,settings.layout);
   if(rows.length > (landscape ? 3 : 5)) rows = reportRows(model.blocks,landscape ? 4 : 3,'compact');
@@ -235,9 +242,9 @@ function drawVisualReport(canvas, model, settings){
     ctx.beginPath();ctx.arc(pad+4,base+6,3,0,2*Math.PI);ctx.fillStyle=p.accent;ctx.fill();
     reportText(ctx,'Ciclo',pad+39,base,contentWidth-39,24,{weight:700,color:p.ink});
   }
-  canvas.setAttribute('aria-label', [model.title, model.subtitle, model.range, model.scope,
+  canvas.setAttribute('aria-label', [model.title, model.subtitle, model.range, model.scope, model.estimateNote,
     model.empty ? 'Nenhum estudo registrado.' : '',
-    ...model.blocks.map(b => [b.label,b.value,b.detail,b.rows?.map(r => r.label + ' ' + reportDuration(r.minutes)).join(', ')].filter(Boolean).join('. '))]
+    ...model.blocks.map(b => [b.label,b.value,b.detail,b.rows?.map(r => r.label + ' ' + r.value).join(', ')].filter(Boolean).join('. '))]
     .filter(Boolean).join('. '));
 }
 
@@ -275,7 +282,7 @@ function drawReportBlock(ctx, block, x,y,width,height,p,layout){
     const peak = block.rows[0].minutes;
     for(const row of block.rows){
       reportText(ctx,row.label,w,at,area-valueWidth,font,{color:p.cardInk});
-      reportText(ctx,reportDuration(row.minutes),w+area-valueWidth,at,valueWidth,font,{weight:650,color:p.cardInk});
+      reportText(ctx,row.value,w+area-valueWidth,at,valueWidth,font,{weight:650,color:p.cardInk});
       if(rowHeight >= 27) reportRect(ctx,w,at+font+5,area*row.minutes/peak,Math.min(7,rowHeight/7),2,p.chart);
       at += rowHeight;
     }

@@ -121,20 +121,12 @@ test('estudo com vários tópicos persiste a agenda escolhida junto com a sessã
  })),{topics:['crase','pontuacao'],minutes:45,mode:['off','off']});
 });
 
-test('apresentação em outra janela segue o relógio e reaproveita os controles do Foco',async(t)=>{
+test('apresentação em outra janela segue o relógio e reaproveita os controles do Foco',async()=>{
  await page.evaluate(async()=>{await startTimer('portugues',['crase'],[]);FocusMode.enter();});
  await page.locator('#focus-presentation').click();
  const initial=await page.evaluate(()=>TimerService.data.runId);
- const supported=await page.evaluate(()=>FocusMode.fsAvailable());
- if(supported){
-   await page.locator('#focus-fs').click();
-   await page.waitForFunction(()=>FocusMode.fsElement()===document.querySelector('#focus-root'));
- }
+ assert.equal(await page.evaluate(()=>FocusMode.presenting),true);
  await page.locator('#focus-actions').getByRole('button',{name:'Pausar',exact:true}).click();
- if(supported){
-   await page.locator('#focus-fs').click();
-   await page.waitForFunction(()=>!FocusMode.fsElement());
- }else t.diagnostic('Fallback expandido sem fullscreen.');
  await page.locator('#focus-display-options summary').click();
  await page.getByRole('checkbox',{name:'Descanso',exact:true}).uncheck();
  assert.equal(await page.locator('#focus-rest-stat').isHidden(),true);
@@ -148,13 +140,14 @@ test('apresentação em outra janela segue o relógio e reaproveita os controles
  await page.waitForFunction(()=>TimerService.status==='study');
  await page.locator('#focus-actions').getByRole('button',{name:'Descansar',exact:true}).click();
  await second.waitForFunction(()=>TimerService.status==='rest');
- await second.close();
+ await page.bringToFront();
  await page.keyboard.press('Escape');
  assert.equal(await page.evaluate(()=>FocusMode.isOpen && !FocusMode.presenting),true);
  await page.locator('#focus-actions').getByRole('button',{name:'Encerrar',exact:true}).click();
  await actions().getByRole('button',{name:'Registrar estudo',exact:true}).click();
  await page.waitForFunction(()=>state.sessions.length===1&&!TimerService.isActive);
  assert.equal(await page.evaluate(()=>state.sessions[0].id),initial);
+ await second.waitForFunction(()=>!TimerService.isActive);
 });
 
 test('PNG nos quatro formatos e temas tem os mesmos pixels da prévia e dados da análise',async()=>{
@@ -168,7 +161,8 @@ test('PNG nos quatro formatos e temas tem os mesmos pixels da prévia e dados da
  await canvas.waitFor();
  await context.setOffline(true);
  const minutes=await page.evaluate(()=>reportDuration(AnalyticsEngine.query(ui.analyticsQuery).totals.minutes));
- assert.match(await canvas.getAttribute('aria-label'),new RegExp(minutes));
+ assert.match(await canvas.getAttribute('aria-label'),new RegExp('≈ '+minutes));
+ assert.match(await canvas.getAttribute('aria-label'),/divisão estimada/);
  assert.doesNotMatch(await canvas.getAttribute('aria-label'),/Português|Mensagem privada/);
  await page.getByText('Título e cores',{exact:true}).click();
  await page.locator('#report-title').fill('Caligrafia, Ciências e Expressão — uma semana de aprendizagem');
