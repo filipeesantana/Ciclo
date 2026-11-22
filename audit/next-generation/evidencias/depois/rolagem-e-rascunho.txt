@@ -1,0 +1,12 @@
+✔ comentário visível, recolhido e salvo mantém texto; Cancelar e F5 conservam rascunho (8600.933015ms)
+✔ rascunho completo persiste antes dos 400 ms e recupera descansos, divisão e revisão (5556.035556ms)
+✔ modal prende o foco e Esc devolve ao botão que o abriu (2843.779448ms)
+✔ registro básico com duração, gravado e recuperado via Hoje e Histórico (4408.433473ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 26598.153191

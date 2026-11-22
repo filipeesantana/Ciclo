@@ -1,0 +1,273 @@
+{
+  "engine": "chromium",
+  "version": "154.0.8037.57",
+  "versions": [
+    "7.3.0"
+  ],
+  "errors": [],
+  "requests": [],
+  "layout": [
+    {
+      "name": "hoje",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "registro",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "foco",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "hoje",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "registro",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "foco",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "hoje",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "registro",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "foco",
+      "width": 320,
+      "theme": "dark",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "hoje",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "registro",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "foco",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "hoje",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "registro",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "foco",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "hoje",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "registro",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "foco",
+      "width": 320,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "name": "zoom-css-200",
+      "width": 1280,
+      "theme": "light",
+      "overflow": false,
+      "violations": []
+    }
+  ],
+  "forms": [
+    {
+      "width": 1440,
+      "theme": "dark",
+      "height": 515,
+      "viewport": 515,
+      "minutesVisible": false
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "height": 814,
+      "viewport": 814,
+      "minutesVisible": false
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "height": 866,
+      "viewport": 866,
+      "minutesVisible": false
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "height": 515,
+      "viewport": 515,
+      "minutesVisible": false
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "height": 814,
+      "viewport": 814,
+      "minutesVisible": false
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "height": 866,
+      "viewport": 866,
+      "minutesVisible": false
+    }
+  ],
+  "navigation": []
+}

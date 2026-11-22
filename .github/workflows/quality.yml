@@ -33,6 +33,7 @@ jobs:
       - run: npm run audit:browser
       - run: npm run audit:field
       - run: npm run audit:experience
+      - run: npm run audit:next-generation
       - uses: actions/upload-artifact@v4
         if: always()
         with:

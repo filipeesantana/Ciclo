@@ -8,7 +8,7 @@ beforeEach(async()=>{({context,page}=await open(runtime));await seed(page);});af
 test('Português: registrar 30 minutos sem tópicos, permanecer no Histórico e recuperar após F5',async()=>{
  await page.setViewportSize({width:360,height:800});
  await page.evaluate(()=>{setView('history');openRegisterModal({disciplineId:'portugues'});});
- await page.getByRole('button',{name:'Não lembro os horários',exact:true}).click();
+
  await page.locator('#rm-min').fill('30');
  await page.locator('#modal-actions').getByRole('button',{name:'Registrar estudo',exact:true}).click();
  await page.waitForFunction(()=>state.sessions.length===1&&!Overlay.isOpen);
@@ -18,6 +18,7 @@ test('Português: registrar 30 minutos sem tópicos, permanecer no Histórico e 
 });
 test('primeiro uso rápido: só o nome, sem plano, tópico ou prazo inventado',async()=>{
  const fresh=await open(runtime);try{
+  await fresh.page.getByRole('button',{name:'Quero ajuda para organizar',exact:true}).click();
   await fresh.page.getByRole('button',{name:/Quero começar agora/}).click();await fresh.page.locator('#ob-name').fill('Guitarra');
   await fresh.page.getByRole('button',{name:'Criar e continuar',exact:true}).click();await fresh.page.getByRole('button',{name:'Agora não',exact:true}).click();
   assert.deepEqual(await fresh.page.evaluate(()=>({discs:state.disciplines.map(d=>d.name),topics:state.topics.length,plans:state.plans.length,deadlines:state.deadlines.length})),{discs:['Guitarra'],topics:0,plans:0,deadlines:0});
@@ -54,6 +55,8 @@ test('Voltar, Avançar e F5 preservam o caminho sem criar loop',async()=>{
 });
 test('rascunho completo persiste antes dos 400 ms e recupera descansos, divisão e revisão',async()=>{
  await page.evaluate(()=>openRegisterModal({disciplineId:'portugues',topicIds:['pontuacao','crase'],types:['revisao']}));
+ await page.locator('.when-details summary').click();
+ await page.getByRole('button',{name:'Informar os horários',exact:true}).click();
  await page.locator('#rm-date').fill('2026-10-01');
  await page.locator('#rm-start').fill('14:00');await page.locator('#rm-end').fill('15:00');
  await page.getByRole('button',{name:'+ Adicionar descanso',exact:true}).click();
@@ -70,7 +73,7 @@ test('rascunho completo persiste antes dos 400 ms e recupera descansos, divisão
 });
 test('falha de escrita mantém o formulário e o rascunho; retentativa grava uma vez',async()=>{
  await page.evaluate(()=>{openRegisterModal({disciplineId:'portugues'});window.originalCreate=SessionCommands.create;SessionCommands.create=async()=>({ok:false,reason:'error'});});
- await page.getByRole('button',{name:'Não lembro os horários',exact:true}).click();await page.locator('#rm-min').fill('40');
+await page.locator('#rm-min').fill('40');
  await page.locator('#modal-actions').getByRole('button',{name:'Registrar estudo',exact:true}).click();
  assert.equal(await page.locator('#rm-min').inputValue(),'40');assert.equal(await page.evaluate(()=>state.sessions.length),0);
  await page.evaluate(()=>{FormDraft.flushAll();SessionCommands.create=window.originalCreate;});assert.ok(await page.evaluate(()=>FormDraft.load('register')));

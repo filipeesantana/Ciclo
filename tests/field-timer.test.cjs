@@ -102,6 +102,7 @@ test('J: sair de tela cheia mantém as ações do Foco e permite finalizar',asyn
  const supported=await page.evaluate(()=>FocusMode.fsAvailable());
  if(!supported){t.diagnostic('Fullscreen indisponível neste motor; saída do Foco via Esc exercitada.');await page.keyboard.press('Escape');await page.locator('#timerbar-slot').getByRole('button',{name:'Foco',exact:true}).click();}
  else{
+  await page.locator('#focus-presentation').click();
   await page.locator('#focus-fs').click();await page.waitForFunction(()=>!!FocusMode.fsElement());
   await page.locator('#focus-fs').click();await page.waitForFunction(()=>!FocusMode.fsElement());
  }

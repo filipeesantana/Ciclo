@@ -8,7 +8,7 @@
 <meta name="description" content="Ciclo é um sistema de estudos que roda no seu navegador: organize o que você estuda, registre seus estudos, receba sugestões de revisão no momento certo e acompanhe seu progresso — sem conta e sem servidor.">
 <meta name="application-name" content="Ciclo">
 <title>Ciclo — Seu sistema de estudos</title>
-<link rel="stylesheet" href="styles.css?v=7.3.0">
+<link rel="stylesheet" href="styles.css?v=8.0.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4a8 8 0 1 1-6.93 4' fill='none' stroke='%2362B1A4' stroke-width='2.6' stroke-linecap='round'/%3E%3Ccircle cx='5.07' cy='8' r='2.1' fill='%23C7A46A'/%3E%3C/svg%3E">
 </head>
 <body>
@@ -88,19 +88,19 @@
 
     <nav class="nav" id="nav-desktop" aria-label="Navegação principal">
       <button class="nav-item" data-view="today" aria-current="page"><svg class="nav-icon" aria-hidden="true"><use href="#i-today"></use></svg>Hoje</button>
-      <button class="nav-item" data-view="plan"><svg class="nav-icon" aria-hidden="true"><use href="#i-plan"></use></svg>Planejamento</button>
-      <button class="nav-item" data-view="reviews"><svg class="nav-icon" aria-hidden="true"><use href="#i-review"></use></svg>Revisões<span class="badge hidden" data-badge="reviews">0</span></button>
-      <button class="nav-item" data-view="disciplines"><svg class="nav-icon" aria-hidden="true"><use href="#i-disc"></use></svg>Disciplinas</button>
-      <button class="nav-item" data-view="analytics"><svg class="nav-icon" aria-hidden="true"><use href="#i-chart"></use></svg>Análises</button>
-      <button class="nav-item" data-view="history"><svg class="nav-icon" aria-hidden="true"><use href="#i-history"></use></svg>Histórico</button>
-      <div class="nav-sep" role="presentation"></div>
-      <button class="nav-item" data-view="help"><svg class="nav-icon" aria-hidden="true"><use href="#i-help"></use></svg>Ajuda</button>
-      <button class="nav-item" data-view="data"><svg class="nav-icon" aria-hidden="true"><use href="#i-data"></use></svg>Dados</button>
-      <button class="nav-item" data-view="settings"><svg class="nav-icon" aria-hidden="true"><use href="#i-settings"></use></svg>Configurações</button>
+      <button class="nav-item" data-study><svg class="nav-icon" aria-hidden="true"><use href="#i-play"></use></svg>Estudar</button>
+      <button class="nav-item" data-view="reviews"><svg class="nav-icon" aria-hidden="true"><use href="#i-review"></use></svg>Revisões</button>
+      <button class="nav-item" data-view="disciplines"><svg class="nav-icon" aria-hidden="true"><use href="#i-disc"></use></svg>Organizar</button>
+      <button class="nav-item" data-view="analytics"><svg class="nav-icon" aria-hidden="true"><use href="#i-chart"></use></svg>Resultados</button>
     </nav>
 
     <div class="sidebar-foot">
-      <p class="signature">Desenvolvido por <strong>Filipe Santana</strong><br><span class="num" id="app-version">—</span></p>
+      <nav class="nav" aria-label="Suporte e preferências">
+        <button class="nav-item" data-view="help"><svg class="nav-icon" aria-hidden="true"><use href="#i-help"></use></svg>Ajuda</button>
+        <button class="nav-item" data-view="data"><svg class="nav-icon" aria-hidden="true"><use href="#i-data"></use></svg>Dados e backup</button>
+        <button class="nav-item" data-view="settings"><svg class="nav-icon" aria-hidden="true"><use href="#i-settings"></use></svg>Configurações</button>
+      </nav>
+      <p class="signature"><strong>Filipe Santana</strong><span class="num" id="app-version">—</span></p>
     </div>
   </aside>
 
@@ -113,8 +113,8 @@
         <button class="icon-btn" id="open-palette-m" type="button" aria-label="Buscar no Ciclo" title="Buscar no Ciclo">
           <svg class="nav-icon" aria-hidden="true"><use href="#i-search"></use></svg>
         </button>
-        <button class="icon-btn" id="screen-help-m" type="button" aria-label="Ajuda desta tela" title="Ajuda desta tela">
-          <svg class="nav-icon" aria-hidden="true"><use href="#i-help"></use></svg>
+        <button class="icon-btn" id="mb-more" type="button" aria-label="Ajuda, dados e configurações">
+          <svg class="nav-icon" aria-hidden="true"><use href="#i-more"></use></svg>
         </button>
         <button class="icon-btn theme-btn" id="theme-toggle-m" type="button" aria-label="Alternar tema" title="Alternar tema">
           <svg class="nav-icon" aria-hidden="true"><use href="#i-sun" id="theme-icon-m"></use></svg>
@@ -133,6 +133,7 @@
           <svg class="btn-icon" aria-hidden="true"><use href="#i-help"></use></svg>Ajuda desta tela
         </button>
       </div>
+      <div id="section-nav"></div>
       <div id="return-slot"></div>
       <div id="tips-slot"></div>
       <div id="timerbar-slot"></div>
@@ -158,7 +159,7 @@
       </section>
 
       <section id="view-analytics" class="view" aria-labelledby="h-an">
-        <div class="page-head"><h2 id="h-an" tabindex="-1">Análises</h2><p class="sub">O que você quer descobrir sobre seus estudos?</p></div>
+        <div class="page-head"><h2 id="h-an" tabindex="-1">Resultados</h2><p class="sub">O que você quer descobrir sobre seus estudos?</p></div>
         <div id="analytics-body" class="view-body"></div>
       </section>
 
@@ -188,10 +189,10 @@
 <!-- ================= NAV MOBILE ================= -->
 <nav class="mobile-bar" id="nav-mobile" aria-label="Navegação">
   <button class="mb-item" data-view="today" aria-current="page"><svg class="nav-icon" aria-hidden="true"><use href="#i-today"></use></svg>Hoje</button>
-  <button class="mb-item" data-view="plan"><svg class="nav-icon" aria-hidden="true"><use href="#i-plan"></use></svg>Plano</button>
-  <button class="mb-item" data-view="reviews"><svg class="nav-icon" aria-hidden="true"><use href="#i-review"></use></svg>Revisões<span class="badge hidden" data-badge="reviews">0</span></button>
-  <button class="mb-item" data-view="analytics"><svg class="nav-icon" aria-hidden="true"><use href="#i-chart"></use></svg>Análises</button>
-  <button class="mb-item" id="mb-more" type="button"><svg class="nav-icon" aria-hidden="true"><use href="#i-more"></use></svg>Mais</button>
+  <button class="mb-item" data-study><svg class="nav-icon" aria-hidden="true"><use href="#i-play"></use></svg>Estudar</button>
+  <button class="mb-item" data-view="reviews"><svg class="nav-icon" aria-hidden="true"><use href="#i-review"></use></svg>Revisões</button>
+  <button class="mb-item" data-view="disciplines"><svg class="nav-icon" aria-hidden="true"><use href="#i-disc"></use></svg>Organizar</button>
+  <button class="mb-item" data-view="analytics"><svg class="nav-icon" aria-hidden="true"><use href="#i-chart"></use></svg>Resultados</button>
 </nav>
 
 <!-- ================= BOTÃO GLOBAL ================= -->
@@ -246,6 +247,9 @@
     <header class="focus-top">
       <span class="focus-brand"><svg class="brand-mark" aria-hidden="true" focusable="false"><use href="#i-brand"></use></svg><span>Ciclo</span></span>
       <span class="focus-top-actions">
+        <button class="btn ghost sm" id="focus-presentation" type="button" aria-pressed="false">
+          <svg class="btn-icon" aria-hidden="true"><use href="#i-expand"></use></svg>Apresentação
+        </button>
         <button class="icon-btn focus-fs" id="focus-fs" type="button" aria-label="Tela cheia" title="Tela cheia" hidden>
           <svg class="nav-icon" aria-hidden="true"><use href="#i-expand"></use></svg>
         </button>
@@ -254,6 +258,11 @@
         </button>
       </span>
     </header>
+    <details class="focus-display-options" id="focus-display-options" hidden>
+      <summary>Personalizar painel</summary>
+      <div id="focus-display-fields"></div>
+      <button class="btn ghost sm" id="focus-open-window" type="button">Abrir em outra janela</button>
+    </details>
     <div class="focus-center">
       <p class="focus-state" id="focus-state"></p>
       <p class="focus-clock-label" id="focus-clock-label"></p>
@@ -267,14 +276,15 @@
         <p class="focus-types" id="focus-types" hidden></p>
       </div>
       <dl class="focus-totals" id="focus-totals" aria-live="off" hidden>
-        <div><dt>Estudo líquido</dt><dd class="num" id="focus-study-total"></dd></div>
+        <div id="focus-study-stat"><dt>Estudo líquido</dt><dd class="num" id="focus-study-total"></dd></div>
         <div id="focus-rest-stat"><dt>Descansos</dt><dd class="num" id="focus-rest-total"></dd></div>
+        <div id="focus-today-stat" hidden><dt>Registrado hoje</dt><dd class="num" id="focus-today-total"></dd></div>
       </dl>
       <p class="focus-sub" id="focus-sub" aria-live="off"></p>
       <p class="focus-warn" id="focus-warn" role="status" hidden></p>
       <div class="focus-actions" id="focus-actions"></div>
     </div>
-    <p class="focus-hint">Esc sai do modo foco sem encerrar o estudo.</p>
+    <p class="focus-hint" id="focus-hint">Esc sai do modo foco sem encerrar o estudo.</p>
   </div>
 </div>
 
@@ -285,8 +295,9 @@
 <p class="sr-only" id="sr-live" role="status" aria-live="polite"></p>
 
 <noscript><p style="padding:24px">Este aplicativo precisa de JavaScript para funcionar.</p></noscript>
-<script src="content.js?v=7.3.0"></script>
-<script src="reviews.js?v=7.3.0"></script>
-<script src="app.js?v=7.3.0"></script>
+<script src="content.js?v=8.0.0"></script>
+<script src="reviews.js?v=8.0.0"></script>
+<script src="reports.js?v=8.0.0"></script>
+<script src="app.js?v=8.0.0"></script>
 </body>
 </html>

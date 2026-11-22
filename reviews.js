@@ -224,3 +224,255 @@ function openGuidedReviewResult(draft){
         }),finish]};
   },{size:'wide review',dismissible:false});
 }
+
+/* Agenda escolhida pela pessoa, independente do histórico e do algoritmo. */
+const ReviewSchedule = {
+  clean(value){
+    if(value?.mode === 'free' || value?.mode === 'off') return {mode:value.mode};
+    if(value?.mode === 'date' && isStrictISODate(value.date)) return {mode:'date', date:value.date};
+    return null;
+  },
+  due(topic){
+    if(!topic) return null;
+    const schedule = topic.reviewSchedule;
+    if(schedule?.mode === 'date') return schedule.date;
+    if(schedule?.mode === 'free' || schedule?.mode === 'off' || !topic.reviewEnabled) return null;
+    return topic.reviewDueDate || null;
+  },
+  kind(topic){
+    return topic.reviewSchedule?.mode || (topic.reviewEnabled ? 'auto' : 'off');
+  },
+  label(topic){
+    const date = this.due(topic);
+    if(date) return (this.kind(topic) === 'date' ? 'Programada' : 'Sugestão automática') + ' · ' + fmtDateBR(date);
+    const kind = this.kind(topic);
+    if(kind === 'free') return 'Sem data · revisão livre';
+    if(kind === 'off') return 'Sugestões desativadas';
+    return 'Agenda automática';
+  },
+  resolve(choice, date, ref = today()){
+    if(choice === 'tomorrow') return {mode:'date', date:dateToISO(addDays(ref, 1))};
+    if(choice === 'week') return {mode:'date', date:dateToISO(addDays(startOfWeek(ref), 7))};
+    if(choice === 'auto') return {mode:'auto'};
+    return this.clean({mode:choice, date});
+  },
+  apply(topic, schedule){
+    const next = {...topic, updatedAt:nowISO()};
+    delete next.reviewSnooze;
+    if(schedule.mode === 'auto'){
+      delete next.reviewSchedule;
+      next.reviewEnabled = true;
+      const anchor = next.lastReviewedAt || next.firstStudiedAt;
+      if(anchor && !next.reviewDueDate){
+        const interval = next.reviewIntervalDays || ReviewEngine.firstInterval(ReviewEngine.effectiveStrategy(next));
+        next.reviewIntervalDays = interval;
+        next.reviewDueDate = addDaysISO(anchor, interval);
+      }
+    } else next.reviewSchedule = schedule;
+    return next;
+  },
+  async setMany(ids, schedule){
+    const value = schedule?.mode === 'auto' ? {mode:'auto'} : this.clean(schedule);
+    const unique = [...new Set(ids)];
+    if(!value || !unique.length) throw new Error('Escolha os assuntos e uma opção de agendamento.');
+    await DB.atomic(['topics','disciplines'], async api => {
+      const topics = [];
+      const disciplines = new Map();
+      for(const id of unique){
+        const topic = await api.get('topics', id);
+        if(!topic || topic.archived) throw new Error('Um assunto foi arquivado ou excluído. Atualize a seleção.');
+        if(!disciplines.has(topic.disciplineId)){
+          disciplines.set(topic.disciplineId, await api.get('disciplines', topic.disciplineId));
+        }
+        const disc = disciplines.get(topic.disciplineId);
+        if(!disc || disc.archived) throw new Error('Uma disciplina foi arquivada ou excluída. Atualize a seleção.');
+        topics.push(topic);
+      }
+      for(const topic of topics) await api.put('topics', this.apply(topic, value));
+    });
+    return unique.length;
+  }
+};
+
+function reviewScheduleField(prefix, initial, placeholder){
+  const choices = [['tomorrow','Amanhã'], ['week','Próxima semana'], ['date','Escolher uma data'],
+    ['free','Sem data definida'], ['off','Não sugerir'], ['auto','Reativar agenda automática']];
+  const select = reviewSelect(prefix + '-policy', 'Agendamento', [['',placeholder], ...choices], initial?.choice || '', update);
+  const date = h('input', {type:'date', value:initial?.date || '',oninput:e => e.target.removeAttribute('aria-invalid')});
+  const dateField = reviewField(prefix + '-date', 'Data da revisão', date);
+  const help = h('p', {class:'hint', 'aria-live':'polite'});
+  const node = h('div', {class:'review-schedule-fields'}, select.field, dateField, help);
+  function update(){
+    const choice = select.node.value;
+    const resolved = ReviewSchedule.resolve(choice, date.value);
+    dateField.hidden = choice !== 'date';
+    help.textContent = choice === 'auto' ? 'O Ciclo volta a calcular sugestões a partir dos estudos e resultados deste assunto.'
+      : choice === 'free' ? 'O assunto fica disponível para seleção manual, sem vencimento.'
+      : choice === 'off' ? 'O assunto sai das sugestões. Você ainda pode revisá-lo quando quiser.'
+      : (choice === 'tomorrow' || choice === 'week') && resolved ? fmtDateBR(resolved.date) : '';
+    node.dispatchEvent(new Event('input', {bubbles:true}));
+  }
+  update();
+  return {
+    node, select:select.node,
+    get snapshot(){ return {choice:select.node.value, date:date.value}; },
+    read(){
+      if(!select.node.value) return {ok:true, value:null};
+      const value = ReviewSchedule.resolve(select.node.value, date.value);
+      if(!value){
+        date.setAttribute('aria-invalid','true'); date.focus();
+        toast('Escolha uma data válida.', 'err');
+      }
+      return {ok:!!value, value};
+    }
+  };
+}
+
+function openReviewSchedule(ids){
+  const topics = ids.map(getTopic).filter(Boolean);
+  if(!topics.length) return;
+  openModal(close => {
+    const field = reviewScheduleField('agenda', null, 'Escolha uma opção');
+    const save = reviewButton('Salvar agendamento', async () => {
+      const result = field.read();
+      if(!result.ok || !result.value) { if(result.ok) field.select.focus(); return; }
+      save.disabled = true;
+      try {
+        const count = await reviewAction(() => ReviewSchedule.setMany(topics.map(t => t.id), result.value));
+        if(count){
+          close();
+          await safeRefresh();
+          toast(plural(count, 'assunto atualizado', 'assuntos atualizados'), 'ok', {title:'Agenda atualizada'});
+        }
+      } finally { save.disabled = false; }
+    }, 'primary');
+    return {
+      title:topics.length === 1 ? 'Agendar revisão' : 'Agendar em lote',
+      content:h('div', null, h('p', {class:'modal-sub', text:topics.length === 1 ? topics[0].name : plural(topics.length, 'assunto selecionado', 'assuntos selecionados')}), field.node),
+      actions:[reviewButton('Cancelar', () => close()), save], focus:field.select
+    };
+  }, {size:'narrow'});
+}
+
+function studyReviewSchedule(prefix, initial){
+  const field = reviewScheduleField(prefix + '-agenda', initial, 'Manter agenda dos assuntos');
+  const node = h('details', {class:'disclosure study-review-schedule', hidden:true, open:!!initial?.choice},
+    h('summary', {text:'Agendar revisão dos tópicos'}), h('div', {class:'disclosure-body'}, field.node));
+  return {
+    node,
+    get snapshot(){return field.snapshot;},
+    read(){
+      if(node.hidden) return {ok:true, value:null};
+      if(field.snapshot.choice === 'date') node.open = true;
+      return field.read();
+    }
+  };
+}
+
+function reviewAgendaCard(){
+  const available = state.topics.filter(t => !t.archived && getDiscipline(t.disciplineId) && !getDiscipline(t.disciplineId).archived);
+  if(!available.length) return null;
+  const agenda = ui.reviewAgenda ||= {query:'', filter:'all', discipline:'', page:0, selected:new Set()};
+  const day = todayISO();
+  const order = date => date === day ? 0 : !date ? 3 : date > day ? 1 : 2;
+  const sorted = available.map(t => {
+    const date = ReviewSchedule.due(t);
+    return {topic:t, date, kind:ReviewSchedule.kind(t), priority:order(date),
+      key:normalizeText(t.name + ' ' + disciplineName(t.disciplineId))};
+  }).sort((a,b) => a.priority - b.priority ||
+    (a.date || '').localeCompare(b.date || '') * (a.priority === 2 ? -1 : 1) || sortByName(a.topic,b.topic));
+  const availableIds = new Set(available.map(t => t.id));
+  for(const id of agenda.selected) if(!availableIds.has(id)) agenda.selected.delete(id);
+  const results = h('div', {class:'review-agenda-results'});
+  const selection = h('p', {class:'hint', role:'status'});
+  const search = h('input', {id:'agenda-search', type:'search', value:agenda.query, placeholder:'Tópico ou disciplina'});
+  const sort = reviewSelect('agenda-filter','Mostrar', [['all','Todos os assuntos'],['today','Marcados para hoje'],
+    ['dated','Com data'],['free','Sem data definida'],['off','Sem sugestões']], agenda.filter, value => {
+    agenda.filter = value; agenda.page = 0; draw();
+  });
+  const subjects = activeDisciplines().filter(d => topicsOf(d.id).length).slice().sort(sortByName);
+  const discipline = reviewSelect('agenda-discipline','Disciplina', [['','Todas as disciplinas'], ...subjects.map(d => [d.id,d.name])], agenda.discipline, value => {
+    agenda.discipline = value; agenda.page = 0; draw();
+  });
+  search.addEventListener('input', () => {agenda.query = search.value; agenda.page = 0; draw();});
+  const checked = () => [...agenda.selected].filter(id => availableIds.has(id));
+  const schedule = reviewButton('Agendar seleção', () => openReviewSchedule(checked()));
+  const revise = reviewButton('Revisar seleção', () => {
+    const topics = checked().map(getTopic).filter(Boolean);
+    const ids = [...new Set(topics.map(t => t.disciplineId))];
+    if(topics.length > MAX_TOPICS_PER_STUDY || ids.length > MAX_DISCIPLINES_PER_STUDY){
+      toast(`Escolha até ${MAX_TOPICS_PER_STUDY} assuntos e ${MAX_DISCIPLINES_PER_STUDY} disciplinas para uma sessão.`, 'info');
+      return;
+    }
+    openRegisterModal({mode:'timer', disciplineIds:ids, topicIds:topics.map(t => t.id), types:['revisao']});
+  }, 'primary');
+  const clearSelection = reviewButton('Limpar seleção', () => {agenda.selected.clear(); draw(); search.focus();});
+  const updateSelection = () => {
+    const n = checked().length;
+    selection.textContent = n ? plural(n, 'assunto selecionado', 'assuntos selecionados') : 'Escolha assuntos para revisar ou agendar juntos.';
+    schedule.disabled = revise.disabled = clearSelection.disabled = !n;
+  };
+  const limit = 12;
+  function draw(){
+    const terms = normalizeText(agenda.query).split(' ').filter(Boolean);
+    const matches = sorted.filter(e => {
+      if(agenda.discipline && e.topic.disciplineId !== agenda.discipline) return false;
+      if(terms.length && !matchesTerms(e.key, terms)) return false;
+      return agenda.filter === 'all' || (agenda.filter === 'today' && e.date === day)
+        || (agenda.filter === 'dated' && !!e.date) || agenda.filter === e.kind;
+    });
+    const pageCount = Math.max(1, Math.ceil(matches.length / limit));
+    agenda.page = Math.min(agenda.page, pageCount - 1);
+    const visible = matches.slice(agenda.page * limit, (agenda.page + 1) * limit);
+    const mark = h('input', {type:'checkbox'});
+    const syncMark = () => {
+      const count = matches.filter(e => agenda.selected.has(e.topic.id)).length;
+      mark.checked = !!matches.length && count === matches.length;
+      mark.indeterminate = count > 0 && !mark.checked;
+    };
+    mark.disabled = !matches.length;
+    syncMark();
+    const boxes = new Map();
+    mark.addEventListener('change', () => {
+      for(const {topic} of matches){
+        if(mark.checked) agenda.selected.add(topic.id); else agenda.selected.delete(topic.id);
+        if(boxes.has(topic.id)) boxes.get(topic.id).checked = mark.checked;
+      }
+      updateSelection();
+    });
+    const list = h('ul', {class:'review-agenda-list'}, visible.map(({topic, date}) => {
+      const checkbox = h('input', {type:'checkbox', checked:agenda.selected.has(topic.id), onchange:() => {
+        if(checkbox.checked) agenda.selected.add(topic.id); else agenda.selected.delete(topic.id);
+        syncMark();updateSelection();
+      }});
+      boxes.set(topic.id, checkbox);
+      return h('li', {class:'review-agenda-row'},
+        h('label', {class:'review-agenda-topic'}, checkbox,
+          h('span', null, h('strong', {text:topic.name}),
+            h('small', {text:disciplineName(topic.disciplineId) + ' · ' + (date ? reviewWhenText(topic) : ReviewSchedule.label(topic))}))),
+        h('div', {class:'review-agenda-row-actions'},
+          h('button', {class:'btn ghost sm', type:'button', text:'Revisar', 'aria-label':'Revisar ' + topic.name, onclick:() => startReview(topic.id)}),
+          h('button', {class:'btn ghost sm', type:'button', text:'Agendar', 'aria-label':'Agendar ' + topic.name, onclick:() => openReviewSchedule([topic.id])})));
+    }));
+    const paginate = delta => {
+      agenda.page += delta;
+      draw();
+      results.querySelector(delta > 0 ? '.agenda-next:not(:disabled)' : '.agenda-prev:not(:disabled)')?.focus();
+      if(!results.contains(document.activeElement)) results.querySelector('input')?.focus();
+    };
+    const prev = reviewButton('Anterior', () => paginate(-1)); prev.disabled = agenda.page === 0; prev.classList.add('agenda-prev');
+    const next = reviewButton('Próxima', () => paginate(1)); next.disabled = agenda.page + 1 >= pageCount; next.classList.add('agenda-next');
+    mount(results, matches.length ? [
+      h('label', {class:'review-agenda-select'}, mark, plural(matches.length, 'Selecionar o assunto encontrado', 'Selecionar os assuntos encontrados')),
+      list,
+      pageCount > 1 ? h('div', {class:'review-agenda-page'}, prev, h('span', {class:'hint', text:`${agenda.page + 1} de ${pageCount}`}), next) : null
+    ] : h('p', {class:'quiet-empty', text:'Nenhum assunto neste recorte.'}));
+    updateSelection();
+  }
+  draw();
+  return h('section', {class:'review-agenda today-card','aria-labelledby':'review-agenda-title'},
+    h('h3', {class:'block-label', id:'review-agenda-title', text:'Agenda e assuntos'}),
+    h('div', {class:'review-agenda-controls'}, reviewField('agenda-search','Buscar assunto',search), sort.field, discipline.field),
+    h('div', {class:'review-agenda-selection'}, selection, h('div', {class:'tf-actions'}, revise, schedule, clearSelection)),
+    results);
+}

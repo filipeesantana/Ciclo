@@ -838,8 +838,9 @@ const HELP_ARTICLES = [
     { h:'No Ciclo' },
     { ul:[
       'Você entra pelo botão "Foco" na barra do cronômetro ou pela busca de comandos (Ctrl + K).',
-      'O botão de tela cheia, no canto, usa a tela cheia do navegador quando ele permite. Se não permitir, o modo foco funciona do mesmo jeito.',
-      'Esc (ou o × no canto) sai do foco sem encerrar o estudo. Recarregar a página também não encerra nada.',
+      'Abra Apresentação para ampliar o relógio e escolher os blocos. Tela cheia fica disponível quando o navegador oferece essa opção.',
+      'Em Personalizar painel, Abrir em outra janela permite mover a visualização para um segundo monitor. Os controles nas duas janelas agem sobre a mesma sessão.',
+      'Esc sai da tela cheia, volta ao Foco e fecha o Foco, uma etapa por vez. A sessão segue em andamento.',
       'Pausar, descansar, voltar a estudar e encerrar continuam disponíveis dentro do foco.'
     ]},
     { p:'Estudo líquido e descansos acumulados aparecem separados quando ajudam a entender a sessão. As pequenas informações mostram somente o que o cronômetro registrou; elas não medem concentração nem aprendizagem.' },
@@ -1179,11 +1180,11 @@ const HELP_ARTICLES = [
   keywords:'revisao revisar rever o que e como funcionam as revisoes ciclo espacada automatica',
   content:[
     { h:'Como funciona' },
-    { p:'Quando você estuda um tópico pela primeira vez, ele entra no ciclo automaticamente: a primeira revisão fica marcada para o dia seguinte, com [[dominio|consolidação]] inicial 2 de 5. Na revisão, você tenta lembrar antes de consultar e depois diz como foi.' },
+    { p:'Quando a agenda automática está ativa, o primeiro estudo inicia o intervalo da estratégia escolhida. Em Revisões, Agendar abre as opções do tópico. Ao revisar, tente lembrar antes de consultar e registre como foi se quiser.' },
     { demo:'review' },
     { h:'No Ciclo' },
-    { p:'Você vê algo simples, como "Você tem 2 revisões hoje". O Ciclo cuida das datas, sugere um jeito de revisar e mostra um roteiro curto.' },
-    { note:'Estudos comuns em um tópico já cadastrado não reprogramam nada — só o resultado de uma revisão altera o ciclo.' }
+    { p:'Agende para amanhã, para o primeiro dia da próxima semana ou para uma data escolhida. Você também pode deixar sem data ou desativar sugestões. A agenda respeita essa escolha até você mudá-la.' },
+    { note:'Uma data escolhida e uma autoavaliação são independentes. A opção Reativar agenda automática volta a usar a estratégia e o histórico do assunto.' }
   ],
   cta:{ action:'openReviews', label:'Abrir Revisões' },
   related:['quando-revisar','metodos-revisao','resultados-revisao']
@@ -1303,7 +1304,7 @@ const HELP_ARTICLES = [
   keywords:'desativar desligar revisao topico automatica pausar parar arquivar',
   content:[
     { h:'Como funciona' },
-    { p:'Ao editar um tópico, existe a opção "Incluir nas revisões". Desmarcando, ele deixa de gerar revisões, mas continua acumulando estudos e tempo normalmente.' },
+    { p:'Abra Revisões, encontre o tópico na agenda e escolha Agendar → Não sugerir. Os estudos, resultados e comentários continuam disponíveis. Você pode revisar manualmente ou escolher Reativar agenda automática.' },
     { h:'No Ciclo' },
     { ul:[
       'Em Configurações → Revisões você desliga a inclusão automática de novos tópicos.',
@@ -1318,12 +1319,15 @@ const HELP_ARTICLES = [
 {
   id:'analises', section:'usar', group:'progresso',
   title:"Como vejo meu progresso?",
-  quick:"Abra Análises: ela já começa com um panorama dos últimos 30 dias — tempo estudado, dias com estudo, como o tempo evoluiu e onde ele foi. Depois, escolha uma pergunta para explorar.",
+  quick:"Abra Resultados para ver o panorama dos últimos 30 dias — tempo estudado, dias com estudo, como o tempo evoluiu e onde ele foi. Depois, escolha uma pergunta para explorar.",
   actions:[{"action": "openAnalytics", "label": "Abrir Análises"}],
   oneLine:'Escolha uma pergunta pronta — ou personalize o que analisar, o período e o que ver.',
   summary:'As análises prontas, a personalização (várias disciplinas, tópicos e tipos), os períodos e as análises salvas.',
   keywords:'analises analise periodo escopo filtro o que analisar hoje semana mes 90 dias personalizado foco gerar alterar prontas salvar salvas recentes varias disciplinas tipos',
   content:[
+    { h:'Relatório PNG' },
+    { p:'Use Criar relatório em Resultados. Escolha o período, o recorte, o modelo e o formato. Em Blocos e privacidade você controla os dados e pode revelar nomes de disciplinas. A prévia mostra o mesmo conteúdo do PNG. Comentários e nomes de sessões ficam fora da imagem.' },
+    { p:'Use Ver registros para abrir as sessões usadas na análise. O botão Voltar recupera o período e os filtros da análise.' },
     { h:'Análises prontas' },
     { p:'O caminho mais rápido: escolha o período (esta semana, 7, 30 ou 90 dias, ou todo o histórico) e clique numa pergunta.' },
     { ul:[
@@ -2836,6 +2840,25 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 const CHANGELOG = [
   /* A versão atual tem um resumo curto (janela "O Ciclo foi atualizado.")
      e seções recolhíveis ("Ver todas as novidades"). As anteriores ficam como texto. */
+  { v:'8.0.0', title:'The Next Generation',
+    intro:'Comece em Hoje, escolha quando revisar e transforme Resultados em uma imagem.',
+    highlights:[
+      'Registre escolhendo uma disciplina e os minutos. Datas, horários, descansos e resultados ficam em campos opcionais.',
+      'Organizar reúne Disciplinas e Planejamento. Resultados reúne Análises e Histórico.',
+      'Agende por assunto ou em lote. Escolha uma data, deixe livre ou desative sugestões.',
+      'Use Apresentação no Foco e baixe relatórios PNG inteiramente no navegador.'
+    ],
+    sections:[
+      {title:'Sua agenda',items:[
+        'Próxima semana é o primeiro dia da semana seguinte, de acordo com a configuração do Ciclo.',
+        'A data escolhida continua valendo depois de registrar uma autoavaliação. Para voltar ao cálculo do Ciclo, escolha Reativar agenda automática.'
+      ]},
+      {title:'Dados e privacidade',items:[
+        'O PNG usa o mesmo recorte das Análises. O editor começa com nomes das disciplinas ocultos e comentários privados fora da imagem.',
+        'Os backups anteriores podem ser restaurados. O formato lógico 12 guarda a agenda escolhida de cada tópico.'
+      ]}
+    ]
+  },
   { v:'7.3.0', title:'Experience & Reviews',
     intro:'Registre com menos procura, acompanhe o dia e revise no seu ritmo.',
     highlights:[

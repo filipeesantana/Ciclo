@@ -1,0 +1,11 @@
+✔ PNG nos quatro formatos e temas tem os mesmos pixels da prévia e dados da análise (10852.215513ms)
+✔ relatório extenso, contraste reforçado e títulos longos conservam métricas e bordas (3004.390993ms)
+✔ Resultados abre os registros do recorte e Voltar preserva período e disciplina (1096.371957ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15572.23409

@@ -1,0 +1,18 @@
+✔ registro básico com duração, gravado e recuperado via Hoje e Histórico (2624.106083ms)
+✔ agenda civil em lote, datas passadas, reativação e fronteiras de mês e ano (6023.763833ms)
+✔ agenda manual prevalece sobre inclusão, resultado, edição, exclusão e backup (921.069155ms)
+✔ lote com assunto arquivado, excluído ou falha de escrita reverte por inteiro (941.620878ms)
+✔ estudo com vários tópicos persiste a agenda escolhida junto com a sessão (1182.997289ms)
+✔ apresentação em outra janela segue o relógio e reaproveita os controles do Foco (5087.261247ms)
+✔ PNG nos quatro formatos e temas tem os mesmos pixels da prévia e dados da análise (9851.682523ms)
+✔ toque em 390 px chega às rotas agrupadas e volta ao recorte (3135.779972ms)
+✔ primeira visita chega à disciplina, ao cronômetro e ao registro sem tutorial obrigatório (3898.538417ms)
+✔ relatório extenso, contraste reforçado e títulos longos conservam métricas e bordas (3364.618574ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 37719.189228
