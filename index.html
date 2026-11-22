@@ -8,7 +8,7 @@
 <meta name="description" content="Ciclo é um sistema de estudos que roda no seu navegador: organize o que você estuda, registre seus estudos, receba sugestões de revisão no momento certo e acompanhe seu progresso — sem conta e sem servidor.">
 <meta name="application-name" content="Ciclo">
 <title>Ciclo — Seu sistema de estudos</title>
-<link rel="stylesheet" href="styles.css?v=8.0.0">
+<link rel="stylesheet" href="styles.css?v=8.1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4a8 8 0 1 1-6.93 4' fill='none' stroke='%2362B1A4' stroke-width='2.6' stroke-linecap='round'/%3E%3Ccircle cx='5.07' cy='8' r='2.1' fill='%23C7A46A'/%3E%3C/svg%3E">
 </head>
 <body>
@@ -113,6 +113,9 @@
         <button class="icon-btn" id="open-palette-m" type="button" aria-label="Buscar no Ciclo" title="Buscar no Ciclo">
           <svg class="nav-icon" aria-hidden="true"><use href="#i-search"></use></svg>
         </button>
+        <button class="icon-btn" id="screen-help-m" type="button" aria-label="Ajuda desta tela" title="Ajuda desta tela">
+          <svg class="nav-icon" aria-hidden="true"><use href="#i-help"></use></svg>
+        </button>
         <button class="icon-btn" id="mb-more" type="button" aria-label="Ajuda, dados e configurações">
           <svg class="nav-icon" aria-hidden="true"><use href="#i-more"></use></svg>
         </button>
@@ -132,6 +135,9 @@
         <button class="btn ghost sm toolbar-help" id="screen-help" type="button">
           <svg class="btn-icon" aria-hidden="true"><use href="#i-help"></use></svg>Ajuda desta tela
         </button>
+        <button class="fab" id="fab" type="button" aria-label="Registrar estudo">
+          <svg class="btn-icon" aria-hidden="true"><use href="#i-plus"></use></svg><span class="fab-label" aria-hidden="true"><span class="fab-verb">Registrar</span><span class="fab-noun"> estudo</span></span>
+        </button>
       </div>
       <div id="section-nav"></div>
       <div id="return-slot"></div>
@@ -149,7 +155,7 @@
       </section>
 
       <section id="view-reviews" class="view" aria-labelledby="h-reviews">
-        <div class="page-head"><h2 id="h-reviews" tabindex="-1">Revisões</h2><p class="sub">O que vale revisitar?</p></div>
+        <div class="page-head"><h2 id="h-reviews" tabindex="-1">Revisões</h2><p class="sub">Escolha o que revisar ou marque uma data.</p></div>
         <div id="reviews-body" class="view-body"></div>
       </section>
 
@@ -164,7 +170,7 @@
       </section>
 
       <section id="view-history" class="view" aria-labelledby="h-hist">
-        <div class="page-head"><h2 id="h-hist" tabindex="-1">Histórico</h2><p class="sub">Tudo o que você já estudou.</p></div>
+        <div class="page-head"><h2 id="h-hist" tabindex="-1">Histórico</h2><p class="sub">Busque um estudo e abra o registro para conferir ou editar.</p></div>
         <div id="history-body" class="view-body"></div>
       </section>
 
@@ -197,9 +203,6 @@
 
 <!-- ================= BOTÃO GLOBAL ================= -->
 <!-- v6.4 — "Registrar estudo": guarda algo que você já estudou. Vale em qualquer tela. -->
-<button class="fab" id="fab" type="button" aria-label="Registrar estudo">
-  <svg class="btn-icon" aria-hidden="true"><use href="#i-plus"></use></svg><span class="fab-label" aria-hidden="true"><span class="fab-verb">Registrar</span><span class="fab-noun"> estudo</span></span>
-</button>
 
 <!-- ================= MODAIS ================= -->
 <div class="overlay" id="modal-root" hidden>
@@ -284,6 +287,12 @@
       <p class="focus-warn" id="focus-warn" role="status" hidden></p>
       <div class="focus-actions" id="focus-actions"></div>
     </div>
+    <details class="inline-guide focus-guide">
+      <summary>Ajuda do Foco</summary>
+      <p>O relógio acompanha a sessão. Descansar conta o intervalo à parte. Pausar interrompe a contagem.</p>
+      <p id="focus-guide-example"></p>
+      <p>Em Apresentação, escolha os dados visíveis nas opções de exibição. Sair do Foco mantém a sessão em andamento.</p>
+    </details>
     <p class="focus-hint" id="focus-hint">Esc sai do modo foco sem encerrar o estudo.</p>
   </div>
 </div>
@@ -295,9 +304,9 @@
 <p class="sr-only" id="sr-live" role="status" aria-live="polite"></p>
 
 <noscript><p style="padding:24px">Este aplicativo precisa de JavaScript para funcionar.</p></noscript>
-<script src="content.js?v=8.0.0"></script>
-<script src="reviews.js?v=8.0.0"></script>
-<script src="reports.js?v=8.0.0"></script>
-<script src="app.js?v=8.0.0"></script>
+<script src="content.js?v=8.1.0"></script>
+<script src="reviews.js?v=8.1.0"></script>
+<script src="reports.js?v=8.1.0"></script>
+<script src="app.js?v=8.1.0"></script>
 </body>
 </html>
