@@ -21,6 +21,7 @@ const REPORT_BLOCKS = [
 const REPORT_DEFAULT_BLOCKS = ['time','sessions','days','trend'];
 const REPORT_MAX_SCOPE = 40;
 const PT_NUM = new Intl.NumberFormat('pt-BR');
+const reportSeriesCache = new WeakMap();
 
 function reportDuration(minutes){
   return fmtDuration(Math.round(minutes));
@@ -32,6 +33,8 @@ function reportPeriods(){
 }
 
 function reportSeries(analysis){
+  const hit = reportSeriesCache.get(analysis.sessions);
+  if(hit) return hit;
   const totalDays = Math.max(1, diffDays(analysis.effEnd, analysis.range.start) + 1);
   const daysPerBar = Math.ceil(totalDays / 14);
   const count = Math.ceil(totalDays / daysPerBar);
@@ -44,7 +47,9 @@ function reportSeries(analysis){
     const index = Math.floor(diffDays(parseISO(session.date), analysis.range.start) / daysPerBar);
     if(buckets[index]) buckets[index].minutes += session.minutes;
   }
-  return {buckets, daysPerBar};
+  const series = {buckets, daysPerBar};
+  reportSeriesCache.set(analysis.sessions, series);
+  return series;
 }
 
 function visualReportModel(analysis, settings){
@@ -110,8 +115,10 @@ function reportReadable(color, background, ink, min){
   return ink;
 }
 function reportColors(settings){
-  const bg = settings.background;
-  const ink = reportContrast('#ffffff',bg) > reportContrast('#101819',bg) ? '#ffffff' : '#101819';
+  const bg = settings.highContrast
+    ? reportReadable(settings.background, settings.theme === 'light' ? '#000000' : '#ffffff', settings.theme === 'light' ? '#ffffff' : '#000000', 7)
+    : settings.background;
+  const ink = reportContrast('#ffffff',bg) > reportContrast('#000000',bg) ? '#ffffff' : '#000000';
   const card = reportMix(bg,ink,settings.highContrast ? .04 : .065);
   const on = (color,target,min) => {
     const text = reportContrast('#ffffff',target) > reportContrast('#000000',target) ? '#ffffff' : '#000000';
@@ -168,7 +175,7 @@ function reportRows(blocks, columns, layout){
   let row = [], span = 0;
   for(const block of blocks){
     const metric = ['time','sessions','days','disciplines','reviews'].includes(block.id);
-    const slots = layout === 'painel' ? 1 : metric ? 1 : Math.min(2,columns);
+    const slots = layout === 'compact' ? 1 : columns === 6 ? (metric ? 2 : 3) : (layout === 'painel' || metric ? 1 : 2);
     if(span+slots > columns){ rows.push(row); row = []; span = 0; }
     row.push({block,slots});
     span += slots;
@@ -202,12 +209,11 @@ function drawVisualReport(canvas, model, settings){
   y += reportText(ctx,model.subtitle,pad,y+5,contentWidth,25,{color:p.soft,lines:2}) + 7;
   y += reportText(ctx,model.range+'  ·  '+model.scope,pad,y,contentWidth,23,{weight:650,color:p.accent,lines:2}) + 19;
   if(model.empty) y += reportText(ctx,'Nenhum estudo registrado neste recorte.',pad,y,contentWidth,24,{color:p.soft}) + 8;
-  const columns = landscape ? 4 : 3;
-  let rows = reportRows(model.blocks,columns,settings.layout);
-  if(rows.length > (landscape ? 3 : 5)) rows = reportRows(model.blocks,columns,'painel');
+  let rows = reportRows(model.blocks,landscape ? 6 : 3,settings.layout);
+  if(rows.length > (landscape ? 3 : 5)) rows = reportRows(model.blocks,landscape ? 4 : 3,'compact');
   const gap = 14;
   const bottom = height - (model.brand ? 100 : 64);
-  const weights = rows.map(row => row.some(({block}) => block.buckets || block.rows) ? 1.6 : 1);
+  const weights = rows.map(row => row.some(({block}) => block.buckets || block.rows) ? 1.6 : .85);
   const countWeight = weights.reduce((total,weight) => total+weight,0);
   const free = bottom-y-Math.max(0,rows.length-1)*gap;
   rows.forEach((row,index) => {
@@ -245,7 +251,7 @@ function drawReportBlock(ctx, block, x,y,width,height,p,layout){
   let at = innerY+(height < 135 ? 27 : 34);
   const room = y+height-gap-at;
   if(block.buckets){
-    const chart = Math.max(24, room - 31);
+    const chart = Math.max(24, room - 41);
     const base = at + chart;
     const max = Math.max(1,...block.buckets.map(b => b.minutes));
     const barSlot = area / block.buckets.length;
@@ -255,21 +261,22 @@ function drawReportBlock(ctx, block, x,y,width,height,p,layout){
       const label = block.buckets.length <= 7 || i === 0 || i === block.buckets.length - 1;
       const left = w+i*barSlot+(barSlot-barWidth)/2;
       reportRect(ctx,left,base-h,barWidth,h,Math.min(3,h/2),bucket.minutes ? p.chart : p.line);
-      if(label && barSlot >= 40) reportText(ctx,fmtDateBR(dateToISO(bucket.range.start)).slice(0,5),w+i*barSlot,base+3,barSlot-1,14,{color:p.cardSoft});
+      if(label && barSlot >= 40) reportText(ctx,fmtDateBR(dateToISO(bucket.range.start)).slice(0,5),w+i*barSlot,base+3,barSlot-1,16,{color:p.cardSoft});
     });
     const peak = Math.max(...block.buckets.map(b => b.minutes));
-    reportText(ctx,block.detail + (peak ? ' · máximo ' + reportDuration(peak) : ''),w,base+17,area,15,{color:p.cardSoft});
+    reportText(ctx,block.detail + (peak ? ' · máximo ' + reportDuration(peak) : ''),w,base+21,area,18,{color:p.cardSoft});
     return;
   }
   if(block.rows){
     if(!block.rows.length){ reportText(ctx,'Sem tempo registrado',w,at,area,20,{color:p.cardInk}); return; }
-    const rowHeight = Math.min(45, (room-(block.extra ? 17 : 0))/block.rows.length);
+    const rowHeight = Math.min(106, (room-(block.extra ? 19 : 0))/block.rows.length);
+    const font = Math.min(27, Math.max(17, rowHeight / 2.3));
     const valueWidth = Math.min(110, area*.37);
     const peak = block.rows[0].minutes;
     for(const row of block.rows){
-      reportText(ctx,row.label,w,at,area-valueWidth,17,{color:p.cardInk});
-      reportText(ctx,reportDuration(row.minutes),w+area-valueWidth,at,valueWidth,17,{weight:650,color:p.cardInk});
-      if(rowHeight >= 27) reportRect(ctx,w,at+20,area*row.minutes/peak,4,1.5,p.chart);
+      reportText(ctx,row.label,w,at,area-valueWidth,font,{color:p.cardInk});
+      reportText(ctx,reportDuration(row.minutes),w+area-valueWidth,at,valueWidth,font,{weight:650,color:p.cardInk});
+      if(rowHeight >= 27) reportRect(ctx,w,at+font+5,area*row.minutes/peak,Math.min(7,rowHeight/7),2,p.chart);
       at += rowHeight;
     }
     if(block.extra) reportText(ctx,'+ ' + plural(block.extra,'disciplina','disciplinas'),w,at,area,15,{color:p.cardSoft});

@@ -420,6 +420,8 @@ const TODAY_BLOCKS = [
   { id:'quote',   label:'Frase do dia',        hint:'Uma frase real sobre aprender, com autor e obra.' }
 ];
 
+const HISTORY_PAGE_SIZE = 60;
+
 const VIEW_TITLES = {
   today:'Hoje', plan:'Planejamento', reviews:'Revisões', disciplines:'Disciplinas',
   analytics:'Resultados', history:'Histórico', help:'Ajuda', data:'Dados', settings:'Configurações'
@@ -5923,7 +5925,7 @@ const ui = {
   areaJustCreated: null,      // área recém-criada e ainda vazia: convite contextual
   justCreated: null,          // v6.2: data-fk da linha recém-criada (entra com um fade breve)
   showArchivedAreas: false,
-  historyLimit: 150,          // v6: quantas sessões o Histórico desenha antes de "Mostrar mais"
+  historyLimit: HISTORY_PAGE_SIZE,          // v6: quantas sessões o Histórico desenha antes de "Mostrar mais"
   settingsGroup: 'appearance',// v6: grupo aberto em Configurações
   planEditing: false,         // v6: Planejamento em modo de ajuste
   planWeekOffset: 0,          // v6.7: semana mostrada no quadro (0 = esta, -1 = anterior, 1 = próxima)
@@ -11238,12 +11240,12 @@ function renderToday(){
 
   const hasSessions = state.sessions.length > 0;
   const main = [todayAction(discs, hasSessions)];
-  const daily = todaySummary(); if(daily) main.push(daily);
   const guide = contextGuideCard('today');
   if(guide) main.push(guide);
   if(todayBlockOn('next')){ const n = todayNextSteps(); if(n) main.push(n); }
 
   const side = [];
+  const daily = todaySummary(); if(daily) side.push(daily);
   if(todayBlockOn('week') && hasSessions) side.push(todayWeekPanel());
   if(todayBlockOn('explore')) side.push(h('details', {class:'today-links'}, h('summary', {text:'Atalhos e organização'}), todayShortcuts()));
   if(todayBlockOn('start') && guidanceFull()){ const sg = startGuideCard(); if(sg) side.push(sg); }
@@ -11326,7 +11328,8 @@ function todayAction(discs, hasSessions){
           acts.length > 1 ? h('button', { class:'linkbtn muted', type:'button', text:'Outras opções', onclick:() => openAlternatives(acts.slice(1)) }) : null));
     }
   }
-  return h('section', { class:'focus-block today-act', 'aria-labelledby':'tf-title', 'data-timer-key':todayTimerKey() }, h('div', {class:'today-hero-content'}, head, actions, chips, sugg),
+  return h('section', { class:'focus-block today-act', 'aria-labelledby':'tf-title', 'data-timer-key':todayTimerKey() }, h('div', {class:'today-hero-content'}, head, actions, chips,
+      sugg ? h('details', {class:'today-invitation'}, h('summary', {text:'Sugestão de estudo'}), sugg) : null),
     h('div', {class:'today-orbit', 'aria-hidden':'true'}, h('span'), h('span'), h('span')));
 }
 
@@ -16986,9 +16989,9 @@ function onEnterAnalytics(){
   }
   /* v7 — Análises abrem com uma resposta: o panorama dos últimos 30 dias (ou a
      última análise, ou a escolha — em Configurações → Análises). Sem nenhum
-     estudo registrado, não há o que mostrar: a tela abre na escolha. */
+     estudo registrado, o panorama informa o recorte e dá acesso a registrar. */
   const pref = state.settings.analyticsStart;
-  if(pref !== 'choose' && state.sessions.length){
+  if(pref !== 'choose'){
     let q = null;
     if(pref === 'last' && state.meta.analyticsLastQuery){
       const lq = normalizeAnalyticsQuery(state.meta.analyticsLastQuery);
@@ -20237,7 +20240,7 @@ function historyDiscoveries(){
         h('div', { class:'disc-actions' },
           x.actions.map(a => h('button', { class:'btn ghost sm', type:'button', text:a.label, onclick:a.run })),
           x.sessionIds.length ? h('button', { class:'linkbtn', type:'button', text:'Ver registros usados',
-            onclick:() => { ui.historyIds = { ids: x.sessionIds.slice(), label: x.text.length > 60 ? x.text.slice(0, 57) + '…' : x.text }; ui.historyLimit = 150; renderHistory();
+            onclick:() => { ui.historyIds = { ids: x.sessionIds.slice(), label: x.text.length > 60 ? x.text.slice(0, 57) + '…' : x.text }; ui.historyLimit = HISTORY_PAGE_SIZE; renderHistory();
               const t = $('#history-table-card'); if(t) revealElement(t); } }) : null))))),
     list.length > LIMIT ? h('button', { class:'linkbtn disc-more', type:'button', 'aria-expanded': open ? 'true' : 'false',
       text: open ? 'Mostrar menos' : `Ver mais descobertas (${list.length - LIMIT})`, onclick:() => { ui.historyDiscAll = !open; renderHistory(); } }) : null);
@@ -20265,7 +20268,7 @@ function renderHistory(){
   let t = null;
   const search = contextSearch({ id:'hf-search', fk:'hf-search', value:f.search, holder:tableHolder,
     placeholder:'Buscar nos estudos feitos…', label:'Buscar nos estudos feitos',
-    onInput:(v) => { f.search = v; ui.historyLimit = 150; clearTimeout(t); t = setTimeout(renderHistoryTable, 60); } });
+    onInput:(v) => { f.search = v; ui.historyLimit = HISTORY_PAGE_SIZE; clearTimeout(t); t = setTimeout(renderHistoryTable, 60); } });
   const active = historyActiveFilters();
   const filterBtn = h('button', { class:'btn ghost', type:'button', 'aria-haspopup':'dialog', onclick:openHistoryFilters },
     'Filtros', active.length ? h('span', { class:'btn-count', text:String(active.length) }) : null);
@@ -20275,7 +20278,7 @@ function renderHistory(){
     h('div', { class:'search-bar' }, search.node, filterBtn),
     active.length ? h('div', { class:'filter-chips', role:'group', 'aria-label':'Filtros ativos' },
       active.map(x => h('button', { class:'filter-chip', type:'button', 'aria-label':`Remover filtro ${x.label}`,
-        onclick:() => { x.clear(); ui.historyLimit = 150; renderHistory(); } }, h('span', { text:x.label }), icon('i-close', 'btn-icon'))),
+        onclick:() => { x.clear(); ui.historyLimit = HISTORY_PAGE_SIZE; renderHistory(); } }, h('span', { text:x.label }), icon('i-close', 'btn-icon'))),
       h('button', { class:'linkbtn muted', type:'button', text:'limpar tudo', onclick:() => { clearHistoryFilters(); renderHistory(); } })) : null,
     tableHolder));
   renderHistoryTable();
@@ -20301,7 +20304,7 @@ function historyActiveFilters(){
 function clearHistoryFilters(){
   Object.assign(ui.history, { areaId:'', disciplineId:'', topicId:'', period:'todos', type:'', difficulty:'', results:'' });
   ui.historyIds = null;
-  ui.historyLimit = 150;
+  ui.historyLimit = HISTORY_PAGE_SIZE;
 }
 
 /** Filtros completos num painel: a tela principal não vira formulário. */
@@ -20336,7 +20339,7 @@ function openHistoryFilters(){
     body,
     h('div', { class:'row auto', style:'margin-top:18px' },
       h('button', { class:'btn primary', type:'button', text:'Aplicar filtros', onclick:() => {
-        Object.assign(ui.history, draft); if(draft.period==='analises') ui.historyRange=ui.period ? {...ui.period} : null; ui.historyLimit = 150; Drawer.close(); renderHistory();
+        Object.assign(ui.history, draft); if(draft.period==='analises') ui.historyRange=ui.period ? {...ui.period} : null; ui.historyLimit = HISTORY_PAGE_SIZE; Drawer.close(); renderHistory();
       } }),
       h('button', { class:'btn ghost', type:'button', text:'Limpar', onclick:() => { clearHistoryFilters(); Drawer.close(); renderHistory(); } })));
   Drawer.open('Filtros do histórico', wrap);
@@ -20344,14 +20347,15 @@ function openHistoryFilters(){
 
 function filteredSessions(){
   const f = ui.history;
-  let list = state.sessions.slice();
+  let list = DerivedCache.get('history-order', () => state.sessions.slice()
+    .sort((a,b) => b.date.localeCompare(a.date) || str(b.createdAt).localeCompare(str(a.createdAt))));
   if(f.topicId) list = list.filter(s => SessionModel.hasTopic(s, f.topicId));
   else if(f.disciplineId) list = list.filter(s => SessionModel.hasDiscipline(s, f.disciplineId));      // v6.8: estudos em que a disciplina aparece
   else if(f.areaId){
     const ids = new Set(state.disciplines.filter(d => d.areaId === f.areaId).map(d => d.id));
     list = list.filter(s => SessionModel.touchesDisciplines(s, ids));
   }
-  if(f.period === 'hoje') list = list.filter(s => s.date === todayISO());
+  if(f.period === 'hoje'){ const day = todayISO(); list = list.filter(s => s.date === day); }
   else if(f.period === 'semana'){ const r = { start:startOfWeek(today()), end:endOfWeek(today()) }; const a = dateToISO(r.start), b = dateToISO(r.end); list = list.filter(s => s.date >= a && s.date <= b); }
   else if(f.period === 'mes'){ const a = dateToISO(startOfMonth(today())), b = dateToISO(endOfMonth(today())); list = list.filter(s => s.date >= a && s.date <= b); }
   else if(f.period === 'analises' && (ui.historyRange || ui.period)){ const range=ui.historyRange || ui.period; const a = dateToISO(range.start), b = dateToISO(range.end); list = list.filter(s => s.date >= a && s.date <= b); }
@@ -20367,7 +20371,7 @@ function filteredSessions(){
     const hay = historySearchIndex();
     list = list.filter(s => matchesTerms(hay.get(s.id) || '', terms));
   }
-  return list.sort((a,b) => b.date.localeCompare(a.date) || str(b.createdAt).localeCompare(str(a.createdAt)));
+  return list;
 }
 
 /* v6.2 — texto pesquisável de cada estudo, normalizado UMA vez por geração dos
@@ -20422,9 +20426,11 @@ function renderHistoryTable(){
   };
   const byDay = new Map();
   shown.forEach(s => { if(!byDay.has(s.date)) byDay.set(s.date, []); byDay.get(s.date).push(s); });
+  const totals = new Map();
+  for(const s of list) if(byDay.has(s.date)) totals.set(s.date,(totals.get(s.date) || 0) + s.minutes);
   byDay.forEach((items, iso) => {
     holder.append(h('section', { class:'day-group', 'aria-label': dayLabel(iso) },
-      h('h3', { class:'day-head' }, h('span', { text: dayLabel(iso) }), h('span', { class:'day-head-s num', text: fmtDuration(sum(items, s => s.minutes)) })),
+      h('h3', { class:'day-head' }, h('span', { text: dayLabel(iso) }), h('span', { class:'day-head-s num', text: fmtDuration(totals.get(iso)) })),
       h('ul', { class:'line-list' }, items.map(s => {
         /* v6.7 — UMA linha por estudo: "Frações · Equações · +2" na linha, todos os
            nomes no rótulo acessível e na edição. O tempo é o do estudo, uma vez. */
@@ -20448,7 +20454,11 @@ function renderHistoryTable(){
   if(list.length > shown.length){
     holder.append(h('div', { class:'panel-foot' },
       h('button', { class:'btn ghost', type:'button', text:`Mostrar mais (${list.length - shown.length} restantes)`,
-        onclick:() => { ui.historyLimit += 150; renderHistoryTable(); } })));
+        onclick:() => {
+          ui.historyLimit += HISTORY_PAGE_SIZE;
+          renderHistoryTable();
+          holder.querySelectorAll('.line-main')[shown.length]?.focus();
+        } })));
   }
 }
 

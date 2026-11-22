@@ -5785,3 +5785,14 @@ body{background:var(--workspace-bg)}
   .report-order-buttons .icon-btn{min-width:38px;min-height:44px}
   .report-editor select,.report-editor input:not([type="checkbox"]){font-size:16px}
 }
+.today-v7 .today-summary .tf-actions{margin-top:12px;gap:8px}
+.today-invitation{margin-top:15px;color:var(--text-secondary)}
+.today-invitation summary{min-height:37px;align-content:center;cursor:pointer;font-size:13px}
+.today-v7 .today-invitation .today-sugg{margin-top:4px;padding-top:8px}
+@media(max-width:1109px){
+  .today-v7:not(.is-empty) .today-main,.today-v7:not(.is-empty) .today-side{display:contents}
+  .today-v7 .today-summary{order:1}
+  .today-v7 .today-main > :not(.today-act){order:2}
+  .today-v7 .today-side > :not(.today-summary){order:3}
+  .today-v7 .today-foot{order:4}
+}

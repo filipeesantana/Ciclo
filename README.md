@@ -1,6 +1,6 @@
 # Ciclo
 
-**v7.3.0 — Experience & Reviews**, candidata a revisão em PR independente. [Diagnóstico, mudanças, testes e limites](audit/experience-v73/RELATORIO-FINAL.md). Sem publicação automática.
+**v8.0.0 — The Next Generation**, em revisão. [Relatório de transformação e evidências](audit/next-generation/RELATORIO.md).
 
 **Seu sistema de estudos.** Organize o que você estuda, registre seus estudos, receba sugestões de revisão no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta e sem servidor. Depois de aberto, o Ciclo não usa a internet para nada.
 
@@ -32,15 +32,15 @@ Serve para qualquer pessoa e qualquer área: escola, faculdade, concursos, idiom
 
 Na primeira vez, o Ciclo pergunta: **"O que você gostaria de aprender?"** Há dois caminhos, e nenhum é obrigatório:
 
-- **Quero começar agora.** Diga o que está estudando — por exemplo, *Português* — e pronto: a tela Hoje já mostra *Começar a estudar*.
+- **Adicionar o que estou estudando.** Diga o que está estudando — por exemplo, *Português* — e pronto: a tela Hoje já mostra *Começar a estudar*.
 - **Quero ajuda para organizar.** Três perguntas curtas: o que você estuda, se há uma prova ou objetivo com data e se quer uma meta de horas por semana. No fim, um resumo mostra exatamente o que será criado, e nada é criado antes de você confirmar. O Ciclo nunca inventa horas, revisões ou prazos: um prazo só existe se você escreveu a data dele.
 
 Depois disso:
 
 1. **Comece a estudar.** Escolha a matéria — as mais recentes ficam a um clique — e o Ciclo conta o tempo para você, e o descanso, quando você quiser descansar.
-2. **Ou registre o que já estudou**, com o horário ou só com a duração.
+2. **Ou registre o que já estudou.** Escolha a disciplina, informe os minutos e salve. Data, horários, descansos, tópicos e resultados ficam disponíveis conforme precisar.
 3. **Divida em assuntos quando quiser.** Depois da primeira matéria, o Ciclo sugere uma vez, sem insistir: *"Você pode dividir Português em assuntos, como Pontuação e Uso da crase."* Dá para estudar sem tópicos.
-4. **Revise quando fizer sentido.** Cada assunto estudado volta como sugestão de revisão — uma sugestão, não uma tarefa.
+4. **Revise quando fizer sentido.** Escolha uma data, deixe o assunto disponível sem data ou desative as sugestões para ele.
 5. **Defina uma meta para a semana, se quiser.** Por exemplo, 5 horas. Qualquer estudo conta para ela, de qualquer matéria, em qualquer dia.
 
 Você não precisa criar Área de Estudo, definir prioridade, montar um plano ou escolher estratégia de revisão para começar. Tudo vem com padrões que funcionam e pode ser ajustado depois. O guia do primeiro uso pode ser revisto a qualquer momento em **Ajuda → Guia do primeiro uso**, sem apagar nada.
@@ -95,6 +95,8 @@ O **Pomodoro** é opcional e fica em *Começar a estudar → Como contar o tempo
 - **Um estudo só.** Dois blocos de 25/5 viram **50 min estudados e 5 min de descanso**, com o número de blocos completos. Encerrar no meio de um bloco registra o tempo realmente estudado.
 
 O **modo foco** destaca o relógio com um rótulo que explica a contagem, o estado e as ações principais. Disciplina, tópicos e tipos ficam compactos; estudo líquido e descanso aparecem separados. No Pomodoro, o progresso e o tempo restante do bloco não se confundem com o acumulado da sessão. A tela cheia depende do navegador. *Esc* sai do foco sem encerrar o estudo.
+
+Em **Foco → Apresentação**, o mesmo cronômetro ganha uma visualização ampliada. Use **Personalizar painel** para escolher os blocos ou abrir a apresentação em outra janela. Tela cheia, quando disponível, permite pausar, descansar e finalizar.
 
 ### Resultado do estudo (opcional)
 
@@ -162,23 +164,23 @@ A meta é **o tempo total que você quer estudar na semana**. Estudou 5h de uma 
 
 ## Revisões
 
-Depois que você estuda um assunto, o Ciclo passa a sugerir quando vale revê-lo. **São sugestões, não obrigações**: nada no seu histórico muda por você não revisar, e um assunto cuja data já passou aparece como *"Data sugerida já passou · 15 de out"*, nunca como atraso.
+Em **Revisões → Agenda e assuntos**, busque por tópico ou disciplina. **Agendar** abre as opções de um assunto. Marque vários para agendar ou revisar juntos.
 
-- **Por matéria.** A tela Revisões agrupa os assuntos sugeridos por disciplina. Se preferir, *Configurações → Revisões e sugestões → Lista única* mostra tudo numa lista.
-- **Revisar a disciplina.** Uma revisão geral da matéria inteira, sem escolher assuntos. Ela fica registrada como revisão daquela disciplina e **não muda a agenda de nenhum assunto** — porque o Ciclo não sabe quais você revisou.
-- **Escolher assuntos.** Marque os assuntos que vai revisar. Ao terminar, cada um recebe o próprio resultado (*Esqueci*, *Lembrei com dificuldade*, *Lembrei bem*, *Dominei*) e a própria próxima data. Só os assuntos escolhidos são afetados.
-- **Em que pé está cada sugestão.** *"Sugerida para hoje"*, *"Data sugerida já passou · 15 de out"* ou *"Programada · em 3 dias"* — e, ao lado, *Revisar agora*.
-- **Deixar para depois.** No menu ⋯ de um assunto (que também abre o assunto) ou da matéria: para amanhã, daqui a 3 dias ou para a semana que vem. Adiar esconde só a sugestão: a data marcada, o intervalo e o histórico continuam iguais. Se a data do assunto mudar (por exemplo, porque você o revisou), o adiamento deixa de valer sozinho. Também dá para parar de sugerir um assunto.
-- **Revisão livre.** A mesma janela de estudo aceita várias disciplinas e tópicos opcionais, com cronômetro ou registro manual.
-- **Montar revisão guiada.** Escolha 10, 20, 30 minutos ou outra duração e ajuste assuntos, disciplinas da proposta, ordem, métodos e minutos. Você pode pausar, voltar, pular e guardar para depois. Os resultados confirmados sobrevivem ao F5. Ao encerrar, somente assuntos realizados entram em **um único estudo**, com autoavaliação individual opcional. Flashcards é um método para usar seus próprios cartões, físicos ou externos; não existe biblioteca nativa.
-- **Roteiro e tempo.** O relógio do roteiro conta até pausar; **Guardar e sair** pausa antes de fechar. O Ciclo impede executar esse relógio junto com o cronômetro. A data é a do início do roteiro. Apenas um roteiro fica guardado por vez e o backup o recupera pausado.
-- **Desligar as sugestões.** Em *Configurações → Revisões e sugestões*. O número ao lado de Revisões some; a agenda continua sendo calculada e você revisa quando quiser.
+- **Amanhã** usa o próximo dia civil local. **Próxima semana** usa o primeiro dia da semana seguinte conforme o início configurado.
+- **Escolher uma data** permite marcar um dia específico. Datas passadas continuam visíveis.
+- **Sem data definida** deixa o tópico disponível para revisão livre. **Não sugerir** desativa as sugestões do tópico e mantém o histórico.
+- **Reativar agenda automática** volta a calcular sugestões com a estratégia e os estudos do assunto. A autoavaliação registra o resultado e preserva uma data escolhida manualmente.
+- **Revisão livre** aceita uma ou várias disciplinas e tópicos opcionais. Uma revisão geral da disciplina preserva a agenda dos tópicos.
+- **Montar revisão guiada** propõe assuntos para o tempo escolhido. Você pode trocar, reordenar, pular e pausar. Um roteiro concluído gera um estudo com os resultados individuais opcionais. O backup recupera o roteiro pausado.
+- **Sugestões e adiamentos** mantém visíveis os adiamentos existentes e permite retirar temporariamente um assunto da lista de sugestões.
+
+Flashcards pessoais são um método de revisão. Use seus cartões físicos ou de outra ferramenta.
 
 A **consolidação estimada** de um tópico (de 1 a 5) sai só das suas respostas nas revisões. É uma estimativa para orientar a agenda, não uma medição da sua memória. Quem quiser mais controle pode escolher outro ritmo em *Quando revisar* (ciclo programado, intensiva para provas, manutenção) por disciplina ou por tópico.
 
-## Análises
+## Resultados
 
-Análises abre com o **panorama dos últimos 30 dias**:
+A aba Análises abre com o **panorama dos últimos 30 dias**:
 
 - **A resposta, grande:** o tempo estudado, em quantos dias, quantos estudos e a comparação com o período anterior equivalente.
 - **Três números** que abrem os detalhes: dias com estudo, tempo por dia de estudo e a meta semanal (ou as revisões).
@@ -197,6 +199,10 @@ Os caminhos novos da v7.1:
 O período muda com um clique. **Personalizar análise** permite escolher uma ou várias disciplinas, áreas ou tópicos, filtrar por tipo de estudo e definir datas. Uma análise usada sempre pode ser salva. Se preferir, *Configurações → Análises* faz a tela abrir na última análise vista ou direto na escolha do que analisar.
 
 Com várias disciplinas, tópicos ou tipos no mesmo estudo, os totais contam cada minuto uma vez só; partes estimadas são identificadas como estimativa (≈), separadas do tempo que você informou. Em *Mais*, você copia um resumo, baixa um relatório em texto ou prepara o relatório para IA.
+
+### Relatórios em imagem
+
+Em **Resultados → Criar relatório**, escolha período, disciplinas, área ou tópicos e veja a prévia com os totais das Análises. Escolha formato quadrado, retrato, stories ou paisagem. Ajuste o título, o tema, a paleta e os blocos. Os nomes de disciplinas começam ocultos. Comentários privados e nomes de sessões ficam fora da imagem. **Baixar PNG** gera o arquivo no próprio navegador.
 
 ## Descobertas do Histórico
 
@@ -303,8 +309,8 @@ Curto e direto, para quem quer saber exatamente o que esperar.
 - **O que as datas significam.** Datas de estudo, de prazo e de revisão são dias do calendário **no fuso do seu aparelho**. Um estudo pertence ao dia em que começou.
 - **Copiar o prompt.** Depende da permissão do navegador para a área de transferência. Quando ela é negada, o Ciclo avisa e mostra o texto para copiar à mão.
 - **Duas abas.** Pode usar. As abas compartilham os dados e se avisam quando algo muda; com um formulário aberto, o Ciclo avisa em vez de mexer no que você está digitando.
-- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v7.3.0 usa o formato lógico 11 e mantém o IndexedDB 1, sem conversão dos estudos. Os arquivos de interface usam o identificador de cache 7.3.0. Recarregue as outras abas abertas para que todas usem a mesma versão.
-- **Voltar para uma versão anterior.** Versões até a v7.2 recusam os backups novos por não conhecerem o formato 11; os dados do navegador continuam intactos.
+- **Atualizar o Ciclo.** Basta abrir a versão nova no mesmo navegador: os dados continuam lá. A v8.0.0 usa o formato lógico 12 para guardar a agenda manual e mantém o IndexedDB 1. Os arquivos de interface usam o identificador de cache 8.0.0. Recarregue as outras abas abertas para que todas usem a mesma versão.
+- **Voltar para uma versão anterior.** A v7.3 e versões anteriores recusam backups de formato 12. Guarde o backup da v8 e mantenha a v8 disponível para recuperação. Uma versão anterior pode abrir o mesmo banco local, mas mostra a agenda que conhecia antes da v8.
 - **Se algo der errado.** Recarregar a página é seguro: tudo o que foi registrado já está gravado. Se uma gravação falhar, o Ciclo diz isso e mantém a janela aberta com o que você digitou. Se os dados sumirem, restaure o último backup em **Dados → Restaurar backup**.
 
 ## Contato
@@ -315,17 +321,15 @@ O endereço também está no aplicativo, em **Ajuda** e em **Configurações →
 
 ## Versão atual
 
-**v7.3.0 — Experience & Reviews**
+**v8.0.0 — The Next Generation**
 
-- Registro com ações visíveis para comentário, outra disciplina e resultado; tipo e dificuldade sob demanda.
-- Hoje resume apenas sessões persistidas da data local, sem somar pausas, descansos ou multiplicar tempo multidisciplinar.
-- Revisão guiada com proposta editável, pausa, retomada, pulo e uma sessão agregada com resultados individuais opcionais.
-- Histórico preserva filtros no retorno e na recarga. Sidebar com seleção e agrupamento mais claros. Análises explicam métricas e períodos comparados.
-- Flashcards pessoais continuam como método; cartões nativos, FSRS e dependências do PR #3 não foram incorporados.
+- Hoje, Estudar, Revisões, Organizar e Resultados na navegação principal. Planejamento e Histórico ficam nas respectivas áreas.
+- Registro por duração com detalhes opcionais e resumo do dia atualizado após a gravação.
+- Agendamento por tópico ou em lote com precedência da escolha manual.
+- Apresentação para a sessão de Foco e relatórios PNG gerados localmente.
+- Formato de backup 12 e IndexedDB físico 1. A v8 lê backups anteriores. O backup da v8 deve ser restaurado com a v8 ou superior.
 
-Formato lógico **11**, IndexedDB físico **1**. O único novo conteúdo durável é um roteiro na store `meta` existente, incluído no backup e validado antes da restauração. Nenhum estudo antigo é convertido ou recalculado. A canonicalização do checksum de backups anteriores permanece igual. Versões até 7.2 recusam backups novos para evitar descartar o roteiro; guarde seu backup anterior se precisar voltar.
-
-[Relatório da v7.3](audit/experience-v73/RELATORIO-FINAL.md). A [auditoria da v7.2](audit/campo-365/RELATORIO-FINAL.md) permanece como histórico.
+[Relatório da v8](audit/next-generation/RELATORIO.md) · [Relatório da v7.3](audit/experience-v73/RELATORIO-FINAL.md) · [Auditoria da v7.2](audit/campo-365/RELATORIO-FINAL.md)
 
 ### v7.1.0
 
