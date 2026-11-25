@@ -43,7 +43,7 @@ test('v8.1 · enquadramento e ações principais por área', {timeout:120000}, a
       };
       for(const [view, selector] of [
         ['today','.today-act .tf-actions button'],['disciplines','#dpanel .panel-bar button[aria-haspopup]'],
-        ['plan','#plan-body button'],['reviews','.review-agenda-row-actions button'],['analytics','.an-head-periods button'],
+        ['plan','#plan-body button'],['reviews','.review-agenda-row-actions button'],['analytics','#results-period'],
         ['history','#hf-search'],['help','#help-body input'],['data','#data-body .tf-actions button'],
         ['settings','#spanel button']
       ]){
@@ -147,10 +147,11 @@ test('v8.1 · agenda extensa, ajuda completa e exploração após redesenho', as
     });
     assert.deepEqual(dims,[true,true]);
     await page.evaluate(() => applyAnalyticsQuery({periodPreset:'30d',focus:'overview'}));
-    await page.getByText('Gráficos e observações',{exact:true}).click();
-    await page.waitForFunction(() => ui.analyticsExplore.has('Gráficos e observações'));
+    assert.equal(await page.locator('.insights-timeline').isVisible(),true);
+    await page.getByText('Filtrar conteúdos',{exact:true}).click();
+    await page.waitForFunction(() => ui.resultsFiltersOpen);
     await page.evaluate(() => render());
-    assert.equal(await page.locator('.result-detail').first().getAttribute('open') !== null,true);
+    assert.equal(await page.locator('.results-filter-more').getAttribute('open') !== null,true);
     await context.close();
   } finally {
     await runtime.close();

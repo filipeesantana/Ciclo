@@ -1,0 +1,40 @@
+✔ REGRESSÃO: datas civis impossíveis e sufixos não são aceitos como outro dia (3849.909289ms)
+✔ novembro por cliques inclui os dois extremos: Resultados, Histórico e PNG mostram 180 minutos (3523.552789ms)
+✔ intervalo temporário: mudar mês/ano preserva seleção; Cancelar preserva filtro; reabrir recupera aplicação (4388.62207ms)
+✔ mesmo dia e intervalo inverso são previsíveis; setas cruzam mês e PageUp mantém o dia válido (2428.931102ms)
+✔ Planejamento: escolher dezembro pelo calendário, adicionar dia e recarregar conserva a data (4489.619887ms)
+✔ Prazos: calendário compartilhado cancela sem mudar input, confirma dia e persiste após F5 (3981.130791ms)
+✔ aritmética civil e presets em São Paulo, Nova York e Auckland inclui DST, bissexto e virada de ano (7320.020752ms)
+✔ Cancelar período personalizado iniciado em 30 dias preserva também o controle visível (2784.546816ms)
+✔ prazo conclui, reabre, arquiva e restaura pela interface sem mudar sua data (2695.18817ms)
+✔ material: cadastro mínimo, favorito em Hoje e abertura segura em um clique sem criar estudo (4734.379528ms)
+✔ URLs perigosas, malformadas, credenciais e conteúdo ativo são recusados (3067.819459ms)
+✔ bloco: reutiliza tópicos existentes, cria em lote com prévia e associa dois materiais atomicamente (2798.45817ms)
+✔ registro integrado: curso sozinho não seleciona tópicos; bloco seleciona dez; sessão única e snapshot temporal (3118.975139ms)
+✔ registro simples continua possível sem curso, bloco ou tópico (2517.490332ms)
+✔ bloco substitui sugestões individuais automáticas; agendamento individual explícito prevalece (2767.116976ms)
+✔ resultado geral do bloco não inventa avaliações dos tópicos nem conclui bloco compartilhado (3136.211025ms)
+✔ backup 13, checksum das novas coleções, restauração atômica e compatibilidade com backup 12 (2963.852243ms)
+✔ falha de gravação preserva formulário integrado e rascunho para retentativa (4508.144616ms)
+✔ concorrência rejeita edição obsoleta de curso e remoção de bloco durante registro sem gravação parcial (2027.688015ms)
+✔ arquivamento preserva estudos e exclusão com vínculos é recusada (3199.488788ms)
+✔ cronômetro mantém material e bloco após F5; Foco abre fonte sem encerrar; finaliza uma vez (4882.001502ms)
+✔ roteiro sugere bloco, preserva pulo/resultado após F5 e registra resultado geral sem inventar avaliação individual (10564.200681ms)
+✔ filtros de material e bloco usam somente vínculos gravados; repartição multidisciplinar nunca multiplica minutos (4705.217812ms)
+✔ dois blocos compartilham 45 minutos estimados; união e interseção respeitam a mesma sessão (2533.269505ms)
+✔ backup recusa coleções inválidas e mantém checksum de arquivos antigos sem novas propriedades (2507.659258ms)
+✔ tópico fora do snapshot do bloco não vaza numa interseção de filtros (2774.019774ms)
+✔ retirar um tópico antes de registrar preserva somente os nove tópicos confirmados (3693.721027ms)
+✔ upgrade físico 1 → 2 acrescenta coleções vazias e preserva estudos e agenda antigos (4408.549393ms)
+✔ agendamento em lote de blocos: sem data, não sugerir e reativar preservam histórico e seleção é contextual (5000.44018ms)
+✔ falha no cadastro em lote reverte novos tópicos e preserva o editor (3620.253242ms)
+✔ duas abas: editar material depois de outra gravação não sobrescreve silenciosamente a versão atual (3683.182311ms)
+✔ organizar tópicos já estudados agrupa a sugestão sem inventar sessão ou estudo do bloco (2202.920018ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 123403.734136

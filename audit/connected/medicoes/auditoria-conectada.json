@@ -1,0 +1,528 @@
+{
+  "sourceSha256": {
+    "app.js": "43862035501c057bd6679ad95f544e0e5b990e0999e7486d003b19a227a97ab3",
+    "learning.js": "86e278b9d21be4863b0713eafc23797e7f4fb9a25b5858f0af304aafb96230a1",
+    "dates.js": "54c399e6e7d71512933a331b15c140c8bbe1a99d926e3e749cb64b949e834727",
+    "insights.js": "b7517d5899ee5e104d68f18caef8f679f904420eb309f532479fbcab4f84776a",
+    "reviews.js": "5de97d6875bc5342d388c02629caf32e11f701b17ca1859b91cb4577a108ff85",
+    "reports.js": "b773c5fb96874f948543e4a6dc45efa755f79759ae7affdfe9d94472896f558f",
+    "styles.css": "e9cb09a2074eece99c903a3a2be7a5fb7f6a848ae80a76dd38342f36b1b1fec4"
+  },
+  "engine": "chromium",
+  "browser": "154.0.8037.57",
+  "dataset": {
+    "disciplines": 15,
+    "courses": 40,
+    "blocks": 100,
+    "topics": 350,
+    "sessions": 1000
+  },
+  "errors": [],
+  "measurements": [
+    {
+      "name": "hoje-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "disciplinas-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "disciplina-detalhe-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 870
+    },
+    {
+      "name": "materiais-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "blocos-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "planejamento-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "prazos-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "revisoes-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "resultados-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "historico-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "resultados-filtrados-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "grafico-foco-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "periodo-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "registro-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "planejamento-calendario-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "prazo-calendario-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "cadastro-material-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "editor-bloco-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "agenda-calendario-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "relatorio-desktop-light",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "hoje-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "disciplinas-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "disciplina-detalhe-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 870
+    },
+    {
+      "name": "materiais-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "blocos-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "planejamento-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "prazos-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "revisoes-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "resultados-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "historico-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "resultados-filtrados-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "grafico-foco-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "periodo-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "registro-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "planejamento-calendario-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "prazo-calendario-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "cadastro-material-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "editor-bloco-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "agenda-calendario-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "relatorio-desktop-dark",
+      "width": 1366,
+      "scroll": 1366,
+      "height": 768
+    },
+    {
+      "name": "hoje-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 1916
+    },
+    {
+      "name": "disciplinas-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 1666
+    },
+    {
+      "name": "disciplina-detalhe-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 3134
+    },
+    {
+      "name": "materiais-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 2981
+    },
+    {
+      "name": "blocos-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 2510
+    },
+    {
+      "name": "planejamento-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "prazos-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 1288
+    },
+    {
+      "name": "revisoes-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 3759
+    },
+    {
+      "name": "resultados-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 2105
+    },
+    {
+      "name": "historico-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 6817
+    },
+    {
+      "name": "resultados-filtrados-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 1397
+    },
+    {
+      "name": "grafico-foco-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 1397
+    },
+    {
+      "name": "periodo-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 1397
+    },
+    {
+      "name": "registro-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 1397
+    },
+    {
+      "name": "planejamento-calendario-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "prazo-calendario-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "cadastro-material-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "editor-bloco-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "agenda-calendario-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "relatorio-mobile-light",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "hoje-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 1916
+    },
+    {
+      "name": "disciplinas-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 1666
+    },
+    {
+      "name": "disciplina-detalhe-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 3134
+    },
+    {
+      "name": "materiais-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 2981
+    },
+    {
+      "name": "blocos-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 2510
+    },
+    {
+      "name": "planejamento-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "prazos-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 1288
+    },
+    {
+      "name": "revisoes-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 3759
+    },
+    {
+      "name": "resultados-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 2105
+    },
+    {
+      "name": "historico-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 6817
+    },
+    {
+      "name": "resultados-filtrados-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 1397
+    },
+    {
+      "name": "grafico-foco-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 1397
+    },
+    {
+      "name": "periodo-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 1397
+    },
+    {
+      "name": "registro-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 1397
+    },
+    {
+      "name": "planejamento-calendario-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "prazo-calendario-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "cadastro-material-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "editor-bloco-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "agenda-calendario-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    },
+    {
+      "name": "relatorio-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 2567
+    }
+  ],
+  "accessibility": [
+    {
+      "name": "materiais",
+      "violations": []
+    },
+    {
+      "name": "blocos",
+      "violations": []
+    },
+    {
+      "name": "revisoes",
+      "violations": []
+    },
+    {
+      "name": "resultados",
+      "violations": []
+    }
+  ],
+  "backup": {
+    "schema": 13,
+    "checksum": "ok",
+    "courses": 40,
+    "blocks": 100,
+    "sessions": 1000
+  }
+}

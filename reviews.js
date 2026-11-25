@@ -1,4 +1,4 @@
-/* Ciclo v7.3 — revisão livre e um roteiro durável. O motor de tópicos permanece
+/* Ciclo v8.2 — revisão livre, blocos e um roteiro durável. O motor permanece
    no app.js. Não há cartões nativos nem outro algoritmo de agendamento. */
 'use strict';
 
@@ -16,18 +16,22 @@ function cleanGuidedReview(value){
      !(value.runningSince===null || (Number.isFinite(value.runningSince) && value.runningSince>0))) fail();
   const seen=new Set();
   const items=value.items.map(i=>{
-    if(!i || typeof i.topicId!=='string' || !i.topicId || i.topicId.length>100 || seen.has(i.topicId) ||
+    const key=i?.blockId?'block:'+i.blockId:i?.topicId;
+    if(!i || typeof key!=='string' || !key || key.length>106 || seen.has(key) || (i.blockId && (typeof i.blockId!=='string' || !Array.isArray(i.topicIds) || i.topicIds.some(id=>typeof id!=='string'))) ||
        !CONCRETE_METHODS.includes(i.method) || !Number.isInteger(i.minutes) || i.minutes<1 || i.minutes>600 ||
        !['pending','done','skipped'].includes(i.status) ||
        !(i.outcome===null || REVIEW_OUTCOMES.some(o=>o.v===i.outcome)) || (i.status!=='done' && i.outcome!==null)) fail();
-    seen.add(i.topicId);
-    return {topicId:i.topicId,method:i.method,minutes:i.minutes,status:i.status,outcome:i.outcome};
+    seen.add(key);
+    return {...(i.blockId?{blockId:i.blockId,topicIds:Learning.ids(i.topicIds),blockName:String(i.blockName||'')}:{topicId:i.topicId}),method:i.method,minutes:i.minutes,status:i.status,outcome:i.outcome};
   });
   if(items.reduce((n,i)=>n+i.minutes,0)>value.budget) fail();
   return {id:value.id,rev:value.rev,date:value.date,budget:value.budget,cursor:value.cursor,elapsedMs:value.elapsedMs,
     runningSince:value.runningSince,finishedAt:typeof value.finishedAt==='string'?value.finishedAt:null,
     sessionId:typeof value.sessionId==='string'?value.sessionId:null,items};
 }
+function guidedItemEntity(item){return item.blockId?Learning.block(item.blockId):getTopic(item.topicId);}
+function guidedItemKey(item){return item.blockId?'block:'+item.blockId:item.topicId;}
+function guidedItem(entity,minutes,method){return entity.kind==='block'?{blockId:entity.id,blockName:entity.name,topicIds:entity.topicIds.slice(),method,minutes}:{topicId:entity.id,method,minutes};}
 function guidedElapsed(d,at=Date.now()){
   return Math.min(172800000,d.elapsedMs+(d.runningSince ? Math.max(0,at-d.runningSince) : 0));
 }
@@ -35,11 +39,11 @@ const GuidedReviewCommands={
   async create(items,budget){
     const draft=cleanGuidedReview({id:uid(),rev:1,date:todayISO(),budget,cursor:0,elapsedMs:0,runningSince:null,finishedAt:null,
       items:items.map(i=>({...i,status:'pending',outcome:null}))});
-    await DB.atomic(['meta','topics','disciplines'],async api=>{
+    await DB.atomic(['meta','topics','disciplines','contentBlocks'],async api=>{
       const previous=(await api.get('meta','guidedReview'))?.value;
       if(previous&&!previous.finishedAt) throw new Error('Retome ou encerre o roteiro que já está guardado.');
       const discIds=new Set();
-      for(const i of draft.items){const t=await api.get('topics',i.topicId);const d=t&&await api.get('disciplines',t.disciplineId);if(!t||t.archived||!d||d.archived)throw new Error('Um dos assuntos não está mais disponível. Atualize a proposta.');discIds.add(t.disciplineId);}
+      for(const i of draft.items){const t=await api.get(i.blockId?'contentBlocks':'topics',i.blockId||i.topicId);const d=t&&await api.get('disciplines',t.disciplineId);if(!t||t.archived||!d||d.archived)throw new Error('Um dos assuntos não está mais disponível. Atualize a proposta.');discIds.add(t.disciplineId);}
       if(discIds.size>MAX_DISCIPLINES_PER_STUDY)throw new Error('Escolha até '+MAX_DISCIPLINES_PER_STUDY+' disciplinas por roteiro.');
       await api.put('meta',{key:'guidedReview',value:draft});
     });
@@ -70,16 +74,23 @@ const GuidedReviewCommands={
       if(cur.runningSince)throw new Error('Pause o roteiro antes de registrar.');
       const done=cur.items.filter(i=>i.status==='done');
       if(!done.length)throw new Error('Conclua pelo menos uma atividade ou guarde o roteiro para depois.');
-      const topics=[],ids=[];
+      const topics=[],ids=[],contentEntries=[];
       for(const i of done){
-        const t=await api.get('topics',i.topicId);
+        const t=await api.get(i.blockId?'contentBlocks':'topics',i.blockId||i.topicId);
         if(!t||!(await api.get('disciplines',t.disciplineId)))throw new Error('Um assunto foi excluído. Volte ao roteiro e pule essa atividade.');
         if(!ids.includes(t.disciplineId))ids.push(t.disciplineId);
-        topics.push({topicId:t.id,disciplineId:t.disciplineId,minutes:null,outcome:i.outcome,strategy:null});
+        if(i.blockId){
+          contentEntries.push({disciplineId:t.disciplineId,blockId:t.id,blockName:i.blockName||t.name,topicIds:i.topicIds,outcome:i.outcome});
+          for(const id of i.topicIds)if(!topics.some(e=>e.topicId===id))topics.push({topicId:id,disciplineId:t.disciplineId,minutes:null,outcome:null,strategy:null});
+        }else{
+          const existing=topics.find(e=>e.topicId===t.id);
+          if(existing)existing.outcome=i.outcome;else topics.push({topicId:t.id,disciplineId:t.disciplineId,minutes:null,outcome:i.outcome,strategy:null});
+        }
       }
       if(ids.length>MAX_DISCIPLINES_PER_STUDY)throw new Error('O roteiro excede o limite de disciplinas por estudo.');
       const session=newSession({id:'guided:'+cur.id,disciplineId:ids[0],disciplineEntries:ids.map(disciplineId=>({disciplineId,minutes:null})),
         topicEntries:topics,date:cur.date,minutes,types:['revisao'],reviewMethod:done.every(i=>i.method===done[0].method)?done[0].method:null,comment:'',breaks:[]});
+      if(contentEntries.length)session.contentEntries=contentEntries;
       const chk=await SessionCommands._check(api,session);
       if(!chk.ok||chk.droppedTopics||chk.droppedDiscs)throw new Error('Os assuntos mudaram. Retome o roteiro.');
       // Cada tópico recebe apenas o próprio resultado. Sem resposta, seu estudo
@@ -116,26 +127,27 @@ function openGuidedReviewBuilder(availableMinutes=20){
     const build=()=>{
       const n=Number(minutes.value);if(!Number.isInteger(n)||n<1||n>600){minutes.focus();toast('Informe de 1 a 600 minutos.','err');return;}
       budget=n;chosen=[];let left=budget;const selected=new Set();
-      for(const e of ReviewEngine.rankedQueue().filter(e=>discs.has(e.topic.disciplineId))){
+      const candidates=Learning.blocks().some(b=>Learning.active(b))?LearningReviews.units().filter(u=>ReviewSchedule.due(u) && ReviewSchedule.due(u)<=todayISO()).sort((a,b)=>ReviewSchedule.due(a).localeCompare(ReviewSchedule.due(b))).map(topic=>({topic})):ReviewEngine.rankedQueue();
+      for(const e of candidates.filter(e=>discs.has(e.topic.disciplineId))){
         if(left<=0||chosen.length>=MAX_TOPICS_PER_STUDY)break;
         if(!selected.has(e.topic.disciplineId)&&selected.size>=MAX_DISCIPLINES_PER_STUDY)continue;
         selected.add(e.topic.disciplineId);
         const method=ReviewEngine.effectiveMethod(e.topic).method,duration=Math.min(left,ReviewEngine.estimateMinutes(e.topic,method));
-        chosen.push({topicId:e.topic.id,method,minutes:duration});left-=duration;
+        chosen.push(guidedItem(e.topic,duration,method));left-=duration;
       }draw();
     };
-    const add=reviewSelect('guided-add','Adicionar assunto',[['','Escolha um assunto'],...state.topics.filter(t=>!t.archived&&!getDiscipline(t.disciplineId)?.archived).map(t=>[t.id,disciplineName(t.disciplineId)+' — '+t.name])],'',v=>{
-      if(!v)return;if(chosen.some(i=>i.topicId===v)){toast('Este assunto já está no roteiro.','info');return;}
-      const t=getTopic(v);
-      if(new Set(chosen.map(i=>getTopic(i.topicId)?.disciplineId).concat(t.disciplineId)).size>MAX_DISCIPLINES_PER_STUDY){toast('Escolha até '+MAX_DISCIPLINES_PER_STUDY+' disciplinas por roteiro.','info');return;}
-      chosen.push({topicId:v,method:ReviewEngine.effectiveMethod(t).method,minutes:Math.min(5,budget)});add.node.value='';draw();
+    const add=reviewSelect('guided-add','Adicionar assunto',[['','Escolha um assunto'],...[...LearningReviews.blockUnits(),...state.topics.filter(t=>!t.archived&&!getDiscipline(t.disciplineId)?.archived)].map(t=>[t.kind==='block'?'block:'+t.id:t.id,disciplineName(t.disciplineId)+' — '+t.name])],'',v=>{
+      if(!v)return;if(chosen.some(i=>guidedItemKey(i)===v)){toast('Este assunto já está no roteiro.','info');return;}
+      const t=v.startsWith('block:')?{...Learning.block(v.slice(6)),kind:'block'}:getTopic(v);
+      if(new Set(chosen.map(i=>guidedItemEntity(i)?.disciplineId).concat(t.disciplineId)).size>MAX_DISCIPLINES_PER_STUDY){toast('Escolha até '+MAX_DISCIPLINES_PER_STUDY+' disciplinas por roteiro.','info');return;}
+      chosen.push(guidedItem(t,Math.min(5,budget),ReviewEngine.effectiveMethod(t).method));add.node.value='';draw();
     });
     const updateTotal=()=>{const n=chosen.reduce((n,i)=>n+(Number(i.minutes)||0),0);total.textContent=`${plural(chosen.length,'assunto','assuntos')} · ${n} min propostos de ${budget} min disponíveis.`+(n>budget?' Ajuste as durações para caber no tempo.':'');};
     function draw(focusId){
       clear(preview);
       if(!chosen.length)preview.append(h('p',{class:'quiet-empty',text:'Sem assuntos sugeridos nesta seleção. Adicione um tópico ou faça uma revisão livre, sem tópicos.'}));
       chosen.forEach((item,index)=>{
-        const t=getTopic(item.topicId);if(!t)return;
+        const t=guidedItemEntity(item);if(!t)return;
         const method=reviewSelect('guided-method-'+index,'Método de '+t.name,CONCRETE_METHODS.map(m=>[m,methodLabel(m)]),item.method,v=>{item.method=v;});
         const duration=h('input',{type:'number',min:'1',max:'600',value:item.minutes,inputmode:'numeric',oninput:e=>{item.minutes=Number(e.target.value);updateTotal();}});
         const move=(delta)=>{const next=index+delta;if(next<0||next>=chosen.length)return;[chosen[index],chosen[next]]=[chosen[next],chosen[index]];draw('guided-method-'+next);};
@@ -175,7 +187,7 @@ async function openGuidedReviewPlayer(id){
     const clock=()=>{const c=body.querySelector('.guided-clock');if(c)c.textContent=fmtTimer(guidedElapsed(draft));};
     function draw(){
       if(closed)return;
-      const item=draft.items[draft.cursor],t=getTopic(item.topicId),guide=ReviewEngine.methodGuide(item.method);
+      const item=draft.items[draft.cursor],t=guidedItemEntity(item),guide=ReviewEngine.methodGuide(item.method);
       const outcome=reviewSelect('guided-outcome','Como foi este assunto? (opcional)',[['','Sem autoavaliação'],...REVIEW_OUTCOMES.map(o=>[o.v,o.label])],item.outcome||'',v=>change(r=>{const i=r.items[r.cursor];i.outcome=v||null;i.status='done';return r;}));
       const method=reviewSelect('guided-current-method','Método',CONCRETE_METHODS.map(m=>[m,methodLabel(m)]),item.method,v=>change(r=>{r.items[r.cursor].method=v;return r;}));
       const advance=(r)=>{r.cursor=Math.min(r.items.length-1,r.cursor+1);return r;};
@@ -185,6 +197,7 @@ async function openGuidedReviewPlayer(id){
         h('p',{class:'guided-time'},h('span',{text:draft.runningSince?'Tempo estudado':'Pausado · tempo estudado'}),h('span',{class:'guided-clock num','aria-live':'off'})),
         reviewButton(draft.runningSince?'Pausar':'Continuar roteiro',()=>change(r=>{r.runningSince=r.runningSince?null:Date.now();return r;}),'primary'),
         method.field,
+        item.blockId?h('div',{class:'material-sources'},(t?.courseIds||[]).map(id=>Learning.course(id)).filter(Boolean).map(c=>Learning.link(c))):null,
         item.method==='flashcards'?h('p',{class:'hint',text:'Use seus próprios flashcards, físicos ou de outra ferramenta. Ao terminar, avalie este assunto se quiser.'}):null,
         h('ol',{class:'method-steps'},(guide?.steps||[]).slice(0,4).map(step=>h('li',{text:step}))),
         t?outcome.field:null,
@@ -213,7 +226,7 @@ function openGuidedReviewResult(draft){
     },'primary');finish.disabled=!done.length;
     return {title:'Registrar a revisão guiada',content:h('div',null,
       h('p',{text:plural(done.length,'assunto realizado','assuntos realizados')+'. Assuntos pulados e pendentes ficam fora do registro.'}),
-      h('ul',null,done.map(i=>h('li',{text:(getTopic(i.topicId)?.name||'Assunto excluído')+' · '+(i.outcome?reviewOutcomeLabel(i.outcome):'sem autoavaliação')}))),
+      h('ul',null,done.map(i=>h('li',{text:(guidedItemEntity(i)?.name||'Conteúdo excluído')+' · '+(i.outcome?reviewOutcomeLabel(i.outcome):'sem autoavaliação')}))),
       reviewField('guided-result-minutes','Tempo total líquido (minutos, ajustável)',minutes),
       h('p',{class:'hint',text:'Um estudo só, mesmo com várias disciplinas. Pausas não entram no tempo. A data é a do início do roteiro: '+fmtDateBR(draft.date)+'.'})),
       actions:[reviewButton('Voltar ao roteiro',()=>{close();openGuidedReviewPlayer(draft.id);}),reviewButton('Guardar para depois',()=>close()),
@@ -251,6 +264,7 @@ const ReviewSchedule = {
     return 'Agenda automática';
   },
   resolve(choice, date, ref = today()){
+    if(choice === 'today') return {mode:'date',date:dateToISO(ref)};
     if(choice === 'tomorrow') return {mode:'date', date:dateToISO(addDays(ref, 1))};
     if(choice === 'week') return {mode:'date', date:dateToISO(addDays(startOfWeek(ref), 7))};
     if(choice === 'auto') return {mode:'auto'};
@@ -295,7 +309,7 @@ const ReviewSchedule = {
 };
 
 function reviewScheduleField(prefix, initial, placeholder){
-  const choices = [['tomorrow','Amanhã'], ['week','Próxima semana'], ['date','Escolher uma data'],
+  const choices = [['today','Hoje'], ['tomorrow','Amanhã'], ['week','Próxima semana'], ['date','Escolher uma data'],
     ['free','Sem data definida'], ['off','Não sugerir'], ['auto','Reativar agenda automática']];
   const select = reviewSelect(prefix + '-policy', 'Agendamento', [['',placeholder], ...choices], initial?.choice || '', update);
   const date = h('input', {type:'date', value:initial?.date || '',oninput:e => e.target.removeAttribute('aria-invalid')});

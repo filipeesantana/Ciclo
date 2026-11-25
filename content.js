@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — CONTEÚDO ESTÁTICO (v7.3.0 · Experience & Reviews)
+   CICLO — CONTEÚDO ESTÁTICO (v8.2.0 · Connected Learning & Insights)
    Textos, guias e frases. Nada aqui vai para o IndexedDB e nada vem da rede.
 
    Blocos: DAILY_QUOTES · REVIEW_METHOD_GUIDES · HELP_SECTIONS ·
@@ -412,6 +412,45 @@ const HELP_GLOSSARY = {
    que impede a navegação em círculo.
    ========================================================================= */
 const HELP_ARTICLES = [
+
+{
+ id:'cursos-materiais',section:'usar',group:'organizando',title:'Como organizo meus cursos e materiais?',
+ quick:'Em Organizar → Cursos e materiais, salve nome, disciplina e link. Favorite para abrir diretamente em Hoje, com um clique e em nova guia.',
+ example:'Linux → Administração GNU/Linux → link do curso. Abrir o link não inicia cronômetro nem registra estudo.',
+ keywords:'curso material fonte link favorito recente udemy cisco youtube documentação pdf livro',
+ actions:[{action:'openMaterials',label:'Cursos e materiais'}],
+ content:[{p:'O conteúdo continua na plataforma de origem. O Ciclo não baixa vídeos, importa PDFs ou acessa contas de terceiros.'},
+ {steps:['Adicione nome, disciplina e endereço HTTP ou HTTPS.','Marque Favorito para acesso direto em Hoje.','Use Estudar para iniciar com a disciplina e o material preenchidos. Escolha um bloco ou os tópicos, se quiser.']},
+ {note:'Links com tokens ou parâmetros privados ficam no backup local. Não os compartilhe sem conferir. Arquivar preserva estudos e vínculos; excluir um item com vínculos é recusado.'}]
+},
+{
+ id:'blocos-conteudo',section:'usar',group:'revisando',title:'Como reviso vários tópicos como um conjunto?',
+ quick:'Crie um bloco em Organizar → Blocos e associe tópicos existentes. Ao estudar esse bloco, ele passa a ser uma unidade de revisão.',
+ example:'Navegação e arquivos reúne ls, cd, cp e grep. Uma revisão do conjunto, sem quatro sugestões automáticas concorrentes.',
+ keywords:'bloco conjunto agrupar revisão tópicos assuntos fonte compartilhado agendar calendário',
+ actions:[{action:'openContentBlocks',label:'Organizar blocos'},{action:'openReviews',label:'Revisões'}],
+ content:[{steps:['Crie um bloco na disciplina. Selecione tópicos existentes ou cole uma lista e confira a prévia.','Relacione materiais, se quiser. Um bloco pode servir a mais de um curso.','Escolha o bloco ao registrar ou iniciar um estudo. Confira os tópicos preenchidos; retire ou acrescente o que realmente estudou.','Em Revisões, use Revisar ou Alterar data. O menu oferece amanhã, próxima semana, data específica, sem data e não sugerir.']},
+ {p:'A avaliação geral do bloco não inventa notas para os tópicos nem conclui outro bloco com conteúdo compartilhado. Agendar um tópico explicitamente cria uma escolha individual que prevalece sobre o agrupamento.'},
+ {note:'Editar os tópicos do bloco não altera sessões anteriores. Um curso sozinho nunca seleciona todo o conteúdo. Os vínculos são opcionais e o tempo de uma sessão é contado uma única vez.'}]
+},
+{
+ id:'resultados-diretos',section:'usar',group:'progresso',title:'Como filtro Resultados e consulto os registros?',
+ quick:'Escolha o período e a disciplina diretamente. Em Filtrar conteúdos, escolha materiais, blocos ou tópicos quando fizer sentido.',
+ keywords:'resultados gráficos barra filtro disciplina material curso bloco período relatório png histórico comparação',
+ actions:[{action:'openAnalytics',label:'Ver Resultados'}],
+ content:[{steps:['Escolha Últimos 30 dias e a disciplina. Os gráficos usam esse recorte imediatamente.','Passe o mouse ou use o foco para ler uma barra. Clique, toque ou pressione Enter para consultar os registros.','Histórico e Relatório recebem o mesmo recorte. Voltar recupera os filtros.','Em Período personalizado, escolha os extremos e aplique. Cancelar preserva o período anterior.']},
+ {p:'Últimos 7 ou 30 dias incluem hoje. Os limites de um intervalo são inclusivos. As comparações mostram os dois períodos; um período em andamento compara somente o mesmo número de dias.'},
+ {note:'≈ indica divisão estimada. Uma sessão com vários blocos reparte o tempo da disciplina entre eles, sem multiplicar minutos. O acerto soma acertos e questões, não faz média das porcentagens. Resultados sem tópico específico não são atribuídos automaticamente a um bloco.'}]
+},
+{
+ id:'datas-calendarios',section:'usar',group:'semana',title:'Como escolho datas nos calendários?',
+ quick:'Use Calendário ao lado da data, escolha mês, ano e dia, e confirme. Em Planejamento, Escolher dia navega para a semana daquele dia.',
+ keywords:'data calendário mês ano dia intervalo planejamento revisão prazo cancelar teclado fuso',
+ content:[{p:'As datas de estudos, revisões e prazos representam dias civis locais. Um dia selecionado não é convertido para UTC. Timestamps de criação e horários de início são instantes distintos.'},
+ {steps:['As setas percorrem dias e semanas. PageUp e PageDown mudam o mês; com Shift, o ano. Home e End percorrem a semana.','Enter ou Espaço seleciona o dia. Confirmar ou Usar data aplica a escolha.','Cancelar preserva o valor anterior. Escape fecha o calendário de um campo e devolve o foco.']},
+ {note:'No intervalo personalizado, escolher o fim antes do início ordena os extremos. O mesmo dia é um intervalo válido.'}]
+},
+
 
 /* ---------------------------------------------------------------- USAR · COMEÇANDO */
 {
@@ -2840,6 +2879,16 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 const CHANGELOG = [
   /* A versão atual tem um resumo curto (janela "O Ciclo foi atualizado.")
      e seções recolhíveis ("Ver todas as novidades"). As anteriores ficam como texto. */
+  {v:'8.2.0',title:'Connected Learning & Insights',
+   intro:'Organize suas fontes. Conecte seus conhecimentos. Entenda sua evolução.',
+   highlights:[
+    'Cursos favoritos abrem em nova guia diretamente em Hoje, com um clique.',
+    'Blocos reúnem tópicos para estudar e revisar como conjuntos, preservando o histórico.',
+    'Resultados mostra gráficos e filtros diretos, com Histórico e PNG no mesmo recorte.',
+    'Calendários compartilham datas civis, navegação por mês e ano, teclado e confirmação.'
+   ],
+   sections:[{title:'Seus dados',items:['O formato de backup passa a 13 e o IndexedDB a 2. A atualização acrescenta duas coleções vazias sem reescrever os estudos antigos.','Materiais e blocos são opcionais. Abrir um link não cria estudo, não inicia cronômetro e não significa progresso.','Arquivar preserva vínculos. Os backups incluem links externos; confira parâmetros privados antes de compartilhá-los.']}]
+  },
   { v:'8.1.0', title:'Polish, Clarity & Identity',
     intro:'Mais espaço para estudar, conferir o histórico e escolher a próxima revisão.',
     highlights:[

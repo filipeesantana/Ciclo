@@ -71,7 +71,7 @@ const {start,open,seed}=require('./support.cjs');
     if(width===1440){
      await page.getByText('Blocos e privacidade',{exact:true}).click();
      await page.getByRole('checkbox',{name:'Distribuição por disciplina',exact:true}).check();
-     await page.getByRole('checkbox',{name:'Mostrar nomes das disciplinas',exact:true}).check();
+     await page.getByRole('checkbox',{name:'Mostrar nomes de disciplinas e materiais',exact:true}).check();
      await page.locator('#report-layout').selectOption(theme==='dark'?'painel':'editorial');
      await page.locator('#report-format').selectOption(theme==='dark'?'landscape':'portrait');
      const download=page.waitForEvent('download');

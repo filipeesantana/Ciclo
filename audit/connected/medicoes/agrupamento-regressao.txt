@@ -1,0 +1,13 @@
+✔ registro integrado: curso sozinho não seleciona tópicos; bloco seleciona dez; sessão única e snapshot temporal (4599.167352ms)
+✔ bloco substitui sugestões individuais automáticas; agendamento individual explícito prevalece (4041.428999ms)
+✔ resultado geral do bloco não inventa avaliações dos tópicos nem conclui bloco compartilhado (3303.516834ms)
+✔ roteiro sugere bloco, preserva pulo/resultado após F5 e registra resultado geral sem inventar avaliação individual (10779.058138ms)
+✔ organizar tópicos já estudados agrupa a sugestão sem inventar sessão ou estudo do bloco (3395.102195ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27468.652125

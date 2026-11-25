@@ -16,7 +16,7 @@ const REPORT_PALETTES = [
 const REPORT_BLOCKS = [
   ['time','Tempo líquido'], ['sessions','Sessões'], ['days','Dias ativos'], ['trend','Tempo no período'],
   ['distribution','Distribuição por disciplina'], ['disciplines','Disciplinas estudadas'], ['questions','Questões e acertos'],
-  ['reviews','Revisões realizadas'], ['comparison','Comparação temporal'], ['summary','Resumo']
+  ['reviews','Revisões realizadas'], ['materials','Materiais utilizados'], ['blocks','Blocos estudados'], ['comparison','Comparação temporal'], ['summary','Resumo']
 ];
 const REPORT_DEFAULT_BLOCKS = ['time','sessions','days','trend'];
 const REPORT_MAX_SCOPE = 40;
@@ -63,7 +63,7 @@ function visualReportModel(analysis, settings){
   const range = formatRange({start:analysis.range.start,end:analysis.effEnd});
   const scope = analysis.scope.type === 'all' ? 'Todos os estudos'
     : plural(analysis.scope.ids.length, {area:'área',discipline:'disciplina',topic:'tópico'}[analysis.scope.type], {area:'áreas',discipline:'disciplinas',topic:'tópicos'}[analysis.scope.type]);
-  const scopeText = scope + (analysis.scope.types ? ' · ' + analysis.scope.typesLabel : '');
+  const scopeText = scope + (analysis.scope.types ? ' · ' + analysis.scope.typesLabel : '') + (analysis.scope.courseIds?.size ? ' · '+plural(analysis.scope.courseIds.size,'material','materiais') : '') + (analysis.scope.blockIds?.size ? ' · '+plural(analysis.scope.blockIds.size,'bloco','blocos') : '');
   const distribution = analysis.byDiscipline.filter(d => d.minutes > 0);
   const estimated = analyticsEstimatedTime(analysis.sessions);
   const previousEstimated = settings.visible.has('comparison')
@@ -75,8 +75,18 @@ function visualReportModel(analysis, settings){
   const q = analysis.results.questions;
   const series = reportSeries(analysis);
   const label = Object.fromEntries(REPORT_BLOCKS);
+  function contentRows(key){
+    const values=new Map();
+    for(const s of analysis.sessions)for(const e of Learning.shares(s))if(e[key]){
+      const id=e[key],name=key==='courseId'?e.courseName:e.blockName;
+      const cur=values.get(id)||{label:settings.names?name:(key==='courseId'?'Material ':'Bloco ')+(values.size+1),minutes:0,estimated:false};
+      cur.minutes+=e.minutes;cur.estimated ||= e.estimated;values.set(id,cur);
+    }
+    const list=[...values.values()].filter(x=>x.minutes>0).sort((a,b)=>b.minutes-a.minutes);
+    return {rows:list.slice(0,3).map(x=>({...x,value:reportDuration(x.minutes,x.estimated)})),extra:Math.max(0,list.length-3)};
+  }
   const blocks = {
-    time:{value:time},
+    time:{value:time}, materials:contentRows('courseId'),blocks:contentRows('blockId'),
     sessions:{value:fmt(totals.count)},
     days:{value:fmt(totals.activeDays)},
     trend:{...series, detail:series.daysPerBar === 1 ? 'Minutos por dia' : 'Minutos por intervalo de até ' + series.daysPerBar + ' dias'},
@@ -392,6 +402,9 @@ function openVisualReport(rawQuery){
     const typeRow = h('div', {class:'tf-actions',hidden:!query.types.length}, typesText, reviewButton('Limpar tipos de estudo', () => {
       query.types = []; typeRow.hidden = true; queue();
     }));
+    const material=Learning.courses().length?reviewSelect('report-material','Material',[['','Todos os materiais'],...Learning.courses().map(c=>[c.id,c.name])],query.courseIds[0]||'',v=>{query.courseIds=v?[v]:[];queue();}):null;
+    const contentBlock=Learning.blocks().length?reviewSelect('report-block','Bloco de conteúdo',[['','Todos os blocos'],...Learning.blocks().map(b=>[b.id,b.name])],query.blockIds[0]||'',v=>{query.blockIds=v?[v]:[];queue();}):null;
+    const contentFilters=h('div',{class:'report-content-filters'},material?.field,contentBlock?.field);
     const formats = reviewSelect('report-format','Formato',Object.entries(REPORT_FORMATS).map(([id,f]) => [id,f.label]), settings.format, v => {settings.format=v;queue();});
     const layouts = reviewSelect('report-layout','Modelo',REPORT_LAYOUTS,settings.layout, v => {settings.layout=v;queue();});
 
@@ -425,7 +438,7 @@ function openVisualReport(rawQuery){
     const order = h('ol',{class:'report-order'});
     const structure = h('div', {class:'report-editor'},
       h('div', {class:'report-controls'},
-        h('div',{class:'report-fields'},period.field,kind.field), dates, filters, typeRow,
+        h('div',{class:'report-fields'},period.field,kind.field), dates, contentFilters, filters, typeRow,
         h('div',{class:'report-fields'},formats.field,layouts.field),
         h('details', {class:'disclosure'},
           h('summary',{text:'Título e cores'}),
@@ -436,7 +449,7 @@ function openVisualReport(rawQuery){
         h('details', {class:'disclosure'},
           h('summary',{text:'Blocos e privacidade'}),
           h('div',{class:'disclosure-body'},
-            check('Mostrar nomes das disciplinas','names'), check('Mostrar marca do Ciclo','brand'), signed, signatureField,
+            check('Mostrar nomes de disciplinas e materiais','names'), check('Mostrar marca do Ciclo','brand'), signed, signatureField,
             h('p',{class:'hint',text:'Controle a ordem e os dados da imagem. Comentários e nomes de sessões ficam fora.'}), order))),
       h('div', {class:'report-stage'},
         h('p',{class:'report-preview-heading',text:'Prévia da imagem'}),
