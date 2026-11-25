@@ -1,14 +1,31 @@
 # Ciclo
 
-**v8.1.0 — Polish, Clarity & Identity**, em revisão. [Relatório da versão e validação](audit/polish/RELATORIO.md).
+**v8.2.0 — Connected Learning & Insights**, candidata a revisão em PR independente. [Entrega, contratos, validação e limites](audit/connected/RELATORIO.md). Sem merge, release ou publicação automática.
 
-**Seu sistema de estudos.** Organize o que você estuda, registre seus estudos, receba sugestões de revisão no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta e sem servidor. Depois de aberto, o Ciclo não usa a internet para nada.
+**Seu sistema de estudos.** Organize o que você estuda, registre seus estudos, receba sugestões de revisão no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta e sem servidor. O processamento e o armazenamento são locais. Materiais externos abrem na plataforma de origem, em outra guia, quando você escolhe acessá-los.
 
 O nome vem do próprio método: **planejar → estudar → revisar → analisar → reajustar**, e começar de novo.
 
 > O Ciclo se chamava **Diário de Estudos**. Só o nome mudou: quem já usava continua com todos os dados, revisões e planos exatamente como estavam.
 
 ---
+
+
+## Aprendizagem conectada na v8.2
+
+**Cursos e materiais.** Em Organizar, adicione nome, disciplina e link HTTP/HTTPS. Favoritos e acessos recentes ficam em Hoje. Abrir um material exige um clique quando ele está visível e preserva cronômetro, rascunho e navegação. Links não são tratados como estudo nem como progresso. Não há player, upload de arquivos ou integração com contas de terceiros.
+
+**Blocos de conteúdo.** Associe tópicos existentes a um conjunto, como “Navegação e arquivos”. A lista em lote apresenta existentes e novos antes de salvar. O mesmo bloco pode servir a vários materiais e um tópico pode participar de vários blocos. Tudo continua opcional.
+
+**Estudar e registrar.** Escolher um curso não seleciona seus tópicos. Escolher um bloco preenche os tópicos dele para você conferir, retirar ou acrescentar. Disciplina, fonte e bloco são recuperados no cronômetro, no Foco, no rascunho e na edição. Cada sessão guarda os tópicos efetivos daquela época: editar o catálogo não reescreve seu passado. Uma sessão continua tendo uma duração única.
+
+**Revisões por conjunto.** Um bloco estudado recebe uma agenda, calculada com a política de intervalos já existente. Seus tópicos não viram sugestões automáticas redundantes. Uma escolha manual de tópico prevalece. A avaliação geral fica no bloco, sem inventar avaliações individuais ou concluir outro bloco que compartilha tópicos. Revisão livre e roteiro aceitam os conjuntos; somente atividades realizadas entram no registro.
+
+**Resultados.** Período e disciplina ficam diretamente disponíveis. Gráficos temporais e barras de distribuição aparecem de imediato. Material, bloco e tópico são filtros contextuais; filtros de dimensões diferentes se intersectam. Clique, toque ou Enter numa barra abre seus registros. Histórico e PNG recebem o mesmo recorte; voltar preserva os filtros. Blocos e materiais dividem apenas o tempo da disciplina a que pertencem, com estimativa indicada.
+
+**Calendários.** Datas civis são validadas estritamente; 31 de fevereiro nunca vira março. Mês e ano são navegáveis sem perder seleção. Setas, PageUp/PageDown e Home/End percorrem os dias. Confirmar aplica; Cancelar preserva o valor anterior. Intervalos incluem ambos os extremos, inclusive quando representam um só dia.
+
+**Atualização e backup.** O IndexedDB passa de 1 para 2, acrescentando `courses` e `contentBlocks`. O formato lógico passa de 12 para 13 para proteger os dados de leitores antigos. Coleções novas iniciam vazias. O backup inclui vínculos, snapshots, fontes, favoritos, acessos recentes, agendas e roteiros; a restauração é atômica. A canonicalização dos checksums antigos permanece compatível. Um arquivo 13 deve ser restaurado na v8.2 ou posterior; não tente abri-lo numa versão antiga. Faça backup antes de atualizar. Links com parâmetros privados também fazem parte do arquivo local.
 
 ## O que é
 

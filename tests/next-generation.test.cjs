@@ -83,7 +83,7 @@ test('agenda manual prevalece sobre inclusão, resultado, edição, exclusão e 
    old:!!Backup.parseBackup(JSON.stringify(legacy)).data
   };
  });
- assert.deepEqual(results,{ok:true,version:12,physical:1,integrity:'ok',newDue:'2027-01-05',due:'2027-01-05',off:'off',dueOff:false,sessions:1,old:true});
+ assert.deepEqual(results,{ok:true,version:13,physical:2,integrity:'ok',newDue:'2027-01-05',due:'2027-01-05',off:'off',dueOff:false,sessions:1,old:true});
 });
 
 test('lote com assunto arquivado, excluído ou falha de escrita reverte por inteiro',async()=>{
@@ -170,7 +170,7 @@ test('PNG nos quatro formatos e temas tem os mesmos pixels da prévia e dados da
  await page.getByText('Blocos e privacidade',{exact:true}).click();
  await page.getByRole('checkbox',{name:'Questões e acertos',exact:true}).check();
  await page.getByRole('checkbox',{name:'Distribuição por disciplina',exact:true}).check();
- await page.getByRole('checkbox',{name:'Mostrar nomes das disciplinas'}).check();
+ await page.getByRole('checkbox',{name:'Mostrar nomes de disciplinas e materiais'}).check();
  await page.getByRole('button',{name:'Subir bloco Questões e acertos'}).click();
  for(const [theme,layout] of [['light','editorial'],['dark','painel']]){
   await page.locator('#report-theme').selectOption(theme);

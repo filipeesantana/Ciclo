@@ -1,0 +1,13 @@
+✔ resultado geral do bloco não inventa avaliações dos tópicos nem conclui bloco compartilhado (4209.814227ms)
+✔ roteiro sugere bloco, preserva pulo/resultado após F5 e registra resultado geral sem inventar avaliação individual (9914.916151ms)
+✔ filtros de material e bloco usam somente vínculos gravados; repartição multidisciplinar nunca multiplica minutos (3170.422199ms)
+✔ dois blocos compartilham 45 minutos estimados; união e interseção respeitam a mesma sessão (1600.940632ms)
+✔ tópico fora do snapshot do bloco não vaza numa interseção de filtros (1992.621737ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22482.337733

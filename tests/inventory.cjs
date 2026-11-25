@@ -6,7 +6,7 @@ const vm=require('node:vm');
 const acorn=require('acorn');
 const {root}=require('./support.cjs');
 const esc=s=>String(s??'').replace(/\|/g,'\\|').replace(/[\r\n]+/g,' ').replace(/`/g,'′');
-const sources=['app.js','reviews.js','reports.js'].filter(file=>fs.existsSync(path.join(root,file)))
+const sources=['app.js','reviews.js','reports.js','learning.js','dates.js','insights.js'].filter(file=>fs.existsSync(path.join(root,file)))
  .map(file=>{
   const code=fs.readFileSync(path.join(root,file),'utf8');
   return {file,code,lines:code.split('\n').length};

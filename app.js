@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v8.1.0 · Polish, Clarity & Identity
+   CICLO — v8.2.0 · Connected Learning & Insights
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -36,8 +36,8 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '8.1.0';
-const APP_SCHEMA_VERSION = 12;         // v8: agenda manual opcional por tópico.
+const APP_VERSION = '8.2.0';
+const APP_SCHEMA_VERSION = 13;         // v8.2: materiais, blocos e snapshots opcionais de estudo.
                                       // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
@@ -119,7 +119,8 @@ const APP_SCHEMA_VERSION = 12;         // v8: agenda manual opcional por tópico
    mas estes nomes ficam como estão: renomeá-los faria o navegador procurar um
    banco/chaves que não existem e o usuário "perderia" os dados já gravados. */
 const IDB_NAME = 'diarioEstudosDB';
-const IDB_VERSION = 1;                 // schema FÍSICO do IndexedDB: v4 e v5.2 só alteram
+const IDB_VERSION = 2;                 // v8.2 acrescenta courses e contentBlocks, sem converter estudos.
+                                       // Histórico do schema físico 1: v4 e v5.2 só alteram
                                        // campos dentro dos objetos, nenhuma store ou
                                        // índice novo — por isso continua 1. O prazo mantém
                                        // `date` como data do prazo (há um índice nesse campo).
@@ -138,7 +139,7 @@ const V2_LS_KEY = 'diarioEstudos:v1';  // chave usada pela V2 (preservada, nunca
 const TIMER_LS_KEY = 'diarioEstudos:v3:timer';
 const THEME_LS_KEY = 'diarioEstudos:v3:theme';
 
-const STORES = ['meta','areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings'];
+const STORES = ['meta','areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings','courses','contentBlocks'];
 
 /* v6.4 — `hint` e `icon` são só apresentação; os valores (`v`) não mudaram.
    Descanso NÃO é um tipo de estudo: ele vive em `session.breaks`. */
@@ -565,12 +566,10 @@ function dateToISO(d){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 function parseISO(s){
-  if(!s || typeof s !== 'string') return null;
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if(!m) return null;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  d.setHours(0,0,0,0);
-  return d;
+  if(typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const [y,m,day] = s.split('-').map(Number);
+  const d = new Date(0); d.setFullYear(y,m-1,day); d.setHours(0,0,0,0);
+  return d.getFullYear() === y && d.getMonth() === m-1 && d.getDate() === day ? d : null;
 }
 function today(){ const d = new Date(); d.setHours(0,0,0,0); return d; }
 function todayISO(){ return dateToISO(today()); }
@@ -941,9 +940,15 @@ const DB = (() => {
           s.createIndex('date','date',{unique:false});
           s.createIndex('disciplineId','disciplineId',{unique:false});
         }
+        for(const name of ['courses','contentBlocks']){
+          if(!d.objectStoreNames.contains(name)){
+            const store = d.createObjectStore(name,{keyPath:'id'});
+            store.createIndex('disciplineId','disciplineId',{unique:false});
+          }
+        }
         void ev;
       };
-      req.onsuccess = () => { db = req.result; resolve(db); };
+      req.onsuccess = () => { db = req.result; db.onversionchange=()=>{db.close();toast('O Ciclo foi atualizado em outra aba. Recarregue esta aba para continuar.','info');}; resolve(db); };
       req.onerror = () => reject(req.error || new Error('Falha ao abrir o banco local.'));
       req.onblocked = () => reject(new Error('O banco está bloqueado por outra aba aberta.'));
     });
@@ -1466,7 +1471,7 @@ const state = {
   ready: false,
   settings: Object.assign({}, DEFAULT_SETTINGS),
   meta: {},
-  areas: [], disciplines: [], topics: [], sessions: [], plans: [], weeklyPlans: [], deadlines: [],
+  areas: [], disciplines: [], topics: [], sessions: [], plans: [], weeklyPlans: [], deadlines: [], courses: [], contentBlocks: [],
   // índices derivados (recalculados em rebuildIndexes)
   idx: { areaById:new Map(), discById:new Map(), topicById:new Map(), sessionsByDisc:new Map(), sessionsByTopic:new Map(), topicsByDisc:new Map() }
 };
@@ -1715,7 +1720,7 @@ const SESSION_TYPE_VALUES = SESSION_TYPES.map(t => t.v);
 const REVIEW_OUTCOME_VALUES = REVIEW_OUTCOMES.map(o => o.v);
 /* Campos do formato 6 (um tópico, um tipo). Só são LIDOS, na conversão. */
 const LEGACY_SESSION_KEYS = ['topicId', 'type', 'reviewOutcome', 'reviewStrategyAtTime'];
-const MAX_TOPICS_PER_STUDY = 40;      // teto defensivo (dados importados); a interface não chega perto
+const MAX_TOPICS_PER_STUDY = 1000;   // teto defensivo; blocos podem reunir centenas de tópicos
 const MAX_DISCIPLINES_PER_STUDY = 12; // idem
 
 const SessionModel = {
@@ -1940,16 +1945,20 @@ const SessionModel = {
     return null;
   },
   /** Algum resultado de revisão registrado (de um tópico, ou o antigo sem tópico)? */
-  hasOutcome(s){ return this.entries(s).some(e => e.outcome) || !!this.legacyOutcome(s); },
+  hasOutcome(s){ return this.entries(s).some(e => e.outcome) || Learning.entries(s).some(e=>e.blockId && e.outcome) || !!this.legacyOutcome(s); },
   /** Foi uma revisão? Tipo "Revisão" marcado ou algum resultado de revisão. */
   isReview(s){ return this.hasType(s, 'revisao') || this.hasOutcome(s); },
   /**
-   * Revisões contidas num estudo: uma por tópico com resultado. Um estudo de
+   * Revisões contidas num estudo: uma por bloco, ou tópico avulso com resultado.
+   * Dificuldades de tópicos dentro do bloco não duplicam unidades. Um estudo de
    * revisão sem resultado nenhum conta como UMA revisão, sem resultado.
    * → [{ topicId|null, outcome|null }]
    */
   reviewItems(s){
-    const list = this.entries(s).filter(e => e.outcome).map(e => ({ topicId:e.topicId, outcome:e.outcome }));
+    const blocks=Learning.entries(s).filter(e=>e.blockId && (e.outcome || this.hasType(s,'revisao')));
+    const covered=new Set(blocks.flatMap(e=>e.topicIds));
+    const list = this.entries(s).filter(e => e.outcome && !covered.has(e.topicId)).map(e => ({ topicId:e.topicId, outcome:e.outcome }));
+    list.push(...blocks.map(e=>({topicId:null,blockId:e.blockId,outcome:e.outcome||null})));
     if(list.length) return list;
     const legacy = this.legacyOutcome(s);
     if(legacy) return [{ topicId:null, outcome:legacy }];
@@ -2092,6 +2101,7 @@ const SessionModel = {
       disciplineId: EvidenceModel.disciplineOf(s, r), topicId: EvidenceModel.topicOf(s, r) }));
     return Object.assign({}, s, {
       minutes, results,
+      contentEntries:Learning.entries(s).filter(e=>disc.some(d=>d.disciplineId===e.disciplineId) && (!sel.topicIds || e.topicIds.some(id=>sel.topicIds.has(id)))).map(e=>sel.topicIds?{...e,outcome:null,topicIds:e.topicIds.filter(id=>sel.topicIds.has(id))}:e),
       disciplineId: disc[0].disciplineId,
       disciplineEntries: disc.map(x => ({ disciplineId:x.disciplineId, minutes:x.minutes })),
       topicEntries: entries,
@@ -2560,11 +2570,11 @@ const DeadlineEngine = {
   },
   /** Pendente/em andamento, iniciado e com data ainda por vir (hoje incluso). */
   isActive(dl){
-    if(!dl || this.isDone(dl) || !this.hasStarted(dl)) return false;
+    if(!dl || dl.archived || this.isDone(dl) || !this.hasStarted(dl)) return false;
     const n = this.daysLeft(dl);
     return n !== null && n >= 0;
   },
-  isOverdue(dl){ const n = this.daysLeft(dl); return !!dl && !this.isDone(dl) && n !== null && n < 0; },
+  isOverdue(dl){ const n = this.daysLeft(dl); return !!dl && !dl.archived && !this.isDone(dl) && n !== null && n < 0; },
   proximity(days){
     if(days === null || days < 0) return 0;
     for(const r of DEADLINE_MODEL.PROXIMITY) if(days <= r.maxDays) return r.value;
@@ -2577,7 +2587,7 @@ const DeadlineEngine = {
   },
   /** Prazos que ainda contam (não concluídos), do mais próximo ao mais distante. */
   open(){
-    return state.deadlines.filter(d => !this.isDone(d))
+    return state.deadlines.filter(d => !d.archived && !this.isDone(d))
       .sort((a,b) => str(a.date).localeCompare(str(b.date)));
   },
   /** Maior urgência entre os prazos da disciplina (com ou sem tópico). */
@@ -3009,7 +3019,7 @@ const ReviewEngine = {
   /** Tópicos elegíveis a revisão (ativos, com revisão ligada e já agendados). */
   allScheduled(){
     return state.topics.filter(t => {
-      if(t.archived || !ReviewSchedule.due(t)) return false;
+      if(t.archived || !ReviewSchedule.due(t) || LearningReviews.covered(t)) return false;
       const d = getDiscipline(t.disciplineId);
       return d && !d.archived;
     });
@@ -3366,7 +3376,7 @@ const AnalyticsScope = {
       const a = d && d.areaId ? getArea(d.areaId) : null;
       return a ? [a.name] : [];
     };
-    const base = { types, typeList, typesLabel, requested: want.length };
+    const base = { types, typeList, typesLabel, requested: want.length, courseIds:new Set(Learning.ids(s.courseIds)), blockIds:new Set(Learning.ids(s.blockIds)) };
     if(s.type === 'area'){
       const ids = [], discIds = new Set(), names = [];
       want.forEach(id => {
@@ -3409,18 +3419,19 @@ const AnalyticsScope = {
     return Object.assign(base, { type:'all', ids:[], areaId:null, disciplineId:null, topicId:null, discIds:null, topicIds:null,
              label:'Todos os estudos', names:[], path:[], multi:false, fellBack: s.type !== 'all' });
   },
-  key(r){ return [r.type, (r.ids || []).join(','), (r.typeList || []).join(',')].join(':'); },
+  key(r){ return [r.type, (r.ids || []).join(','), (r.typeList || []).join(','),[...(r.courseIds||[])].join(','),[...(r.blockIds||[])].join(',')].join(':'); },
   kindLabel(r){ return r.multi ? (SCOPE_KIND_PLURAL[r.type] || 'Tudo') : (SCOPE_KIND_LABEL[r.type] || 'Tudo'); },
   /** "Escola › Português › Uso da crase" */
   pathText(r){
     const base = r.type === 'all' ? 'Todos os estudos' : r.path.join(' › ');
     return r.types ? `${base} · estudos com ${r.typesLabel}` : base;
   },
-  isAll(r){ return r.type === 'all' && !r.types; },
+  isAll(r){ return r.type === 'all' && !r.types && !r.courseIds?.size && !r.blockIds?.size; },
 
   /** Filtro de estudos (sem atribuir tempo): o estudo pertence ao recorte? */
   hasSession(r, s){
     if(r.types && !SessionModel.types(s).some(v => r.types.has(v))) return false;
+    if(r.courseIds?.size || r.blockIds?.size){s=learningProject(s,r);if(!s)return false;}
     if(r.type === 'all') return true;
     if(r.type === 'topic') return SessionModel.entries(s).some(e => r.topicIds.has(e.topicId));
     return SessionModel.touchesDisciplines(s, r.discIds);
@@ -3449,6 +3460,7 @@ const AnalyticsScope = {
   sessions(r, range){
     let list = range ? sessionsInRange(range) : state.sessions;
     if(r.types) list = list.filter(s => SessionModel.types(s).some(v => r.types.has(v)));
+    if(r.courseIds?.size || r.blockIds?.size) list=list.map(s=>learningProject(s,r)).filter(Boolean);
     if(r.type === 'all') return list;
     const sel = r.type === 'topic' ? { topicIds: r.topicIds } : { discIds: r.discIds };
     const out = [];
@@ -3895,7 +3907,7 @@ const AnalyticsEngine = {
     const basis = scope.type === 'all' ? 'goal' : 'suggestion';
     const empty = { applicable: scope.type !== 'topic' && !scope.types, basis, hasPlan:false, planned:0, realized:0, counted:0, extra:0,
                     weeks:[], perDiscipline:[], pct:null, volumePct:null, weeksWithGoal:0, weeksReached:0 };
-    if(scope.type === 'topic' || scope.types) return empty;
+    if(scope.type === 'topic' || scope.types || scope.courseIds?.size || scope.blockIds?.size) return empty;
     const weeks = [];
     let cursor = startOfWeek(range.start);
     const last = startOfWeek(range.end);
@@ -4455,6 +4467,7 @@ const TimerService = {
         disciplineId: unclassified && !discIds.length ? UNCLASSIFIED_DISC : (discIds[0] || str(d.disciplineId)),
         disciplineIds: discIds,
         // v6.7: cronômetro iniciado na versão anterior tem um tópico e um tipo — viram listas de um item
+        contentEntries:Learning.cleanEntries(d.contentEntries),
         topicIds: TimerService.cleanIds(Array.isArray(d.topicIds) ? d.topicIds : (d.topicId ? [d.topicId] : [])),
         presetTypes: SessionModel.cleanTypes(Array.isArray(d.presetTypes) ? d.presetTypes : (d.presetType ? [d.presetType] : [])),
         presetMethod: CONCRETE_METHODS.includes(d.presetMethod) ? d.presetMethod : null,
@@ -4580,6 +4593,7 @@ const TimerService = {
       if(ids.length){ this.data.disciplineIds = ids; this.data.disciplineId = ids[0]; }
     } else if(sel.disciplineId && getDiscipline(sel.disciplineId)){ this.data.disciplineId = sel.disciplineId; this.data.disciplineIds = [sel.disciplineId]; }
     if(Array.isArray(sel.topicIds)) this.data.topicIds = this.cleanIds(sel.topicIds);
+    if(Array.isArray(sel.contentEntries)) this.data.contentEntries=Learning.cleanEntries(sel.contentEntries);
     if(Array.isArray(sel.presetTypes)) this.data.presetTypes = SessionModel.cleanTypes(sel.presetTypes);
     this._persist();
     return true;
@@ -4596,7 +4610,7 @@ const TimerService = {
     const types = Array.isArray(presetTypes) ? presetTypes : (presetTypes ? [presetTypes] : []);
     const pomoCfg = opts && opts.pomodoro ? sanitizePomodoroSettings(opts.pomodoro) : null;
     this.data = { runId: uid(), disciplineId: discs[0] || UNCLASSIFIED_DISC, disciplineIds: discs, topicIds: discs.length ? this.cleanIds(ids) : [],
-                  presetTypes: SessionModel.cleanTypes(types),
+                  contentEntries:Learning.cleanEntries(opts?.contentEntries), presetTypes: SessionModel.cleanTypes(types),
                   presetMethod: presetMethod || null,
                   startedAt: now, accumulatedMs: 0, running: true, openedAt: now,
                   breaks: [], breakStartedAt: null,
@@ -4914,6 +4928,7 @@ const BackupIntegrity = {
     const o = {};
     this.PARTS.forEach(k => { o[k] = src[k] === undefined ? null : src[k]; });
     if(Object.prototype.hasOwnProperty.call(src, 'guidedReview')) o.guidedReview = src.guidedReview;
+    for(const key of ['courses','contentBlocks']) if(Object.prototype.hasOwnProperty.call(src,key)) o[key] = src[key];
     return JSON.stringify(o);
   },
   /** cyrb53 — hash não criptográfico de 53 bits (domínio público). Rápido e estável entre navegadores. */
@@ -4931,6 +4946,7 @@ const BackupIntegrity = {
   counts(src){
     const c = {};
     this.PARTS.filter(k => k !== 'settings').forEach(k => { c[k] = Array.isArray(src[k]) ? src[k].length : 0; });
+    for(const key of ['courses','contentBlocks']) if(Object.prototype.hasOwnProperty.call(src,key)) c[key] = Array.isArray(src[key]) ? src[key].length : 0;
     c.results = Array.isArray(src.sessions) ? sum(src.sessions, s => (s && Array.isArray(s.results)) ? s.results.length : 0) : 0;
     return c;
   },
@@ -4968,7 +4984,7 @@ const Backup = {
       exportedAt: nowISO(),
       areas: state.areas,
       disciplines: state.disciplines.map(d => this._withoutLegacy(d, ['minutesPerCredit','legacyWeeklyMinutes'])),
-      topics: state.topics,
+      topics: state.topics, courses: state.courses, contentBlocks: state.contentBlocks,
       sessions: state.sessions.map(s => this._withoutLegacy(s, ['credits'])),
       plans: state.plans,
       weeklyPlans: state.weeklyPlans,
@@ -5166,7 +5182,7 @@ const Backup = {
    */
   async restoreInto(data, opts){
     const allowedRunId = opts && opts.discardTimerRunId || null;
-    const stores = ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings'];
+    const stores = ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','settings','courses','contentBlocks'];
     await DB.atomic(stores.concat('meta'), async api => {
       // Esta leitura adquire a mesma fila transacional usada para iniciar um
       // cronômetro. A decisão da prévia precisa continuar válida AGORA.
@@ -5184,6 +5200,8 @@ const Backup = {
       data.areas.forEach(x => api.add('areas', x));
       data.disciplines.forEach(x => api.add('disciplines', x));
       data.topics.forEach(x => api.add('topics', x));
+      (data.courses || []).forEach(x=>api.add('courses',x));
+      (data.contentBlocks || []).forEach(x=>api.add('contentBlocks',x));
       data.sessions.forEach(x => api.add('sessions', x));
       data.plans.forEach(x => api.add('plans', x));
       data.weeklyPlans.forEach(x => api.add('weeklyPlans', x));
@@ -5226,7 +5244,7 @@ const Backup = {
        status, backup da V2) são migrações, não reparos: não contam como problema.
    ========================================================================= */
 const IntegrityValidator = {
-  STORE_LABELS: { areas:'áreas', disciplines:'disciplinas', topics:'tópicos', sessions:'estudos', plans:'planos', weeklyPlans:'semanas registradas', deadlines:'prazos' },
+  STORE_LABELS: { courses:'materiais', contentBlocks:'blocos de conteúdo', areas:'áreas', disciplines:'disciplinas', topics:'tópicos', sessions:'estudos', plans:'planos', weeklyPlans:'semanas registradas', deadlines:'prazos' },
 
   fatal(message, title){
     const e = new Error(message);
@@ -5327,10 +5345,12 @@ const IntegrityValidator = {
         'Backup de uma versão mais nova');
     }
 
+    if(sv >= 13 && (!Array.isArray(raw.courses) || !Array.isArray(raw.contentBlocks))) throw this.fatal('Este backup está incompleto: faltam as coleções de materiais ou blocos. Nada foi alterado.');
+
     // Coleções presentes precisam ser listas de verdade: um campo corrompido não
     // pode virar silenciosamente uma restauração vazia (que apagaria tudo).
     if(isV3){
-      ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines'].forEach(k => {
+      ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','courses','contentBlocks'].forEach(k => {
         if(k in raw && raw[k] !== null && raw[k] !== undefined && !Array.isArray(raw[k])){
           throw this.fatal(`A parte "${this.STORE_LABELS[k]}" do arquivo está corrompida.`, 'Arquivo corrompido');
         }
@@ -5379,7 +5399,7 @@ const IntegrityValidator = {
     }
     const arr = v => Array.isArray(v) ? v : [];
     source = {
-      areas: arr(raw.areas), disciplines: arr(raw.disciplines), topics: arr(raw.topics), sessions: arr(raw.sessions),
+      areas: arr(raw.areas), disciplines: arr(raw.disciplines), topics: arr(raw.topics), sessions: arr(raw.sessions), courses:arr(raw.courses),contentBlocks:arr(raw.contentBlocks),
       plans: arr(raw.plans), weeklyPlans: arr(raw.weeklyPlans), deadlines: arr(raw.deadlines), guidedReview:raw.guidedReview,
       settings: Object.assign({}, DEFAULT_SETTINGS, (raw.settings && typeof raw.settings === 'object' && !Array.isArray(raw.settings)) ? raw.settings : {})
     };
@@ -5616,6 +5636,11 @@ const IntegrityValidator = {
         results,
         createdAt: createdAt || stamp(s.createdAt), updatedAt: stamp(s.updatedAt)
       };
+      if(s.contentEntries){
+        if(!Array.isArray(s.contentEntries)) throw self.fatal('Vínculos de estudo inválidos.');
+        out.contentEntries = Learning.cleanEntries(s.contentEntries);
+        if(out.contentEntries.length !== s.contentEntries.length || out.contentEntries.some(e=>!discs.some(d=>d.disciplineId===e.disciplineId))) throw self.fatal('Vínculos de estudo inválidos.');
+      }
       // v7.1 — tempo pausado só existe dentro de um horário; Pomodoro é um resumo opcional
       if(s.pausedMinutes !== undefined && s.pausedMinutes !== null && s.pausedMinutes !== 0){
         const pm = pausedMinutesOf(s);
@@ -5729,7 +5754,7 @@ const IntegrityValidator = {
         date: c.value, startDate, disciplineId, topicId,
         priority: priority(d.priority, d.importance),
         status,
-        instructions: str(d.instructions).slice(0, 5000),
+        archived:!!d.archived, instructions: str(d.instructions).slice(0, 5000),
         notes: str(d.notes).slice(0, 5000),
         completedAt,
         createdAt: stamp(d.createdAt), updatedAt: stamp(d.updatedAt)
@@ -5738,7 +5763,13 @@ const IntegrityValidator = {
 
     let guidedReview=null;
     try { guidedReview=cleanGuidedReview(src.guidedReview); } catch(err){ throw self.fatal(err.message, 'Roteiro inválido'); }
-    const data = { areas, disciplines, topics, sessions, plans, weeklyPlans, deadlines, settings: sanitizeSettings(src.settings), guidedReview };
+    const learning = Learning.validateBackup(src,disciplines,topics);
+    const courseMap=new Map(learning.courses.map(c=>[c.id,c])),blockMap=new Map(learning.contentBlocks.map(b=>[b.id,b]));
+    for(const session of sessions)for(const e of Learning.entries(session)){
+      if((e.courseId && courseMap.get(e.courseId)?.disciplineId!==e.disciplineId) || (e.blockId && blockMap.get(e.blockId)?.disciplineId!==e.disciplineId) || e.topicIds.some(id=>!session.topicEntries.some(t=>t.topicId===id&&t.disciplineId===e.disciplineId))) throw self.fatal('Um estudo contém vínculos de aprendizagem inválidos.');
+    }
+    for(const key of ['courses','contentBlocks']) report.counts[key]={found:learning[key].length,accepted:learning[key].length,repaired:0,ignored:0};
+    const data = { ...learning, areas, disciplines, topics, sessions, plans, weeklyPlans, deadlines, settings: sanitizeSettings(src.settings), guidedReview };
     return { data, report };
   },
 
@@ -5873,7 +5904,7 @@ function sanitizeSavedAnalyses(v){
       id, name: (txt(it.name, 60) || '').trim() || 'Análise salva',
       query: {
         scopeType: txt(q.scopeType, 20) || 'all', scopeIds: ids(q.scopeIds && q.scopeIds.length ? q.scopeIds : (q.scopeId ? [q.scopeId] : [])),
-        types: ids(q.types), periodPreset: txt(q.periodPreset, 20) || 'semana',
+        courseIds:ids(q.courseIds),blockIds:ids(q.blockIds),types: ids(q.types), periodPreset: txt(q.periodPreset, 20) || 'semana',
         startDate: txt(q.startDate, 10), endDate: txt(q.endDate, 10), focus: txt(q.focus, 20) || 'overview'
       },
       createdAt: txt(it.createdAt, 40) || null
@@ -5946,10 +5977,10 @@ const ui = {
    PERSISTÊNCIA DE ALTO NÍVEL (o app fala com estas funções, não com o DB)
    ========================================================================= */
 async function loadAll(){
-  const [meta, settingsRec, areas, disciplines, topics, sessions, plans, weeklyPlans, deadlines] = await Promise.all([
+  const [meta, settingsRec, areas, disciplines, topics, sessions, plans, weeklyPlans, deadlines, courses, contentBlocks] = await Promise.all([
     DB.getAll('meta'), DB.get('settings','settings'),
     DB.getAll('areas'), DB.getAll('disciplines'), DB.getAll('topics'),
-    DB.getAll('sessions'), DB.getAll('plans'), DB.getAll('weeklyPlans'), DB.getAll('deadlines')
+    DB.getAll('sessions'), DB.getAll('plans'), DB.getAll('weeklyPlans'), DB.getAll('deadlines'), DB.getAll('courses'), DB.getAll('contentBlocks')
   ]);
   state.meta = {};
   (meta || []).forEach(m => { state.meta[m.key] = m.value; });
@@ -5977,6 +6008,7 @@ async function loadAll(){
   state.plans = plans || [];
   state.weeklyPlans = weeklyPlans || [];
   state.deadlines = deadlines || [];
+  state.courses = courses || []; state.contentBlocks = contentBlocks || [];
   rebuildIndexes();
 }
 
@@ -7639,7 +7671,7 @@ function renderTimerBar(opts){
   const subOf = (x) => x.subShort || x.sub || '';
   const subEl = h('span', { class:'tb-sub num', text: subOf(v) });
   const topicsShort = topicNames.length > 2 ? topicNames.slice(0, 2).join(' · ') + ' · +' + (topicNames.length - 2) : topicNames.join(' · ');
-  const meta = [v.line || null, topicsShort || null, (d.presetTypes || []).map(sessionTypeLabel).join(' · ') || null].filter(Boolean).join(' · ');
+  const meta = [learningSessionLabel(d),v.line || null, topicsShort || null, (d.presetTypes || []).map(sessionTypeLabel).join(' · ') || null].filter(Boolean).join(' · ');
   const progress = v.progress !== null ? h('span', { class:'tb-progress', 'aria-hidden':'true' }, h('span', { class:'tb-progress-fill', style:`transform:scaleX(${v.progress.toFixed(4)})` })) : null;
   const acts = timerActions('bar');
   const stateAttr = v.state === 'done' ? 'done' : status === 'rest' ? 'rest' : status === 'paused' ? 'paused' : 'study';
@@ -7653,6 +7685,7 @@ function renderTimerBar(opts){
       meta ? h('div', { class:'tb-topic', text: meta }) : null),
     h('div', { class:'tb-time' }, clock, subEl, progress),
     h('div', { class:'tb-actions' },
+      Learning.entries(d).some(e=>Learning.course(e.courseId))?Learning.link(Learning.course(Learning.entries(d).find(e=>Learning.course(e.courseId)).courseId),'Abrir material'):null,
       acts.map((a, i) => h('button', { class:'btn sm ' + (a.kind === 'primary' ? 'primary' : 'ghost'), type:'button', 'data-fk': i === 0 ? 'tb-toggle' : 'tb-' + a.key,
         text: a.label, onclick: a.run })),
       h('button', { class:'btn ghost sm', type:'button', text:'Foco', title:'Modo foco: só o essencial na tela', onclick:() => FocusMode.enter() }),
@@ -8341,7 +8374,7 @@ function studyTargetFields(o){
       },
       onChange: v => {
         const had = block.topicPicker.value.filter(id => getTopic(id)).length;
-        block.discId = v; block.topicPicker.set([]); syncBlock(block, true);
+        block.discId = v; block.topicPicker.set([]); block.learning.reset(); syncBlock(block, true);
         // os tópicos eram da disciplina anterior: saem, e a pessoa fica sabendo
         if(had) announce(had === 1 ? 'O tópico escolhido era de outra disciplina e saiu da seleção.' : 'Os tópicos escolhidos eram de outra disciplina e saíram da seleção.');
         drawMeta();
@@ -8356,11 +8389,12 @@ function studyTargetFields(o){
       onCreate: q => openCreate(block, q),
       onChange: () => emit('topics')
     });
+    block.learning=studyLearningFields(prefix+k,block,o.contentEntries,()=>emit('content'));
     block.removeBtn = first ? null : h('button', { class:'linkbtn muted st-remove', type:'button', text:'Remover',
       'aria-label':'Remover esta disciplina do estudo', onclick:() => removeBlock(block) });
     block.node = h('div', { class:'st-block' + (first ? ' is-first' : ' is-extra') },
       block.removeBtn ? h('div', { class:'st-block-head' }, block.picker.node, block.removeBtn) : block.picker.node,
-      block.topicPicker.node);
+      block.learning.node, block.topicPicker.node);
     return block;
   }
   function syncBlock(block, animate){
@@ -8368,6 +8402,7 @@ function studyTargetFields(o){
     const was = block.topicPicker.node.hidden;
     block.topicPicker.node.hidden = !show;
     block.topicPicker.refresh();
+    block.learning.refresh();
     if(show && was && animate) swapIn(block.topicPicker.node);
   }
 
@@ -8527,6 +8562,8 @@ function studyTargetFields(o){
   blocks.forEach(b => syncBlock(b, false));
   const api = {
     node, ensure,
+    refreshLearning(isReview){blocks.forEach(b=>b.learning.setReview(isReview));},
+    get contentEntries(){return blocks.flatMap(b=>b.learning.entries());},
     get draft(){ return creating ? { newName:newIn.value } : null; },
     get dirty(){ return creating && !!newIn.value.trim(); },
     get discButton(){ return blocks[0].picker.button; },
@@ -9846,7 +9883,7 @@ function openRegisterModal(preset){
     // v6.7: a divisão do tempo entre tópicos acompanha a duração calculada em "Quando"
     let lastWhen = null, split = null, results = null;
     const when = studyWhenFields({ idPrefix:'rm', quick:true, date:p.date, draft: draft ? draft.when : null, onChange: r => { lastWhen = r; if(split) split.refreshTotal(); } });
-    const target = studyTargetFields({ close, idPrefix:'rm', discIds: discIds0, topicIds: draftTopics || topicIds0, draft:draft ? draft.target : null, allowNewDiscipline:true,
+    const target = studyTargetFields({ close, idPrefix:'rm', discIds: discIds0, topicIds: draftTopics || topicIds0, contentEntries:draft?.contentEntries || p.contentEntries, draft:draft ? draft.target : null, allowNewDiscipline:true,
       onChange: () => { renderOutcome(); if(results) results.refreshContext(); } });
     const typePick = studyTypePicker({ id:'rm-type', value:types, onChange: v => { types = v; renderOutcome(); } });
     split = topicSplitField({ idPrefix:'rm', initial:draft ? draft.split : null, total: () => (lastWhen && lastWhen.complete) ? lastWhen.minutes : null });
@@ -9926,7 +9963,7 @@ function openRegisterModal(preset){
       state.settings.timerMode = timerMode;
       if(cfg) state.settings.pomodoro = Object.assign({}, state.settings.pomodoro, { preset:cfg.preset, focusMin:cfg.focusMin, shortMin:cfg.shortMin, longMin:cfg.longMin, every:cfg.every });
       saveSettings();
-      return startTimer(discIds, topicIds, types, null, timerMode === 'free' ? targetMin : null, cfg ? { pomodoro:cfg } : null);
+      return startTimer(discIds, topicIds, types, null, timerMode === 'free' ? targetMin : null, { pomodoro:cfg, contentEntries:target.contentEntries });
     }
 
     /* já estudei: como foi — v6.7: um resultado POR tópico (as respostas dadas ficam ao trocar tópicos) */
@@ -9936,11 +9973,13 @@ function openRegisterModal(preset){
     const outcomeField = h('div', null, outcomes.node, generalNote);
     function renderOutcome(){
       const ids = target.topicIds;
+      target.refreshLearning(mode==='manual' && types.includes('revisao'));
       schedule.node.hidden = mode !== 'manual' || !ids.length;
       outcomeField.hidden = !(mode === 'manual' && types.includes('revisao'));
       outcomes.update(ids, mode === 'manual' && types.includes('revisao'));
       split.update(mode === 'manual' ? target.groups : []);
       syncGeneralReviewNote(generalNote, types, ids, target.discIds);
+      if(target.contentEntries.some(e=>e.blockId))generalNote.hidden=true;
     }
     const comment = commentField({ close, id:'rm-comment', value: draft ? draft.comment : '' });
     /* v6.4.1 — três perguntas, três grupos. "Quando" e "O que você estudou" são
@@ -9963,7 +10002,7 @@ function openRegisterModal(preset){
     /* v7.1 — rascunho: guardado a cada mudança (só no "Já estudei", que é o que pode ter muita coisa digitada) */
     const draftOf = () => isDirty() ? {
       when: when.snapshot(), discIds: target.discIds, topicIds: target.topicIds, types, difficulty,
-      target:target.draft, comment: comment.textarea.value, results: results.draft, split:split.draft, outcomes:Object.fromEntries(outcomes.values), reviewSchedule:schedule.snapshot
+      contentEntries:target.contentEntries, target:target.draft, comment: comment.textarea.value, results: results.draft, split:split.draft, outcomes:Object.fromEntries(outcomes.values), reviewSchedule:schedule.snapshot
     } : null;
     const saveDraft = () => { if(!close.isClosed()) FormDraft.schedule('register', draftOf); };
     const draftNotice = draft ? FormDraft.notice(draft.savedAt, (n) => {
@@ -10052,7 +10091,7 @@ function openRegisterModal(preset){
           startedAt:w.startedAt, endedAt:w.endedAt, types, difficulty,
           comment: comment.value,
           topics: topicEntriesFromForm(topicIds, sp, outcomes.values, types.includes('revisao')),
-          results: rs.results, reviewSchedule:agenda.value
+          results: rs.results, contentEntries:target.contentEntries, reviewSchedule:agenda.value
         });
         if(ok){ FormDraft.clear('register'); close(); return; }
         // Falhou: a janela continua aberta com tudo o que foi preenchido (e o rascunho continua guardado).
@@ -10230,7 +10269,7 @@ function openFinishModal(){
 
     // v6.7: os tópicos escolhidos ao começar (todos) voltam aqui — inclusive depois de recarregar a página
     let split = null, results = null;
-    const target = studyTargetFields({ close, idPrefix:'fin', discIds: TimerService.discIds(), topicIds: d.topicIds || [], draft:draft ? draft.target : null,
+    const target = studyTargetFields({ close, idPrefix:'fin', discIds: TimerService.discIds(), topicIds: d.topicIds || [], contentEntries:draft?.contentEntries || d.contentEntries, draft:draft ? draft.target : null,
       allowNewDiscipline: noDisc,                    // v7.1: começou sem disciplina — dá para criar uma aqui
       onChange: () => { renderOutcome(); if(results) results.refreshContext(); } });
     const typePick = studyTypePicker({ id:'fin-type', value:types, onChange: v => { types = v; renderOutcome(); } });
@@ -10244,13 +10283,15 @@ function openFinishModal(){
     const outcomeField = h('div', null, outcomes.node, generalNote, methodBox);
     function renderOutcome(){
       const ids = target.topicIds;
+      target.refreshLearning(types.includes('revisao'));
       schedule.node.hidden = !ids.length;
       const show = types.includes('revisao') && ids.length > 0;
       outcomes.update(ids, show);
       syncGeneralReviewNote(generalNote, types, ids, target.discIds);
+      if(target.contentEntries.some(e=>e.blockId))generalNote.hidden=true;
       split.update(target.groups);
       // F5 no meio da finalização não perde disciplinas, tópicos e tipos escolhidos aqui (o tempo nunca é tocado)
-      if(target.discId) TimerService.updateSelection(runId, { disciplineIds: target.discIds, topicIds: ids, presetTypes: types });
+      if(target.discId) TimerService.updateSelection(runId, { disciplineIds: target.discIds, topicIds: ids, presetTypes: types, contentEntries:target.contentEntries });
       clear(methodBox);
       methodBox.hidden = !show;
       if(!show) return;
@@ -10351,7 +10392,7 @@ function openFinishModal(){
         startedAt: startISO, endedAt: endISO,
         pausedMinutes: pausedMinutesFor(minutes, br.breaks),
         pomodoro: snap.pomodoro,
-        results: rs.results, reviewSchedule:agenda.value
+        results: rs.results, contentEntries:target.contentEntries, reviewSchedule:agenda.value
       }, { timerRunId: runId });
       if(!res.ok && (res.reason === 'duplicate' || res.reason === 'timer-ended')){
         // Já estava no banco (outra aba, ou a página fechou logo depois de gravar): nada é aplicado de novo.
@@ -10679,7 +10720,7 @@ function sameStored(a, b){
            'missing' | 'conflict' | 'error'
    ========================================================================= */
 const SessionCommands = {
-  STORES: ['sessions','topics','disciplines'],
+  STORES: ['sessions','topics','disciplines','courses','contentBlocks'],
 
   /**
    * v6.7 — tópicos de uma entrada de formulário. Aceita a lista nova
@@ -10749,6 +10790,7 @@ const SessionCommands = {
     if(linked.length || 'results' in session){
       session.results = EvidenceModel.attach(EvidenceModel.cleanList(linked), discs.map(d => d.disciplineId), new Map(kept.map(e => [e.topicId, e.disciplineId])));
     }
+    await Learning.checkEntries(api,session);
     return { ok:true, droppedTopics, droppedDiscs, topics };
   },
 
@@ -10787,6 +10829,7 @@ const SessionCommands = {
       types: SessionModel.cleanTypes(Array.isArray(input.types) ? input.types : (input.type ? [input.type] : [])),
       results: EvidenceModel.cleanList(input.results)
     });
+    if(input.contentEntries?.length) session.contentEntries = Learning.cleanEntries(input.contentEntries);
     // v7.1 — campos opcionais: só existem no registro quando têm algo a dizer
     if(time.pausedMinutes > 0) session.pausedMinutes = time.pausedMinutes;
     const pomo = cleanPomodoroSummary(input.pomodoro);
@@ -11264,7 +11307,7 @@ function renderToday(){
   }
 
   const hasSessions = state.sessions.length > 0;
-  const main = [todayAction(discs, hasSessions)];
+  const main = [todayAction(discs, hasSessions),quickMaterials()];
   const guide = contextGuideCard('today');
   if(guide) main.push(guide);
   if(todayBlockOn('next')){ const n = todayNextSteps(); if(n) main.push(n); }
@@ -11505,7 +11548,7 @@ function todayNextSteps(){
 function todayShortcuts(){
   const discs = activeDisciplines();
   const topics = state.topics.filter(t => !t.archived && getDiscipline(t.disciplineId) && !getDiscipline(t.disciplineId).archived).length;
-  const sugg = state.settings.reviewSuggestions === false ? 0 : ReviewEngine.suggested().length;
+  const sugg = state.settings.reviewSuggestions === false ? 0 : LearningReviews.units().filter(u=>ReviewSchedule.due(u) && ReviewSchedule.due(u)<=todayISO() && !ReviewEngine.isSnoozed(u)).length;
   const plan = PlannerEngine.activePlan();
   const last = recentRhythm(7).lastStudy;
   const item = (v, title, sub, run) => h('li', null, h('button', { class:'sc-item', type:'button', onclick: run || (() => setView(v)) },
@@ -11589,6 +11632,7 @@ function explainAction(action){
        principal é um convite.
    ========================================================================= */
 function renderReviews(){
+  if(Learning.blocks().some(b=>Learning.active(b))){renderLearningReviews();return;}
   const root = $('#reviews-body');
   const anyScheduled = ReviewEngine.allScheduled().length > 0;
   const off = state.settings.reviewSuggestions === false;
@@ -13102,6 +13146,7 @@ function planWeekNav(view){
   const next = h('button', { class:'icon-btn wk-step', type:'button', 'data-fk':'wk-next', 'aria-label':'Próxima semana', title:'Próxima semana',
     disabled: off >= 26, onclick:() => go(1, 'wk-next') }, icon('i-next'));
   const tools = h('div', { class:'wk-tools' },
+    reviewButton('Escolher dia',()=>openCivilDate({title:'Ir para uma semana',value:view.ws,onApply:iso=>{ui.planWeekOffset=clamp(Math.round(diffDays(startOfWeek(parseISO(iso)),startOfWeek(today()))/7),-104,26);renderPlan();Nav.sync('replace');}})),
     off !== 0 ? h('button', { class:'btn ghost sm', type:'button', 'data-fk':'wk-now', text:'Ir para esta semana', onclick:() => go(-off, 'wk-next') }) : null,
     h('button', { class:'btn ghost sm', type:'button', 'data-fk':'wk-days', onclick: openStudyDaysModal }, icon('i-plan'), 'Personalizar dias'));
   /* O que uma mudança aqui atinge — dito com todas as letras, sem esconder o caminho. */
@@ -14723,7 +14768,7 @@ const Nav = {
     const v = VIEW_TITLES[ui.view] ? ui.view : 'today';
     const loc = { v };
     if(v === 'disciplines'){
-      loc.tab = ui.discTab === 'deadlines' ? 'deadlines' : 'disciplines';
+      loc.tab = ['deadlines','materials','blocks'].includes(ui.discTab) ? ui.discTab : 'disciplines';
       if(loc.tab === 'disciplines'){
         const r = resolveDiscNav();
         loc.l = r.level; loc.a = r.areaKey || null; loc.d = r.disc ? r.disc.id : null; loc.t = r.topic ? r.topic.id : null;
@@ -14746,9 +14791,9 @@ const Nav = {
   equals(a, b){
     if(!a || !b || a.v !== b.v) return false;
     if(a.v === 'disciplines'){
-      const ta = a.tab === 'deadlines' ? 'deadlines' : 'disciplines', tb = b.tab === 'deadlines' ? 'deadlines' : 'disciplines';
+      const ta = a.tab || 'disciplines', tb = b.tab || 'disciplines';
       if(ta !== tb) return false;
-      if(ta === 'deadlines') return true;
+      if(ta !== 'disciplines') return true;
       return (a.l || 'root') === (b.l || 'root') && (a.a || null) === (b.a || null) && (a.d || null) === (b.d || null) && (a.t || null) === (b.t || null);
     }
     if(a.v === 'history') return JSON.stringify(a.hf || {})===JSON.stringify(b.hf || {}) && JSON.stringify(a.hids || null)===JSON.stringify(b.hids || null) && JSON.stringify(a.hp || null)===JSON.stringify(b.hp || null);
@@ -14890,7 +14935,7 @@ function applyLocation(loc, ctx){
   // uma janela com formulário continua aberta por cima: o foco não pode sair dela
   const keepFocus = !!c.initial || Overlay.isOpen;
   if(view === 'disciplines'){
-    ui.discTab = l.tab === 'deadlines' ? 'deadlines' : 'disciplines';
+    ui.discTab = ['deadlines','materials','blocks'].includes(l.tab) ? l.tab : 'disciplines';
     if(ui.discTab === 'disciplines'){
       const target = { level: ['root','area','discipline','topic'].includes(l.l) ? l.l : 'root',
         areaId: l.a || null, disciplineId: l.d || null, topicId: l.t || null };
@@ -14933,7 +14978,7 @@ function applyLocation(loc, ctx){
 function analyticsQueryKey(q){
   if(!q) return '';
   const n = normalizeAnalyticsQuery(q);
-  return JSON.stringify([n.scopeType, n.scopeIds, n.types, n.periodPreset, n.startDate, n.endDate, n.focus]);
+  return JSON.stringify([n.scopeType, n.scopeIds, n.types, n.periodPreset, n.startDate, n.endDate, n.focus,n.courseIds,n.blockIds]);
 }
 /** v7 — Voltar/Avançar (ou recarregar) dentro de Análises: a análise daquela entrada volta como estava. */
 /** Coloca uma consulta como resultado aberto, sem gravar nada e sem mexer no histórico. */
@@ -15092,7 +15137,7 @@ function openTopicPage(topicId){
 function renderDisciplines(){
   const root = $('#disciplines-body');
   const section = $('#view-disciplines');
-  const tab = ui.discTab === 'deadlines' ? 'deadlines' : 'disciplines';
+  const tab = ['deadlines','materials','blocks'].includes(ui.discTab) ? ui.discTab : 'disciplines';
   const nav = tab === 'disciplines' ? resolveDiscNav() : null;
   const deep = !!(nav && nav.level !== 'root');
   if(section) section.classList.toggle('is-deep', deep);
@@ -15103,11 +15148,11 @@ function renderDisciplines(){
 
   let body;
   if(deep){
-    body = nav.level === 'area' ? discAreaLevel(nav) : nav.level === 'discipline' ? discDisciplineLevel(nav) : discTopicLevel(nav);
+    body = nav.level === 'area' ? discAreaLevel(nav) : nav.level === 'discipline' ? h('div',{class:'discipline-workspace'},disciplineMasterList(nav.disc.id),h('div',{class:'discipline-detail'},discDisciplineLevel(nav))) : discTopicLevel(nav);
   } else {
     const openCount = DeadlineEngine.open().length;
     const tabs = h('div', { class:'tabs', role:'tablist', 'aria-label':'Disciplinas e prazos' });
-    [['disciplines', 'Disciplinas', null], ['deadlines', 'Prazos', openCount || null]].forEach(([v, label, count]) => {
+    [['disciplines', 'Disciplinas', null], ['materials','Cursos e materiais',null], ['blocks','Blocos',null], ['deadlines', 'Prazos', openCount || null]].forEach(([v, label, count]) => {
       const on = tab === v;
       tabs.append(h('button', { class:'tab', type:'button', role:'tab', id:'dtab-' + v, 'aria-selected': on ? 'true' : 'false',
         'aria-controls':'dpanel', tabindex: on ? '0' : '-1',
@@ -15117,14 +15162,15 @@ function renderDisciplines(){
     tabs.addEventListener('keydown', (e) => {
       if(e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
       e.preventDefault();
-      ui.discTab = tab === 'deadlines' ? 'disciplines' : 'deadlines';
+      const order=['disciplines','materials','blocks','deadlines'];
+      ui.discTab=order[(order.indexOf(tab)+(e.key==='ArrowRight'?1:3))%4];
       if(ui.discTab === 'disciplines') ui.discNav = { level:'root' };
       renderDisciplines();
       Nav.sync('replace');          // abas irmãs: trocam o lugar, não empilham histórico
       const t = $('#dtab-' + ui.discTab); if(t) t.focus();
     });
     body = [tabs, h('div', { class:'tab-panel', id:'dpanel', role:'tabpanel', 'aria-labelledby':'dtab-' + tab },
-      tab === 'deadlines' ? deadlinesPanel() : discRootLevel(nav))];
+      tab === 'deadlines' ? deadlinesPanel() : tab === 'materials' ? materialsPanel() : tab === 'blocks' ? contentBlocksPanel() : discRootLevel(nav))];
   }
 
   const dir = ui.discNavDir;
@@ -15422,6 +15468,7 @@ function discDisciplineLevel(r){
       { label: d.archived ? 'Reativar' : 'Arquivar', run:() => toggleArchiveDiscipline(d.id) }
     ], { ariaLabel:'Mais ações para ' + d.name, fk:'more' })));
 
+  parts.push(disciplineLearningPanel(d.id));
   /* tópicos: escrever o nome e confirmar (prioridade e revisão) num modal curto */
   const addInput = h('input', { type:'text', id:'dd-new-topic', maxlength:'80', autocomplete:'off', 'data-fk':'topic-new',
     placeholder: visible.length ? 'Nome do novo tópico' : 'Ex.: ' + ((topicExamplesFor(d.name) || ['Uso da crase'])[0]), 'aria-label':'Nome do novo tópico' });
@@ -15999,6 +16046,7 @@ async function toggleArchiveDiscipline(id){
 }
 
 async function deleteDisciplineForever(id){
+  if(Learning.courses().some(c=>c.disciplineId===id)||Learning.blocks().some(b=>b.disciplineId===id)){toast('Esta disciplina possui materiais ou blocos. Arquive para preservar os vínculos.','info');return;}
   const d = getDiscipline(id);
   if(!d) return;
   // v6.8: um estudo com outras disciplinas não é apagado — só perde a parte desta disciplina
@@ -16416,7 +16464,7 @@ function deadlinesPanel(){
   /* v6.2 — Prazos: FILTRO real (status) + ORDENAÇÃO, num único controle discreto,
      e busca só entre os prazos (título, tipo, disciplina, tópico). */
   parts.push(collectionView({
-    key:'deadlines', kind:'deadlines', items: state.deadlines.slice(),
+    key:'deadlines', kind:'deadlines', items: state.deadlines.filter(d=>!d.archived),
     placeholder:'Buscar prazo…', label:'Buscar prazo',
     searchText: dl => {
       const disc = dl.disciplineId ? getDiscipline(dl.disciplineId) : null;
@@ -16454,7 +16502,14 @@ function deadlinesPanel(){
       return out;
     }
   }));
+  const archived=state.deadlines.filter(d=>d.archived).sort((a,b)=>a.date.localeCompare(b.date));
+  if(archived.length)parts.push(h('details',{class:'disclosure'},h('summary',{text:'Arquivados ('+archived.length+')'}),h('ul',{class:'dl-line-list'},archived.map(dl=>deadlineLine(dl,null,false,{action:reviewButton('Restaurar prazo',()=>setDeadlineArchived(dl.id,false))})))));
   return parts;
+}
+
+async function setDeadlineArchived(id,archived){
+  const result=await quickPatch('deadlines',id,{archived},'Não foi possível arquivar o prazo');
+  if(result){Drawer.close();await safeRefresh();}
 }
 
 async function setDeadlineStatus(id, status){
@@ -16546,6 +16601,7 @@ function openDeadlineDrawer(id){
         ? h('button', { class:'btn ghost sm', type:'button', text:'Reabrir', onclick: once(() => setDeadlineStatus(dl.id, 'pending')) })
         : h('button', { class:'btn primary sm', type:'button', onclick: once(() => setDeadlineStatus(dl.id, 'completed')) }, icon('i-check'), 'Concluir'),
       h('button', { class:'btn ghost sm', type:'button', text:'Editar', onclick:() => { Drawer.close(); openDeadlineModal(dl); } }),
+      reviewButton(dl.archived?'Restaurar prazo':'Arquivar prazo',()=>setDeadlineArchived(dl.id,!dl.archived)),
       topic ? h('button', { class:'btn ghost sm', type:'button', text:'Ver tópico', onclick:() => openTopicDrawer(topic.id) }) : null,
       h('button', { class:'linkbtn danger', type:'button', text:'excluir', onclick:() => deleteDeadline(dl.id) })));
   Drawer.open(dl.title, body, { onClose:() => { ui.openDeadlineId = null; } });
@@ -16804,7 +16860,7 @@ function normalizeAnalyticsQuery(raw){
     if(q.startDate && q.endDate && q.startDate > q.endDate){ const x = q.startDate; q.startDate = q.endDate; q.endDate = x; }
   } else { q.startDate = null; q.endDate = null; }
   if(!ANALYTICS_FOCUS.some(f => f.v === q.focus)) q.focus = 'overview';
-  return { scopeType:q.scopeType, scopeId: ids[0] || null, scopeIds: ids, types: SessionModel.cleanTypes(q.types),
+  return { scopeType:q.scopeType, scopeId: ids[0] || null, scopeIds: ids, types: SessionModel.cleanTypes(q.types), courseIds:Learning.ids(q.courseIds),blockIds:Learning.ids(q.blockIds),
            periodPreset:q.periodPreset, startDate:q.startDate, endDate:q.endDate, focus:q.focus };
 }
 function analyticsQueryRange(q){
@@ -16815,10 +16871,11 @@ function analyticsQueryRange(q){
 function analyticsQueryScope(q){
   const ids = q.scopeIds && q.scopeIds.length ? q.scopeIds : (q.scopeId ? [q.scopeId] : []);
   const types = q.types && q.types.length ? q.types.slice() : null;
-  if(q.scopeType === 'area') return { type:'area', ids, areaId: ids[0] || null, types };
-  if(q.scopeType === 'discipline') return { type:'discipline', ids, disciplineId: ids[0] || null, types };
-  if(q.scopeType === 'topic') return { type:'topic', ids, topicId: ids[0] || null, types };
-  return { type:'all', types };
+  const learning = {courseIds:q.courseIds,blockIds:q.blockIds};
+  if(q.scopeType === 'area') return { ...learning, type:'area', ids, areaId: ids[0] || null, types };
+  if(q.scopeType === 'discipline') return { ...learning, type:'discipline', ids, disciplineId: ids[0] || null, types };
+  if(q.scopeType === 'topic') return { ...learning, type:'topic', ids, topicId: ids[0] || null, types };
+  return { ...learning, type:'all', types };
 }
 function analyticsPeriodLabel(q){
   const p = ANALYTICS_PRESETS.find(x => x.v === q.periodPreset);
@@ -16873,7 +16930,8 @@ function hasAnyPlan(){
 function analyticsFocusAvailability(q){
   const out = {};
   ANALYTICS_FOCUS.forEach(f => { out[f.v] = { disabled:false }; });
-  if(q.scopeType === 'topic') out.planning = { disabled:true, reason:'A meta é semanal, não por tópico. Para compará-la, analise todos os estudos.' };
+  if(q.courseIds?.length || q.blockIds?.length) out.planning={disabled:true,reason:'A meta semanal vale para todos os estudos. Limpe os filtros de materiais e blocos para compará-la.'};
+  else if(q.scopeType === 'topic') out.planning = { disabled:true, reason:'A meta é semanal, não por tópico. Para compará-la, analise todos os estudos.' };
   else if(q.types && q.types.length) out.planning = { disabled:true, reason:'A meta semanal vale para qualquer tipo de estudo. Tire o filtro de tipos para ver a meta.' };
   else if(!hasAnyPlan()) out.planning = { disabled:true, reason:'Você ainda não definiu uma meta semanal em Planejamento.' };
   const ids = q.scopeIds && q.scopeIds.length ? q.scopeIds : (q.scopeId ? [q.scopeId] : []);
@@ -16922,7 +16980,7 @@ function applyAnalyticsQuery(raw, opts){
 }
 /** v6.8 — análises recentes: só nesta sessão do navegador (as SALVAS ficam nas configurações). */
 function rememberRecentAnalysis(q){
-  const key = JSON.stringify([q.scopeType, q.scopeIds, q.types, q.periodPreset, q.startDate, q.endDate, q.focus]);
+  const key = JSON.stringify([q.scopeType, q.scopeIds, q.types, q.periodPreset, q.startDate, q.endDate, q.focus,q.courseIds,q.blockIds]);
   const list = (ui.analyticsRecent || []).filter(x => x.key !== key);
   list.unshift({ key, q });
   ui.analyticsRecent = list.slice(0, 5);
@@ -17488,89 +17546,7 @@ async function removeSavedAnalysis(id){
  * Período personalizado: seleção explícita em dois passos no calendário,
  * com campos de data como alternativa completa pelo teclado.
  */
-function rangePicker(d, pick, rerender){
-  const t = today();
-  const base = pick.month || (d.endDate ? parseISO(d.endDate) : d.startDate ? parseISO(d.startDate) : t);
-  const y = base.getFullYear(), mo = base.getMonth();
-  const monthStart = new Date(y, mo, 1);
-  const sISO = d.startDate, eISO = d.endDate, tISO = todayISO();
-
-  let msg;
-  if(!sISO) msg = 'Escolha o primeiro dia.';
-  else if(!eISO) msg = `Início: ${fmtDayMonth(parseISO(sISO))}. Agora escolha o último.`;
-  else {
-    const r = { start:parseISO(sISO), end:parseISO(eISO) };
-    msg = `${fmtRangeLabel(r)} · ${plural(rangeDays(r), 'dia', 'dias')}`;
-  }
-  const status = h('p', { class:'an-range-status' + (sISO && eISO ? ' is-done' : ''), role:'status', 'aria-live':'polite', text:msg });
-
-  const goMonth = (delta) => { pick.month = new Date(y, mo + delta, 1); rerender(delta < 0 ? 'rp-prev' : 'rp-next'); };
-  const head = h('div', { class:'rp-head' },
-    h('button', { class:'icon-btn', type:'button', 'aria-label':'Mês anterior', dataset:{ k:'rp-prev' }, onclick:() => goMonth(-1) }, h('span', { 'aria-hidden':'true', text:'‹' })),
-    h('span', { class:'rp-month', text:`${MONTHS[mo]} de ${y}` }),
-    h('button', { class:'icon-btn', type:'button', 'aria-label':'Próximo mês', dataset:{ k:'rp-next' }, onclick:() => goMonth(1) }, h('span', { 'aria-hidden':'true', text:'›' })));
-
-  const dows = weekStartDow() === 1 ? ['S','T','Q','Q','S','S','D'] : ['D','S','T','Q','Q','S','S'];
-  const grid = h('div', { class:'rp-grid', role:'group', 'aria-label': !sISO || eISO ? 'Escolha o primeiro dia do período' : 'Escolha o último dia do período' });
-  dows.forEach(x => grid.append(h('span', { class:'rp-dow', 'aria-hidden':'true', text:x })));
-  const blanks = (monthStart.getDay() - weekStartDow() + 7) % 7;
-  for(let i = 0; i < blanks; i++) grid.append(h('span', { class:'rp-day blank', 'aria-hidden':'true' }));
-  const total = new Date(y, mo + 1, 0).getDate();
-  const focusISO = (sISO && sISO.slice(0, 7) === dateToISO(monthStart).slice(0, 7)) ? sISO
-    : (tISO.slice(0, 7) === dateToISO(monthStart).slice(0, 7) ? tISO : dateToISO(monthStart));
-  for(let day = 1; day <= total; day++){
-    const iso = dateToISO(new Date(y, mo, day));
-    let cls = 'rp-day';
-    const lo = sISO, hi = eISO || sISO;
-    if(lo && iso >= lo && iso <= hi) cls += ' inrange';
-    if(iso === sISO || iso === eISO) cls += ' edge';
-    if(iso === tISO) cls += ' today';
-    if(iso > tISO) cls += ' future';
-    grid.append(h('button', { type:'button', class:cls, dataset:{ date:iso, k:'rp-' + iso },
-      tabindex: iso === focusISO ? '0' : '-1', 'aria-pressed': (iso === sISO || iso === eISO) ? 'true' : 'false',
-      'aria-label': fmtDateLong(iso) + (iso === tISO ? ', hoje' : ''),
-      onclick:() => {
-        if(!d.startDate || d.endDate){ d.startDate = iso; d.endDate = null; }
-        else if(iso < d.startDate){ d.endDate = d.startDate; d.startDate = iso; }
-        else d.endDate = iso;
-        pick.month = new Date(y, mo, 1);
-        rerender('rp-' + iso);
-      } }, String(day)));
-  }
-  grid.addEventListener('keydown', (e) => {
-    const cur = e.target.closest && e.target.closest('.rp-day[data-date]');
-    if(!cur) return;
-    const step = { ArrowLeft:-1, ArrowRight:1, ArrowUp:-7, ArrowDown:7 }[e.key];
-    if(!step) return;
-    e.preventDefault();
-    const iso = dateToISO(addDays(parseISO(cur.dataset.date), step));
-    const el = grid.querySelector(`.rp-day[data-date="${iso}"]`);
-    if(el){ $$('.rp-day[tabindex="0"]', grid).forEach(x => x.setAttribute('tabindex', '-1')); el.setAttribute('tabindex', '0'); el.focus(); }
-    else { const nd = parseISO(iso); pick.month = new Date(nd.getFullYear(), nd.getMonth(), 1); rerender('rp-' + iso); }
-  });
-
-  const startIn = h('input', { type:'date', id:'an-rs', value: sISO || '' });
-  const endIn = h('input', { type:'date', id:'an-re', value: eISO || '' });
-  const syncInputs = () => {
-    d.startDate = parseISO(startIn.value) ? startIn.value : null;
-    d.endDate = parseISO(endIn.value) ? endIn.value : null;
-    if(d.startDate && d.endDate && d.startDate > d.endDate){ const x = d.startDate; d.startDate = d.endDate; d.endDate = x; }
-    const ref = d.endDate || d.startDate;
-    if(ref){ const r = parseISO(ref); pick.month = new Date(r.getFullYear(), r.getMonth(), 1); }
-    rerender(null);
-  };
-  startIn.addEventListener('change', () => { syncInputs(); const x = $('#an-rs'); if(x) x.focus(); });
-  endIn.addEventListener('change', () => { syncInputs(); const x = $('#an-re'); if(x) x.focus(); });
-
-  return h('div', { class:'an-range is-revealing' },
-    status,
-    h('div', { class:'rp' }, head, grid),
-    h('div', { class:'an-range-inputs' },
-      h('div', { class:'field tight' }, h('label', { for:'an-rs', text:'Data inicial' }), startIn),
-      h('div', { class:'field tight' }, h('label', { for:'an-re', text:'Data final' }), endIn),
-      (sISO || eISO) ? h('button', { class:'linkbtn muted', type:'button', text:'limpar datas', dataset:{ k:'rp-clear' },
-        onclick:() => { d.startDate = null; d.endDate = null; rerender(null); } }) : null));
-}
+function rangePicker(d,pick,rerender){ return connectedRangePicker(d,pick,rerender); }
 
 /* =========================================================================
    RESULTADO — resumo → poucos números → um gráfico → insights → explorar
@@ -17607,20 +17583,12 @@ function renderAnalyticsResult(root){
     toast('O item que estava sendo analisado não existe mais. Mostrando todos os estudos.', 'info', { title:'Análise ajustada' });
   }
   const focus = q.focus;
-  const parts = [analyticsResultHeader(a)];
+  if(focus === 'overview'){renderConnectedInsights(root,a);return;}
+  const parts = [resultsToolbar(a),h('div',{class:'results-focus-head'},h('h3',{text:focusInfo(focus).label}),reviewButton('Panorama',()=>setAnalyticsFocus('overview')))];
   const empty = analyticsEmptyFor(a, focus);
   if(empty){
     parts.push(empty, analyticsReadingGuide(a));
     mount(root, h('div', { class:'an-result' }, parts));
-    return;
-  }
-  // v7 — a visão geral é um PANORAMA: a resposta grande, dois gráficos e os caminhos para explorar
-  if(focus === 'overview'){
-    const {summary,details,paths} = analyticsPanorama(a);
-    parts.push(summary, resultDisclosure('Gráficos e observações', details),
-      resultDisclosure('Explorar este período', [paths, analyticsExploreBlock(a, focus)]),
-      analyticsReadingGuide(a));
-    mount(root, h('div', { class:'an-result is-panorama' }, parts));
     return;
   }
   parts.push(analyticsSummaryBlock(a, focus));
@@ -17641,136 +17609,6 @@ function renderAnalyticsResult(root){
   if(ins) parts.push(ins);
   parts.push(resultDisclosure('Explorar este período', [analyticsNextQuestions(a, focus), analyticsExploreBlock(a, focus)]), analyticsReadingGuide(a));
   mount(root, h('div', { class:'an-result' }, parts));
-}
-
-/**
- * v7 — PANORAMA (a visão geral de Análises).
- * Responde primeiro, com números reais e grandes: quanto se estudou, em quantos
- * dias, como isso mudou. Depois, dois gráficos lado a lado (tempo ao longo do
- * período e onde o tempo foi) e até três observações factuais. Por fim, oito
- * caminhos guiados — cada um abre a análise daquele assunto com o MESMO
- * período e o MESMO recorte. Nada aqui afirma causa nem dá nota.
- */
-const ANALYTICS_PATHS = [
-  { focus:'time',         title:'Meu tempo',          icon:'i-today' },
-  { focus:'consistency',  title:'Minha constância',   icon:'i-plan' },
-  { focus:'distribution', title:'Minhas disciplinas', icon:'i-pie' },
-  { focus:'topics',       title:'Meus tópicos',       icon:'i-disc' },
-  { focus:'reviews',      title:'Minhas revisões',    icon:'i-review' },
-  { focus:'planning',     title:'Meu planejamento',   icon:'i-target' },
-  { focus:'rest',         title:'Meus descansos',     icon:'i-pause' },
-  { focus:'types',        title:'Como estudo',        icon:'i-t-theory' },
-  { focus:'results',      title:'Meus resultados',    icon:'i-t-exercise' },
-  { focus:'learning',     title:'Minha evolução',     icon:'i-milestone' },
-  { focus:'compare',      title:'Comparar semanas',   icon:'i-chart' }
-];
-function analyticsPanorama(a){
-  const t = a.totals, cmp = a.previousComparison, sc = a.scope;
-  const details = [];
-  /* 1. a resposta, grande */
-  const delta = cmp.available && isNum(cmp.minutesDelta) && t.count > 0 ? cmp.minutesDelta : null;
-  const deltaText = delta === null ? null
-    : Math.abs(delta) < 5 ? 'parecido com o período anterior'
-    : `${fmtNumber(Math.abs(delta), 0)}% ${delta >= 0 ? 'a mais' : 'a menos'} que no período anterior`;
-  const pa = a.planAdherence;
-  const rq = a.results.questions;
-  // v7.1 — com o período em andamento, os dias contados são os que já aconteceram (e isso é dito)
-  const daysText = a.partial ? `em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')} até hoje` : `em ${t.activeDays} de ${plural(a.days, 'dia', 'dias')}`;
-  const facts4 = [
-    heroFact('Dias com estudo', `${t.activeDays}`, `de ${a.days}${a.partial ? ' até hoje' : ''} · ${safePct(t.consistency)}`, () => setAnalyticsFocus('consistency')),
-    heroFact('Por dia de estudo', fmtDuration(t.avgPerActiveDay), 'em média', () => setAnalyticsFocus('time')),
-    pa.hasPlan ? heroFact(pa.basis === 'goal' ? 'Meta semanal' : 'Diante da sugestão', pa.pct >= 100 ? 'Alcançada' : safePct(pa.pct), `${fmtDuration(pa.realized)} de ${fmtDuration(pa.planned)}`, () => setAnalyticsFocus('planning'))
-      : heroFact('Revisões', String(a.reviews.completed), a.reviews.completed === 1 ? 'concluída no período' : 'concluídas no período', () => setAnalyticsFocus('reviews')),
-    // v7.1 — resultados ganham presença quando existem (e só então)
-    rq.sets ? heroFact('Acerto registrado', fmtAccuracy(rq.pct), `${rq.correct} de ${plural(rq.total, 'questão', 'questões')}`, () => setAnalyticsFocus('results'))
-      : a.results.milestoneCount ? heroFact('Marcos registrados', String(a.results.milestoneCount), 'o que você conseguiu fazer', () => setAnalyticsFocus('learning')) : null
-  ].filter(Boolean);
-  const summary = h('section', { class:'an-hero', 'aria-label':'Resumo do período' },
-    h('div', { class:'an-hero-main' },
-      h('p', { class:'an-hero-k', text: sc.type === 'all' ? 'Tempo estudado' : 'Tempo estudado em ' + sc.label }),
-      h('p', { class:'an-hero-v num', text: fmtDuration(t.minutes) }),
-      h('p', { class:'an-hero-s', text: `${daysText} · ${plural(t.count, 'estudo registrado', 'estudos registrados')}` }),
-      deltaText ? h('p', { class:'an-hero-d ' + (delta === null || Math.abs(delta) < 5 ? 'is-flat' : delta >= 0 ? 'is-up' : 'is-down'), text: deltaText,
-        title: comparedPeriodsText(cmp) }) : null,
-      deltaText ? h('p', { class:'an-hero-cmp', text: `${fmtShortRange(cmp.curRange)} × ${fmtShortRange(cmp.prevRange)}${cmp.partial ? ' (mesmos dias, até hoje)' : ' (períodos completos)'}` }) : null),
-    h('dl', { class:'an-hero-facts' + (facts4.length > 3 ? ' is-four' : '') }, facts4));
-
-  /* 2. dois gráficos lado a lado */
-  const charts = [];
-  if(a.days > 1) charts.push(h('section', { class:'an-block an-pan-card', 'aria-labelledby':'an-pan-time' },
-    h('h3', { class:'an-block-t', id:'an-pan-time', text:'Tempo ao longo do período' }), timeChart(a)));
-  const distRows = (sc.type === 'discipline' && !sc.multi) || sc.type === 'topic' ? a.byTopic.filter(x => x.minutes > 0) : a.byDiscipline.filter(x => x.minutes > 0);
-  const distMode = (sc.type === 'discipline' && !sc.multi) || sc.type === 'topic' ? 'topic' : 'discipline';
-  if(distRows.length){
-    const top = distRows.slice(0, 6);
-    const mx = Math.max(1, ...top.map(x => x.minutes));
-    charts.push(h('section', { class:'an-block an-pan-card', 'aria-labelledby':'an-pan-dist' },
-      h('h3', { class:'an-block-t', id:'an-pan-dist', text: distMode === 'topic' ? 'Onde o tempo foi: tópicos' : 'Onde o tempo foi' }),
-      h('div', { class:'dist-viz an-pan-dist' }, top.map((x, i) => hbarRow(x.label, x.minutes / mx * 100, `${minutesText(x)} · ${safePct(x.pct)}`,
-        x.key === '__none__' ? 'var(--text-tertiary)' : PALETTE[i % PALETTE.length], distributionAction(x, distMode) ? () => openDistributionDrawer(x, distMode, a) : null))),
-      distRows.length > top.length || distMode === 'discipline'
-        ? h('button', { class:'linkbtn an-pan-more', type:'button', text: distMode === 'topic' ? 'Ver todos os tópicos' : 'Ver todas as disciplinas',
-            onclick:() => setAnalyticsFocus(distMode === 'topic' ? 'topics' : 'distribution') }) : null,
-      estimateNote(top, distMode)));
-  }
-  if(charts.length) details.push(h('div', { class:'an-pan-grid' + (charts.length === 1 ? ' is-single' : '') }, charts));
-
-  /* 3. até três observações factuais */
-  const facts = [];
-  if(a.byDiscipline.length > 1 && sc.type === 'all'){
-    const top = a.byDiscipline[0];
-    if(top.minutes > (a.byDiscipline[1] ? a.byDiscipline[1].minutes : 0)) facts.push(`${top.label} recebeu mais tempo neste período (${safePct(top.pct)}).`);
-  }
-  if(t.count > 0 && a.days >= 7) facts.push(a.partial ? `Você estudou em ${t.activeDays} dos ${a.days} dias do período até hoje.` : `Você estudou em ${t.activeDays} dos últimos ${a.days} dias.`);
-  if(rq.sets && facts.length < 3) facts.push(`Você registrou ${plural(rq.total, 'questão', 'questões')}, com ${fmtAccuracy(rq.pct)} de acerto${a.results.smallSample ? ' (poucas questões: vale como registro)' : ''}.`);
-  if(delta !== null && Math.abs(delta) >= 5) facts.push(`Seu tempo registrado ${delta >= 0 ? 'aumentou' : 'diminuiu'} em relação ao período anterior equivalente.`);
-  else if(delta !== null) facts.push('Seu tempo registrado ficou parecido com o do período anterior equivalente.');
-  const best = a.byWeekday.slice().sort((x, y) => y.minutes - x.minutes)[0];
-  if(facts.length < 3 && a.days >= 14 && t.count >= 5 && best && best.minutes > 0) facts.push(`${best.label} foi o dia da semana com mais estudo.`);
-  if(facts.length) details.push(h('section', { class:'an-block an-pan-facts', 'aria-labelledby':'an-pan-f' },
-    h('h3', { class:'an-block-t', id:'an-pan-f' }, 'O que se destaca', helpDot('insights')),
-    h('ul', { class:'an-fact-list' }, facts.slice(0, 3).map(f => h('li', { text:f }))),
-    h('p', { class:'an-foot-note', text:'Fatos calculados dos seus registros — sem palpites sobre causas.' })));
-
-  /* 4. caminhos guiados (mesmo período, mesmo recorte) */
-  const fav = analyticsFocusAvailability(a.query);
-  const teaser = {
-    time: () => t.count ? `${fmtDuration(t.minutes)} · ${fmtDuration(t.avgPerActiveDay)} por dia de estudo` : 'sem registros no período',
-    consistency: () => `${t.activeDays} de ${plural(a.days, 'dia', 'dias')} com estudo`,
-    distribution: () => a.byDiscipline[0] ? `${a.byDiscipline[0].label} à frente · ${plural(a.byDiscipline.length, 'disciplina', 'disciplinas')}` : 'sem registros no período',
-    topics: () => { const n = a.byTopic.filter(x => x.key !== '__none__' && x.minutes > 0).length; return n ? plural(n, 'tópico estudado', 'tópicos estudados') : 'nenhum tópico informado'; },
-    reviews: () => a.reviews.completed ? plural(a.reviews.completed, 'revisão concluída', 'revisões concluídas') : (a.reviews.dueToday ? 'nenhuma no período · há sugestões agora' : 'nenhuma no período'),
-    planning: () => pa.hasPlan ? (pa.pct >= 100 ? 'meta alcançada' : `${safePct(pa.pct)} da meta`) : 'sem meta no período',
-    rest: () => a.rest.count ? `${fmtDuration(a.rest.minutes)} em ${plural(a.rest.count, 'descanso', 'descansos')}` : 'nenhum descanso registrado',
-    types: () => { const ty = a.byType.filter(x => x.key !== '__none__' && x.count > 0).sort((x, y) => y.count - x.count)[0]; return ty ? `${ty.label} é o mais frequente` : 'nenhum tipo informado'; },
-    results: () => rq.sets ? `${rq.correct} de ${rq.total} · ${fmtAccuracy(rq.pct)} de acerto` : 'nenhuma questão registrada no período',
-    learning: () => a.results.milestoneCount ? plural(a.results.milestoneCount, 'marco registrado', 'marcos registrados') : (a.results.conceptCount ? plural(a.results.conceptCount, 'conceito explicado', 'conceitos explicados') : 'nenhum marco registrado'),
-    compare: () => 'esta semana ao lado da anterior'
-  };
-  const paths = h('section', { class:'an-block an-paths', 'aria-labelledby':'an-paths-t' },
-    h('h3', { class:'an-block-t', id:'an-paths-t', text:'Explore seus estudos' }),
-    h('p', { class:'an-step-help', text:`Cada pergunta usa o mesmo período (${analyticsPeriodLabel(a.query).toLowerCase()})${sc.type === 'all' ? '' : ' e o mesmo recorte'}.` }),
-    h('div', { class:'an-paths-grid', role:'list' }, ANALYTICS_PATHS.map(pth => {
-      const f = fav[pth.focus] || { disabled:false };
-      return h('div', { role:'listitem' }, h('button', { class:'an-path', type:'button', disabled: f.disabled, onclick:() => setAnalyticsFocus(pth.focus),
-          'aria-label': `${pth.title}: ${f.disabled ? f.reason : (teaser[pth.focus] ? teaser[pth.focus]() : '')}` },
-        h('span', { class:'an-path-ic', 'aria-hidden':'true' }, icon(pth.icon, 'nav-icon')),
-        h('span', { class:'an-path-text' },
-          h('span', { class:'an-path-t', text:pth.title }),
-          h('span', { class:'an-path-s', text: f.disabled ? f.reason : (teaser[pth.focus] ? teaser[pth.focus]() : '') })),
-        icon('i-next', 'btn-icon an-path-go')));
-    })),
-    h('div', { class:'an-paths-foot' },
-      h('button', { class:'btn ghost sm', type:'button', text:'Personalizar análise', onclick:() => openAnalyticsSelector({ custom:true }) }),
-      h('span', { class:'hint', text:'Escolha disciplinas, tópicos, tipos de estudo e o período.' })));
-  return {summary,details,paths};
-}
-function heroFact(label, value, sub, onOpen){
-  return h('div', { class:'an-hero-fact' },
-    h('dt', { text:label }),
-    h('dd', null, onOpen ? h('button', { class:'an-hero-btn', type:'button', onclick:onOpen, 'aria-label':`${label}: ${value} ${sub || ''}. Ver detalhes` },
-      h('span', { class:'an-hero-fv num', text:value }), sub ? h('span', { class:'an-hero-fs', text:sub }) : null)
-      : [h('span', { class:'an-hero-fv num', text:value }), sub ? h('span', { class:'an-hero-fs', text:sub }) : null]));
 }
 
 /**
@@ -17800,61 +17638,13 @@ function analyticsNextQuestions(a, focus){
 function openAnalyticsRecords(analysis){
   clearHistoryFilters();
   ui.history.search = '';
-  ui.historyIds = {ids:analysis.sessions.map(s => s.id),kind:'analysis',label:analyticsPeriodLabel(analysis.query)};
+  ui.historyIds = {ids:analysis.sessions.map(s => s.id),kind:'analysis',query:analysis.query,label:analyticsPeriodLabel(analysis.query)};
   setView('history');
   focusViewHeading('history');
 }
 
 function analyticsEstimatedTime(sessions){
   return sessions.some(s => s._projected && s._discShares.some(share => share.estimated));
-}
-
-function analyticsResultHeader(a){
-  const q = a.query;
-  const sc = a.scope;
-  const kicker = sc.type === 'all' ? 'Todos os estudos'
-    : sc.type === 'area' ? (sc.multi ? 'Áreas de Estudo' : AREA_TERM)
-    : sc.path.length > 1 && !sc.multi ? `${AnalyticsScope.kindLabel(sc)} · ${sc.path.slice(0, -1).join(' › ')}` : AnalyticsScope.kindLabel(sc);
-  /* v6.8 — o que está valendo, em chips: cada filtro sai com um clique; o
-     período troca sem refazer a análise (exploração progressiva). */
-  const chips = [];
-  if(sc.type !== 'all') chips.push(h('button', { class:'filter-chip', type:'button', 'aria-label':`Tirar o filtro ${sc.label}: analisar todos os estudos`,
-    onclick:() => setAnalyticsScope('all') }, h('span', { text: sc.label }), icon('i-close', 'btn-icon')));
-  if(sc.types) chips.push(h('button', { class:'filter-chip', type:'button', 'aria-label':`Tirar o filtro de tipos ${sc.typesLabel}`,
-    onclick:() => setAnalyticsTypes([]) }, h('span', { text: 'Estudos com ' + sc.typesLabel }), icon('i-close', 'btn-icon')));
-  const periods = h('div', { class:'an-chips an-head-periods', role:'radiogroup', 'aria-label':'Trocar o período' });
-  const common = ['hoje','semana','mes','30d'];
-  common.concat(q.periodPreset === 'custom' || common.includes(q.periodPreset) ? [] : [q.periodPreset]).forEach(v => {
-    const p = ANALYTICS_PRESETS.find(x => x.v === v);
-    periods.append(h('button', { class:'an-chip sm', type:'button', role:'radio', 'aria-checked': q.periodPreset === v ? 'true' : 'false', text:p.label,
-      onclick:() => { if(q.periodPreset !== v) setAnalyticsPeriod(presetRange(v), v); } }));
-  });
-  periods.append(h('button', { class:'an-chip sm', type:'button', role:'radio', 'aria-checked': q.periodPreset === 'custom' ? 'true' : 'false',
-    text: q.periodPreset === 'custom' ? fmtRangeLabel(a.range) : 'Personalizado…', onclick:() => openAnalyticsSelector({ section:'period' }) }));
-  rovingInit(periods);
-  return h('header', { class:'an-head', id:'an-context' },
-    h('div', { class:'an-head-main' },
-      sc.type !== 'all' ? h('p', { class:'an-head-k', text: kicker }) : null,
-      h('h3', { class:'an-head-t', text: sc.type === 'all' ? 'Resumo do período' : sc.label }),
-      h('p', { class:'an-head-meta' },
-        h('span', { class:'an-head-focus', text: focusInfo(q.focus).label }),
-        h('span', { class:'an-head-range', text: `${analyticsPeriodLabel(q)} · ${fmtRangeLabel(a.range)}` })),
-      analyticsEstimatedTime(a.sessions) ? h('p', {class:'hint',text:'Parte do tempo neste recorte vem de uma divisão estimada.'}) : null,
-      chips.length ? h('div', { class:'filter-chips an-head-chips', role:'group', 'aria-label':'Filtros desta análise' }, chips,
-        chips.length > 1 ? h('button', { class:'linkbtn muted', type:'button', text:'limpar', onclick:() => applyAnalyticsQuery(Object.assign({}, q, { scopeType:'all', scopeIds:[], scopeId:null, types:[] })) }) : null) : null,
-      periods),
-    h('div', { class:'an-head-actions' },
-      h('button', {class:'btn primary sm',type:'button',onclick:() => openVisualReport(q)}, icon('i-download'), 'Criar relatório'),
-      a.sessions.length ? h('button', {class:'btn ghost sm',type:'button',text:'Ver registros',onclick:() => openAnalyticsRecords(a)}) : null,
-      q.focus !== 'overview' ? h('button', { class:'btn ghost sm an-to-pan', type:'button', onclick:() => setAnalyticsFocus('overview') }, icon('i-back'), 'Panorama') : null,
-      h('button', { class:'btn ghost sm', type:'button', onclick:() => openAnalyticsSelector() }, 'Alterar análise'),
-      menuButton('Mais', [
-        { label:'Salvar esta análise…', run:() => saveCurrentAnalysis(q) },
-        { label:'Análises prontas', run:() => openAnalyticsSelector({ custom:false }) },
-        { label:'Copiar resumo', run:() => copySummary(a) },
-        { label:'Baixar relatório (.txt)', run: () => downloadReport(a) },
-        { label:'Preparar relatório para IA…', run: () => openAIReportModal() }
-      ], { ariaLabel:'Mais ações desta análise' })));
 }
 
 /** Sem dado para esta escolha: nada de painel zerado — uma frase e caminhos úteis. */
@@ -20408,6 +20198,7 @@ function filteredSessions(){
   else if(f.results === 'questions') list = list.filter(s => EvidenceModel.of(s).some(r => r.kind === 'questions'));
   else if(f.results === 'notes') list = list.filter(s => EvidenceModel.of(s).some(r => r.kind !== 'questions'));
   if(ui.historyIds && Array.isArray(ui.historyIds.ids)){ const set = new Set(ui.historyIds.ids); list = list.filter(s => set.has(s.id)); }
+  if(ui.historyIds?.query){const scope=AnalyticsScope.resolve(analyticsQueryScope(ui.historyIds.query));const projected=new Map(AnalyticsScope.sessions(scope).map(s=>[s.id,s]));list=list.map(s=>projected.get(s.id)).filter(Boolean);}
   const terms = normalizeText(f.search).split(' ').filter(Boolean);
   if(terms.length){
     const hay = historySearchIndex();
@@ -20478,7 +20269,7 @@ function renderHistoryTable(){
            nomes no rótulo acessível e na edição. O tempo é o do estudo, uma vez. */
         /* v6.8 — várias disciplinas continuam numa linha só: "Matemática · Inglês",
            "4 tópicos · Teoria · Exercícios". A divisão do tempo fica nos detalhes. */
-        const sub = [SessionModel.subline(s, { maxTopics:2 }), EvidenceModel.summaryText(s) || null].filter(Boolean).join(' · ');
+        const sub = [s._projected && s._shareEstimated?'≈ Tempo do recorte':null,learningSessionLabel(s), SessionModel.subline(s, { maxTopics:2 }), EvidenceModel.summaryText(s) || null].filter(Boolean).join(' · ');
         const allTopics = SessionModel.topicNames(s);
         const title = SessionModel.title(s);
         const label = `${SessionModel.disciplineNames(s).join(', ')}${allTopics.length ? ', ' + allTopics.join(', ') : (topicLabelOf(s) ? ', ' + topicLabelOf(s) : '')}, ${fmtDuration(s.minutes)}. Editar estudo`;
@@ -20578,7 +20369,7 @@ function openEditSessionModal(id){
     // sumiam da lista e salvar a edição desligava o estudo do tópico sem aviso.
     const curIds = SessionModel.topicIds(s);
     let results = null;
-    const target = studyTargetFields({ close, idPrefix:'es', discIds: SessionModel.disciplineIds(s), topicIds:curIds, includeArchived:true,
+    const target = studyTargetFields({ close, idPrefix:'es', discIds: SessionModel.disciplineIds(s), topicIds:curIds, contentEntries:Learning.entries(s), includeArchived:true,
       allowNewTopic:false, onChange: () => { renderOutcome(); if(results) results.refreshContext(); } });
     // v7.1 — resultados do estudo (questões, conceitos, marcos): editáveis como o resto
     results = resultsField({ idPrefix:'es', initial: EvidenceModel.of(s), context: () => target.groups });
@@ -20606,6 +20397,7 @@ function openEditSessionModal(id){
     const outcomeField = outcomes.node;
     function renderOutcome(){
       const ids = target.topicIds;
+      target.refreshLearning(types.includes('revisao'));
       outcomes.update(ids, types.includes('revisao'));
       split.update(target.groups);
     }
@@ -20711,7 +20503,7 @@ function openEditSessionModal(id){
             minutes: time.minutes, startedAt: time.startedAt || null, endedAt: time.endedAt || null, breaks: time.breaks,
             pausedMinutes: time.pausedMinutes || 0,
             types, difficulty, comment: comment.value,
-            results: rs.results,
+            results: rs.results, contentEntries:target.contentEntries,
             topicEntries: topicEntriesFromForm(topicIds, sp, outcomes.values, isReview),
             // sem tópico não há resultado a editar: um registro antigo sem tópico mantém o que tinha (se continuar sendo revisão)
             legacyReviewOutcome: (!topicIds.length && isReview) ? (SessionModel.legacyOutcome(s) || null) : null
@@ -21025,7 +20817,7 @@ async function openAIReportModal(){
 async function runIntegrityCheck(){
   let result, total = 0;
   try {
-    const names = ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines'];
+    const names = ['areas','disciplines','topics','sessions','plans','weeklyPlans','deadlines','courses','contentBlocks'];
     const lists = await Promise.all(names.map(n => DB.getAll(n)));
     const src = { settings: state.settings, guidedReview:(await DB.get('meta','guidedReview'))?.value };
     names.forEach((n, i) => { src[n] = lists[i] || []; total += src[n].length; });
@@ -21430,6 +21222,8 @@ function bindEvents(){
     if(target){ try { target.focus({ preventScroll:true }); } catch(_){ target.focus(); } try { target.scrollIntoView({ block:'start' }); } catch(_){} }
   });
 
+  bindCivilDateControls();
+  bindConnectedResize();
   $('#theme-toggle').addEventListener('click', toggleTheme);
   $('#theme-toggle-m').addEventListener('click', toggleTheme);
 
@@ -22588,6 +22382,10 @@ const FocusMode = {
     document.getElementById('focus-disc').textContent = TimerService.discIds().length ? TimerService.discText() : 'Estudo livre';
     $('#focus-disc').hidden = !this.shows('discipline');
     contextLine('focus-topic', this.shows('topics') ? topicNames : [], this.presenting ? 6 : 2);
+    let source=document.getElementById('focus-material');
+    if(!source){source=h('div',{id:'focus-material',class:'material-sources'});document.getElementById('focus-topic').insertAdjacentElement('afterend',source);}
+    mount(source,Learning.ids(Learning.entries(d).map(e=>e.courseId)).map(id=>Learning.course(id)).filter(Boolean).map(c=>Learning.link(c,'Abrir material')));
+    source.hidden=this.presenting || !source.childElementCount;
     contextLine('focus-types', this.presenting ? [] : (d.presetTypes || []).map(sessionTypeLabel), 2);
     const areas = [...new Set(TimerService.discIds().map(id => getDiscipline(id)?.areaId).filter(Boolean))];
     contextLine('focus-area', !this.presenting && areas.length === 1 && getArea(areas[0]) ? [getArea(areas[0]).name] : [], 1);
@@ -22832,6 +22630,8 @@ function pickDisciplineThen(title, fn){
 }
 
 const HELP_ACTIONS = {
+  openMaterials:()=>{ui.discTab='materials';ui.discNav={level:'root'};setView('disciplines');},
+  openContentBlocks:()=>{ui.discTab='blocks';ui.discNav={level:'root'};setView('disciplines');},
   addDiscipline:   () => openDisciplineModal(null),
   addTopic:        () => { if(!activeDisciplines().length){ openDisciplineModal(null); return; } pickDisciplineThen('Em qual disciplina?', d => openTopicModal(d.id, null)); },
   addArea:         () => openAreaModal(null),

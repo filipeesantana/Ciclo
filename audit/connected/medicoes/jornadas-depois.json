@@ -1,0 +1,11 @@
+{
+  "version": "8.2.0",
+  "method": "Interações semânticas executadas pelo Playwright, a partir de Resultados aberto. Seleção nativa conta como uma interação; não é contagem de cliques físicos nem estudo de usabilidade.",
+  "headerControls": 4,
+  "disciplineFilter": 1,
+  "customPeriod": 4,
+  "history": 1,
+  "report": 1,
+  "selectTenTopics": 1,
+  "selectedTopics": 10
+}

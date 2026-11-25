@@ -3,14 +3,15 @@
   "private": true,
   "scripts": {
     "test": "node --test --test-timeout=30000 --test-concurrency=1 tests/*.test.cjs",
-    "check": "node --check app.js && node --check content.js && node --check reviews.js && node --check reports.js",
+    "check": "node --check app.js && node --check content.js && node --check reviews.js && node --check reports.js && node --check learning.js && node --check dates.js && node --check insights.js",
     "audit:browser": "node tests/browser-audit.cjs",
     "audit:inventory": "node tests/inventory.cjs",
     "audit:benchmark": "node tests/benchmark.cjs",
     "audit:field": "node tests/field-review.cjs",
     "audit:field:performance": "node tests/field-performance.cjs",
     "audit:experience": "node tests/experience-visual.cjs",
-    "audit:next-generation": "node tests/next-generation-audit.cjs"
+    "audit:next-generation": "node tests/next-generation-audit.cjs",
+    "audit:connected": "node tests/connected-audit.cjs"
   },
   "devDependencies": {
     "acorn": "8.15.0",
