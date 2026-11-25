@@ -93,14 +93,15 @@ function connectedRangePicker(d,pick,rerender){
    its own field, so a deadline, report or registration form is never replaced
    by a second modal. Draft calendar choices are applied explicitly. */
 function bindCivilDateControls(){
+  const active=new Set();
   function bind(input){
     if(input.dataset.civilBound || ['an-rs','an-re','civil-date'].includes(input.id))return;
     input.dataset.civilBound='true';
     const label=document.querySelector('label[for="'+CSS.escape(input.id)+'"]')?.textContent || 'Data';
     const button=h('button',{type:'button',class:'linkbtn civil-open','aria-label':'Abrir calendário: '+label,text:'Calendário','aria-expanded':'false'});
     input.insertAdjacentElement('afterend',button);
-    let panel=null,selected,month;
-    function close(){panel?.remove();panel=null;button.setAttribute('aria-expanded','false');button.focus();}
+    let panel=null,selected,month,removeEsc=null,registration=null;
+    function close(){removeEsc?.();removeEsc=null;if(registration)active.delete(registration);registration=null;panel?.remove();panel=null;button.setAttribute('aria-expanded','false');button.focus();}
     function draw(focus){
       mount(panel,civilCalendar({month,selected:[selected],focus,id:input.id+'-calendar',
         onMonth:(iso,f)=>{month=iso;draw(f);},onSelect:iso=>{selected=iso;draw(input.id+'-calendar-'+iso);}}),
@@ -114,12 +115,19 @@ function bindCivilDateControls(){
       if(panel){close();return;}
       selected=isStrictISODate(input.value)?input.value:todayISO();month=selected;
       panel=h('div',{class:'civil-inline',role:'group','aria-label':'Calendário: '+label});button.insertAdjacentElement('afterend',panel);button.setAttribute('aria-expanded','true');
-      panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}});
+      // The application's overlay manager listens in capture. Register here so
+      // Escape is consumed before it can close the enclosing study/deadline form.
+      removeEsc=Overlay.pushEsc(close,panel);
+      registration={panel,cleanup:()=>{removeEsc?.();removeEsc=null;panel=null;registration=null;button.setAttribute('aria-expanded','false');}};
+      active.add(registration);
       draw(input.id+'-calendar-'+selected);
     });
   }
   function visit(node){if(node.nodeType!==1)return;if(node.matches('input[type="date"]'))bind(node);node.querySelectorAll('input[type="date"]').forEach(bind);}
   visit(document.body);
-  const observer=new MutationObserver(records=>records.forEach(r=>r.addedNodes.forEach(visit)));
+  const observer=new MutationObserver(records=>{
+    records.forEach(r=>r.addedNodes.forEach(visit));
+    for(const entry of active)if(!entry.panel.isConnected){entry.cleanup();active.delete(entry);}
+  });
   observer.observe(document.body,{childList:true,subtree:true});
 }

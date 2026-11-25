@@ -90,3 +90,9 @@ test('prazo conclui, reabre, arquiva e restaura pela interface sem mudar sua dat
  await page.getByText('Arquivados (1)',{exact:true}).click();await page.getByRole('button',{name:'Restaurar prazo',exact:true}).click();await page.waitForFunction(()=>!state.deadlines[0].archived);
  assert.equal(await page.evaluate(()=>state.deadlines[0].date),'2026-12-31');assert.equal(await page.evaluate(()=>Backup.parseBackup(JSON.stringify(Backup.buildExport())).data.deadlines[0].date),'2026-12-31');
 });
+
+test('REGRESSÃO: Escape fecha apenas o calendário inline e mantém o formulário e o foco',async()=>{
+ await page.evaluate(()=>openDeadlineModal(null));await page.locator('#dl-title').fill('Título preservado');
+ const opener=page.getByRole('button',{name:/Abrir calendário: Data/}).first();await opener.click();await page.locator('.civil-inline [data-date]').first().focus();await page.keyboard.press('Escape');
+ assert.equal(await page.locator('.civil-inline').count(),0);assert.equal(await page.locator('#dl-title').isVisible(),true);assert.equal(await page.locator('#dl-title').inputValue(),'Título preservado');assert.equal(await opener.evaluate(el=>document.activeElement===el),true);
+});

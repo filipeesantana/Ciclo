@@ -1,0 +1,18 @@
+✔ REGRESSÃO: datas civis impossíveis e sufixos não são aceitos como outro dia (1738.759082ms)
+✔ novembro por cliques inclui os dois extremos: Resultados, Histórico e PNG mostram 180 minutos (2536.13787ms)
+✔ intervalo temporário: mudar mês/ano preserva seleção; Cancelar preserva filtro; reabrir recupera aplicação (2670.025404ms)
+✔ mesmo dia e intervalo inverso são previsíveis; setas cruzam mês e PageUp mantém o dia válido (1774.569003ms)
+✔ Planejamento: escolher dezembro pelo calendário, adicionar dia e recarregar conserva a data (3216.651791ms)
+✔ Prazos: calendário compartilhado cancela sem mudar input, confirma dia e persiste após F5 (3089.038345ms)
+✔ aritmética civil e presets em São Paulo, Nova York e Auckland inclui DST, bissexto e virada de ano (6110.14462ms)
+✔ Cancelar período personalizado iniciado em 30 dias preserva também o controle visível (1503.660558ms)
+✔ prazo conclui, reabre, arquiva e restaura pela interface sem mudar sua data (2232.999663ms)
+✔ REGRESSÃO: Escape fecha apenas o calendário inline e mantém o formulário e o foco (1673.209475ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27337.487662

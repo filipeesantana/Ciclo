@@ -70,6 +70,8 @@ A base nova compartilha meses, ano, validação, foco e teclado. Navegação men
 
 Regressões adicionais encontradas durante a implementação foram corrigidas: cancelar o intervalo não podia deixar o seletor mostrando Personalizado enquanto a consulta continuava em 30 dias; filtros de bloco e tópico não podiam incluir um tópico fora do snapshot daquele bloco; as barras do gráfico precisavam respeitar o tamanho mínimo de alvo. Há testes dedicados para esses casos.
 
+A conferência final reproduziu outra falha de teclado: Escape fechava o formulário pai quando um calendário inline estava aberto. O gerenciador global tratava a tecla na fase de captura, antes do listener local. A correção registra a camada interna em `Overlay.pushEsc`, limpa o registro ao remover seu dono e devolve o foco ao acionador. O teste falhou [antes](medicoes/calendario-escape-antes.txt) e passou [depois](medicoes/calendario-escape-depois.txt), preservando formulário, texto e foco.
+
 `tests/connected-dates.test.cjs` executa cliques, digitação, teclado, confirmação, cancelamento e F5. O fixture de novembro (20 min em 31/10, 40 em 1/11, 60 em 15/11, 80 em 30/11 e 100 em 1/12) confirma **180 minutos e três sessões** no mês, em Resultados, Histórico e PNG. Inclui Planejamento, Prazos, revisão por data, ano bissexto, virada de ano, São Paulo, Nova York e Auckland. Não se afirma que todo calendário possível esteja perfeito; os cenários estão delimitados nos testes.
 
 ## Resultados, cálculos e relatórios
@@ -126,7 +128,7 @@ O [complemento conectado](medicoes/aprendizagem-conectada.json) usa 15 disciplin
 
 ## Validação e limites
 
-O baseline da v8.1 passou em **117 testes** ([saída](medicoes/baseline.txt)). A suíte foi ampliada para 150 casos com testes de aprendizagem conectada, calendários, migração física, concorrência e projeção matemática. As adaptações em testes anteriores atualizam schema e controles legitimamente substituídos, preservando as verificações de comportamento. Nenhum teste crítico foi removido ou ignorado.
+O baseline da v8.1 passou em **117 testes** ([saída](medicoes/baseline.txt)). A suíte foi ampliada para 151 casos com testes de aprendizagem conectada, calendários, migração física, concorrência e projeção matemática. As adaptações em testes anteriores atualizam schema e controles legitimamente substituídos, preservando as verificações de comportamento. Nenhum teste crítico foi removido ou ignorado.
 
 A execução local integral passou nos 148 casos carregados ao seu início; os casos adicionais de agrupamento legado e fluxo móvel por toque passaram separadamente. As auditorias locais de navegador, campo, experiência e v8 passaram em Chromium. A auditoria conectada executou 80 combinações de tela/tema/largura e produz capturas reais em desktop/celular e claro/escuro, verifica transbordamento, erros, backup do dataset e acessibilidade automatizada das quatro áreas novas. [Capturas reais](evidencias/INDICE.md) e saídas são preservadas em `medicoes` e `evidencias` e nos artefatos da CI. A CI executa a suíte e todas essas auditorias em Chromium, Firefox e WebKit no SHA da branch; seu resultado final é registrado na descrição do PR, sem reutilizar checks de commits anteriores.
 

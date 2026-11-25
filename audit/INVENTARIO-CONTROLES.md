@@ -636,7 +636,7 @@ Gerado por `npm run audit:inventory`. Fontes: app.js, reviews.js, reports.js, le
 | openCivilDate | input date | civil-date |  | [56](../dates.js#L56) |
 | connectedRangePicker | input date | an-rs |  | [72](../dates.js#L72) |
 | connectedRangePicker | input date | an-re |  | [73](../dates.js#L73) |
-| bind | button button |  | dinâmico: 'Abrir calendário: '+label | [100](../dates.js#L100) |
+| bind | button button |  | dinâmico: 'Abrir calendário: '+label | [101](../dates.js#L101) |
 | resultsToolbar | details  |  | dinâmico: h('summary',{text:'Filtrar conteúdos'}) | [61](../insights.js#L61) |
 | resultsToolbar | details  |  | dinâmico: h('summary',{text:'Selecionar várias disciplinas'}) | [65](../insights.js#L65) |
 | resultsToolbar | input checkbox |  |  | [66](../insights.js#L66) |
