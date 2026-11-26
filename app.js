@@ -7671,7 +7671,7 @@ function renderTimerBar(opts){
   const subOf = (x) => x.subShort || x.sub || '';
   const subEl = h('span', { class:'tb-sub num', text: subOf(v) });
   const topicsShort = topicNames.length > 2 ? topicNames.slice(0, 2).join(' · ') + ' · +' + (topicNames.length - 2) : topicNames.join(' · ');
-  const meta = [learningSessionLabel(d),v.line || null, topicsShort || null, (d.presetTypes || []).map(sessionTypeLabel).join(' · ') || null].filter(Boolean).join(' · ');
+  const meta = [ui.view==='today'?null:learningSessionLabel(d),v.line || null, topicsShort || null, (d.presetTypes || []).map(sessionTypeLabel).join(' · ') || null].filter(Boolean).join(' · ');
   const progress = v.progress !== null ? h('span', { class:'tb-progress', 'aria-hidden':'true' }, h('span', { class:'tb-progress-fill', style:`transform:scaleX(${v.progress.toFixed(4)})` })) : null;
   const acts = timerActions('bar');
   const stateAttr = v.state === 'done' ? 'done' : status === 'rest' ? 'rest' : status === 'paused' ? 'paused' : 'study';

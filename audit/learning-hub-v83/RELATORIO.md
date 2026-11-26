@@ -33,7 +33,7 @@ Abrir material fica junto ao seletor, sem URL extensa. O acesso permanece em Hoj
 
 O relógio continua usando runId, reserva atômica e persistência da v8.2. Os testes cobrem abertura antes e depois de iniciar, nova guia sem opener, retorno, F5, retomada e finalização de uma única sessão. Material ou bloco em uso não pode ser excluído antes de finalizar; arquivar preserva os dados. Mudanças posteriores nos tópicos do curso ou bloco não substituem a seleção do relógio.
 
-Uma sessão mantém uma duração total. As parcelas por disciplina e as estimativas por blocos/fontes dividem esse total; relações não multiplicam minutos. Filtros de Resultados, Histórico e PNG usam os vínculos efetivamente gravados. Os filtros de materiais agora reconhecem qualquer disciplina associada ao curso. Os nomes históricos permanecem no snapshot após renomear ou desassociar o material; a validação de backup não exige que o catálogo atual ainda tenha a associação histórica.
+Uma sessão mantém uma duração total. As parcelas por disciplina e as estimativas por blocos/fontes dividem esse total; relações não multiplicam minutos. Filtros de Resultados, Histórico e PNG usam os vínculos efetivamente gravados. Os filtros de materiais e blocos reconhecem tanto as associações atuais quanto os vínculos dos snapshots históricos, inclusive depois de remover uma disciplina do curso. Os nomes históricos permanecem no snapshot após renomear ou desassociar o material; a validação de backup não exige que o catálogo atual ainda tenha a associação histórica.
 
 Blocos continuam sendo unidades de revisão. Cadastro de tópicos ou associação a curso não cria estudo nem agenda nova. Políticas individuais, sem data, desativadas, manuais e roteiros permanecem. Revisões de tópicos e blocos oferecem fontes relacionadas sob demanda. Avaliar o bloco não inventa avaliações de cada tópico.
 
@@ -43,11 +43,11 @@ A frase local fica junto ao título e à data, discreta, com autor e obra; respe
 
 Meus materiais mostra três cursos, priorizando favoritos, recentes e depois demais ativos. O catálogo completo fica a um clique. Sem material, um convite curto permite cadastrar o primeiro. Nomes quebram linhas naturalmente, sem ellipsis que esconda conteúdos.
 
-Continuar usa duas linhas com largura e ações alinhadas, sem a fileira irregular de chips. Durante o estudo essa área sai de cena; o material da sessão ganha acesso direto. O dia aparece uma vez; seu total é um botão para os detalhes do dia, preservando a navegação anterior sem outro botão redundante. Histórico e PNG continuam acessíveis.
+Continuar usa duas linhas com largura e ações alinhadas, sem a fileira irregular de chips. Durante o estudo essa área sai de cena; o material da sessão ganha acesso direto. Em Hoje, a barra não repete o nome do curso já exibido no painel; seu arranjo flexível acomoda fontes mais largas sem empurrar as ações para fora da janela. O dia aparece uma vez; seu total é um botão para os detalhes do dia, preservando a navegação anterior sem outro botão redundante. Histórico e PNG continuam acessíveis.
 
 Resumo semanal e gráfico ficam visíveis. Foram retiradas observações repetidas da semana e a lista lateral que reproduzia toda a navegação. Prazos, revisões e planejamento relevante ficam em A seguir; a criação de conteúdos fica em Organizar conteúdos, ambos recolhíveis. Preferências de ocultação dos blocos e da frase são respeitadas.
 
-A auditoria verifica as ações contra o limite visível real de `#today-body`, além da janela, evitando aceitar controles cortados por rolagem interna. Há capturas de 1920×1080, 1440×900, 1366×768, 1280×720 e 1024×768, além de 430, 390, 375 e 320 px, em temas claro e escuro. Mobile mantém rolagem natural. Casos adicionais incluem novo usuário, ausência de materiais, um material de nome longo, primeiro estudo, frase oculta, sessão ativa/pausada, Foco, Apresentação e zoom CSS de 125%. Isso não representa teste de zoom do sistema ou da barra real de um navegador físico.
+A auditoria verifica as ações contra o limite visível real de `#today-body`, além da janela, evitando aceitar controles cortados por rolagem interna. Há capturas de 1920×1080, 1440×900, 1366×768, 1280×720 e 1024×768, além de 430, 390, 375 e 320 px, em temas claro e escuro. Mobile mantém rolagem natural. O estado ativo também é verificado em 1280 e 1024 px com a fonte alternativa DejaVu Sans, incluindo Pomodoro, para exercitar a variação de métricas entre sistemas. Casos adicionais incluem novo usuário, ausência de materiais, um material de nome longo, primeiro estudo, frase oculta, sessão ativa/pausada, Foco, Apresentação e zoom CSS de 125%. Isso não representa teste de zoom do sistema ou da barra real de um navegador físico.
 
 ## Persistência, concorrência e recuperação
 
@@ -65,24 +65,24 @@ Cinco amostras síncronas por interação, em contextos locais isolados. Mediana
 
 | Estudos | Interação | v8.2 | v8.3 equivalente | v8.3 multidisciplinar | Δ equivalente |
 |---:|---|---:|---:|---:|---:|
-| 1,000 | Abrir Hoje | 14.4 | 14.2 | 9.5 | -0.2 |
-| 1,000 | Catálogo | 15.7 | 18.6 | 12.3 | +2.9 |
-| 1,000 | Editor do curso | 13.2 | 16.1 | 11.3 | +2.9 |
-| 1,000 | Formulário de estudo | 7.8 | 9.2 | 6.7 | +1.4 |
-| 1,000 | Selecionar curso | 0.5 | 1.2 | 0.8 | +0.7 |
-| 1,000 | Configurar duas disciplinas | 8.2 | 11.5 | 8.3 | +3.3 |
-| 1,000 | Histórico | 24.7 | 23.3 | 13.4 | -1.4 |
-| 1,000 | Resultados | 25.6 | 26.1 | 22.1 | +0.5 |
-| 1,000 | Gravar estudo | 24.9 | 30.4 | 22.5 | +5.5 |
-| 10,000 | Abrir Hoje | 37.2 | 18.0 | 17.3 | -19.2 |
-| 10,000 | Catálogo | 17.7 | 21.4 | 20.1 | +3.7 |
-| 10,000 | Editor do curso | 12.4 | 16.5 | 18.8 | +4.1 |
-| 10,000 | Formulário de estudo | 8.5 | 8.8 | 9.2 | +0.3 |
-| 10,000 | Selecionar curso | 0.5 | 1.1 | 1.2 | +0.6 |
-| 10,000 | Configurar duas disciplinas | 10.2 | 10.6 | 12.0 | +0.4 |
-| 10,000 | Histórico | 23.0 | 26.6 | 23.8 | +3.6 |
-| 10,000 | Resultados | 33.5 | 35.3 | 33.9 | +1.8 |
-| 10,000 | Gravar estudo | 37.9 | 45.7 | 33.8 | +7.8 |
+| 1,000 | Abrir Hoje | 14.4 | 11.7 | 9.7 | -2.7 |
+| 1,000 | Catálogo | 15.7 | 15.3 | 13.3 | -0.4 |
+| 1,000 | Editor do curso | 13.2 | 16.5 | 12.2 | +3.3 |
+| 1,000 | Formulário de estudo | 7.8 | 7.8 | 6.4 | -0.0 |
+| 1,000 | Selecionar curso | 0.5 | 0.9 | 0.9 | +0.4 |
+| 1,000 | Configurar duas disciplinas | 8.2 | 7.7 | 7.8 | -0.5 |
+| 1,000 | Histórico | 24.7 | 20.6 | 13.2 | -4.1 |
+| 1,000 | Resultados | 25.6 | 21.2 | 31.0 | -4.4 |
+| 1,000 | Gravar estudo | 24.9 | 25.5 | 23.8 | +0.6 |
+| 10,000 | Abrir Hoje | 37.2 | 14.7 | 17.5 | -22.5 |
+| 10,000 | Catálogo | 17.7 | 13.2 | 19.2 | -4.5 |
+| 10,000 | Editor do curso | 12.4 | 10.9 | 18.4 | -1.5 |
+| 10,000 | Formulário de estudo | 8.5 | 6.8 | 10.4 | -1.7 |
+| 10,000 | Selecionar curso | 0.5 | 0.9 | 1.4 | +0.4 |
+| 10,000 | Configurar duas disciplinas | 10.2 | 7.2 | 13.5 | -3.0 |
+| 10,000 | Histórico | 23.0 | 19.2 | 28.3 | -3.8 |
+| 10,000 | Resultados | 33.5 | 33.5 | 32.8 | +0.0 |
+| 10,000 | Gravar estudo | 37.9 | 39.6 | 51.1 | +1.7 |
 
 O editor mais rico, os relacionamentos adicionais e a busca têm custo; a tabela registra também regressões, sem declarar ganho universal. O catálogo usa índices derivados por curso e tópico, invalidados no carregamento dos dados. A escolha de emoji não recalcula a aplicação. Busca e seleção atualizam listas locais, sem reconstruir o formulário inteiro. Nenhuma dependência foi adicionada.
 
@@ -92,7 +92,7 @@ Os arquivos `before/interactions.json` e `after/interactions.json` contêm amost
 
 A suíte final contém **175 casos**, dos quais 24 são novos testes do Learning Hub. Preserva os 151 testes da base; expectativas do schema passaram para 14 e o teste de arquivo verifica especificamente a retirada do curso arquivado. Não há casos removidos ou desabilitados. A suíte cobre emojis compostos, migração, cadastro progressivo, vínculos, snapshots, backup 13/14, duas abas, falhas atômicas, source links, relógio, mudança de fonte e distribuição sem duplicação.
 
-Verificações locais: sintaxe; inventário; suíte funcional Chromium; auditorias de navegador, campo, experiência, v8, aprendizagem conectada e Learning Hub. A rodada inicial detectou regressões de navegação e expectativas antigas do schema; foram corrigidas e reexecutadas. A suíte completa local aprovou 175 casos. Após o último refinamento do estado ativo, passaram novamente os 36 casos de cronômetro e Learning Hub; após compactar a seleção múltipla no editor, os 24 casos do Learning Hub passaram outra vez. Os resultados completos e hashes ficam nos artefatos. Os resultados da **matriz Chromium, Firefox e WebKit sobre o commit final** são registrados no corpo do PR e nos checks desse SHA, evitando tratar execuções anteriores como prova do commit final.
+Verificações locais: sintaxe; inventário; suíte funcional Chromium; auditorias de navegador, campo, experiência, v8, aprendizagem conectada e Learning Hub. A rodada inicial detectou regressões de navegação e expectativas antigas do schema; foram corrigidas e reexecutadas. A primeira CI aprovou os 175 funcionais em Chromium, Firefox e WebKit; Chromium e Firefox detectaram corte em 1280 px durante o estudo com outra fonte. O WebKit concluiu também todas as auditorias daquela rodada. A barra foi ajustada e o teste de enquadramento foi mantido, com uma verificação adicional de fonte alternativa. A aprovação válida é a da matriz no SHA final, registrada no PR. A suíte completa local aprovou 175 casos; os ajustes finais também tiveram repetições dos testes de cronômetro e Learning Hub. O caso de remoção de associação confirma agora os filtros de material e bloco no histórico. Um reprodutor no commit anterior escondia ambas as opções apesar de manter 45 minutos; na correção, ambas aparecem e os mesmos 45 minutos permanecem. Os resultados completos e hashes ficam nos artefatos. Os resultados da **matriz Chromium, Firefox e WebKit sobre o commit final** são registrados no corpo do PR e nos checks desse SHA, evitando tratar execuções anteriores como prova do commit final.
 
 Firefox e WebKit não foram executados neste ambiente local: o download oficial foi recusado pela política de rede e a alteração de configuração não foi concluída. A matriz remota do PR é necessária para esses motores. Não foram testados aparelhos físicos, leitores de tela reais, fullscreen em hardware, throttling móvel ou interrupção física de energia. O axe automatizado detectou zero violações nos recortes testados; isso não substitui avaliação com tecnologia assistiva real.
 

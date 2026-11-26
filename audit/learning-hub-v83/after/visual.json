@@ -2,10 +2,11 @@
   "phase": "after",
   "browser": "154.0.8037.57",
   "hashes": {
-    "app.js": "978d692604c26019fa557417a608bbc222161e9e49a512be41c9cadb507baca9",
+    "app.js": "213e58a213deba4ebd19a6967aa67412e8a22d3b9672ec32d5a0620c25bf943c",
     "learning.js": "521ad0c65a066a103e3a342cf69947e2f91935294ffd3fb00f6daabc5e41aad4",
-    "styles.css": "33b1c368143ca499edd266449a836f40f63239bb8a62c547714608469f46fa2f",
-    "index.html": "2cff66b25289552e0488648b1b6040dafeac15f97054b82d37029258919edf4e"
+    "styles.css": "886d2322c3eb0616e3e6169a2cb951f79c367d40ba4419d103b4da1bb9e791c2",
+    "index.html": "2cff66b25289552e0488648b1b6040dafeac15f97054b82d37029258919edf4e",
+    "insights.js": "436d654419e39bdc3cd1c9d1a666563f12c6001c27b125006649a7613d2daf7e"
   },
   "errors": [],
   "layouts": [

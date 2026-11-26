@@ -30,7 +30,7 @@ const out=process.env.AUDIT_OUTPUT||path.resolve('audit/learning-hub-v83',phase)
   await page.setViewportSize({width:1366,height:768});
   await page.evaluate(()=>{applyTheme('light');setView('today');});
   await page.evaluate(require('axe-core').source);
-  const axe=async name=>{const a=await page.evaluate(()=>axe.run(document.querySelector('.overlay.open')||document.querySelector('.view.active'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}}));accessibility.push({name,violations:a.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))});};
+  const axe=async name=>{const a=await page.evaluate(()=>axe.run(document.querySelector('#modal-root:not([hidden])')||document.querySelector('.view.active'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}}));accessibility.push({name,violations:a.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))});};
   await axe('Hoje');
   await page.evaluate(()=>openCourseEditor(Learning.course('connected-c0')));await capture('cadastro-material');await axe('Editor');
   if(phase==='after'){
@@ -48,8 +48,16 @@ const out=process.env.AUDIT_OUTPUT||path.resolve('audit/learning-hub-v83',phase)
   await page.waitForFunction(()=>!document.querySelector('#toasts .toast'));
   if(phase==='after')for(const [width,height]of [[1366,768],[1280,720],[1024,768]]){
    await page.setViewportSize({width,height});
-   const fit=await page.evaluate(()=>{const bottom=Math.min(innerHeight,document.querySelector('#today-body').getBoundingClientRect().bottom);return [...document.querySelectorAll('.today-act .tf-actions button,.quick-materials .material-row button,.wk-card')].every(n=>n.getBoundingClientRect().bottom<=bottom);});
-   assert.ok(fit,'Ações acessíveis durante o estudo em '+width);await capture('sessao-ativa-'+width);
+   const fit=await page.evaluate(()=>({bottom:Math.min(innerHeight,document.querySelector('#today-body').getBoundingClientRect().bottom),controls:[...document.querySelectorAll('.today-act .tf-actions button,.quick-materials .material-row button,.wk-card')].map(n=>({name:n.textContent.trim(),bottom:n.getBoundingClientRect().bottom}))}));
+   await capture('sessao-ativa-'+width);assert.ok(fit.controls.every(n=>n.bottom<=fit.bottom),'Ações acessíveis durante o estudo em '+width+': '+JSON.stringify(fit));
+  }
+  if(phase==='after'){
+   await page.evaluate(()=>{document.documentElement.style.setProperty('--font-ui','"DejaVu Sans",sans-serif');document.documentElement.style.setProperty('--font-display','"DejaVu Sans",sans-serif');});
+   for(const [width,height]of [[1280,720],[1024,768]]){
+    await page.setViewportSize({width,height});await capture('fonte-dejavu-sessao-'+width);
+    const fit=await page.evaluate(()=>{const bottom=document.querySelector('#today-body').getBoundingClientRect().bottom;return [...document.querySelectorAll('.today-act .tf-actions button,.quick-materials .material-row button,.wk-card')].every(n=>n.getBoundingClientRect().bottom<=bottom);});assert.ok(fit,'Enquadramento com fonte alternativa em '+width);
+   }
+   await page.evaluate(()=>{document.documentElement.style.removeProperty('--font-ui');document.documentElement.style.removeProperty('--font-display');});
   }
   await page.setViewportSize({width:1366,height:768});
   await capture('sessao-ativa');await page.evaluate(()=>{TimerService.pause();renderTimerBar();});await capture('sessao-pausada');await page.evaluate(()=>{TimerService.resume();renderTimerBar();});await page.evaluate(()=>FocusMode.enter());await capture('foco');
@@ -67,8 +75,17 @@ const out=process.env.AUDIT_OUTPUT||path.resolve('audit/learning-hub-v83',phase)
    await p.evaluate(async()=>{await SessionCommands.create({disciplineId:'portugues',date:todayISO(),minutes:45});await refresh();});await p.screenshot({path:path.join(out,'hoje-primeiro-estudo.png')});
    await p.evaluate(()=>{document.documentElement.style.zoom='1.25';});await p.screenshot({path:path.join(out,'hoje-zoom-css-125.png')});
    assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await fresh.context.close();
+   const pomo=await open(runtime,{viewport:{width:1280,height:720}}),pp=pomo.page;
+   await pp.clock.setFixedTime(new Date('2026-11-26T15:00:00Z'));await hubFixture(pp);
+   await pp.evaluate(()=>{document.documentElement.style.setProperty('--font-ui','"DejaVu Sans",sans-serif');document.documentElement.style.setProperty('--font-display','"DejaVu Sans",sans-serif');return startTimer('connected-d0',[],[],null,null,{pomodoro:{...state.settings.pomodoro},contentEntries:[{disciplineId:'connected-d0',courseId:'connected-c0'}]});});
+   await pp.waitForFunction(()=>!document.querySelector('#toasts .toast'));
+   for(const [width,height]of [[1280,720],[1024,768]]){
+    await pp.setViewportSize({width,height});await pp.screenshot({path:path.join(out,'pomodoro-dejavu-'+width+'.png')});
+    const fit=await pp.evaluate(()=>{const bottom=document.querySelector('#today-body').getBoundingClientRect().bottom;return [...document.querySelectorAll('.today-act .tf-actions button,.quick-materials .material-row button,.wk-card')].every(n=>n.getBoundingClientRect().bottom<=bottom);});assert.ok(fit,'Pomodoro com fonte alternativa em '+width);
+   }
+   await pomo.context.close();
   }
-  const hashes=Object.fromEntries(await Promise.all(['app.js','learning.js','styles.css','index.html'].map(async f=>[f,require('node:crypto').createHash('sha256').update(await fs.readFile(f)).digest('hex')])));
+  const hashes=Object.fromEntries(await Promise.all(['app.js','learning.js','styles.css','index.html','insights.js'].map(async f=>[f,require('node:crypto').createHash('sha256').update(await fs.readFile(f)).digest('hex')])));
   await fs.writeFile(path.join(out,'visual.json'),JSON.stringify({phase,browser:runtime.browser.version(),hashes,errors,layouts,accessibility},null,2));
   assert.deepEqual(errors,[]);if(phase==='after')assert.deepEqual(accessibility.flatMap(a=>a.violations),[]);
   await context.close();

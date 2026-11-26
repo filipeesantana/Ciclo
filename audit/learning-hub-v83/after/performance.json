@@ -1,6 +1,6 @@
 {
   "browser": "154.0.8037.57",
-  "sourceSha256": "978d692604c26019fa557417a608bbc222161e9e49a512be41c9cadb507baca9",
+  "sourceSha256": "213e58a213deba4ebd19a6967aa67412e8a22d3b9672ec32d5a0620c25bf943c",
   "method": "Contextos sintéticos isolados. Cinco amostras síncronas por tela com caches invalidados. Reload até state.ready; dois rAF são oportunidade de pintura, não medição de apresentação nem FPS. PNG inclui desenho e codificação. Heap quando a API está disponível.",
   "results": [
     {
@@ -11,60 +11,60 @@
         "topics": 350,
         "sessions": 100
       },
-      "reloadMs": 222.16937099999996,
+      "reloadMs": 211.5036869999999,
       "errors": [],
       "renderSync": {
         "today": [
-          5,
-          9,
           8,
+          10,
           9,
-          7
+          9,
+          9
         ],
         "disciplines": [
-          14,
-          12,
-          7,
-          7,
+          13,
+          11,
+          6,
+          6,
           7
         ],
         "reviews": [
-          17,
-          23,
-          16,
           15,
-          18
+          23,
+          15,
+          14,
+          15
         ],
         "analytics": [
-          27,
+          25,
           36,
           17,
-          15,
-          16
+          14,
+          15
         ],
         "history": [
-          14,
+          13,
           28,
-          16,
-          16,
-          16
+          17,
+          14,
+          15
         ],
         "plan": [
-          13,
-          24,
-          13,
           11,
-          29
+          69,
+          12,
+          12,
+          12
         ]
       },
-      "queryMs": 7,
+      "queryMs": 4,
       "queryMinutes": 0,
-      "exportMs": 12,
+      "exportMs": 9,
       "backupBytes": 378415,
-      "parseMs": 21,
-      "restoreMs": 100,
-      "pngMs": 28,
-      "twoFramesMs": 46,
+      "parseMs": 20,
+      "restoreMs": 92,
+      "pngMs": 51,
+      "twoFramesMs": 37,
       "heapBytes": null
     },
     {
@@ -75,60 +75,60 @@
         "topics": 350,
         "sessions": 1000
       },
-      "reloadMs": 277.73610099999996,
+      "reloadMs": 277.08170900000005,
       "errors": [],
       "renderSync": {
         "today": [
           7,
-          10,
+          9,
           9,
           8,
           8
         ],
         "disciplines": [
-          27,
-          11,
+          23,
+          12,
           7,
-          7,
-          6
+          8,
+          8
         ],
         "reviews": [
-          18,
-          22,
-          19,
+          21,
           27,
-          19
+          19,
+          19,
+          18
         ],
         "analytics": [
           27,
-          35,
-          17,
+          34,
           16,
-          15
+          15,
+          14
         ],
         "history": [
-          22,
+          24,
           25,
-          18,
-          18,
-          18
+          12,
+          12,
+          12
         ],
         "plan": [
-          14,
-          20,
+          11,
+          21,
           10,
-          12,
-          10
+          10,
+          11
         ]
       },
-      "queryMs": 5,
+      "queryMs": 6,
       "queryMinutes": 255,
-      "exportMs": 31,
+      "exportMs": 51,
       "backupBytes": 1641247,
-      "parseMs": 46,
-      "restoreMs": 196,
+      "parseMs": 94,
+      "restoreMs": 163,
       "pngMs": 23,
-      "twoFramesMs": 34,
+      "twoFramesMs": 63,
       "heapBytes": null
     },
     {
@@ -139,60 +139,60 @@
         "topics": 350,
         "sessions": 5000
       },
-      "reloadMs": 558.9157519999999,
+      "reloadMs": 518.6967590000004,
       "errors": [],
       "renderSync": {
         "today": [
-          11,
+          13,
           13,
           12,
-          12,
-          13
-        ],
-        "disciplines": [
-          58,
-          15,
-          8,
-          9,
-          11
-        ],
-        "reviews": [
-          35,
-          41,
-          38,
-          34,
-          69
-        ],
-        "analytics": [
-          62,
-          71,
-          23,
-          22,
-          23
-        ],
-        "history": [
-          64,
-          31,
-          17,
-          16,
+          11,
           17
         ],
+        "disciplines": [
+          62,
+          13,
+          8,
+          8,
+          7
+        ],
+        "reviews": [
+          33,
+          39,
+          28,
+          27,
+          23
+        ],
+        "analytics": [
+          41,
+          81,
+          24,
+          22,
+          22
+        ],
+        "history": [
+          65,
+          34,
+          16,
+          15,
+          15
+        ],
         "plan": [
-          19,
-          23,
-          16,
-          16,
-          16
+          17,
+          22,
+          13,
+          13,
+          12
         ]
       },
-      "queryMs": 15,
+      "queryMs": 20,
       "queryMinutes": 1360,
-      "exportMs": 137,
+      "exportMs": 136,
       "backupBytes": 7263231,
-      "parseMs": 163,
-      "restoreMs": 439,
-      "pngMs": 23,
-      "twoFramesMs": 40,
+      "parseMs": 156,
+      "restoreMs": 459,
+      "pngMs": 24,
+      "twoFramesMs": 51,
       "heapBytes": null
     },
     {
@@ -203,60 +203,60 @@
         "topics": 350,
         "sessions": 10000
       },
-      "reloadMs": 853.5865119999999,
+      "reloadMs": 892.1694499999994,
       "errors": [],
       "renderSync": {
         "today": [
-          12,
-          14,
-          14,
-          14,
+          19,
+          20,
+          20,
+          13,
           16
         ],
         "disciplines": [
-          97,
+          114,
           18,
-          9,
-          7,
-          7
+          12,
+          12,
+          10
         ],
         "reviews": [
-          40,
-          43,
-          39,
-          34,
-          43
+          41,
+          37,
+          42,
+          37,
+          38
         ],
         "analytics": [
-          61,
-          59,
-          32,
+          41,
+          47,
           26,
-          25
+          28,
+          26
         ],
         "history": [
-          104,
-          34,
-          22,
+          118,
+          35,
           17,
-          16
+          17,
+          18
         ],
         "plan": [
-          12,
-          19,
-          11,
-          11,
-          10
+          15,
+          47,
+          26,
+          27,
+          26
         ]
       },
-      "queryMs": 15,
+      "queryMs": 41,
       "queryMinutes": 2720,
-      "exportMs": 399,
+      "exportMs": 421,
       "backupBytes": 14279522,
-      "parseMs": 321,
-      "restoreMs": 887,
-      "pngMs": 24,
-      "twoFramesMs": 59,
+      "parseMs": 484,
+      "restoreMs": 1072,
+      "pngMs": 29,
+      "twoFramesMs": 73,
       "heapBytes": null
     }
   ]

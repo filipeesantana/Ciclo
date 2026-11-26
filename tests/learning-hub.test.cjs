@@ -79,7 +79,9 @@ test('cancelar a criação contextual não cria tópico nem altera curso ou agen
 });
 
 test('retirar disciplina explica impacto, exige remover vínculos e preserva estudos, tópicos e revisões',async()=>{
- await record();const before=await page.evaluate(()=>({session:state.sessions[0],topics:state.topics}));
+ page.setDefaultTimeout(7000);
+ await register();await page.locator('#rm-block').selectOption('hub-block');await page.locator('#rm-min').fill('45');await save('Registrar estudo');await page.waitForFunction(()=>state.sessions.length===1);
+ const before=await page.evaluate(()=>({session:state.sessions[0],topics:state.topics}));
  await editor();await page.getByRole('button',{name:'Remover disciplina Português',exact:true}).click();
  assert.match(await page.locator('.course-impact').innerText(),/1 tópico e 1 bloco/);
  await save('Salvar material');assert.equal(await page.locator('#material-name').isVisible(),true);
@@ -88,6 +90,9 @@ test('retirar disciplina explica impacto, exige remover vínculos e preserva est
  assert.deepEqual(await page.evaluate(()=>Learning.course('hub').disciplineIds),['matematica','seguranca']);
  assert.deepEqual(await page.evaluate(()=>Learning.block('hub-block').courseIds),[]);
  const historical=await page.evaluate(()=>Backup.parseBackup(JSON.stringify(Backup.buildExport())).data.sessions[0]);assert.deepEqual(historical,before.session);
+ await page.evaluate(()=>applyAnalyticsQuery({scopeType:'discipline',scopeIds:['portugues'],periodPreset:'hoje'}));await page.getByText('Filtrar conteúdos',{exact:true}).click();await page.waitForFunction(()=>ui.resultsFiltersOpen);
+ await page.locator('#results-material').selectOption('hub');assert.equal(await page.locator('#results-block option[value="hub-block"]').count(),1);await page.locator('#results-block').selectOption('hub-block');
+ assert.equal(await page.evaluate(()=>AnalyticsEngine.query(ui.analyticsQuery).totals.minutes),45);
  await page.evaluate(()=>openEditSessionModal(state.sessions[0].id));
  await save('Salvar');await page.waitForFunction(()=>!Overlay.isOpen);
  assert.deepEqual(await page.evaluate(()=>state.sessions[0].contentEntries),before.session.contentEntries);

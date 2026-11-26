@@ -6236,3 +6236,11 @@ body{background:var(--workspace-bg)}
 .today-v7 .today-act.is-studying .tf-actions{margin-top:12px}
 .today-v7 .today-act.is-studying .tf-actions>.btn{min-height:40px;font-size:12px}
 .today-v7 .today-act.is-studying .today-active-material{font-size:12px;margin-top:8px}
+@media(min-width:1024px){
+ .main:has(#view-today.active) .timerbar{gap:10px;padding:10px 12px}
+ .main:has(#view-today.active) .timerbar .tb-what{flex:1 1 110px}
+ .main:has(#view-today.active) .timerbar .tb-time{min-width:80px}
+ .main:has(#view-today.active) .timerbar .tb-clock{font-size:26px}
+ .main:has(#view-today.active) .timerbar .tb-actions{flex:0 1 auto;gap:8px}
+}
+.today-v7 .today-act.is-studying .tf-actions>.btn{padding-inline:12px}

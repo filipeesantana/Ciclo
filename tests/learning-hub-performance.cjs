@@ -27,7 +27,7 @@ const out=process.env.AUDIT_OUTPUT||path.resolve('test-results/learning-hub-perf
    });
    results.push({multi,dataset,reloadMs,errors,metrics});await context.close();
   }
-  const hashes=Object.fromEntries(await Promise.all(['app.js','learning.js','styles.css'].map(async f=>[f,crypto.createHash('sha256').update(await fs.readFile(path.join(root,f))).digest('hex')])));
+  const hashes=Object.fromEntries(await Promise.all(['app.js','learning.js','styles.css','insights.js'].map(async f=>[f,crypto.createHash('sha256').update(await fs.readFile(path.join(root,f))).digest('hex')])));
   await fs.writeFile(path.join(out,'interactions.json'),JSON.stringify({browser:runtime.browser.version(),hashes,method:'Cinco amostras síncronas de interface, sem pintura. Seleção usa change nativo. Uma gravação real por cenário, em contextos sintéticos isolados. Carga multidisciplinar amplia apenas o catálogo; sessões antigas não mudam. Reload inclui HTTP local e IndexedDB. Não equivale a FPS, dispositivo físico ou pesquisa com estudantes.',results},null,2));
   if(results.some(r=>r.errors.length))throw Error('Erros de página na medição');
  }finally{await runtime.close();}
