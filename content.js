@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — CONTEÚDO ESTÁTICO (v8.2.0 · Connected Learning & Insights)
+   CICLO — CONTEÚDO ESTÁTICO (v8.3.0 · Learning Hub & Home Refinement)
    Textos, guias e frases. Nada aqui vai para o IndexedDB e nada vem da rede.
 
    Blocos: DAILY_QUOTES · REVIEW_METHOD_GUIDES · HELP_SECTIONS ·
@@ -415,12 +415,12 @@ const HELP_ARTICLES = [
 
 {
  id:'cursos-materiais',section:'usar',group:'organizando',title:'Como organizo meus cursos e materiais?',
- quick:'Em Organizar → Cursos e materiais, salve nome, disciplina e link. Favorite para abrir diretamente em Hoje, com um clique e em nova guia.',
+ quick:'Em Organizar → Cursos e materiais, salve nome, uma ou mais disciplinas e link. Emoji, tópicos e blocos são opcionais. O material abre em outra guia, inclusive durante a configuração ou o estudo.',
  example:'Linux → Administração GNU/Linux → link do curso. Abrir o link não inicia cronômetro nem registra estudo.',
  keywords:'curso material fonte link favorito recente udemy cisco youtube documentação pdf livro',
  actions:[{action:'openMaterials',label:'Cursos e materiais'}],
  content:[{p:'O conteúdo continua na plataforma de origem. O Ciclo não baixa vídeos, importa PDFs ou acessa contas de terceiros.'},
- {steps:['Adicione nome, disciplina e endereço HTTP ou HTTPS.','Marque Favorito para acesso direto em Hoje.','Use Estudar para iniciar com a disciplina e o material preenchidos. Escolha um bloco ou os tópicos, se quiser.']},
+ {steps:['Adicione nome, disciplina e endereço HTTP ou HTTPS. Se quiser, escolha um emoji; ele pode ser trocado ou removido depois.','Abra Disciplinas associadas para selecionar mais de uma. Em Tópicos e blocos, pesquise conteúdos por disciplina ou crie tópicos conforme avançar. Novos tópicos só são gravados ao salvar o material.','Favoritos e recentes têm prioridade em Hoje. Use Estudar para abrir o formulário com uma disciplina e o material preenchidos. Outras disciplinas e tópicos dependem da sua escolha.','Abrir material fica junto ao seletor e continua disponível no estudo ativo, no Foco e na Apresentação. A nova guia preserva o formulário e o relógio.','Ao remover uma disciplina, confira os tópicos e blocos afetados. Retirar o vínculo do curso preserva os conteúdos e estudos anteriores.']},
  {note:'Links com tokens ou parâmetros privados ficam no backup local. Não os compartilhe sem conferir. Arquivar preserva estudos e vínculos; excluir um item com vínculos é recusado.'}]
 },
 {
@@ -2879,6 +2879,16 @@ const LEGACY_GUIDE_TO_ARTICLE = {
 const CHANGELOG = [
   /* A versão atual tem um resumo curto (janela "O Ciclo foi atualizado.")
      e seções recolhíveis ("Ver todas as novidades"). As anteriores ficam como texto. */
+  {v:'8.3.0',title:'Learning Hub & Home Refinement',
+   intro:'Seus materiais acompanham o que você aprende. Hoje abre espaço para começar e continuar.',
+   highlights:[
+    'Personalize o nome e o emoji dos materiais; associe várias disciplinas ao mesmo curso.',
+    'Associe tópicos e blocos por disciplina, criando novos conteúdos conforme avançar.',
+    'Abra o material na configuração, na sessão ativa, no Foco e na Apresentação, sem interromper o relógio.',
+    'Hoje ganha painel compacto, continuação alinhada, semana visível e frase discreta no cabeçalho.'
+   ],
+   sections:[{title:'Dados e compatibilidade',items:['Os cursos antigos preservam identificação, disciplina original, links, favoritos, acessos e blocos. O histórico não é reescrito.','O backup passa a 14; o IndexedDB permanece em 2. Backups anteriores continuam importáveis. Use a v8.3 ou posterior para restaurar um arquivo 14.','Selecionar um curso não seleciona todo o seu conteúdo. Uma sessão conserva uma duração única, mesmo com várias disciplinas.','Editar em outra aba não sobrescreve silenciosamente seu cadastro. Em caso de conflito ou falha, o formulário continua preenchido.']}]
+  },
   {v:'8.2.0',title:'Connected Learning & Insights',
    intro:'Organize suas fontes. Conecte seus conhecimentos. Entenda sua evolução.',
    highlights:[

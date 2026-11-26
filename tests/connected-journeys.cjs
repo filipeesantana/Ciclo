@@ -1,6 +1,6 @@
 const fs=require('node:fs/promises');const path=require('node:path');const {start,open,seed}=require('./support.cjs');
 (async()=>{const runtime=await start();try{const{page,context}=await open(runtime);page.setDefaultTimeout(10000);await seed(page);await page.clock.setFixedTime(new Date('2026-12-15T15:00:00Z'));
- const version=await page.evaluate(()=>APP_VERSION),modern=version==='8.2.0';const results={version,method:'Interações semânticas executadas pelo Playwright, a partir de Resultados aberto. Seleção nativa conta como uma interação; não é contagem de cliques físicos nem estudo de usabilidade.'};
+ const version=await page.evaluate(()=>APP_VERSION),modern=['8.2.0','8.3.0'].includes(version);const results={version,method:'Interações semânticas executadas pelo Playwright, a partir de Resultados aberto. Seleção nativa conta como uma interação; não é contagem de cliques físicos nem estudo de usabilidade.'};
  await page.evaluate(async()=>{await SessionCommands.create({disciplineId:'matematica',date:todayISO(),minutes:30});await SessionCommands.create({disciplineId:'matematica',date:'2026-12-05',minutes:20});await refresh();setView('analytics');});
  results.headerControls=await page.locator(modern?'.insights-toolbar button:visible,.insights-toolbar select:visible':'.an-head button:visible,.an-head select:visible').count();
  let actions=0;const step=async fn=>{await fn();actions++;};

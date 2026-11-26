@@ -1,0 +1,32 @@
+✔ migração lógica idempotente preserva curso legado, blocos e snapshots sem mudar o IndexedDB (1516.739696ms)
+✔ emoji composto pode ser alterado e removido; nome longo e disciplinas persistem após F5 (1217.851626ms)
+✔ emoji aceita família, modificador, bandeira e keycap; recusa texto, vários emojis e marcação (825.284952ms)
+✔ conteúdos são agrupados por disciplina e deduplicados entre vínculo direto e bloco (930.372929ms)
+✔ criação progressiva reutiliza duplicatas e só grava novo tópico com a confirmação do material (1059.173395ms)
+✔ cancelar a criação contextual não cria tópico nem altera curso ou agenda (992.225515ms)
+✔ retirar disciplina explica impacto, exige remover vínculos e preserva estudos, tópicos e revisões (2131.99018ms)
+✔ tópicos adicionados depois não aparecem retroativamente e nomes históricos não mudam (1096.859536ms)
+✔ seleção do curso sugere tópicos apenas da disciplina e adicionar outra é uma ação explícita (1231.288389ms)
+✔ escolher curso nunca seleciona todos os tópicos ou todas as disciplinas (940.47288ms)
+✔ link imediato abre em nova guia e mantém comentário, tópicos, material e formulário sem iniciar relógio (1163.132662ms)
+✔ sessão ativa, Foco e Apresentação abrem material sem reiniciar; F5 retoma e finaliza uma única sessão (1558.997095ms)
+✔ alterar conteúdos do catálogo durante o cronômetro preserva a seleção já confirmada (1145.389862ms)
+✔ duas abas: edição obsoleta preserva rascunho e acesso recente não provoca conflito falso (4599.060695ms)
+✔ falha atômica reverte criação contextual e blocos; mantém o formulário para retentar (2424.011609ms)
+✔ backup 14 preserva emoji, relações, snapshots e checksum; backup 13 continua importável (952.67719ms)
+✔ material multidisciplinar aparece nos filtros e revisão oferece a fonte do tópico sem criar atividades (851.175567ms)
+✔ Hoje: frase no cabeçalho pode ser ocultada e continuação não usa chips de larguras variáveis (1268.208796ms)
+✔ adição posterior de disciplina e tópico existente mantém ID, link e bloco compartilhado (1180.551414ms)
+✔ mudança concorrente no bloco associado não é sobrescrita ao salvar o material (1426.00687ms)
+✔ disciplina removida por outra aba durante preenchimento recusa registro parcial e preserva seleção (884.768507ms)
+✔ referência de tópico de outra disciplina e link perigoso são recusados atomicamente (777.925233ms)
+✔ material em uso no cronômetro não pode ser excluído mesmo antes do primeiro registro (816.679041ms)
+✔ trocar o material antes de adicionar uma disciplina usa o novo curso em ambos os segmentos (960.834188ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 32473.492243

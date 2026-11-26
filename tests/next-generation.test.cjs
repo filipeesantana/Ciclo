@@ -83,7 +83,7 @@ test('agenda manual prevalece sobre inclusão, resultado, edição, exclusão e 
    old:!!Backup.parseBackup(JSON.stringify(legacy)).data
   };
  });
- assert.deepEqual(results,{ok:true,version:13,physical:2,integrity:'ok',newDue:'2027-01-05',due:'2027-01-05',off:'off',dueOff:false,sessions:1,old:true});
+ assert.deepEqual(results,{ok:true,version:14,physical:2,integrity:'ok',newDue:'2027-01-05',due:'2027-01-05',off:'off',dueOff:false,sessions:1,old:true});
 });
 
 test('lote com assunto arquivado, excluído ou falha de escrita reverte por inteiro',async()=>{

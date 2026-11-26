@@ -45,7 +45,7 @@ const out=process.env.AUDIT_OUTPUT||path.resolve('test-results/connected');
    }
   }
   const backup=await page.evaluate(()=>{const b=Backup.buildExport(),p=Backup.parseBackup(JSON.stringify(b));return {schema:b.schemaVersion,checksum:p.report.integrity,courses:p.data.courses.length,blocks:p.data.contentBlocks.length,sessions:p.data.sessions.length};});
-  assert.deepEqual(backup,{schema:13,checksum:'ok',courses:40,blocks:100,sessions:1000});
+  assert.deepEqual(backup,{schema:14,checksum:'ok',courses:40,blocks:100,sessions:1000});
   await fs.writeFile(path.join(out,'audit.json'),JSON.stringify({sourceSha256,engine,browser:runtime.browser.version(),dataset,errors,measurements,accessibility,backup},null,2));
   assert.deepEqual(errors,[]);assert.deepEqual(accessibility.flatMap(x=>x.violations),[]);await context.close();
  }finally{await runtime.close();}

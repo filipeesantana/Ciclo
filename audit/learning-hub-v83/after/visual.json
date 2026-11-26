@@ -1,0 +1,712 @@
+{
+  "phase": "after",
+  "browser": "154.0.8037.57",
+  "hashes": {
+    "app.js": "c6c74b0dd11903a1c93542bcfc296699f6d44f6f83a3e28dd7a977b6bbd5f406",
+    "learning.js": "521ad0c65a066a103e3a342cf69947e2f91935294ffd3fb00f6daabc5e41aad4",
+    "styles.css": "886d2322c3eb0616e3e6169a2cb951f79c367d40ba4419d103b4da1bb9e791c2",
+    "index.html": "2cff66b25289552e0488648b1b6040dafeac15f97054b82d37029258919edf4e",
+    "insights.js": "436d654419e39bdc3cd1c9d1a666563f12c6001c27b125006649a7613d2daf7e"
+  },
+  "errors": [],
+  "layouts": [
+    {
+      "width": 1920,
+      "height": 1080,
+      "visibleBottom": 818.859375,
+      "scrollWidth": 1920,
+      "scrollHeight": 1080,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 353.328125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 556.25
+        },
+        {
+          "name": "Estudar",
+          "bottom": 617.09375
+        },
+        {
+          "name": "Estudar",
+          "bottom": 677.9375
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 587.046875
+        },
+        {
+          "name": "Linux",
+          "bottom": 688.234375
+        },
+        {
+          "name": "Gestão",
+          "bottom": 730.234375
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "visibleBottom": 818.859375,
+      "scrollWidth": 1920,
+      "scrollHeight": 1080,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 353.328125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 556.25
+        },
+        {
+          "name": "Estudar",
+          "bottom": 617.09375
+        },
+        {
+          "name": "Estudar",
+          "bottom": 677.9375
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 587.046875
+        },
+        {
+          "name": "Linux",
+          "bottom": 688.234375
+        },
+        {
+          "name": "Gestão",
+          "bottom": 730.234375
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "visibleBottom": 818.03125,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 352.5
+        },
+        {
+          "name": "Estudar",
+          "bottom": 555.421875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 616.265625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 677.109375
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 586.21875
+        },
+        {
+          "name": "Linux",
+          "bottom": 687.40625
+        },
+        {
+          "name": "Gestão",
+          "bottom": 729.40625
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "visibleBottom": 818.03125,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 352.5
+        },
+        {
+          "name": "Estudar",
+          "bottom": 555.421875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 616.265625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 677.109375
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 586.21875
+        },
+        {
+          "name": "Linux",
+          "bottom": 687.40625
+        },
+        {
+          "name": "Gestão",
+          "bottom": 729.40625
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "visibleBottom": 756,
+      "scrollWidth": 1366,
+      "scrollHeight": 768,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 342.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 532.9375
+        },
+        {
+          "name": "Estudar",
+          "bottom": 593.78125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 654.625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 563.890625
+        },
+        {
+          "name": "Linux",
+          "bottom": 657.078125
+        },
+        {
+          "name": "Gestão",
+          "bottom": 699.078125
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "visibleBottom": 756,
+      "scrollWidth": 1366,
+      "scrollHeight": 768,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 342.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 532.9375
+        },
+        {
+          "name": "Estudar",
+          "bottom": 593.78125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 654.625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 563.890625
+        },
+        {
+          "name": "Linux",
+          "bottom": 657.078125
+        },
+        {
+          "name": "Gestão",
+          "bottom": 699.078125
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "visibleBottom": 708,
+      "scrollWidth": 1280,
+      "scrollHeight": 720,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 334.421875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 525.34375
+        },
+        {
+          "name": "Estudar",
+          "bottom": 586.1875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 647.03125
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 561.171875
+        },
+        {
+          "name": "Linux",
+          "bottom": 654.359375
+        },
+        {
+          "name": "Gestão",
+          "bottom": 696.359375
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "visibleBottom": 708,
+      "scrollWidth": 1280,
+      "scrollHeight": 720,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 334.421875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 525.34375
+        },
+        {
+          "name": "Estudar",
+          "bottom": 586.1875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 647.03125
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 561.171875
+        },
+        {
+          "name": "Linux",
+          "bottom": 654.359375
+        },
+        {
+          "name": "Gestão",
+          "bottom": 696.359375
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "visibleBottom": 756,
+      "scrollWidth": 1024,
+      "scrollHeight": 768,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 313.09375
+        },
+        {
+          "name": "Estudar",
+          "bottom": 504.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 564.859375
+        },
+        {
+          "name": "Estudar",
+          "bottom": 625.703125
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 604.796875
+        },
+        {
+          "name": "Linux",
+          "bottom": 697.984375
+        },
+        {
+          "name": "Gestão",
+          "bottom": 739.984375
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "visibleBottom": 756,
+      "scrollWidth": 1024,
+      "scrollHeight": 768,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 313.09375
+        },
+        {
+          "name": "Estudar",
+          "bottom": 504.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 564.859375
+        },
+        {
+          "name": "Estudar",
+          "bottom": 625.703125
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 604.796875
+        },
+        {
+          "name": "Linux",
+          "bottom": 697.984375
+        },
+        {
+          "name": "Gestão",
+          "bottom": 739.984375
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "visibleBottom": 932,
+      "scrollWidth": 430,
+      "scrollHeight": 1643,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 395.25
+        },
+        {
+          "name": "Estudar",
+          "bottom": 608.171875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 681.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 741.859375
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 1356.015625
+        },
+        {
+          "name": "Linux",
+          "bottom": 1457.203125
+        },
+        {
+          "name": "Gestão",
+          "bottom": 1499.203125
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "visibleBottom": 932,
+      "scrollWidth": 430,
+      "scrollHeight": 1643,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 395.25
+        },
+        {
+          "name": "Estudar",
+          "bottom": 608.171875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 681.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 741.859375
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 1356.015625
+        },
+        {
+          "name": "Linux",
+          "bottom": 1457.203125
+        },
+        {
+          "name": "Gestão",
+          "bottom": 1499.203125
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "visibleBottom": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1643,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 395.25
+        },
+        {
+          "name": "Estudar",
+          "bottom": 608.171875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 681.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 741.859375
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 1356.015625
+        },
+        {
+          "name": "Linux",
+          "bottom": 1457.203125
+        },
+        {
+          "name": "Gestão",
+          "bottom": 1499.203125
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "visibleBottom": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1643,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 395.25
+        },
+        {
+          "name": "Estudar",
+          "bottom": 608.171875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 681.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 741.859375
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 1356.015625
+        },
+        {
+          "name": "Linux",
+          "bottom": 1457.203125
+        },
+        {
+          "name": "Gestão",
+          "bottom": 1499.203125
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 375,
+      "height": 812,
+      "visibleBottom": 812,
+      "scrollWidth": 375,
+      "scrollHeight": 1667,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 395.25
+        },
+        {
+          "name": "Estudar",
+          "bottom": 608.171875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 693.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 765.859375
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 1380.015625
+        },
+        {
+          "name": "Linux",
+          "bottom": 1481.203125
+        },
+        {
+          "name": "Gestão",
+          "bottom": 1523.203125
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 375,
+      "height": 812,
+      "visibleBottom": 812,
+      "scrollWidth": 375,
+      "scrollHeight": 1667,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 395.25
+        },
+        {
+          "name": "Estudar",
+          "bottom": 608.171875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 693.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 765.859375
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 1380.015625
+        },
+        {
+          "name": "Linux",
+          "bottom": 1481.203125
+        },
+        {
+          "name": "Gestão",
+          "bottom": 1523.203125
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 320,
+      "height": 640,
+      "visibleBottom": 640,
+      "scrollWidth": 320,
+      "scrollHeight": 1754,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 428.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 640.9375
+        },
+        {
+          "name": "Estudar",
+          "bottom": 733.203125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 825.46875
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 1467.015625
+        },
+        {
+          "name": "Linux",
+          "bottom": 1568.203125
+        },
+        {
+          "name": "Gestão",
+          "bottom": 1610.203125
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 320,
+      "height": 640,
+      "visibleBottom": 640,
+      "scrollWidth": 320,
+      "scrollHeight": 1754,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 428.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 640.9375
+        },
+        {
+          "name": "Estudar",
+          "bottom": 733.203125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 825.46875
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSD6 de 10 questões (60%)",
+          "bottom": 1467.015625
+        },
+        {
+          "name": "Linux",
+          "bottom": 1568.203125
+        },
+        {
+          "name": "Gestão",
+          "bottom": 1610.203125
+        }
+      ],
+      "theme": "dark"
+    }
+  ],
+  "accessibility": [
+    {
+      "name": "Hoje",
+      "violations": []
+    },
+    {
+      "name": "Editor",
+      "violations": []
+    },
+    {
+      "name": "Estudo",
+      "violations": []
+    }
+  ]
+}

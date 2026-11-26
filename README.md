@@ -1,6 +1,6 @@
 # Ciclo
 
-**v8.2.0 — Connected Learning & Insights**, candidata a revisão em PR independente. [Entrega, contratos, validação e limites](audit/connected/RELATORIO.md). Sem merge, release ou publicação automática.
+**v8.3.0 — Learning Hub & Home Refinement**, candidata a revisão em PR independente. [Entrega, contratos, validação e limites](audit/learning-hub-v83/RELATORIO.md). Sem merge, release ou publicação automática.
 
 **Seu sistema de estudos.** Organize o que você estuda, registre seus estudos, receba sugestões de revisão no momento certo e acompanhe seu progresso. Tudo roda no seu navegador: sem conta e sem servidor. O processamento e o armazenamento são locais. Materiais externos abrem na plataforma de origem, em outra guia, quando você escolhe acessá-los.
 
@@ -10,6 +10,20 @@ O nome vem do próprio método: **planejar → estudar → revisar → analisar 
 
 ---
 
+
+## Materiais e Hoje na v8.3
+
+**Um material, várias disciplinas.** Cadastre nome, link e uma disciplina; acrescente outras quando precisar. Emoji é opcional, admite sequências Unicode compostas e pode ser alterado ou removido. Disciplinas têm IDs estáveis; `disciplineIds` é a fonte de verdade do material, sem campo principal paralelo.
+
+**Conteúdos conforme você avança.** Pesquise tópicos existentes, organizados por disciplina, ou crie um tópico no próprio editor. Novos tópicos e associações só são gravados ao salvar, em uma transação. Blocos continuam reutilizáveis e mantêm `contentBlocks.courseIds` como fonte de verdade. Um tópico direto que também está em um bloco aparece uma vez nas sugestões. Ao remover disciplina, o editor mostra vínculos afetados e pede que você os retire explicitamente; tópicos, blocos, revisões e registros anteriores permanecem.
+
+**Da configuração à sessão.** Use Estudar em Hoje ou escolha a disciplina no formulário e selecione o material. Abrir material fica junto ao seletor e abre uma nova guia segura, preservando todos os campos. O mesmo acesso continua em Hoje, no Foco e na Apresentação. Outras disciplinas do curso são oferecidas como ações opcionais. Curso sozinho não seleciona tópicos; selecione somente os conteúdos realmente estudados. O tempo total nunca é multiplicado pelas associações.
+
+**Hoje mais compacto.** A frase local fica junto ao título e respeita a preferência de ocultação. O painel principal preserva a saudação e o grafismo circular. Materiais favoritos, recentes e demais materiais ativos ficam em ordem de prioridade, com três visíveis e catálogo a um clique. Continuação usa duas linhas alinhadas; o resumo semanal fica visível. Revisões, prazos e criação de conteúdos são acessados sob demanda, sem repetir toda a navegação lateral.
+
+**Migração e recuperação.** Backup lógico **14**, IndexedDB físico **2**. Cursos da v8.2 preservam IDs, nome, URL, favorito, plataforma, descrição, último acesso e blocos: `disciplineId` vira `disciplineIds: [id]`; emoji e tópicos diretos começam vazios. A migração é atômica e idempotente. Nomes, tópicos e emojis dos snapshots históricos não acompanham alterações no catálogo. Backups 13 e anteriores suportados continuam importáveis com checksum e restauração atômica. Um backup 14 exige v8.3 ou posterior; voltar só o código para v8.2 não é downgrade seguro. Faça backup antes de atualizar; para reverter dados, use uma cópia feita antes da atualização. Não limpe o IndexedDB.
+
+As seções abaixo descrevem os contratos preservados da v8.2 e a evolução anterior. As versões históricas de esquema nelas citadas pertencem àquela atualização.
 
 ## Aprendizagem conectada na v8.2
 

@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const {start,open,seed}=require('./support.cjs');
 let runtime,context,page;
 before(async()=>{runtime=await start(process.env.BROWSER||'chromium');});after(async()=>runtime?.close());
-beforeEach(async()=>{({context,page}=await open(runtime));await seed(page);await page.clock.setFixedTime(new Date('2026-12-15T15:00:00Z'));});afterEach(async()=>context.close());
+beforeEach(async()=>{({context,page}=await open(runtime));page.setDefaultTimeout(7000);await seed(page);await page.clock.setFixedTime(new Date('2026-12-15T15:00:00Z'));});afterEach(async()=>context.close());
 const action=name=>page.locator('#modal-actions').getByRole('button',{name,exact:true}).click();
 async function november(){
  await page.evaluate(async()=>{for(const [date,minutes]of [['2026-10-31',20],['2026-11-01',40],['2026-11-15',60],['2026-11-30',80],['2026-12-01',100]])await SessionCommands.create({disciplineId:'portugues',date,minutes});await refresh();setView('analytics');});

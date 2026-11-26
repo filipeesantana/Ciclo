@@ -1,0 +1,17 @@
+
+> audit:inventory
+> node tests/inventory.cjs
+
+{
+  "controls": 656,
+  "fixedControls": 29,
+  "layers": 71,
+  "functions": 830,
+  "articles": 95,
+  "broken": []
+}
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice

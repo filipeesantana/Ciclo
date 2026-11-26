@@ -1,5 +1,5 @@
 /* =========================================================================
-   CICLO — v8.2.0 · Connected Learning & Insights
+   CICLO — v8.3.0 · Learning Hub & Home Refinement
    (antes chamado "Diário de Estudos")
    Aplicação local-first. Sem backend, sem rede, sem dependências externas.
 
@@ -36,8 +36,8 @@
 /* =========================================================================
    CONSTANTS
    ========================================================================= */
-const APP_VERSION = '8.2.0';
-const APP_SCHEMA_VERSION = 13;         // v8.2: materiais, blocos e snapshots opcionais de estudo.
+const APP_VERSION = '8.3.0';
+const APP_SCHEMA_VERSION = 14;         // v8.3: materiais multidisciplinares, emoji e tópicos diretos.
                                       // formato LÓGICO dos dados. A v5.2 mudou o conteúdo
                                        // de objetos existentes: tópicos passam a ter
                                        // `priority` (1–5) no lugar de `importance`, e prazos
@@ -5766,7 +5766,7 @@ const IntegrityValidator = {
     const learning = Learning.validateBackup(src,disciplines,topics);
     const courseMap=new Map(learning.courses.map(c=>[c.id,c])),blockMap=new Map(learning.contentBlocks.map(b=>[b.id,b]));
     for(const session of sessions)for(const e of Learning.entries(session)){
-      if((e.courseId && courseMap.get(e.courseId)?.disciplineId!==e.disciplineId) || (e.blockId && blockMap.get(e.blockId)?.disciplineId!==e.disciplineId) || e.topicIds.some(id=>!session.topicEntries.some(t=>t.topicId===id&&t.disciplineId===e.disciplineId))) throw self.fatal('Um estudo contém vínculos de aprendizagem inválidos.');
+      if((e.courseId && !courseMap.has(e.courseId)) || (e.blockId && blockMap.get(e.blockId)?.disciplineId!==e.disciplineId) || e.topicIds.some(id=>!session.topicEntries.some(t=>t.topicId===id&&t.disciplineId===e.disciplineId))) throw self.fatal('Um estudo contém vínculos de aprendizagem inválidos.');
     }
     for(const key of ['courses','contentBlocks']) report.counts[key]={found:learning[key].length,accepted:learning[key].length,repaired:0,ignored:0};
     const data = { ...learning, areas, disciplines, topics, sessions, plans, weeklyPlans, deadlines, settings: sanitizeSettings(src.settings), guidedReview };
@@ -6008,7 +6008,7 @@ async function loadAll(){
   state.plans = plans || [];
   state.weeklyPlans = weeklyPlans || [];
   state.deadlines = deadlines || [];
-  state.courses = courses || []; state.contentBlocks = contentBlocks || [];
+  state.courses = (courses || []).map(c=>Learning.normalizeCourse(c)); state.contentBlocks = contentBlocks || [];
   rebuildIndexes();
 }
 
@@ -6724,6 +6724,14 @@ const Overlay = {
 };
 
 let modalCloser = null;
+function focusModalSoon(panel, target, current){
+  // A entrada pode esperar a montagem, mas não pode roubar o foco de quem
+  // já começou a preencher outro campo ou abriu o calendário.
+  setTimeout(()=>{
+    const active=document.activeElement;
+    if(current() && target.isConnected && Overlay.top?.panel===panel && (!panel.contains(active) || active===panel))target.focus({preventScroll:true});
+  },30);
+}
 /**
  * Abre um modal. `build(close)` devolve { title, content, actions, focus? }.
  * Fecha com ESC, clique fora ou chamando close().
@@ -6820,7 +6828,7 @@ function openModal(build, opts){
     box.classList.add('is-sub');            // v6.4.1: uma subtela é um formulário simples — a janela larga se estreita
     box.scrollTop = contentEl.scrollTop = 0;
     const target = sub.focus || box.querySelector('#modal-content input,#modal-content select,#modal-content textarea,#modal-content button');
-    if(target) setTimeout(() => { if(!closed && document.contains(target)) target.focus(); }, 30);
+    if(target) focusModalSoon(box,target,()=>!closed && box.contains(target));
   };
   /** Volta para a tela de baixo, exatamente como estava. `focusEl` escolhe onde o foco cai. */
   close.pop = (focusEl) => {
@@ -6870,7 +6878,7 @@ function openModal(build, opts){
   }, { opener });
 
   const focusTarget = (cfg.focus && box.contains(cfg.focus)) ? cfg.focus : box.querySelector('input,select,textarea,button');
-  if(focusTarget) setTimeout(() => { if(!closed) focusTarget.focus(); }, 30);
+  if(focusTarget) focusModalSoon(box,focusTarget,()=>!closed && box.contains(focusTarget));
   return close;
 }
 
@@ -7671,7 +7679,7 @@ function renderTimerBar(opts){
   const subOf = (x) => x.subShort || x.sub || '';
   const subEl = h('span', { class:'tb-sub num', text: subOf(v) });
   const topicsShort = topicNames.length > 2 ? topicNames.slice(0, 2).join(' · ') + ' · +' + (topicNames.length - 2) : topicNames.join(' · ');
-  const meta = [learningSessionLabel(d),v.line || null, topicsShort || null, (d.presetTypes || []).map(sessionTypeLabel).join(' · ') || null].filter(Boolean).join(' · ');
+  const meta = [ui.view==='today'?null:learningSessionLabel(d),v.line || null, topicsShort || null, (d.presetTypes || []).map(sessionTypeLabel).join(' · ') || null].filter(Boolean).join(' · ');
   const progress = v.progress !== null ? h('span', { class:'tb-progress', 'aria-hidden':'true' }, h('span', { class:'tb-progress-fill', style:`transform:scaleX(${v.progress.toFixed(4)})` })) : null;
   const acts = timerActions('bar');
   const stateAttr = v.state === 'done' ? 'done' : status === 'rest' ? 'rest' : status === 'paused' ? 'paused' : 'study';
@@ -8330,7 +8338,7 @@ function studyTargetFields(o){
   /* ---------- um bloco: disciplina + tópicos dela ---------- */
   function makeBlock(discId, topicIds, first){
     const k = first ? '' : '-' + (++seq);
-    const block = { discId: discId || '', first };
+    const block = { discId: discId || '', first, preferredCourseId:o.preferredCourseId || Learning.cleanEntries(o.contentEntries).find(e=>e.courseId)?.courseId || '' };
     const tList = () => {
       const list = topicsOf(block.discId).slice();
       // tópico arquivado depois de escolhido (ou de um estudo antigo) continua na lista para poder sair
@@ -8387,9 +8395,9 @@ function studyTargetFields(o){
       options: tList, describe: topicPickMeta,
       canCreate: () => o.allowNewTopic !== false && !!o.close && !!block.discId && !creating,
       onCreate: q => openCreate(block, q),
-      onChange: () => emit('topics')
+      onChange: () => {block.learning?.refresh();emit('topics');}
     });
-    block.learning=studyLearningFields(prefix+k,block,o.contentEntries,()=>emit('content'));
+    block.learning=studyLearningFields(prefix+k,block,o.contentEntries,()=>{drawCourseChoices();emit('content');});
     block.removeBtn = first ? null : h('button', { class:'linkbtn muted st-remove', type:'button', text:'Remover',
       'aria-label':'Remover esta disciplina do estudo', onclick:() => removeBlock(block) });
     block.node = h('div', { class:'st-block' + (first ? ' is-first' : ' is-extra') },
@@ -8423,6 +8431,7 @@ function studyTargetFields(o){
     addBtn.title = addBtn.disabled ? 'Escolha a primeira disciplina para adicionar outra.' : '';
     multiNote.hidden = chosen < 2;
     node.classList.toggle('is-multi', n > 1);
+    drawCourseChoices();
   }
   function addBlock(discId, topicIds, byUser){
     const b = makeBlock(discId, topicIds, blocks.length === 0);
@@ -8556,10 +8565,21 @@ function studyTargetFields(o){
     emit('created');
   }
 
-  const node = h('div', { class:'study-target' }, list, newBox, addBtn, addHint, multiNote);
+  const courseChoices=h('div',{class:'study-course-disciplines'});
+  function drawCourseChoices(){
+    const choices=new Map();
+    for(const block of blocks){const c=Learning.course(block.learning.courseId);if(c)for(const id of Learning.disciplineIds(c))if(!blocks.some(b=>b.discId===id) && getDiscipline(id) && !getDiscipline(id).archived)choices.set(id,c);}
+    mount(courseChoices,choices.size?h('p',{class:'hint',text:'Outras disciplinas deste material (opcional)'}):null,
+      [...choices].map(([id,c])=>h('button',{type:'button',class:'btn ghost sm',text:'Adicionar '+disciplineName(id),disabled:blocks.length>=MAX_DISCIPLINES_PER_STUDY || !blocks[0]?.discId,onclick:()=>{
+        addBlock(id,[],false);const added=blocks[blocks.length-1];added.learning.setCourse(c.id);drawMeta();drawCourseChoices();emit('discipline');
+      }})));
+    courseChoices.hidden=!choices.size;
+  }
+  const node = h('div', { class:'study-target' }, list, newBox, courseChoices, addBtn, addHint, multiNote);
   startIds.forEach(id => addBlock(id, initialTopics, false));
   if(!blocks.length) addBlock('', initialTopics, false);
   blocks.forEach(b => syncBlock(b, false));
+  drawCourseChoices();
   const api = {
     node, ensure,
     refreshLearning(isReview){blocks.forEach(b=>b.learning.setReview(isReview));},
@@ -9883,7 +9903,7 @@ function openRegisterModal(preset){
     // v6.7: a divisão do tempo entre tópicos acompanha a duração calculada em "Quando"
     let lastWhen = null, split = null, results = null;
     const when = studyWhenFields({ idPrefix:'rm', quick:true, date:p.date, draft: draft ? draft.when : null, onChange: r => { lastWhen = r; if(split) split.refreshTotal(); } });
-    const target = studyTargetFields({ close, idPrefix:'rm', discIds: discIds0, topicIds: draftTopics || topicIds0, contentEntries:draft?.contentEntries || p.contentEntries, draft:draft ? draft.target : null, allowNewDiscipline:true,
+    const target = studyTargetFields({ close, idPrefix:'rm', discIds: discIds0, topicIds: draftTopics || topicIds0, contentEntries:draft?.contentEntries || p.contentEntries, preferredCourseId:p.preferredCourseId, draft:draft ? draft.target : null, allowNewDiscipline:true,
       onChange: () => { renderOutcome(); if(results) results.refreshContext(); } });
     const typePick = studyTypePicker({ id:'rm-type', value:types, onChange: v => { types = v; renderOutcome(); } });
     split = topicSplitField({ idPrefix:'rm', initial:draft ? draft.split : null, total: () => (lastWhen && lastWhen.complete) ? lastWhen.minutes : null });
@@ -11288,6 +11308,7 @@ function renderToday(){
   const root = $('#today-body');
   const sub = $('#view-today .page-head .sub');
   if(sub) sub.textContent = todayDateLabel();
+  const quoteSlot=$('#today-quote');if(quoteSlot)mount(quoteSlot,todayBlockOn('quote')?dailyQuoteCard():null);
   const discs = activeDisciplines();
 
   /* Nada cadastrado: uma pergunta e dois caminhos. Nenhum número vazio. */
@@ -11302,27 +11323,33 @@ function renderToday(){
             h('button', { class:'btn primary lg', type:'button', onclick:() => openDisciplineModal(null) }, icon('i-plus'), 'Adicionar o que estou estudando'),
             h('button', { class:'btn ghost', type:'button', text:'Quero ajuda para organizar', onclick:() => openWelcome({ revisit:true }) })),
           h('p', { class:'tf-meta', text:'Exemplo: Português — e, depois, os assuntos Pontuação e Uso da crase.' }))),
-      todayBlockOn('quote') ? h('div', { class:'today-foot' }, dailyQuoteCard()) : null));
+      null));
     return;
   }
 
   const hasSessions = state.sessions.length > 0;
   const main = [todayAction(discs, hasSessions),quickMaterials()];
-  const guide = contextGuideCard('today');
-  if(guide) main.push(guide);
-  if(todayBlockOn('next')){ const n = todayNextSteps(); if(n) main.push(n); }
-
   const side = [];
-  const daily = todaySummary(); if(daily) side.push(daily);
-  if(todayBlockOn('week') && hasSessions) side.push(h('details', {class:'today-links'}, h('summary', {text:'Resumo da semana'}), todayWeekPanel()));
-  if(todayBlockOn('explore')) side.push(h('details', {class:'today-links'}, h('summary', {text:'Atalhos e organização'}), todayShortcuts()));
-  if(todayBlockOn('start') && guidanceFull()){ const sg = startGuideCard(); if(sg) side.push(sg); }
+  const daily = todaySummary();if(daily)side.push(daily);
+  if(todayBlockOn('week') && hasSessions)side.push(todayWeekPanel());
+  const continuation=todayContinuation(discs);if(continuation)side.push(continuation);
+  if(todayBlockOn('next')){const n=todayNextSteps();if(n)main.push(h('details',{class:'today-links today-next'},h('summary',{text:'A seguir · revisões e planejamento'}),n));}
+  const guide=contextGuideCard('today');if(guide)main.push(guide);
+  if(todayBlockOn('start') && guidanceFull()){const sg=startGuideCard();if(sg)main.push(sg);}
+  if(todayBlockOn('explore'))main.push(h('details',{class:'today-links today-organize'},h('summary',{text:'Organizar conteúdos'}),h('div',{class:'tf-actions'},
+    reviewButton('Adicionar material',()=>openCourseEditor()),reviewButton('Criar bloco',()=>openContentBlockEditor()),
+    backupStatus().nudge?reviewButton('Guardar backup',()=>setView('data')):null)));
+  mount(root,h('div',{class:'today-v7'+(side.length?'':' is-single')},h('div',{class:'today-main'},main),side.length?h('div',{class:'today-side'},side):null));
+}
 
-  const quoteCard = todayBlockOn('quote') ? dailyQuoteCard() : null;
-  if(quoteCard) side.push(h('details', {class:'today-links'}, h('summary', {text:'Frase do dia'}), quoteCard));
-  mount(root, h('div', { class:'today-v7' + (side.length ? '' : ' is-single') },
-    h('div', { class:'today-main' }, main),
-    side.length ? h('div', { class:'today-side' }, side) : null));
+function todayContinuation(discs){
+  if(TimerService.isActive)return null;
+  const recent=recentDisciplines(2),list=recent.length?recent:discs.slice().sort(sortByName).slice(0,2);
+  if(!list.length)return null;
+  return h('section',{class:'today-card today-continuation','aria-labelledby':'today-continuation-title'},
+    h('h3',{class:'block-label',id:'today-continuation-title',text:recent.length?'Continuar':'Suas disciplinas'}),
+    h('div',{class:'continuation-list'},list.map(d=>h('button',{type:'button',class:'continuation-row','aria-label':`Começar a estudar ${d.name} agora`,onclick:()=>startTimer(d.id,[],[])},
+      h('span',{class:'continuation-name',text:d.name}),icon('i-play','btn-icon')))));
 }
 
 /** 1 · A ação principal: a pessoa escolhe. A sugestão do Ciclo é um convite, com o motivo. */
@@ -11332,6 +11359,7 @@ function todayTimerKey(){
 }
 function syncTodayTimerAction(){
   if(ui.view !== 'today' || !activeDisciplines().length) return;
+  const continuation=$('#today-body .today-continuation');if(continuation)continuation.hidden=TimerService.isActive;
   const old = document.querySelector('#today-body .today-act');
   if(!old || old.dataset.timerKey === todayTimerKey()) return;
   const hadFocus = old.contains(document.activeElement);
@@ -11344,15 +11372,9 @@ function todayAction(discs, hasSessions){
   const guided = state.meta.guidedReview;
   const hasGuided = !!guided && !guided.finishedAt;
   const status = busy ? timerView() : null;
-  const recent = recentDisciplines(5);
-  const quick = (recent.length ? recent : discs.slice().sort(sortByName)).slice(0, 5);
-  const chips = busy ? null : h('div', { class:'today-quick', role:'group', 'aria-label':'Começar a estudar uma matéria agora' },
-    h('span', { class:'today-quick-l', text: recent.length ? 'Continuar:' : 'Estudar agora:' }),
-    quick.map(d => h('button', { class:'qchip', type:'button', 'aria-label':`Começar a estudar ${d.name} agora`,
-      onclick:() => startTimer(d.id, [], []) }, icon('i-play', 'btn-icon qchip-ic'), h('span', { text:d.name }))));
 
   const head = [
-    h('p', { class:'tf-eyebrow', text:`${greetingWord()}.` }),
+    busy ? null : h('p', { class:'tf-eyebrow', text:`${greetingWord()}.` }),
     h('h3', { class:'tf-title', id:'tf-title', text: busy
       ? status.awaiting ? status.label : status.status === 'paused' ? 'Seu estudo está pausado' : status.status === 'rest' ? 'Você está descansando' : 'Você está estudando agora'
       : hasGuided ? (guided.runningSince ? 'Sua revisão guiada está em andamento' : 'Continue sua revisão quando quiser') : 'O que você gostaria de estudar?' })
@@ -11363,7 +11385,7 @@ function todayAction(discs, hasSessions){
   if(busy){
     const detail = status.awaiting || status.status === 'paused' ? 'Nada está contando agora.'
       : status.status === 'rest' ? 'O descanso é contado à parte do estudo.' : 'O tempo de estudo está contando.';
-    head.push(h('p', { class:'tf-reason', text:`${TimerService.discText()} — ${detail} Quando terminar, finalize para guardar no histórico.` }));
+    head.push(h('p', { class:'tf-reason', text:`${TimerService.discText()} — ${detail}` }));
   } else if(!sessionsToday().length){
     head.push(h('p', { class:'tf-reason', text:hasSessions ? 'Nenhum estudo registrado hoje ainda. Escolha uma matéria ou registre algo que já estudou.' : 'Seu histórico começa com o primeiro estudo. Escolha uma matéria e o Ciclo conta o tempo — ou registre algo que você já estudou.' }));
   }
@@ -11395,7 +11417,8 @@ function todayAction(discs, hasSessions){
           acts.length > 1 ? h('button', { class:'linkbtn muted', type:'button', text:'Outras opções', onclick:() => openAlternatives(acts.slice(1)) }) : null));
     }
   }
-  return h('section', { class:'focus-block today-act', 'aria-labelledby':'tf-title', 'data-timer-key':todayTimerKey() }, h('div', {class:'today-hero-content'}, head, actions, chips,
+  return h('section', { class:'focus-block today-act'+(busy?' is-studying':''), 'aria-labelledby':'tf-title', 'data-timer-key':todayTimerKey() }, h('div', {class:'today-hero-content'}, head, actions,
+      busy?h('div',{class:'today-active-material material-sources'},learningSessionLinks(Learning.entries(TimerService.data))):null,
       sugg ? h('details', {class:'today-invitation'}, h('summary', {text:'Sugestão de estudo'}), sugg) : null),
     h('div', {class:'today-orbit', 'aria-hidden':'true'}, h('span'), h('span'), h('span')));
 }
@@ -11409,13 +11432,12 @@ function todaySummary(){
   const minutes = sum(list, s => Number(s.minutes) || 0);
   return h('section', {class:'today-card today-summary', 'aria-labelledby':'today-summary-title'},
     h('h3', {class:'block-label',id:'today-summary-title',text:'Seu dia até agora'}),
-    h('p', {class:'day-total num',text:fmtDuration(minutes)}),
-    h('p', {class:'hint',text:plural(list.length,'estudo registrado','estudos registrados') + ' · tempo líquido, sem descanso e pausa'}),
+    h('button', {class:'day-total num',type:'button','aria-label':'Ver detalhes do dia','aria-describedby':'today-total-value',title:'Ver detalhes do dia',onclick:()=>applyAnalyticsQuery({scopeType:'all',periodPreset:'hoje',focus:'overview'})},h('span',{id:'today-total-value',text:fmtDuration(minutes)})),
+    h('p', {class:'hint',text:plural(list.length,'estudo registrado','estudos registrados')}),
     h('div', {class:'day-subjects'}, names.slice(0,4).map(name => h('span', {text:name})), names.length>4 ? h('span', {text:'+' + (names.length-4)}) : null),
     h('div', {class:'tf-actions'},
       h('button', {class:'btn ghost sm',type:'button',onclick:() => { clearHistoryFilters(); ui.history.search = ''; ui.history.period = 'hoje'; setView('history'); focusViewHeading('history'); }}, icon('i-history'), 'Ver registros de hoje'),
-      h('button', {class:'linkbtn',type:'button',text:'Criar relatório',onclick:() => openVisualReport({periodPreset:'hoje'})}),
-      h('button', {class:'btn ghost sm',type:'button',text:'Ver detalhes do dia',onclick:() => applyAnalyticsQuery({scopeType:'all',periodPreset:'hoje',focus:'overview'})})));
+      h('button', {class:'linkbtn',type:'button',text:'Criar relatório',onclick:() => openVisualReport({periodPreset:'hoje'})})));
 }
 
 /** 2 · A semana em números reais, com um gráfico pequeno. Clicar leva às Análises desta semana. */
@@ -11427,7 +11449,6 @@ function todayWeekPanel(){
   const active = activeDaySet(list);
   const prog = PlannerEngine.getCurrentWeekProgress();
   const hasGoal = !!PlannerEngine.activePlan() && prog.goalTotal > 0;
-  const rhythm = recentRhythm(7);
 
   // um valor por dia da semana (a ordem segue o primeiro dia escolhido em Configurações)
   const days = [];
@@ -11444,16 +11465,9 @@ function todayWeekPanel(){
       h('span', { class:'wk-mini-bar', style:`height:${x.minutes ? Math.max(6, Math.round(x.minutes / max * 100)) : 0}%` }),
       h('span', { class:'wk-mini-d', text: WD[x.d.getDay()] })))) : null;
 
-  // observação: só quando os dados sustentam (duas ou mais matérias e uma à frente de verdade)
-  let insight = null;
-  const byDisc = Array.from(minutesByDiscipline(list).entries()).filter(([, m]) => m > 0).sort((a, b) => b[1] - a[1]);
-  if(byDisc.length >= 2 && byDisc[0][1] > byDisc[1][1]) insight = `${disciplineName(byDisc[0][0])} foi a matéria em que você mais estudou nesta semana.`;
-
   const goalText = !hasGoal ? null
     : prog.reached ? (prog.extraTotal >= 1 ? `Meta de ${fmtDuration(prog.goalTotal)} alcançada · ${fmtDuration(prog.extraTotal)} além` : `Meta de ${fmtDuration(prog.goalTotal)} alcançada`)
     : `de ${fmtDuration(prog.goalTotal)} da meta · faltam ${fmtDuration(prog.remainingTotal)}`;
-  const lastLine = rhythm.lastStudy && rhythm.daysSinceLast !== null && rhythm.daysSinceLast >= 2
-    ? `Seu último estudo registrado foi há ${rhythm.daysSinceLast} dias.` : null;
   // v7.1 — resultados da semana, discretos (só quando existem): o que foi praticado, não só o tempo
   const wq = EvidenceModel.tally(list.reduce((acc, s) => acc.concat(EvidenceModel.of(s)), []));
   const wms = sum(list, s => EvidenceModel.of(s).filter(r => r.kind === 'milestone').length);
@@ -11471,10 +11485,10 @@ function todayWeekPanel(){
               : h('span', { class:'wk-sub', text:'Nenhum estudo registrado nesta semana ainda.' + (goalText ? ' ' + capFirst(goalText) + '.' : '') }),
       hasGoal ? h('span', { class:'wk-goal' }, progressBar(clamp(prog.pct || 0, 0, 100), prog.reached ? 'done' : null, 'today-week')) : null,
       chart),
-    insight ? h('p', { class:'wk-insight', text: insight }) : null,
+
     resultsLine ? h('button', { class:'linkbtn wk-results', type:'button', onclick:() => applyAnalyticsQuery({ scopeType:'all', periodPreset:'semana', focus: wq.sets ? 'results' : 'learning' }),
       'aria-label':`Resultados desta semana: ${resultsLine}. Ver nas Análises` }, icon('i-result', 'btn-icon'), h('span', { text: resultsLine })) : null,
-    lastLine ? h('p', { class:'wk-last', text: lastLine }) : null,
+
     !hasGoal ? h('button', { class:'linkbtn wk-plan', type:'button', text:'Definir uma meta para a semana', onclick:() => setView('plan') }) : null);
 }
 
@@ -16046,7 +16060,7 @@ async function toggleArchiveDiscipline(id){
 }
 
 async function deleteDisciplineForever(id){
-  if(Learning.courses().some(c=>c.disciplineId===id)||Learning.blocks().some(b=>b.disciplineId===id)){toast('Esta disciplina possui materiais ou blocos. Arquive para preservar os vínculos.','info');return;}
+  if(Learning.courses().some(c=>Learning.belongs(c,id))||Learning.blocks().some(b=>b.disciplineId===id)){toast('Esta disciplina possui materiais ou blocos. Arquive para preservar os vínculos.','info');return;}
   const d = getDiscipline(id);
   if(!d) return;
   // v6.8: um estudo com outras disciplinas não é apagado — só perde a parte desta disciplina
@@ -16070,7 +16084,8 @@ async function deleteDisciplineForever(id){
        nada sai. v6.8 — os estudos são lidos inteiros (não pelo índice, que só
        conhece a primeira disciplina). Estudo só desta disciplina sai; estudo com
        outras perde a parte desta (tempo, tópicos e resultados dela) e continua. */
-    await DB.atomic(['disciplines','topics','sessions','deadlines'], async api => {
+    await DB.atomic(['disciplines','topics','sessions','deadlines','courses','contentBlocks'], async api => {
+      if((await api.getAll('courses')).some(c=>Learning.belongs(c,id)) || (await api.getAll('contentBlocks')).some(b=>b.disciplineId===id))throw new Error('Há materiais ou blocos relacionados. Arquive a disciplina para preservar os vínculos.');
       const [tps2, sess2, dls] = [
         await api.getAllByIndex('topics', 'disciplineId', id),
         await api.getAll('sessions'),
@@ -16093,6 +16108,7 @@ async function deleteDisciplineForever(id){
           updatedAt: nowISO()
         });
         next.disciplineId = next.disciplineEntries[0].disciplineId;
+        if(next.contentEntries)next.contentEntries=Learning.entries(next).filter(e=>e.disciplineId!==id);
         // o horário gravado era do estudo inteiro: com menos tempo, vale só a duração
         const time = TimeRules.settle(next);
         next.startedAt = time.startedAt; next.endedAt = time.endedAt; next.breaks = sanitizeBreaks(time.breaks);
@@ -16737,7 +16753,7 @@ function openDeadlineModal(dl, preset){
       }) })
     ];
     if(dl) actions.unshift(h('button', { class:'linkbtn danger', type:'button', text:'excluir', onclick: async () => { close(); await deleteDeadline(dl.id); } }));
-    return { title: dl ? 'Editar prazo' : 'Novo prazo', content, actions };
+    return { title: dl ? 'Editar prazo' : 'Novo prazo', content, actions, focus:titleIn };
   }, { size:'wide' });
 }
 
@@ -21494,6 +21510,7 @@ async function init(){
   }
 
   try {
+    await Learning.migrate();
     await loadAll();
   } catch(err){
     // v6.5: antes, uma falha aqui deixava a tela em branco, sem explicação.
@@ -22384,8 +22401,8 @@ const FocusMode = {
     contextLine('focus-topic', this.shows('topics') ? topicNames : [], this.presenting ? 6 : 2);
     let source=document.getElementById('focus-material');
     if(!source){source=h('div',{id:'focus-material',class:'material-sources'});document.getElementById('focus-topic').insertAdjacentElement('afterend',source);}
-    mount(source,Learning.ids(Learning.entries(d).map(e=>e.courseId)).map(id=>Learning.course(id)).filter(Boolean).map(c=>Learning.link(c,'Abrir material')));
-    source.hidden=this.presenting || !source.childElementCount;
+    mount(source,learningSessionLinks(Learning.entries(d)));
+    source.hidden=!source.childElementCount;
     contextLine('focus-types', this.presenting ? [] : (d.presetTypes || []).map(sessionTypeLabel), 2);
     const areas = [...new Set(TimerService.discIds().map(id => getDiscipline(id)?.areaId).filter(Boolean))];
     contextLine('focus-area', !this.presenting && areas.length === 1 && getArea(areas[0]) ? [getArea(areas[0]).name] : [], 1);

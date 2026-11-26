@@ -11,7 +11,8 @@
     "audit:field:performance": "node tests/field-performance.cjs",
     "audit:experience": "node tests/experience-visual.cjs",
     "audit:next-generation": "node tests/next-generation-audit.cjs",
-    "audit:connected": "node tests/connected-audit.cjs"
+    "audit:connected": "node tests/connected-audit.cjs",
+    "audit:learning-hub": "node tests/learning-hub-audit.cjs"
   },
   "devDependencies": {
     "acorn": "8.15.0",

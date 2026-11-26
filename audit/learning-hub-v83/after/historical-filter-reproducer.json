@@ -1,0 +1,14 @@
+{
+  "beforeCommit": "cd9b015f37b69446df4d184f1d5d44a631dee704",
+  "before": {
+    "course": false,
+    "block": false,
+    "minutes": 45
+  },
+  "after": {
+    "course": true,
+    "block": true,
+    "minutes": 45
+  },
+  "method": "Navegador real, fixture isolada: estudar 45 min com curso e bloco, desassociar a disciplina, conferir opções de filtros e total histórico."
+}
