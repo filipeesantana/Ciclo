@@ -1,0 +1,621 @@
+{
+  "phase": "before",
+  "browser": "154.0.8037.57",
+  "hashes": {
+    "app.js": "43862035501c057bd6679ad95f544e0e5b990e0999e7486d003b19a227a97ab3",
+    "learning.js": "86e278b9d21be4863b0713eafc23797e7f4fb9a25b5858f0af304aafb96230a1",
+    "styles.css": "e9cb09a2074eece99c903a3a2be7a5fb7f6a848ae80a76dd38342f36b1b1fec4",
+    "index.html": "e9ac5929ded9048aa19dfe4e4ed2b04c31f51d3e736cf2117de54f3123ce126e"
+  },
+  "errors": [],
+  "layouts": [
+    {
+      "width": 1920,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "scrollHeight": 1080,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 405.046875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 684.390625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 757.890625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 831.390625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 904.890625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 917.28125
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "scrollWidth": 1920,
+      "scrollHeight": 1080,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 405.046875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 684.390625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 757.890625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 831.390625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 904.890625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 917.28125
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 394.40625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 673.75
+        },
+        {
+          "name": "Estudar",
+          "bottom": 747.25
+        },
+        {
+          "name": "Estudar",
+          "bottom": 820.75
+        },
+        {
+          "name": "Estudar",
+          "bottom": 894.25
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 912.859375
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 394.40625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 673.75
+        },
+        {
+          "name": "Estudar",
+          "bottom": 747.25
+        },
+        {
+          "name": "Estudar",
+          "bottom": 820.75
+        },
+        {
+          "name": "Estudar",
+          "bottom": 894.25
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 912.859375
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "scrollHeight": 768,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 383.40625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 661.71875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 735.21875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 808.71875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 882.21875
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 907.890625
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "scrollHeight": 768,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 383.40625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 661.71875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 735.21875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 808.71875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 882.21875
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 907.890625
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "scrollWidth": 1280,
+      "scrollHeight": 720,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 371.296875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 689.03125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 762.53125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 836.03125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 909.53125
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 922.09375
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "scrollWidth": 1280,
+      "scrollHeight": 720,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 371.296875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 689.03125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 762.53125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 836.03125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 909.53125
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 922.09375
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "scrollWidth": 1024,
+      "scrollHeight": 768,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 339.453125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 884.640625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 958.140625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1031.640625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1105.140625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 1858.609375
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "scrollWidth": 1024,
+      "scrollHeight": 768,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 339.453125
+        },
+        {
+          "name": "Estudar",
+          "bottom": 884.640625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 958.140625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1031.640625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1105.140625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 1858.609375
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "scrollWidth": 430,
+      "scrollHeight": 1892,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 383.1875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 990.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1075.515625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1149.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1222.515625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 1984.09375
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "scrollWidth": 430,
+      "scrollHeight": 1892,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 383.1875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 990.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1075.515625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1149.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1222.515625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 1984.09375
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1916,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 383.1875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 990.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1075.515625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1149.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1234.515625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 2008.09375
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 1916,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 383.1875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 990.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1075.515625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1149.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1234.515625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 2008.09375
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 375,
+      "height": 812,
+      "scrollWidth": 375,
+      "scrollHeight": 1916,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 383.1875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 990.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1075.515625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1149.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1234.515625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 2008.09375
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 375,
+      "height": 812,
+      "scrollWidth": 375,
+      "scrollHeight": 1916,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 383.1875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 990.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1075.515625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1149.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1234.515625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 2008.09375
+        }
+      ],
+      "theme": "dark"
+    },
+    {
+      "width": 320,
+      "height": 640,
+      "scrollWidth": 320,
+      "scrollHeight": 1982,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 383.1875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1032.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1129.515625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1215.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1300.515625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 2092.9375
+        }
+      ],
+      "theme": "light"
+    },
+    {
+      "width": 320,
+      "height": 640,
+      "scrollWidth": 320,
+      "scrollHeight": 1982,
+      "controls": [
+        {
+          "name": "Começar a estudar",
+          "bottom": 383.1875
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1032.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1129.515625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1215.015625
+        },
+        {
+          "name": "Estudar",
+          "bottom": 1300.515625
+        },
+        {
+          "name": "Esta semanaVer nas Análises7h30 estudadas4 dias com estudo · de 10h da meta · faltam 2h30STQQSSDEstatística foi a matéria em que você mais estudou nesta semana.6 de 10 questões (60%)",
+          "bottom": 2092.9375
+        }
+      ],
+      "theme": "dark"
+    }
+  ],
+  "accessibility": [
+    {
+      "name": "Hoje",
+      "violations": []
+    },
+    {
+      "name": "Editor",
+      "violations": []
+    },
+    {
+      "name": "Estudo",
+      "violations": []
+    }
+  ]
+}

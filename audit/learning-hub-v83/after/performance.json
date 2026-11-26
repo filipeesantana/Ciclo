@@ -1,0 +1,263 @@
+{
+  "browser": "154.0.8037.57",
+  "sourceSha256": "978d692604c26019fa557417a608bbc222161e9e49a512be41c9cadb507baca9",
+  "method": "Contextos sintéticos isolados. Cinco amostras síncronas por tela com caches invalidados. Reload até state.ready; dois rAF são oportunidade de pintura, não medição de apresentação nem FPS. PNG inclui desenho e codificação. Heap quando a API está disponível.",
+  "results": [
+    {
+      "dataset": {
+        "disciplines": 15,
+        "courses": 40,
+        "blocks": 100,
+        "topics": 350,
+        "sessions": 100
+      },
+      "reloadMs": 222.16937099999996,
+      "errors": [],
+      "renderSync": {
+        "today": [
+          5,
+          9,
+          8,
+          9,
+          7
+        ],
+        "disciplines": [
+          14,
+          12,
+          7,
+          7,
+          7
+        ],
+        "reviews": [
+          17,
+          23,
+          16,
+          15,
+          18
+        ],
+        "analytics": [
+          27,
+          36,
+          17,
+          15,
+          16
+        ],
+        "history": [
+          14,
+          28,
+          16,
+          16,
+          16
+        ],
+        "plan": [
+          13,
+          24,
+          13,
+          11,
+          29
+        ]
+      },
+      "queryMs": 7,
+      "queryMinutes": 0,
+      "exportMs": 12,
+      "backupBytes": 378415,
+      "parseMs": 21,
+      "restoreMs": 100,
+      "pngMs": 28,
+      "twoFramesMs": 46,
+      "heapBytes": null
+    },
+    {
+      "dataset": {
+        "disciplines": 15,
+        "courses": 40,
+        "blocks": 100,
+        "topics": 350,
+        "sessions": 1000
+      },
+      "reloadMs": 277.73610099999996,
+      "errors": [],
+      "renderSync": {
+        "today": [
+          7,
+          10,
+          9,
+          8,
+          8
+        ],
+        "disciplines": [
+          27,
+          11,
+          7,
+          7,
+          6
+        ],
+        "reviews": [
+          18,
+          22,
+          19,
+          27,
+          19
+        ],
+        "analytics": [
+          27,
+          35,
+          17,
+          16,
+          15
+        ],
+        "history": [
+          22,
+          25,
+          18,
+          18,
+          18
+        ],
+        "plan": [
+          14,
+          20,
+          10,
+          12,
+          10
+        ]
+      },
+      "queryMs": 5,
+      "queryMinutes": 255,
+      "exportMs": 31,
+      "backupBytes": 1641247,
+      "parseMs": 46,
+      "restoreMs": 196,
+      "pngMs": 23,
+      "twoFramesMs": 34,
+      "heapBytes": null
+    },
+    {
+      "dataset": {
+        "disciplines": 15,
+        "courses": 40,
+        "blocks": 100,
+        "topics": 350,
+        "sessions": 5000
+      },
+      "reloadMs": 558.9157519999999,
+      "errors": [],
+      "renderSync": {
+        "today": [
+          11,
+          13,
+          12,
+          12,
+          13
+        ],
+        "disciplines": [
+          58,
+          15,
+          8,
+          9,
+          11
+        ],
+        "reviews": [
+          35,
+          41,
+          38,
+          34,
+          69
+        ],
+        "analytics": [
+          62,
+          71,
+          23,
+          22,
+          23
+        ],
+        "history": [
+          64,
+          31,
+          17,
+          16,
+          17
+        ],
+        "plan": [
+          19,
+          23,
+          16,
+          16,
+          16
+        ]
+      },
+      "queryMs": 15,
+      "queryMinutes": 1360,
+      "exportMs": 137,
+      "backupBytes": 7263231,
+      "parseMs": 163,
+      "restoreMs": 439,
+      "pngMs": 23,
+      "twoFramesMs": 40,
+      "heapBytes": null
+    },
+    {
+      "dataset": {
+        "disciplines": 15,
+        "courses": 40,
+        "blocks": 100,
+        "topics": 350,
+        "sessions": 10000
+      },
+      "reloadMs": 853.5865119999999,
+      "errors": [],
+      "renderSync": {
+        "today": [
+          12,
+          14,
+          14,
+          14,
+          16
+        ],
+        "disciplines": [
+          97,
+          18,
+          9,
+          7,
+          7
+        ],
+        "reviews": [
+          40,
+          43,
+          39,
+          34,
+          43
+        ],
+        "analytics": [
+          61,
+          59,
+          32,
+          26,
+          25
+        ],
+        "history": [
+          104,
+          34,
+          22,
+          17,
+          16
+        ],
+        "plan": [
+          12,
+          19,
+          11,
+          11,
+          10
+        ]
+      },
+      "queryMs": 15,
+      "queryMinutes": 2720,
+      "exportMs": 399,
+      "backupBytes": 14279522,
+      "parseMs": 321,
+      "restoreMs": 887,
+      "pngMs": 24,
+      "twoFramesMs": 59,
+      "heapBytes": null
+    }
+  ]
+}

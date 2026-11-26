@@ -98,7 +98,7 @@ test('resultado geral do bloco não inventa avaliações dos tópicos nem conclu
  assert.deepEqual(f,{outcome:'hard',individual:false,other:null,completed:1,hard:1,total:65});
 });
 
-test('backup 13, checksum das novas coleções, restauração atômica e compatibilidade com backup 12',async()=>{
+test('backup atual, checksum das novas coleções, restauração atômica e compatibilidade com backup 12',async()=>{
  await fixture();await recordBlock();
  const f=await page.evaluate(async()=>{
   const backup=Backup.buildExport(),parsed=Backup.parseBackup(JSON.stringify(backup));
@@ -110,7 +110,7 @@ test('backup 13, checksum das novas coleções, restauração atômica e compati
   await Backup.restoreInto(parsed.data);await loadAll();
   const legacy=structuredClone(backup);legacy.schemaVersion=12;delete legacy.integrity;delete legacy.courses;delete legacy.contentBlocks;legacy.sessions.forEach(s=>delete s.contentEntries);
   return {schema:backup.schemaVersion,physical:IDB_VERSION,checksum:BackupIntegrity.verify(backup),corrupt:BackupIntegrity.verify(corrupt),refused,kept,restored:state.sessions[0].contentEntries[0].blockId,old:Backup.parseBackup(JSON.stringify(legacy)).data.courses.length};
- });assert.deepEqual(f,{schema:13,physical:2,checksum:'ok',corrupt:'mismatch',refused:true,kept:true,restored:'files',old:0});
+ });assert.deepEqual(f,{schema:14,physical:2,checksum:'ok',corrupt:'mismatch',refused:true,kept:true,restored:'files',old:0});
 });
 
 test('falha de gravação preserva formulário integrado e rascunho para retentativa',async()=>{
@@ -133,7 +133,7 @@ test('concorrência rejeita edição obsoleta de curso e remoção de bloco dura
 
 test('arquivamento preserva estudos e exclusão com vínculos é recusada',async()=>{
  await fixture();await recordBlock();
- const f=await page.evaluate(async()=>{let refused=false;try{await Learning.remove('courses','course-a');}catch(_){refused=true;}await Learning.patch('courses','course-a',{archived:true});return {refused,sessions:state.sessions.length,snapshot:state.sessions[0].contentEntries[0].courseName,quick:quickMaterials()!==null};});
+ const f=await page.evaluate(async()=>{let refused=false;try{await Learning.remove('courses','course-a');}catch(_){refused=true;}await Learning.patch('courses','course-a',{archived:true});return {refused,sessions:state.sessions.length,snapshot:state.sessions[0].contentEntries[0].courseName,quick:!!quickMaterials()?.querySelector('a[href="https://example.test/linux"]')};});
  assert.deepEqual(f,{refused:true,sessions:1,snapshot:'Linux — Curso A',quick:false});
 });
 

@@ -1,0 +1,44 @@
+✔ A: estudo livre salvo encerra Hoje imediatamente, sem F5 (1332.714592ms)
+✔ B: Foco → Encerrar → Registrar atualiza Hoje antes de navegar (1172.566507ms)
+✔ C: Pomodoro pausa, retoma, descansa e registra apenas estudo líquido (1190.393145ms)
+✔ D: F5 depois de finalizar não restaura um estudo concluído (1307.524049ms)
+✔ E: Histórico e Voltar mantêm Hoje encerrado (1103.867681ms)
+✔ F: aba observadora deixa de mostrar estudo ativo ao finalizar na outra aba (1449.679478ms)
+✔ G: dois cliques rápidos em Registrar criam uma sessão (1100.866394ms)
+✔ H: falha de IndexedDB conserva o estudo e permite tentar novamente (1974.854165ms)
+✔ I: novo estudo depois de finalizar tem identidade própria (1213.004252ms)
+✔ J: sair de tela cheia mantém as ações do Foco e permite finalizar (1192.083662ms)
+✔ Hoje acompanha início, pausa, descanso e descarte sem navegação (1105.166319ms)
+✔ snapshot regravado por aba atrasada não ressuscita um runId salvo (1168.4375ms)
+✔ migração lógica idempotente preserva curso legado, blocos e snapshots sem mudar o IndexedDB (1215.986218ms)
+✔ emoji composto pode ser alterado e removido; nome longo e disciplinas persistem após F5 (1196.527409ms)
+✔ emoji aceita família, modificador, bandeira e keycap; recusa texto, vários emojis e marcação (876.397267ms)
+✔ conteúdos são agrupados por disciplina e deduplicados entre vínculo direto e bloco (919.725039ms)
+✔ criação progressiva reutiliza duplicatas e só grava novo tópico com a confirmação do material (1074.336786ms)
+✔ cancelar a criação contextual não cria tópico nem altera curso ou agenda (961.781278ms)
+✔ retirar disciplina explica impacto, exige remover vínculos e preserva estudos, tópicos e revisões (3063.764946ms)
+✔ tópicos adicionados depois não aparecem retroativamente e nomes históricos não mudam (947.426542ms)
+✔ seleção do curso sugere tópicos apenas da disciplina e adicionar outra é uma ação explícita (1113.505811ms)
+✔ escolher curso nunca seleciona todos os tópicos ou todas as disciplinas (922.612784ms)
+✔ link imediato abre em nova guia e mantém comentário, tópicos, material e formulário sem iniciar relógio (1101.676032ms)
+✔ sessão ativa, Foco e Apresentação abrem material sem reiniciar; F5 retoma e finaliza uma única sessão (1601.362344ms)
+✔ alterar conteúdos do catálogo durante o cronômetro preserva a seleção já confirmada (1115.473034ms)
+✔ duas abas: edição obsoleta preserva rascunho e acesso recente não provoca conflito falso (4596.211969ms)
+✔ falha atômica reverte criação contextual e blocos; mantém o formulário para retentar (2348.867379ms)
+✔ backup 14 preserva emoji, relações, snapshots e checksum; backup 13 continua importável (915.232373ms)
+✔ material multidisciplinar aparece nos filtros e revisão oferece a fonte do tópico sem criar atividades (868.427132ms)
+✔ Hoje: frase no cabeçalho pode ser ocultada e continuação não usa chips de larguras variáveis (1160.774995ms)
+✔ adição posterior de disciplina e tópico existente mantém ID, link e bloco compartilhado (1125.694336ms)
+✔ mudança concorrente no bloco associado não é sobrescrita ao salvar o material (1384.337109ms)
+✔ disciplina removida por outra aba durante preenchimento recusa registro parcial e preserva seleção (867.441509ms)
+✔ referência de tópico de outra disciplina e link perigoso são recusados atomicamente (732.363697ms)
+✔ material em uso no cronômetro não pode ser excluído mesmo antes do primeiro registro (870.041206ms)
+✔ trocar o material antes de adicionar uma disciplina usa o novo curso em ambos os segmentos (1004.607887ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 48259.862658

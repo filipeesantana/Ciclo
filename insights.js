@@ -54,7 +54,7 @@ function resultsToolbar(a){
   const period=reviewSelect('results-period','Período',[['7d','Últimos 7 dias'],['30d','Últimos 30 dias'],['mes','Mês atual'],['semana','Semana atual'],['hoje','Hoje'],['90d','Últimos 90 dias'],['tudo','Todo o histórico'],['custom','Personalizado…']],q.periodPreset,v=>{if(v==='custom'){period.node.value=q.periodPreset;openResultsPeriod();}else apply({periodPreset:v});});
   const ids=q.scopeType==='discipline'?q.scopeIds:[];
   const ds=reviewSelect('results-discipline','Disciplina',[['','Todas as disciplinas'],...state.disciplines.map(d=>[d.id,d.name]),...(ids.length>1?[['__multi',ids.length+' disciplinas']]:[])],ids.length>1?'__multi':ids[0]||'',v=>{if(v!=='__multi')apply({scopeType:v?'discipline':'all',scopeIds:v?[v]:[],scopeId:v||null,courseIds:[],blockIds:[]});});
-  const available=Learning.courses().filter(c=>!ids.length||ids.includes(c.disciplineId));
+  const available=Learning.courses().filter(c=>!ids.length||Learning.disciplineIds(c).some(id=>ids.includes(id)));
   const blocks=Learning.blocks().filter(b=>(!ids.length||ids.includes(b.disciplineId)) && (!q.courseIds.length || b.courseIds.some(id=>q.courseIds.includes(id))));
   const course=available.length?reviewSelect('results-material','Material',[['','Todos os materiais'],...available.map(c=>[c.id,c.name])],q.courseIds[0]||'',v=>apply({courseIds:v?[v]:[],blockIds:[]})):null;
   const block=blocks.length?reviewSelect('results-block','Bloco',[['','Todos os blocos'],...blocks.map(b=>[b.id,b.name])],q.blockIds[0]||'',v=>apply({blockIds:v?[v]:[]})):null;

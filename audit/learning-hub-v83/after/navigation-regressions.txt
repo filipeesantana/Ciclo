@@ -1,0 +1,42 @@
+✔ comentário visível, recolhido e salvo mantém texto; Cancelar e F5 conservam rascunho (1760.032856ms)
+✔ remoção de comentário é explícita e confirmada (1037.421153ms)
+✔ segunda disciplina visível, foco no seletor, sem duplicatas nem minutos multiplicados (1061.253947ms)
+✔ troca de modo não apaga comentário, tempo ou rascunho (1174.517931ms)
+✔ Hoje usa só dados do dia, soma multidisciplinar uma vez e ignora descanso e sessão ativa (869.297884ms)
+✔ Hoje muda imediatamente após registrar, editar, mudar data e excluir (991.590699ms)
+✔ Hoje → Análises do dia → Voltar e Histórico de hoje usam o recorte correto (1022.832614ms)
+✔ filtros e busca do Histórico voltam depois de outro recorte e de F5 (854.51192ms)
+✔ virada do dia usa atribuição civil ao início e não duplica sessão noturna (741.902463ms)
+✔ revisão livre aceita várias disciplinas sem tópicos e conserva agendas (1110.616069ms)
+✔ roteiro: pulo, respostas individuais e flashcards pessoais geram uma sessão agregada (1073.378122ms)
+✔ roteiro: pausa exclui tempo, confirmação e cursor sobrevivem ao F5 (1224.019612ms)
+✔ duas abas: versão antiga não altera respostas e finalização concorrente não duplica (1037.007482ms)
+✔ roteiro rejeita edição concorrente e não confirma falha de IndexedDB (800.691909ms)
+✔ backup lógico atual guarda progresso pausado e mantém dados antigos e checksum (712.752106ms)
+✔ roteiro sem autoavaliação não inventa resultado; agenda do tópico pulado fica intacta (733.410407ms)
+✔ um relógio por vez: roteiro e cronômetro recusam execução simultânea (634.569008ms)
+✔ editor do roteiro permite adicionar, reordenar, remover, trocar método e duração (981.243721ms)
+✔ roteiro rejeita backup inválido, impede restauração enquanto conta e exporta pausado (720.268165ms)
+✔ Histórico conserva o período usado antes de outra análise e após F5 (962.21776ms)
+✔ Planejamento → Hoje → Histórico → Voltar recupera a semana consultada (896.167966ms)
+✔ roteiro encerrado sem estudo não retorna falso sucesso para uma finalização antiga (679.049062ms)
+✔ três disciplinas e três tópicos recebem respostas distintas em um único estudo de 45 minutos (938.214627ms)
+✔ registro básico com duração, gravado e recuperado via Hoje e Histórico (1541.932896ms)
+✔ agenda civil em lote, datas passadas, reativação e fronteiras de mês e ano (1892.166705ms)
+✔ agenda manual prevalece sobre inclusão, resultado, edição, exclusão e backup (709.753726ms)
+✔ lote com assunto arquivado, excluído ou falha de escrita reverte por inteiro (668.925735ms)
+✔ estudo com vários tópicos persiste a agenda escolhida junto com a sessão (829.589457ms)
+✔ apresentação em outra janela segue o relógio e reaproveita os controles do Foco (3072.330867ms)
+✔ PNG nos quatro formatos e temas tem os mesmos pixels da prévia e dados da análise (9611.090079ms)
+✔ toque em 390 px chega às rotas agrupadas e volta ao recorte (1992.66965ms)
+✔ primeira visita chega à disciplina, ao cronômetro e ao registro sem tutorial obrigatório (1946.680457ms)
+✔ relatório extenso, contraste reforçado e títulos longos conservam métricas e bordas (2064.683839ms)
+✔ Resultados abre os registros do recorte e Voltar preserva período e disciplina (832.117644ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 48242.31998

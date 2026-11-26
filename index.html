@@ -8,7 +8,7 @@
 <meta name="description" content="Ciclo é um sistema de estudos que roda no seu navegador: organize o que você estuda, registre seus estudos, receba sugestões de revisão no momento certo e acompanhe seu progresso — sem conta e sem servidor.">
 <meta name="application-name" content="Ciclo">
 <title>Ciclo — Seu sistema de estudos</title>
-<link rel="stylesheet" href="styles.css?v=8.2.0">
+<link rel="stylesheet" href="styles.css?v=8.3.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4a8 8 0 1 1-6.93 4' fill='none' stroke='%2362B1A4' stroke-width='2.6' stroke-linecap='round'/%3E%3Ccircle cx='5.07' cy='8' r='2.1' fill='%23C7A46A'/%3E%3C/svg%3E">
 </head>
 <body>
@@ -40,6 +40,7 @@
   <symbol id="i-focus" viewBox="0 0 24 24"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 3h7v7M21 3 10 14M10 3H4a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-6"/></symbol>
   <!-- marca do Ciclo: um anel aberto (continuidade) com um ponto de avanço -->
   <symbol id="i-brand" viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 1-6.93 4" style="fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round"/><circle cx="5.07" cy="8" r="2" style="fill:var(--brand-dot,currentColor);stroke:none"/></symbol>
   <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
@@ -145,7 +146,7 @@
       <div id="timerbar-slot"></div>
 
       <section id="view-today" class="view active" aria-labelledby="h-today">
-        <div class="page-head"><h2 id="h-today" tabindex="-1">Hoje</h2><p class="sub"></p></div>
+        <div class="page-head today-heading"><div><h2 id="h-today" tabindex="-1">Hoje</h2><p class="sub"></p></div><div id="today-quote"></div></div>
         <div id="today-body" class="view-body"></div>
       </section>
 
@@ -304,12 +305,12 @@
 <p class="sr-only" id="sr-live" role="status" aria-live="polite"></p>
 
 <noscript><p style="padding:24px">Este aplicativo precisa de JavaScript para funcionar.</p></noscript>
-<script src="content.js?v=8.2.0"></script>
-<script src="reviews.js?v=8.2.0"></script>
-<script src="reports.js?v=8.2.0"></script>
-<script src="dates.js?v=8.2.0"></script>
-<script src="learning.js?v=8.2.0"></script>
-<script src="insights.js?v=8.2.0"></script>
-<script src="app.js?v=8.2.0"></script>
+<script src="content.js?v=8.3.0"></script>
+<script src="reviews.js?v=8.3.0"></script>
+<script src="reports.js?v=8.3.0"></script>
+<script src="dates.js?v=8.3.0"></script>
+<script src="learning.js?v=8.3.0"></script>
+<script src="insights.js?v=8.3.0"></script>
+<script src="app.js?v=8.3.0"></script>
 </body>
 </html>
