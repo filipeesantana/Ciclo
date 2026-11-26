@@ -1,0 +1,43 @@
+✔ REGRESSÃO: datas civis impossíveis e sufixos não são aceitos como outro dia (1591.765182ms)
+✔ novembro por cliques inclui os dois extremos: Resultados, Histórico e PNG mostram 180 minutos (1565.371619ms)
+✔ intervalo temporário: mudar mês/ano preserva seleção; Cancelar preserva filtro; reabrir recupera aplicação (1792.569789ms)
+✔ mesmo dia e intervalo inverso são previsíveis; setas cruzam mês e PageUp mantém o dia válido (1177.896102ms)
+✔ Planejamento: escolher dezembro pelo calendário, adicionar dia e recarregar conserva a data (1791.213816ms)
+✔ Prazos: calendário compartilhado cancela sem mudar input, confirma dia e persiste após F5 (1540.825784ms)
+✔ aritmética civil e presets em São Paulo, Nova York e Auckland inclui DST, bissexto e virada de ano (2991.484875ms)
+✔ Cancelar período personalizado iniciado em 30 dias preserva também o controle visível (815.242719ms)
+✔ prazo conclui, reabre, arquiva e restaura pela interface sem mudar sua data (1112.621116ms)
+✔ REGRESSÃO: Escape fecha apenas o calendário inline e mantém o formulário e o foco (908.568527ms)
+✔ migração lógica idempotente preserva curso legado, blocos e snapshots sem mudar o IndexedDB (1229.965042ms)
+✔ emoji composto pode ser alterado e removido; nome longo e disciplinas persistem após F5 (1260.511321ms)
+✔ emoji aceita família, modificador, bandeira e keycap; recusa texto, vários emojis e marcação (847.53566ms)
+✔ conteúdos são agrupados por disciplina e deduplicados entre vínculo direto e bloco (944.441292ms)
+✔ criação progressiva reutiliza duplicatas e só grava novo tópico com a confirmação do material (1175.759715ms)
+✔ cancelar a criação contextual não cria tópico nem altera curso ou agenda (1085.391022ms)
+✔ retirar disciplina explica impacto, exige remover vínculos e preserva estudos, tópicos e revisões (2784.13061ms)
+✔ tópicos adicionados depois não aparecem retroativamente e nomes históricos não mudam (917.053895ms)
+✔ seleção do curso sugere tópicos apenas da disciplina e adicionar outra é uma ação explícita (1244.226016ms)
+✔ escolher curso nunca seleciona todos os tópicos ou todas as disciplinas (1171.490201ms)
+✔ link imediato abre em nova guia e mantém comentário, tópicos, material e formulário sem iniciar relógio (1356.915355ms)
+✔ sessão ativa, Foco e Apresentação abrem material sem reiniciar; F5 retoma e finaliza uma única sessão (1544.512835ms)
+✔ alterar conteúdos do catálogo durante o cronômetro preserva a seleção já confirmada (1252.199623ms)
+✔ duas abas: edição obsoleta preserva rascunho e acesso recente não provoca conflito falso (4872.779238ms)
+✔ foco inicial do modal não interrompe quem já começou a preencher o link (907.436361ms)
+✔ falha atômica reverte criação contextual e blocos; mantém o formulário para retentar (2369.514236ms)
+✔ backup 14 preserva emoji, relações, snapshots e checksum; backup 13 continua importável (921.256265ms)
+✔ material multidisciplinar aparece nos filtros e revisão oferece a fonte do tópico sem criar atividades (823.49046ms)
+✔ Hoje: frase no cabeçalho pode ser ocultada e continuação não usa chips de larguras variáveis (1246.463179ms)
+✔ adição posterior de disciplina e tópico existente mantém ID, link e bloco compartilhado (1124.083672ms)
+✔ mudança concorrente no bloco associado não é sobrescrita ao salvar o material (1242.43537ms)
+✔ disciplina removida por outra aba durante preenchimento recusa registro parcial e preserva seleção (917.567504ms)
+✔ referência de tópico de outra disciplina e link perigoso são recusados atomicamente (880.883868ms)
+✔ material em uso no cronômetro não pode ser excluído mesmo antes do primeiro registro (801.329228ms)
+✔ trocar o material antes de adicionar uma disciplina usa o novo curso em ambos os segmentos (957.961012ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 50443.386878

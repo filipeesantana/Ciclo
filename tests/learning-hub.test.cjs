@@ -153,14 +153,23 @@ test('alterar conteúdos do catálogo durante o cronômetro preserva a seleção
 });
 
 test('duas abas: edição obsoleta preserva rascunho e acesso recente não provoca conflito falso',async()=>{
+ page.setDefaultTimeout(7000);
  await editor();await page.locator('#material-name').fill('Meu rascunho');
  const second=await context.newPage();try{
   await second.goto(runtime.url);await second.waitForFunction(()=>state.ready);await second.evaluate(()=>Learning.patch('courses','hub',{name:'Outra aba'}));
+  await page.locator('.sync-notice').waitFor({state:'visible'});
   await save('Salvar material');assert.equal(await page.locator('#material-name').inputValue(),'Meu rascunho');assert.equal(await page.evaluate(async()=>(await DB.get('courses','hub')).name),'Outra aba');
   await save('Cancelar');await page.evaluate(()=>loadAll());await editor();await page.locator('#material-name').fill('Nome confirmado');
   await second.evaluate(async()=>{const c=await DB.get('courses','hub');await DB.put('courses',{...c,lastOpenedAt:nowISO()});});await save('Salvar material');await page.waitForFunction(()=>!Overlay.isOpen);
   assert.equal(await page.evaluate(()=>Learning.course('hub').name),'Nome confirmado');assert.ok(await page.evaluate(()=>Learning.course('hub').lastOpenedAt));
  }finally{await second.close();}
+});
+
+test('foco inicial do modal não interrompe quem já começou a preencher o link',async()=>{
+ await page.clock.install({time:new Date('2026-11-26T15:00:00Z')});await page.clock.pauseAt(new Date('2026-11-26T15:00:01Z'));
+ await editor();await page.locator('#material-url').fill('https://example.test/aula');
+ await page.clock.runFor(60);assert.equal(await page.evaluate(()=>document.activeElement.id),'material-url');
+ await page.keyboard.type('/linux');assert.equal(await page.locator('#material-url').inputValue(),'https://example.test/aula/linux');assert.equal(await page.locator('#material-name').inputValue(),'Administração GNU/Linux');
 });
 
 test('falha atômica reverte criação contextual e blocos; mantém o formulário para retentar',async()=>{

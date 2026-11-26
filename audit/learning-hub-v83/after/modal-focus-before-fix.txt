@@ -1,0 +1,31 @@
+✖ foco inicial do modal não interrompe quem já começou a preencher o link (1536.638673ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2324.906902
+
+✖ failing tests:
+
+test at tests/learning-hub.test.cjs:168:1
+✖ foco inicial do modal não interrompe quem já começou a preencher o link (1536.638673ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'material-name'
+  - 'material-url'
+              ^
+  
+      at TestContext.<anonymous> (/workspace/Ciclo/tests/learning-hub.test.cjs:171:37)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'material-name',
+    expected: 'material-url',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -2,7 +2,7 @@
   "phase": "after",
   "browser": "154.0.8037.57",
   "hashes": {
-    "app.js": "213e58a213deba4ebd19a6967aa67412e8a22d3b9672ec32d5a0620c25bf943c",
+    "app.js": "c6c74b0dd11903a1c93542bcfc296699f6d44f6f83a3e28dd7a977b6bbd5f406",
     "learning.js": "521ad0c65a066a103e3a342cf69947e2f91935294ffd3fb00f6daabc5e41aad4",
     "styles.css": "886d2322c3eb0616e3e6169a2cb951f79c367d40ba4419d103b4da1bb9e791c2",
     "index.html": "2cff66b25289552e0488648b1b6040dafeac15f97054b82d37029258919edf4e",

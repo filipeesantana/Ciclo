@@ -6724,6 +6724,14 @@ const Overlay = {
 };
 
 let modalCloser = null;
+function focusModalSoon(panel, target, current){
+  // A entrada pode esperar a montagem, mas não pode roubar o foco de quem
+  // já começou a preencher outro campo ou abriu o calendário.
+  setTimeout(()=>{
+    const active=document.activeElement;
+    if(current() && target.isConnected && Overlay.top?.panel===panel && (!panel.contains(active) || active===panel))target.focus({preventScroll:true});
+  },30);
+}
 /**
  * Abre um modal. `build(close)` devolve { title, content, actions, focus? }.
  * Fecha com ESC, clique fora ou chamando close().
@@ -6820,7 +6828,7 @@ function openModal(build, opts){
     box.classList.add('is-sub');            // v6.4.1: uma subtela é um formulário simples — a janela larga se estreita
     box.scrollTop = contentEl.scrollTop = 0;
     const target = sub.focus || box.querySelector('#modal-content input,#modal-content select,#modal-content textarea,#modal-content button');
-    if(target) setTimeout(() => { if(!closed && document.contains(target)) target.focus(); }, 30);
+    if(target) focusModalSoon(box,target,()=>!closed && box.contains(target));
   };
   /** Volta para a tela de baixo, exatamente como estava. `focusEl` escolhe onde o foco cai. */
   close.pop = (focusEl) => {
@@ -6870,7 +6878,7 @@ function openModal(build, opts){
   }, { opener });
 
   const focusTarget = (cfg.focus && box.contains(cfg.focus)) ? cfg.focus : box.querySelector('input,select,textarea,button');
-  if(focusTarget) setTimeout(() => { if(!closed) focusTarget.focus(); }, 30);
+  if(focusTarget) focusModalSoon(box,focusTarget,()=>!closed && box.contains(focusTarget));
   return close;
 }
 
@@ -16745,7 +16753,7 @@ function openDeadlineModal(dl, preset){
       }) })
     ];
     if(dl) actions.unshift(h('button', { class:'linkbtn danger', type:'button', text:'excluir', onclick: async () => { close(); await deleteDeadline(dl.id); } }));
-    return { title: dl ? 'Editar prazo' : 'Novo prazo', content, actions };
+    return { title: dl ? 'Editar prazo' : 'Novo prazo', content, actions, focus:titleIn };
   }, { size:'wide' });
 }
 

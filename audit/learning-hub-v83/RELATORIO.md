@@ -47,7 +47,7 @@ Continuar usa duas linhas com largura e ações alinhadas, sem a fileira irregul
 
 Resumo semanal e gráfico ficam visíveis. Foram retiradas observações repetidas da semana e a lista lateral que reproduzia toda a navegação. Prazos, revisões e planejamento relevante ficam em A seguir; a criação de conteúdos fica em Organizar conteúdos, ambos recolhíveis. Preferências de ocultação dos blocos e da frase são respeitadas.
 
-A auditoria verifica as ações contra o limite visível real de `#today-body`, além da janela, evitando aceitar controles cortados por rolagem interna. Há capturas de 1920×1080, 1440×900, 1366×768, 1280×720 e 1024×768, além de 430, 390, 375 e 320 px, em temas claro e escuro. Mobile mantém rolagem natural. O estado ativo também é verificado em 1280 e 1024 px com a fonte alternativa DejaVu Sans, incluindo Pomodoro, para exercitar a variação de métricas entre sistemas. Casos adicionais incluem novo usuário, ausência de materiais, um material de nome longo, primeiro estudo, frase oculta, sessão ativa/pausada, Foco, Apresentação e zoom CSS de 125%. Isso não representa teste de zoom do sistema ou da barra real de um navegador físico.
+A auditoria verifica as ações contra o limite visível real de `#today-body`, além da janela, evitando aceitar controles cortados por rolagem interna. Há capturas de 1920×1080, 1440×900, 1366×768, 1280×720 e 1024×768, além de 430, 390, 375 e 320 px, em temas claro e escuro. Mobile mantém rolagem natural. O estado ativo também é verificado em 1280 e 1024 px com a fonte alternativa DejaVu Sans, para exercitar a variação de métricas entre sistemas. Casos adicionais incluem novo usuário, ausência de materiais, um material de nome longo, primeiro estudo, frase oculta, sessão ativa/pausada, Foco, Apresentação e zoom CSS de 125%. Isso não representa teste de zoom do sistema ou da barra real de um navegador físico.
 
 ## Persistência, concorrência e recuperação
 
@@ -65,24 +65,24 @@ Cinco amostras síncronas por interação, em contextos locais isolados. Mediana
 
 | Estudos | Interação | v8.2 | v8.3 equivalente | v8.3 multidisciplinar | Δ equivalente |
 |---:|---|---:|---:|---:|---:|
-| 1,000 | Abrir Hoje | 14.4 | 11.7 | 9.7 | -2.7 |
-| 1,000 | Catálogo | 15.7 | 15.3 | 13.3 | -0.4 |
-| 1,000 | Editor do curso | 13.2 | 16.5 | 12.2 | +3.3 |
-| 1,000 | Formulário de estudo | 7.8 | 7.8 | 6.4 | -0.0 |
-| 1,000 | Selecionar curso | 0.5 | 0.9 | 0.9 | +0.4 |
-| 1,000 | Configurar duas disciplinas | 8.2 | 7.7 | 7.8 | -0.5 |
-| 1,000 | Histórico | 24.7 | 20.6 | 13.2 | -4.1 |
-| 1,000 | Resultados | 25.6 | 21.2 | 31.0 | -4.4 |
-| 1,000 | Gravar estudo | 24.9 | 25.5 | 23.8 | +0.6 |
-| 10,000 | Abrir Hoje | 37.2 | 14.7 | 17.5 | -22.5 |
-| 10,000 | Catálogo | 17.7 | 13.2 | 19.2 | -4.5 |
-| 10,000 | Editor do curso | 12.4 | 10.9 | 18.4 | -1.5 |
-| 10,000 | Formulário de estudo | 8.5 | 6.8 | 10.4 | -1.7 |
-| 10,000 | Selecionar curso | 0.5 | 0.9 | 1.4 | +0.4 |
-| 10,000 | Configurar duas disciplinas | 10.2 | 7.2 | 13.5 | -3.0 |
-| 10,000 | Histórico | 23.0 | 19.2 | 28.3 | -3.8 |
-| 10,000 | Resultados | 33.5 | 33.5 | 32.8 | +0.0 |
-| 10,000 | Gravar estudo | 37.9 | 39.6 | 51.1 | +1.7 |
+| 1,000 | Abrir Hoje | 14.4 | 15.6 | 10.0 | +1.2 |
+| 1,000 | Catálogo | 15.7 | 22.8 | 12.5 | +7.1 |
+| 1,000 | Editor do curso | 13.2 | 21.3 | 12.1 | +8.1 |
+| 1,000 | Formulário de estudo | 7.8 | 10.4 | 6.9 | +2.6 |
+| 1,000 | Selecionar curso | 0.5 | 1.3 | 0.8 | +0.8 |
+| 1,000 | Configurar duas disciplinas | 8.2 | 11.2 | 7.9 | +3.0 |
+| 1,000 | Histórico | 24.7 | 30.8 | 15.2 | +6.1 |
+| 1,000 | Resultados | 25.6 | 32.5 | 19.8 | +6.9 |
+| 1,000 | Gravar estudo | 24.9 | 39.6 | 24.7 | +14.7 |
+| 10,000 | Abrir Hoje | 37.2 | 17.4 | 22.3 | -19.8 |
+| 10,000 | Catálogo | 17.7 | 19.8 | 22.7 | +2.1 |
+| 10,000 | Editor do curso | 12.4 | 16.6 | 26.3 | +4.2 |
+| 10,000 | Formulário de estudo | 8.5 | 9.1 | 10.6 | +0.6 |
+| 10,000 | Selecionar curso | 0.5 | 1.0 | 1.4 | +0.5 |
+| 10,000 | Configurar duas disciplinas | 10.2 | 11.3 | 13.3 | +1.1 |
+| 10,000 | Histórico | 23.0 | 31.7 | 33.3 | +8.7 |
+| 10,000 | Resultados | 33.5 | 39.1 | 51.4 | +5.6 |
+| 10,000 | Gravar estudo | 37.9 | 34.0 | 39.3 | -3.9 |
 
 O editor mais rico, os relacionamentos adicionais e a busca têm custo; a tabela registra também regressões, sem declarar ganho universal. O catálogo usa índices derivados por curso e tópico, invalidados no carregamento dos dados. A escolha de emoji não recalcula a aplicação. Busca e seleção atualizam listas locais, sem reconstruir o formulário inteiro. Nenhuma dependência foi adicionada.
 
@@ -90,9 +90,9 @@ Os arquivos `before/interactions.json` e `after/interactions.json` contêm amost
 
 ## Validação e limites
 
-A suíte final contém **175 casos**, dos quais 24 são novos testes do Learning Hub. Preserva os 151 testes da base; expectativas do schema passaram para 14 e o teste de arquivo verifica especificamente a retirada do curso arquivado. Não há casos removidos ou desabilitados. A suíte cobre emojis compostos, migração, cadastro progressivo, vínculos, snapshots, backup 13/14, duas abas, falhas atômicas, source links, relógio, mudança de fonte e distribuição sem duplicação.
+A suíte final contém **176 casos**, dos quais 25 são novos testes do Learning Hub. Preserva os 151 testes da base; expectativas do schema passaram para 14 e o teste de arquivo verifica especificamente a retirada do curso arquivado. Não há casos removidos ou desabilitados. A suíte cobre emojis compostos, migração, cadastro progressivo, vínculos, snapshots, backup 13/14, duas abas, falhas atômicas, source links, relógio, mudança de fonte e distribuição sem duplicação.
 
-Verificações locais: sintaxe; inventário; suíte funcional Chromium; auditorias de navegador, campo, experiência, v8, aprendizagem conectada e Learning Hub. A rodada inicial detectou regressões de navegação e expectativas antigas do schema; foram corrigidas e reexecutadas. A primeira CI aprovou os 175 funcionais em Chromium, Firefox e WebKit; Chromium e Firefox detectaram corte em 1280 px durante o estudo com outra fonte. O WebKit concluiu também todas as auditorias daquela rodada. A barra foi ajustada e o teste de enquadramento foi mantido, com uma verificação adicional de fonte alternativa. A aprovação válida é a da matriz no SHA final, registrada no PR. A suíte completa local aprovou 175 casos; os ajustes finais também tiveram repetições dos testes de cronômetro e Learning Hub. O caso de remoção de associação confirma agora os filtros de material e bloco no histórico. Um reprodutor no commit anterior escondia ambas as opções apesar de manter 45 minutos; na correção, ambas aparecem e os mesmos 45 minutos permanecem. Os resultados completos e hashes ficam nos artefatos. Os resultados da **matriz Chromium, Firefox e WebKit sobre o commit final** são registrados no corpo do PR e nos checks desse SHA, evitando tratar execuções anteriores como prova do commit final.
+Verificações locais: sintaxe; inventário; suíte funcional Chromium; auditorias de navegador, campo, experiência, v8, aprendizagem conectada e Learning Hub. A rodada inicial detectou regressões de navegação e expectativas antigas do schema; foram corrigidas e reexecutadas. A primeira CI aprovou os 175 funcionais no Chromium e no Firefox, mas detectou corte em 1280 px durante o estudo com outra fonte. A barra foi ajustada e o teste de enquadramento foi mantido, com uma verificação adicional de fonte alternativa. A aprovação válida é a da matriz no SHA final, registrada no PR. A suíte completa local inicial aprovou 175 casos. A correção final do foco acrescentou o caso 176; os 35 casos de calendário e Learning Hub passaram após ela. Um teste com relógio controlado falha no commit anterior porque a abertura rouba o foco do link para o nome; na correção, o foco escolhido e a digitação permanecem. A segunda CI aprovou toda a suíte e auditorias no Chromium, mas expôs essa corrida intermitente em Firefox/WebKit; a matriz do commit final continua sendo a referência de aprovação. O caso de remoção de associação confirma agora os filtros de material e bloco no histórico. Um reprodutor no commit anterior escondia ambas as opções apesar de manter 45 minutos; na correção, ambas aparecem e os mesmos 45 minutos permanecem. Os resultados completos e hashes ficam nos artefatos. Os resultados da **matriz Chromium, Firefox e WebKit sobre o commit final** são registrados no corpo do PR e nos checks desse SHA, evitando tratar execuções anteriores como prova do commit final.
 
 Firefox e WebKit não foram executados neste ambiente local: o download oficial foi recusado pela política de rede e a alteração de configuração não foi concluída. A matriz remota do PR é necessária para esses motores. Não foram testados aparelhos físicos, leitores de tela reais, fullscreen em hardware, throttling móvel ou interrupção física de energia. O axe automatizado detectou zero violações nos recortes testados; isso não substitui avaliação com tecnologia assistiva real.
 
